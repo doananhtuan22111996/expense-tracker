@@ -1,0 +1,20 @@
+package dev.tuandoan.expensetracker.di
+
+import dagger.Binds
+import dagger.Module
+import dagger.hilt.InstallIn
+import dagger.hilt.components.SingletonComponent
+import dev.tuandoan.expensetracker.domain.repository.CategoryRepository
+import dev.tuandoan.expensetracker.domain.repository.TransactionRepository
+import dev.tuandoan.expensetracker.repository.CategoryRepositoryImpl
+import dev.tuandoan.expensetracker.repository.TransactionRepositoryImpl
+
+@Module
+@InstallIn(SingletonComponent::class)
+abstract class RepositoryModule {
+    @Binds
+    abstract fun bindTransactionRepository(transactionRepositoryImpl: TransactionRepositoryImpl): TransactionRepository
+
+    @Binds
+    abstract fun bindCategoryRepository(categoryRepositoryImpl: CategoryRepositoryImpl): CategoryRepository
+}
