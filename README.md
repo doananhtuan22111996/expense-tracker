@@ -63,126 +63,6 @@ Enhanced the edit transaction experience with improved user interaction and data
 - Clean state management prevents data corruption
 - Smooth navigation flow with proper state cleanup
 
-## UX/UI Design Standards
-
-### Material 3 Design System Implementation
-
-The app follows strict Material 3 design guidelines with a custom design system layer for consistency:
-
-**🎨 Design System Location**
-- **Design constants**: `ui/theme/DesignSystem.kt`
-- **Reusable components**: `ui/component/CommonComponents.kt`
-- **Financial semantic colors**: `FinancialColors` object for income/expense/balance styling
-
-**📏 Spacing System**
-```kotlin
-object DesignSystemSpacing {
-    val xs: Dp = 4.dp        // Micro spacing
-    val small: Dp = 8.dp     // Component spacing
-    val medium: Dp = 12.dp   // Section spacing
-    val large: Dp = 16.dp    // Screen padding
-    val xl: Dp = 24.dp       // Large sections
-    val xxl: Dp = 32.dp      // Major sections
-}
-```
-
-**📱 Screen Structure Standards**
-- **Screen padding**: 16dp consistent across all screens
-- **Section spacing**: 12-16dp between major sections
-- **Component spacing**: 8dp between related components
-- **List item spacing**: 8dp vertical spacing between cards
-
-**✏️ Typography Usage**
-- **Screen titles**: `MaterialTheme.typography.headlineMedium`
-- **Section headers**: `MaterialTheme.typography.titleMedium`
-- **Primary content**: `MaterialTheme.typography.bodyLarge`
-- **Secondary content**: `MaterialTheme.typography.bodyMedium`
-- **Tertiary content**: `MaterialTheme.typography.bodySmall`
-
-**🎯 Touch Targets**
-- **Minimum size**: 48dp for all interactive elements
-- **Icon buttons**: Properly sized touch areas
-- **Cards**: Full-width clickable areas with visual feedback
-
-**🏷️ Card Elevations**
-```kotlin
-object DesignSystemElevation {
-    val none: Dp = 0.dp      // Form components
-    val low: Dp = 2.dp       // List items
-    val medium: Dp = 4.dp    // Summary cards
-    val high: Dp = 8.dp      // Modal dialogs
-}
-```
-
-### VND Currency Standards
-
-**💰 VND-Only Policy**: The app is designed exclusively for Vietnamese Dong (₫)
-- **Integer amounts only**: No decimal places (VND doesn't use fractional currency)
-- **Thousand separators**: Uses locale-aware comma formatting (1,234,567)
-- **Consistent formatting**: Single `AmountFormatter` utility used throughout
-- **Color coding**: Green for income, red for expenses, contextual for balance
-
-**🚫 No Charts Constraint**: Deliberately excludes charts/graphs to maintain simplicity
-- **Text-based summaries**: Clear numerical displays instead of visual charts
-- **Top categories**: Simple list format for expense breakdowns
-- **Focus on numbers**: Emphasizes precise amounts over visual representations
-
-### Reusable Components
-
-**`AmountText`**: Consistent VND formatting with semantic colors
-```kotlin
-AmountText(
-    amount = 1234567L,
-    transactionType = TransactionType.INCOME,
-    showSign = true,
-    fontWeight = FontWeight.Bold
-)
-```
-
-**`EmptyStateMessage`**: Standardized empty states
-```kotlin
-EmptyStateMessage(
-    title = "No transactions yet",
-    subtitle = "Tap the + button to add your first transaction"
-)
-```
-
-**`SectionHeader`**: Consistent screen/section titles
-```kotlin
-SectionHeader(title = "This Month")
-```
-
-### Accessibility Standards
-
-**🔍 Content Descriptions**: All interactive icons include descriptive labels
-**🎨 Color Contrast**: Uses Material 3 semantic colors for sufficient contrast
-**👆 Touch Targets**: Minimum 48dp touch areas for all interactive elements
-**📖 Text Hierarchy**: Clear visual hierarchy with appropriate font sizes and weights
-
-### Development Guidelines
-
-**🔧 Adding New UI Components**
-1. Use design system spacing constants (`DesignSystemSpacing.*`)
-2. Follow Material 3 typography scale consistently
-3. Apply semantic colors from `FinancialColors` for money amounts
-4. Include content descriptions for accessibility
-5. Maintain consistent card elevations using `DesignSystemElevation`
-
-**✅ UI Validation Checklist**
-```bash
-# Run before committing UI changes
-./gradlew spotlessCheck        # Code formatting
-./gradlew test                # Unit tests including AmountFormatter
-./gradlew assembleDebug       # Compilation check
-```
-
-**⚡ Quick UI Testing**
-- Test on multiple screen sizes (phone, tablet)
-- Verify touch targets are >= 48dp
-- Check VND formatting in all contexts
-- Confirm empty states display properly
-- Test dark/light mode consistency
-
 ## Project Structure
 
 ```
@@ -202,8 +82,6 @@ app/src/main/java/dev/tuandoan/expensetracker/
 ├── repository/                    # Repository implementations
 │   └── mapper/                    # Entity-Domain mappers
 └── ui/                           # UI layer
-    ├── component/                 # Reusable UI components
-    │   └── CommonComponents.kt    # AmountText, EmptyStateMessage, etc.
     ├── navigation/                # Navigation setup
     ├── screen/                    # Compose screens
     │   ├── home/                  # Home screen (transaction list)
@@ -211,10 +89,6 @@ app/src/main/java/dev/tuandoan/expensetracker/
     │   ├── addedit/              # Add/edit transaction screen
     │   └── settings/              # Settings screen
     └── theme/                     # App theme and styling
-        ├── DesignSystem.kt        # Design system constants & semantic colors
-        ├── Theme.kt               # Material 3 theme configuration
-        ├── Color.kt               # Color schemes
-        └── Type.kt                # Typography definitions
 ```
 
 ## Database Schema
@@ -300,17 +174,12 @@ This project uses [Spotless](https://github.com/diffplug/spotless) with ktlint f
 ### Running Tests
 
 ```bash
-# Unit tests (including core business logic tests)
+# Unit tests
 ./gradlew test
 
 # Instrumented tests
 ./gradlew connectedAndroidTest
 ```
-
-**Core Unit Tests Coverage:**
-- `AmountFormatterTest`: Comprehensive VND formatting, parsing, and edge cases
-- `DateTimeUtilTest`: Date range calculations, formatting, and time utilities
-- Critical business logic for currency handling and date operations
 
 ## Usage
 
