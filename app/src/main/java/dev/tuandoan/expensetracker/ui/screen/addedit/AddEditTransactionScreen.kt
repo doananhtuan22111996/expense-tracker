@@ -1,5 +1,6 @@
 package dev.tuandoan.expensetracker.ui.screen.addedit
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -16,6 +17,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.CalendarToday
 import androidx.compose.material.icons.filled.KeyboardArrowDown
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CircularProgressIndicator
@@ -31,6 +33,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -59,6 +62,19 @@ fun AddEditTransactionScreen(
     val snackbarHostState = remember { SnackbarHostState() }
     val isEditMode = transactionId != null
 
+    // Handle system back button
+    BackHandler {
+        viewModel.onBackPressed()
+        if (!isEditMode || !uiState.hasUnsavedChanges) {
+            onNavigateBack()
+        }
+    }
+
+    // Handle back navigation from ViewModel
+    LaunchedEffect(uiState.showDiscardDialog) {
+        // Dialog state is managed in the UI state
+    }
+
     LaunchedEffect(uiState.errorMessage) {
         uiState.errorMessage?.let { message ->
             snackbarHostState.showSnackbar(message)
@@ -70,7 +86,14 @@ fun AddEditTransactionScreen(
             TopAppBar(
                 title = { Text(if (isEditMode) "Edit Transaction" else "Add Transaction") },
                 navigationIcon = {
-                    IconButton(onClick = onNavigateBack) {
+                    IconButton(
+                        onClick = {
+                            viewModel.onBackPressed()
+                            if (!isEditMode || !uiState.hasUnsavedChanges) {
+                                onNavigateBack()
+                            }
+                        },
+                    ) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
                     }
                 },
@@ -148,13 +171,37 @@ fun AddEditTransactionScreen(
                 // Save Button
                 Button(
                     onClick = { viewModel.saveTransaction(onNavigateBack) },
-                    enabled = uiState.isFormValid && !uiState.isLoading,
+                    enabled = uiState.isSaveEnabled && !uiState.isLoading,
                     modifier = Modifier.fillMaxWidth(),
                 ) {
                     Text(if (isEditMode) "Update Transaction" else "Save Transaction")
                 }
             }
         }
+    }
+
+    // Discard Changes Confirmation Dialog
+    if (uiState.showDiscardDialog) {
+        AlertDialog(
+            onDismissRequest = { viewModel.onCancelDiscard() },
+            title = { Text("Discard changes?") },
+            text = { Text("You have unsaved changes.") },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        viewModel.onDiscardChanges()
+                        onNavigateBack()
+                    },
+                ) {
+                    Text("Discard")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { viewModel.onCancelDiscard() }) {
+                    Text("Cancel")
+                }
+            },
+        )
     }
 }
 
