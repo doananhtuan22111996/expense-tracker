@@ -36,6 +36,33 @@ This app follows modern Android development best practices:
 - **Coroutines**: For background operations
 - **Material Design**: Material 3
 
+## Phase 2 - Feature Enhancements
+
+### Edit Transaction - UX Polish
+
+Enhanced the edit transaction experience with improved user interaction and data safety:
+
+**✅ Unsaved Changes Detection**
+- Automatically tracks modifications to transaction fields (type, amount, category, date, note)
+- Compares current form state against original transaction data
+- Visual feedback through save button state changes
+
+**✅ Back Navigation Confirmation**
+- Smart confirmation dialog when attempting to leave with unsaved changes
+- Handles both system back button and top app bar back navigation
+- Immediate navigation when no changes are detected
+- Dialog options: "Discard" (lose changes) or "Cancel" (stay on screen)
+
+**✅ Save Button Intelligence**
+- Disabled when form is invalid OR when no changes have been made
+- Only enabled when input is valid AND at least one field has been modified
+- Prevents unnecessary database operations and user confusion
+
+**✅ Safe Edit Workflow**
+- Original transaction data preserved as baseline for comparison
+- Clean state management prevents data corruption
+- Smooth navigation flow with proper state cleanup
+
 ## Project Structure
 
 ```

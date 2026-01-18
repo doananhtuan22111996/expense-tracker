@@ -60,6 +60,25 @@ class AddEditTransactionViewModel
             _uiState.value = _uiState.value.copy(note = note)
         }
 
+        fun onBackPressed() {
+            val state = _uiState.value
+            if (isEditMode && state.hasUnsavedChanges) {
+                _uiState.value = state.copy(showDiscardDialog = true)
+            } else {
+                // No changes or not in edit mode - navigate back immediately
+                // This will be handled by the UI
+            }
+        }
+
+        fun onDiscardChanges() {
+            _uiState.value = _uiState.value.copy(showDiscardDialog = false)
+            // Navigation will be handled by UI
+        }
+
+        fun onCancelDiscard() {
+            _uiState.value = _uiState.value.copy(showDiscardDialog = false)
+        }
+
         fun saveTransaction(onSuccess: () -> Unit) {
             val state = _uiState.value
 
@@ -190,10 +209,34 @@ data class AddEditTransactionUiState(
     val note: String = "",
     val isLoading: Boolean = false,
     val errorMessage: String? = null,
+    val showDiscardDialog: Boolean = false,
 ) {
     val isFormValid: Boolean
         get() =
             amountText.isNotBlank() &&
                 selectedCategory != null &&
                 AmountFormatter.parseAmount(amountText)?.let { it > 0 } == true
+
+    val hasUnsavedChanges: Boolean
+        get() {
+            val original = originalTransaction ?: return false
+
+            // Compare current state with original transaction
+            val currentAmount = AmountFormatter.parseAmount(amountText) ?: 0L
+            val currentNote = note.ifBlank { null }
+
+            return type != original.type ||
+                currentAmount != original.amount ||
+                selectedCategory?.id != original.category.id ||
+                timestamp != original.timestamp ||
+                currentNote != original.note
+        }
+
+    val isSaveEnabled: Boolean
+        get() {
+            if (!isFormValid) return false
+
+            // For edit mode, also check if there are changes
+            return originalTransaction == null || hasUnsavedChanges
+        }
 }
