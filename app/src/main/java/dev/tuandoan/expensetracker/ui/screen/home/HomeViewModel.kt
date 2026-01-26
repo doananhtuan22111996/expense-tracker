@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dev.tuandoan.expensetracker.core.util.DateTimeUtil
+import dev.tuandoan.expensetracker.core.util.ErrorUtils
 import dev.tuandoan.expensetracker.domain.model.Transaction
 import dev.tuandoan.expensetracker.domain.model.TransactionType
 import dev.tuandoan.expensetracker.domain.repository.TransactionRepository
@@ -41,7 +42,7 @@ class HomeViewModel
                     _uiState.value =
                         _uiState.value.copy(
                             isError = true,
-                            errorMessage = "Failed to delete transaction: ${e.message}",
+                            errorMessage = ErrorUtils.getErrorMessage(e),
                         )
                 }
             }
@@ -67,7 +68,7 @@ class HomeViewModel
                             _uiState.value.copy(
                                 isLoading = false,
                                 isError = true,
-                                errorMessage = "Failed to load transactions: ${e.message}",
+                                errorMessage = ErrorUtils.getErrorMessage(e),
                             )
                     }.collect { transactions ->
                         _uiState.value =

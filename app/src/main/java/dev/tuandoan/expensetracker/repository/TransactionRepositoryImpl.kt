@@ -95,18 +95,22 @@ class TransactionRepositoryImpl
                 transactionDao.sumExpense(from, to),
                 transactionDao.sumIncome(from, to),
                 transactionDao.sumByCategory(from, to, TransactionType.EXPENSE.toInt()),
-            ) { expenseSum, incomeSum, expenseCategories ->
+                // Add categories as a Flow to avoid blocking calls
+                categoryDao.getCategories(TransactionType.EXPENSE.toInt()),
+            ) { expenseSum, incomeSum, expenseCategories, categories ->
                 val totalExpense = expenseSum ?: 0L
                 val totalIncome = incomeSum ?: 0L
                 val balance = totalIncome - totalExpense
 
-                // Get category details for top expenses
+                // Create category lookup map for efficient access
+                val categoryMap = categories.associateBy { it.id }
+
+                // Get category details for top expenses using non-blocking lookup
                 val topExpenseCategories =
                     expenseCategories.take(5).mapNotNull { categorySum ->
-                        val category = categoryDao.getById(categorySum.categoryId)?.toDomain()
-                        category?.let {
+                        categoryMap[categorySum.categoryId]?.let { categoryEntity ->
                             CategoryTotal(
-                                category = it,
+                                category = categoryEntity.toDomain(),
                                 total = categorySum.total,
                             )
                         }

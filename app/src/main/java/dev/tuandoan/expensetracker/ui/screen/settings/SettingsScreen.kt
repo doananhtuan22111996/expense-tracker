@@ -14,6 +14,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
+import dev.tuandoan.expensetracker.core.util.AppInfo
 import dev.tuandoan.expensetracker.ui.component.SectionHeader
 import dev.tuandoan.expensetracker.ui.component.SectionTitle
 import dev.tuandoan.expensetracker.ui.theme.DesignSystemElevation
@@ -35,7 +36,7 @@ fun SettingsScreen(modifier: Modifier = Modifier) {
         SettingsSection(title = "App Information") {
             SettingsItem(
                 title = "Version",
-                subtitle = "1.0",
+                subtitle = AppInfo.getFullVersionInfo(),
             )
 
             HorizontalDivider()
@@ -112,7 +113,24 @@ fun SettingsScreen(modifier: Modifier = Modifier) {
                             "income and expenses locally on your device.",
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(bottom = DesignSystemSpacing.medium),
                 )
+
+                // Application details for support/debugging
+                if (AppInfo.isDebugBuild()) {
+                    Text(
+                        text = "Debug Information",
+                        style = MaterialTheme.typography.titleSmall,
+                        fontWeight = FontWeight.Medium,
+                        modifier = Modifier.padding(bottom = DesignSystemSpacing.xs),
+                    )
+                    Text(
+                        text = "Application ID: ${AppInfo.getApplicationId()}\nBuild Type: ${AppInfo.getBuildType()}",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace,
+                    )
+                }
             }
         }
     }

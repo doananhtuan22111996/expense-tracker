@@ -50,7 +50,10 @@ fun SummaryScreen(
             }
             uiState.isError -> {
                 ErrorStateMessage(
-                    message = uiState.errorMessage ?: "An error occurred",
+                    title = "Unable to load summary",
+                    message = uiState.errorMessage ?: "Failed to load financial data. Please try again.",
+                    onRetry = viewModel::refresh,
+                    retryButtonText = "Retry",
                     modifier = Modifier.fillMaxSize(),
                 )
             }
