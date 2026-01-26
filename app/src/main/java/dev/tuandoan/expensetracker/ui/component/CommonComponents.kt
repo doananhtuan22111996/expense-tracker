@@ -5,6 +5,10 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material3.Button
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -12,6 +16,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.dp
 import dev.tuandoan.expensetracker.core.formatter.AmountFormatter
 import dev.tuandoan.expensetracker.domain.model.TransactionType
 import dev.tuandoan.expensetracker.ui.theme.DesignSystemSpacing
@@ -107,12 +112,14 @@ fun EmptyStateMessage(
 }
 
 /**
- * Consistent error state component
+ * Enhanced error state component with retry functionality
  */
 @Composable
 fun ErrorStateMessage(
-    title: String = "Error",
+    title: String = "Something went wrong",
     message: String,
+    onRetry: (() -> Unit)? = null,
+    retryButtonText: String = "Try Again",
     modifier: Modifier = Modifier,
 ) {
     Box(
@@ -122,6 +129,7 @@ fun ErrorStateMessage(
         Column(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center,
+            modifier = Modifier.padding(DesignSystemSpacing.large),
         ) {
             Text(
                 text = title,
@@ -134,8 +142,27 @@ fun ErrorStateMessage(
                 style = MaterialTheme.typography.bodyMedium,
                 textAlign = TextAlign.Center,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(top = DesignSystemSpacing.small),
+                modifier =
+                    Modifier.padding(
+                        top = DesignSystemSpacing.small,
+                        bottom = if (onRetry != null) DesignSystemSpacing.large else 0.dp,
+                    ),
             )
+
+            // Show retry button if onRetry callback is provided
+            onRetry?.let { retry ->
+                Button(
+                    onClick = retry,
+                    modifier = Modifier.padding(top = DesignSystemSpacing.medium),
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Refresh,
+                        contentDescription = null,
+                        modifier = Modifier.padding(end = DesignSystemSpacing.xs),
+                    )
+                    Text(retryButtonText)
+                }
+            }
         }
     }
 }

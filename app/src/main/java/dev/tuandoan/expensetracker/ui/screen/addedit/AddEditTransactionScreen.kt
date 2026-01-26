@@ -22,6 +22,8 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.DatePicker
+import androidx.compose.material3.DatePickerDialog
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -36,6 +38,7 @@ import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.rememberDatePickerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -50,6 +53,7 @@ import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.unit.dp
 import dev.tuandoan.expensetracker.core.formatter.AmountFormatter
 import dev.tuandoan.expensetracker.core.util.DateTimeUtil
 import dev.tuandoan.expensetracker.domain.model.Category
@@ -85,6 +89,7 @@ fun AddEditTransactionScreen(
     LaunchedEffect(uiState.errorMessage) {
         uiState.errorMessage?.let { message ->
             snackbarHostState.showSnackbar(message)
+            viewModel.clearError()
         }
     }
 
@@ -131,9 +136,8 @@ fun AddEditTransactionScreen(
                         .padding(innerPadding)
                         .padding(
                             horizontal = DesignSystemSpacing.screenPadding,
-                            vertical = DesignSystemSpacing.small
-                        )
-                        .verticalScroll(rememberScrollState()),
+                            vertical = DesignSystemSpacing.small,
+                        ).verticalScroll(rememberScrollState()),
             )
         }
     }
@@ -440,12 +444,15 @@ private fun EnhancedCategoryDropdown(
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun EnhancedDateSelector(
     timestamp: Long,
     onDateSelected: (Long) -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    var showDatePicker by remember { mutableStateOf(false) }
+
     Column(
         modifier = modifier,
         verticalArrangement = Arrangement.spacedBy(DesignSystemSpacing.xs),
@@ -459,8 +466,7 @@ private fun EnhancedDateSelector(
 
         Card(
             onClick = {
-                // For now, set to current date - in a real app you'd use a DatePickerDialog
-                onDateSelected(DateTimeUtil.getTodayStartMillis())
+                showDatePicker = true
             },
             modifier = Modifier.fillMaxWidth(),
             elevation = CardDefaults.cardElevation(defaultElevation = DesignSystemElevation.low),
@@ -481,7 +487,7 @@ private fun EnhancedDateSelector(
                         color = MaterialTheme.colorScheme.onSurface,
                     )
                     Text(
-                        text = "Tap to change date",
+                        text = "Tap to select date",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
@@ -494,77 +500,63 @@ private fun EnhancedDateSelector(
             }
         }
     }
-}
 
-@Composable
-private fun CategoryDropdown(
-    categories: List<Category>,
-    selectedCategory: Category?,
-    onCategorySelected: (Category) -> Unit,
-    modifier: Modifier = Modifier,
-) {
-    var expanded by remember { mutableStateOf(false) }
+    // Date Picker Dialog
+    if (showDatePicker) {
+        val datePickerState =
+            rememberDatePickerState(
+                initialSelectedDateMillis = timestamp,
+            )
 
-    Column(
-        modifier = modifier,
-        verticalArrangement = Arrangement.spacedBy(DesignSystemSpacing.xs),
-    ) {
-        Text(
-            text = "Category",
-            style = MaterialTheme.typography.titleMedium,
-            fontWeight = FontWeight.Medium,
-            color = MaterialTheme.colorScheme.onSurface,
-        )
-
-        Card(
-            onClick = { expanded = true },
-            modifier = Modifier.fillMaxWidth(),
-            elevation = CardDefaults.cardElevation(defaultElevation = DesignSystemElevation.low),
-        ) {
-            Row(
-                modifier =
-                    Modifier
-                        .fillMaxWidth()
-                        .padding(DesignSystemSpacing.large),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Text(
-                    text = selectedCategory?.name ?: "Select Category",
-                    style = MaterialTheme.typography.bodyLarge,
-                    color = MaterialTheme.colorScheme.onSurface,
-                )
-                Icon(
-                    Icons.Default.KeyboardArrowDown,
-                    contentDescription = "Open category selection",
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            }
-        }
-
-        DropdownMenu(
-            expanded = expanded,
-            onDismissRequest = { expanded = false },
-        ) {
-            categories.forEach { category ->
-                DropdownMenuItem(
-                    text = { Text(category.name) },
+        DatePickerDialog(
+            onDismissRequest = {
+                showDatePicker = false
+            },
+            confirmButton = {
+                TextButton(
                     onClick = {
-                        onCategorySelected(category)
-                        expanded = false
+                        datePickerState.selectedDateMillis?.let { selectedDate ->
+                            // Convert to start of day in local timezone for consistency
+                            onDateSelected(selectedDate)
+                        }
+                        showDatePicker = false
                     },
-                )
-            }
+                ) {
+                    Text("OK")
+                }
+            },
+            dismissButton = {
+                TextButton(
+                    onClick = {
+                        showDatePicker = false
+                    },
+                ) {
+                    Text("Cancel")
+                }
+            },
+        ) {
+            DatePicker(
+                state = datePickerState,
+                title = {
+                    Text(
+                        text = "Select Date",
+                        modifier = Modifier.padding(16.dp),
+                    )
+                },
+            )
         }
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun DateSelector(
     timestamp: Long,
     onDateSelected: (Long) -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    var showDatePicker by remember { mutableStateOf(false) }
+
     Column(
         modifier = modifier,
         verticalArrangement = Arrangement.spacedBy(DesignSystemSpacing.xs),
@@ -578,8 +570,7 @@ private fun DateSelector(
 
         Card(
             onClick = {
-                // For now, set to current date - in a real app you'd use a DatePickerDialog
-                onDateSelected(DateTimeUtil.getTodayStartMillis())
+                showDatePicker = true
             },
             modifier = Modifier.fillMaxWidth(),
             elevation = CardDefaults.cardElevation(defaultElevation = DesignSystemElevation.low),
@@ -603,6 +594,52 @@ private fun DateSelector(
                     tint = MaterialTheme.colorScheme.primary,
                 )
             }
+        }
+    }
+
+    // Date Picker Dialog
+    if (showDatePicker) {
+        val datePickerState =
+            rememberDatePickerState(
+                initialSelectedDateMillis = timestamp,
+            )
+
+        DatePickerDialog(
+            onDismissRequest = {
+                showDatePicker = false
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        datePickerState.selectedDateMillis?.let { selectedDate ->
+                            // Convert to start of day in local timezone for consistency
+                            onDateSelected(selectedDate)
+                        }
+                        showDatePicker = false
+                    },
+                ) {
+                    Text("OK")
+                }
+            },
+            dismissButton = {
+                TextButton(
+                    onClick = {
+                        showDatePicker = false
+                    },
+                ) {
+                    Text("Cancel")
+                }
+            },
+        ) {
+            DatePicker(
+                state = datePickerState,
+                title = {
+                    Text(
+                        text = "Select Date",
+                        modifier = Modifier.padding(16.dp),
+                    )
+                },
+            )
         }
     }
 }

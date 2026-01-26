@@ -41,18 +41,12 @@ sealed class BottomNavDestination(
 /**
  * Modal Destinations - Full-screen overlays that don't show bottom navigation
  */
-sealed class ModalDestination(val route: String) {
+sealed class ModalDestination(
+    val route: String,
+) {
     data object AddEditTransaction : ModalDestination("modal/add_edit_transaction")
 
     companion object {
         const val MODAL_GRAPH_ROUTE = "modal_graph"
     }
-}
-
-/**
- * Legacy compatibility object - can be removed after migration
- */
-@Deprecated("Use BottomNavDestination and ModalDestination instead")
-object ExpenseTrackerDestination {
-    val bottomNavDestinations = BottomNavDestination.allDestinations
 }
