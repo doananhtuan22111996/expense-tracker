@@ -3,28 +3,48 @@ package dev.tuandoan.expensetracker.ui.navigation
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.navigation.NavGraphBuilder
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
+import androidx.navigation.navigation
 import dev.tuandoan.expensetracker.ui.screen.home.HomeScreen
 import dev.tuandoan.expensetracker.ui.screen.settings.SettingsScreen
 import dev.tuandoan.expensetracker.ui.screen.summary.SummaryScreen
 
 /**
- * Main Navigation Host with stable, single NavController architecture
- * Properly separates bottom navigation from modal navigation while maintaining stability
+ * Bottom Navigation Graph - Contains Home, Summary, Settings screens
+ * These screens have persistent bottom navigation and share state
  */
 @Composable
-fun ExpenseTrackerNavigation(
+fun BottomNavigation(
     navController: NavHostController,
-    modifier: Modifier = Modifier,
     onNavigateToAddTransaction: () -> Unit,
-    onNavigateToEditTransaction: (transactionId: Long) -> Unit,
+    onNavigateToEditTransaction: (Long) -> Unit,
+    modifier: Modifier = Modifier,
 ) {
     NavHost(
         navController = navController,
-        startDestination = BottomNavDestination.Home.route,
+        startDestination = BottomNavDestination.MAIN_GRAPH_ROUTE,
         modifier = modifier,
+    ) {
+        mainNavGraph(
+            onNavigateToAddTransaction = onNavigateToAddTransaction,
+            onNavigateToEditTransaction = onNavigateToEditTransaction,
+        )
+    }
+}
+
+/**
+ * Main navigation graph containing bottom navigation destinations
+ */
+private fun NavGraphBuilder.mainNavGraph(
+    onNavigateToAddTransaction: () -> Unit,
+    onNavigateToEditTransaction: (Long) -> Unit,
+) {
+    navigation(
+        startDestination = BottomNavDestination.Home.route,
+        route = BottomNavDestination.MAIN_GRAPH_ROUTE,
     ) {
         composable(BottomNavDestination.Home.route) {
             HomeScreen(
@@ -44,14 +64,4 @@ fun ExpenseTrackerNavigation(
             SettingsScreen()
         }
     }
-}
-
-/**
- * Type-safe navigation routes with proper parameter resolution
- */
-object ModalNavRoutes {
-    fun addTransactionRoute(): String = "${ModalDestination.AddEditTransaction.route}/0"
-
-    fun editTransactionRoute(transactionId: Long): String =
-        "${ModalDestination.AddEditTransaction.route}/$transactionId"
 }
