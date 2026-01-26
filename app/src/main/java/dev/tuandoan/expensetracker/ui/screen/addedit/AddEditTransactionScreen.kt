@@ -129,7 +129,10 @@ fun AddEditTransactionScreen(
                     Modifier
                         .fillMaxSize()
                         .padding(innerPadding)
-                        .padding(DesignSystemSpacing.screenPadding)
+                        .padding(
+                            horizontal = DesignSystemSpacing.screenPadding,
+                            vertical = DesignSystemSpacing.small
+                        )
                         .verticalScroll(rememberScrollState()),
             )
         }
