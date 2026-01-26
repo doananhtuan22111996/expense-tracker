@@ -8,9 +8,9 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
@@ -20,6 +20,7 @@ import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
@@ -44,11 +45,17 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusDirection
+import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
-import androidx.compose.ui.unit.dp
+import dev.tuandoan.expensetracker.core.formatter.AmountFormatter
 import dev.tuandoan.expensetracker.core.util.DateTimeUtil
 import dev.tuandoan.expensetracker.domain.model.Category
 import dev.tuandoan.expensetracker.domain.model.TransactionType
+import dev.tuandoan.expensetracker.ui.theme.DesignSystemElevation
+import dev.tuandoan.expensetracker.ui.theme.DesignSystemSpacing
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -113,70 +120,18 @@ fun AddEditTransactionScreen(
                 CircularProgressIndicator()
             }
         } else {
-            Column(
+            TransactionForm(
+                uiState = uiState,
+                isEditMode = isEditMode,
+                viewModel = viewModel,
+                onNavigateBack = onNavigateBack,
                 modifier =
                     Modifier
                         .fillMaxSize()
                         .padding(innerPadding)
-                        .padding(16.dp)
+                        .padding(DesignSystemSpacing.screenPadding)
                         .verticalScroll(rememberScrollState()),
-                verticalArrangement = Arrangement.spacedBy(16.dp),
-            ) {
-                // Transaction Type
-                TransactionTypeSelector(
-                    selectedType = uiState.type,
-                    onTypeChanged = viewModel::onTypeChanged,
-                )
-
-                // Amount
-                OutlinedTextField(
-                    value = uiState.amountText,
-                    onValueChange = viewModel::onAmountChanged,
-                    label = { Text("Amount") },
-                    placeholder = { Text("0") },
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                    modifier = Modifier.fillMaxWidth(),
-                    isError = uiState.amountText.isNotBlank() && !uiState.isFormValid,
-                    supportingText = {
-                        if (uiState.amountText.isNotBlank() && !uiState.isFormValid) {
-                            Text("Please enter a valid amount")
-                        }
-                    },
-                )
-
-                // Category
-                CategoryDropdown(
-                    categories = uiState.categories,
-                    selectedCategory = uiState.selectedCategory,
-                    onCategorySelected = viewModel::onCategorySelected,
-                )
-
-                // Date
-                DateSelector(
-                    timestamp = uiState.timestamp,
-                    onDateSelected = viewModel::onDateSelected,
-                )
-
-                // Note
-                OutlinedTextField(
-                    value = uiState.note,
-                    onValueChange = viewModel::onNoteChanged,
-                    label = { Text("Note (optional)") },
-                    modifier = Modifier.fillMaxWidth(),
-                    maxLines = 3,
-                )
-
-                Spacer(modifier = Modifier.height(16.dp))
-
-                // Save Button
-                Button(
-                    onClick = { viewModel.saveTransaction(onNavigateBack) },
-                    enabled = uiState.isSaveEnabled && !uiState.isLoading,
-                    modifier = Modifier.fillMaxWidth(),
-                ) {
-                    Text(if (isEditMode) "Update Transaction" else "Save Transaction")
-                }
-            }
+            )
         }
     }
 
@@ -206,18 +161,172 @@ fun AddEditTransactionScreen(
 }
 
 @Composable
+private fun TransactionForm(
+    uiState: AddEditTransactionUiState,
+    isEditMode: Boolean,
+    viewModel: AddEditTransactionViewModel,
+    onNavigateBack: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val focusManager = LocalFocusManager.current
+
+    Column(
+        modifier = modifier,
+        verticalArrangement = Arrangement.spacedBy(DesignSystemSpacing.large),
+    ) {
+        // Transaction Type
+        TransactionTypeSelector(
+            selectedType = uiState.type,
+            onTypeChanged = viewModel::onTypeChanged,
+        )
+
+        // Primary section: Amount (most important field)
+        Column(verticalArrangement = Arrangement.spacedBy(DesignSystemSpacing.xs)) {
+            Text(
+                text = "Amount",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Medium,
+                color = MaterialTheme.colorScheme.onSurface,
+            )
+
+            OutlinedTextField(
+                value = uiState.amountText,
+                onValueChange = { input ->
+                    // Format input with commas as user types for better UX
+                    val cleanInput = input.replace("[^0-9]".toRegex(), "")
+                    if (cleanInput.isNotEmpty()) {
+                        val formattedInput = AmountFormatter.formatAmount(cleanInput.toLongOrNull() ?: 0L)
+                        viewModel.onAmountChanged(formattedInput)
+                    } else {
+                        viewModel.onAmountChanged("")
+                    }
+                },
+                label = { Text("Enter amount in VND") },
+                placeholder = { Text("1,000,000") },
+                suffix = {
+                    Text(
+                        "₫",
+                        style = MaterialTheme.typography.titleMedium,
+                        color = MaterialTheme.colorScheme.primary,
+                    )
+                },
+                keyboardOptions =
+                    KeyboardOptions(
+                        keyboardType = KeyboardType.Number,
+                        imeAction = ImeAction.Next,
+                    ),
+                keyboardActions =
+                    KeyboardActions(
+                        onNext = { focusManager.moveFocus(FocusDirection.Down) },
+                    ),
+                modifier = Modifier.fillMaxWidth(),
+                isError = uiState.amountText.isNotBlank() && !uiState.isFormValid,
+                supportingText = {
+                    if (uiState.amountText.isNotBlank() && !uiState.isFormValid) {
+                        Text(
+                            "Please enter a valid amount",
+                            color = MaterialTheme.colorScheme.error,
+                        )
+                    } else if (uiState.amountText.isEmpty()) {
+                        Text(
+                            "Enter amount without decimals (VND doesn't use cents)",
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                },
+                textStyle = MaterialTheme.typography.headlineSmall,
+            )
+        }
+
+        // Category Selection - Enhanced dropdown
+        EnhancedCategoryDropdown(
+            categories = uiState.categories,
+            selectedCategory = uiState.selectedCategory,
+            onCategorySelected = viewModel::onCategorySelected,
+        )
+
+        // Date Selection - Enhanced selector
+        EnhancedDateSelector(
+            timestamp = uiState.timestamp,
+            onDateSelected = viewModel::onDateSelected,
+        )
+
+        // Note - Optional field with lower visual priority
+        Column(verticalArrangement = Arrangement.spacedBy(DesignSystemSpacing.xs)) {
+            Text(
+                text = "Note (optional)",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+
+            OutlinedTextField(
+                value = uiState.note,
+                onValueChange = viewModel::onNoteChanged,
+                placeholder = { Text("Add details about this transaction...") },
+                keyboardOptions =
+                    KeyboardOptions(
+                        imeAction = ImeAction.Done,
+                    ),
+                keyboardActions =
+                    KeyboardActions(
+                        onDone = { focusManager.clearFocus() },
+                    ),
+                modifier = Modifier.fillMaxWidth(),
+                maxLines = 3,
+            )
+        }
+
+        Spacer(modifier = Modifier.padding(DesignSystemSpacing.medium))
+
+        // Save Button - Enhanced visual weight when enabled
+        Button(
+            onClick = { viewModel.saveTransaction(onNavigateBack) },
+            enabled = uiState.isSaveEnabled && !uiState.isLoading,
+            modifier = Modifier.fillMaxWidth(),
+        ) {
+            Text(
+                text = if (isEditMode) "Update Transaction" else "Save Transaction",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Medium,
+            )
+        }
+
+        // Form status hint
+        if (!uiState.isFormValid && uiState.amountText.isNotBlank()) {
+            Text(
+                text = "Please enter a valid amount and select a category",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(top = DesignSystemSpacing.small),
+            )
+        } else if (uiState.selectedCategory == null && uiState.amountText.isNotBlank()) {
+            Text(
+                text = "Please select a category",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(top = DesignSystemSpacing.small),
+            )
+        }
+    }
+}
+
+@Composable
 private fun TransactionTypeSelector(
     selectedType: TransactionType,
     onTypeChanged: (TransactionType) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    Column(modifier = modifier) {
+    Column(
+        modifier = modifier,
+        verticalArrangement = Arrangement.spacedBy(DesignSystemSpacing.xs),
+    ) {
         Text(
-            text = "Type",
-            style = MaterialTheme.typography.bodyMedium,
-            modifier = Modifier.padding(bottom = 8.dp),
+            text = "Transaction Type",
+            style = MaterialTheme.typography.titleMedium,
+            fontWeight = FontWeight.Medium,
+            color = MaterialTheme.colorScheme.onSurface,
         )
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        Row(horizontalArrangement = Arrangement.spacedBy(DesignSystemSpacing.small)) {
             FilterChip(
                 selected = selectedType == TransactionType.EXPENSE,
                 onClick = { onTypeChanged(TransactionType.EXPENSE) },
@@ -233,6 +342,158 @@ private fun TransactionTypeSelector(
 }
 
 @Composable
+private fun EnhancedCategoryDropdown(
+    categories: List<Category>,
+    selectedCategory: Category?,
+    onCategorySelected: (Category) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    var expanded by remember { mutableStateOf(false) }
+
+    Column(
+        modifier = modifier,
+        verticalArrangement = Arrangement.spacedBy(DesignSystemSpacing.xs),
+    ) {
+        Text(
+            text = "Category",
+            style = MaterialTheme.typography.titleMedium,
+            fontWeight = FontWeight.Medium,
+            color = MaterialTheme.colorScheme.onSurface,
+        )
+
+        Card(
+            onClick = { expanded = true },
+            modifier = Modifier.fillMaxWidth(),
+            elevation = CardDefaults.cardElevation(defaultElevation = DesignSystemElevation.low),
+            colors =
+                CardDefaults.cardColors(
+                    containerColor =
+                        if (selectedCategory == null) {
+                            MaterialTheme.colorScheme.surfaceVariant
+                        } else {
+                            MaterialTheme.colorScheme.surface
+                        },
+                ),
+        ) {
+            Row(
+                modifier =
+                    Modifier
+                        .fillMaxWidth()
+                        .padding(DesignSystemSpacing.large),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Column {
+                    Text(
+                        text = selectedCategory?.name ?: "Select Category",
+                        style = MaterialTheme.typography.bodyLarge,
+                        fontWeight = if (selectedCategory != null) FontWeight.Medium else FontWeight.Normal,
+                        color =
+                            if (selectedCategory == null) {
+                                MaterialTheme.colorScheme.onSurfaceVariant
+                            } else {
+                                MaterialTheme.colorScheme.onSurface
+                            },
+                    )
+                    if (selectedCategory == null) {
+                        Text(
+                            text = "Choose from your ${if (categories.isNotEmpty()) {
+                                "${categories.size} categories"
+                            } else {
+                                "categories"
+                            }}",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                }
+                Icon(
+                    Icons.Default.KeyboardArrowDown,
+                    contentDescription = "Open category selection",
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+        }
+
+        DropdownMenu(
+            expanded = expanded,
+            onDismissRequest = { expanded = false },
+        ) {
+            categories.forEach { category ->
+                DropdownMenuItem(
+                    text = {
+                        Text(
+                            category.name,
+                            style = MaterialTheme.typography.bodyLarge,
+                        )
+                    },
+                    onClick = {
+                        onCategorySelected(category)
+                        expanded = false
+                    },
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun EnhancedDateSelector(
+    timestamp: Long,
+    onDateSelected: (Long) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Column(
+        modifier = modifier,
+        verticalArrangement = Arrangement.spacedBy(DesignSystemSpacing.xs),
+    ) {
+        Text(
+            text = "Date",
+            style = MaterialTheme.typography.titleMedium,
+            fontWeight = FontWeight.Medium,
+            color = MaterialTheme.colorScheme.onSurface,
+        )
+
+        Card(
+            onClick = {
+                // For now, set to current date - in a real app you'd use a DatePickerDialog
+                onDateSelected(DateTimeUtil.getTodayStartMillis())
+            },
+            modifier = Modifier.fillMaxWidth(),
+            elevation = CardDefaults.cardElevation(defaultElevation = DesignSystemElevation.low),
+        ) {
+            Row(
+                modifier =
+                    Modifier
+                        .fillMaxWidth()
+                        .padding(DesignSystemSpacing.large),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Column {
+                    Text(
+                        text = DateTimeUtil.formatTimestamp(timestamp),
+                        style = MaterialTheme.typography.bodyLarge,
+                        fontWeight = FontWeight.Medium,
+                        color = MaterialTheme.colorScheme.onSurface,
+                    )
+                    Text(
+                        text = "Tap to change date",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+                Icon(
+                    Icons.Default.CalendarToday,
+                    contentDescription = "Select date",
+                    tint = MaterialTheme.colorScheme.primary,
+                )
+            }
+        }
+    }
+}
+
+@Composable
 private fun CategoryDropdown(
     categories: List<Category>,
     selectedCategory: Category?,
@@ -241,30 +502,40 @@ private fun CategoryDropdown(
 ) {
     var expanded by remember { mutableStateOf(false) }
 
-    Column(modifier = modifier) {
+    Column(
+        modifier = modifier,
+        verticalArrangement = Arrangement.spacedBy(DesignSystemSpacing.xs),
+    ) {
         Text(
             text = "Category",
-            style = MaterialTheme.typography.bodyMedium,
-            modifier = Modifier.padding(bottom = 8.dp),
+            style = MaterialTheme.typography.titleMedium,
+            fontWeight = FontWeight.Medium,
+            color = MaterialTheme.colorScheme.onSurface,
         )
 
         Card(
             onClick = { expanded = true },
             modifier = Modifier.fillMaxWidth(),
+            elevation = CardDefaults.cardElevation(defaultElevation = DesignSystemElevation.low),
         ) {
             Row(
                 modifier =
                     Modifier
                         .fillMaxWidth()
-                        .padding(16.dp),
+                        .padding(DesignSystemSpacing.large),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Text(
                     text = selectedCategory?.name ?: "Select Category",
                     style = MaterialTheme.typography.bodyLarge,
+                    color = MaterialTheme.colorScheme.onSurface,
                 )
-                Icon(Icons.Default.KeyboardArrowDown, contentDescription = null)
+                Icon(
+                    Icons.Default.KeyboardArrowDown,
+                    contentDescription = "Open category selection",
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
             }
         }
 
@@ -291,11 +562,15 @@ private fun DateSelector(
     onDateSelected: (Long) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    Column(modifier = modifier) {
+    Column(
+        modifier = modifier,
+        verticalArrangement = Arrangement.spacedBy(DesignSystemSpacing.xs),
+    ) {
         Text(
             text = "Date",
-            style = MaterialTheme.typography.bodyMedium,
-            modifier = Modifier.padding(bottom = 8.dp),
+            style = MaterialTheme.typography.titleMedium,
+            fontWeight = FontWeight.Medium,
+            color = MaterialTheme.colorScheme.onSurface,
         )
 
         Card(
@@ -304,20 +579,26 @@ private fun DateSelector(
                 onDateSelected(DateTimeUtil.getTodayStartMillis())
             },
             modifier = Modifier.fillMaxWidth(),
+            elevation = CardDefaults.cardElevation(defaultElevation = DesignSystemElevation.low),
         ) {
             Row(
                 modifier =
                     Modifier
                         .fillMaxWidth()
-                        .padding(16.dp),
+                        .padding(DesignSystemSpacing.large),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Text(
                     text = DateTimeUtil.formatTimestamp(timestamp),
                     style = MaterialTheme.typography.bodyLarge,
+                    color = MaterialTheme.colorScheme.onSurface,
                 )
-                Icon(Icons.Default.CalendarToday, contentDescription = null)
+                Icon(
+                    Icons.Default.CalendarToday,
+                    contentDescription = "Select date",
+                    tint = MaterialTheme.colorScheme.primary,
+                )
             }
         }
     }

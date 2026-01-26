@@ -20,11 +20,16 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.unit.dp
-import dev.tuandoan.expensetracker.core.formatter.AmountFormatter
 import dev.tuandoan.expensetracker.domain.model.CategoryTotal
 import dev.tuandoan.expensetracker.domain.model.MonthlySummary
+import dev.tuandoan.expensetracker.domain.model.TransactionType
+import dev.tuandoan.expensetracker.ui.component.AmountText
+import dev.tuandoan.expensetracker.ui.component.EmptyStateMessage
+import dev.tuandoan.expensetracker.ui.component.ErrorStateMessage
+import dev.tuandoan.expensetracker.ui.component.SectionHeader
+import dev.tuandoan.expensetracker.ui.component.SectionTitle
+import dev.tuandoan.expensetracker.ui.theme.DesignSystemElevation
+import dev.tuandoan.expensetracker.ui.theme.DesignSystemSpacing
 
 @Composable
 fun SummaryScreen(
@@ -44,13 +49,17 @@ fun SummaryScreen(
                 }
             }
             uiState.isError -> {
-                ErrorState(
+                ErrorStateMessage(
                     message = uiState.errorMessage ?: "An error occurred",
                     modifier = Modifier.fillMaxSize(),
                 )
             }
             uiState.summary == null -> {
-                EmptyState(modifier = Modifier.fillMaxSize())
+                EmptyStateMessage(
+                    title = "No data for this month",
+                    subtitle = "Start adding transactions to see your summary",
+                    modifier = Modifier.fillMaxSize(),
+                )
             }
             else -> {
                 val summary = uiState.summary
@@ -71,15 +80,11 @@ private fun SummaryContent(
     modifier: Modifier = Modifier,
 ) {
     LazyColumn(
-        modifier = modifier.padding(16.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp),
+        modifier = modifier.padding(DesignSystemSpacing.screenPadding),
+        verticalArrangement = Arrangement.spacedBy(DesignSystemSpacing.large),
     ) {
         item {
-            Text(
-                text = "This Month",
-                style = MaterialTheme.typography.headlineMedium,
-                modifier = Modifier.padding(bottom = 8.dp),
-            )
+            SectionHeader(title = "This Month")
         }
 
         item {
@@ -88,10 +93,9 @@ private fun SummaryContent(
 
         if (summary.topExpenseCategories.isNotEmpty()) {
             item {
-                Text(
-                    text = "Top Expense Categories",
-                    style = MaterialTheme.typography.headlineSmall,
-                    modifier = Modifier.padding(top = 8.dp, bottom = 8.dp),
+                SectionTitle(
+                    title = "Top Expense Categories",
+                    modifier = Modifier.padding(top = DesignSystemSpacing.small),
                 )
             }
 
@@ -109,35 +113,27 @@ private fun SummaryCards(
 ) {
     Column(
         modifier = modifier,
-        verticalArrangement = Arrangement.spacedBy(12.dp),
+        verticalArrangement = Arrangement.spacedBy(DesignSystemSpacing.medium),
     ) {
         // Income Card
         SummaryCard(
             title = "Income",
             amount = summary.totalIncome,
-            color = MaterialTheme.colorScheme.primary,
-            isPositive = true,
+            transactionType = TransactionType.INCOME,
         )
 
         // Expense Card
         SummaryCard(
             title = "Expenses",
             amount = summary.totalExpense,
-            color = MaterialTheme.colorScheme.error,
-            isPositive = false,
+            transactionType = TransactionType.EXPENSE,
         )
 
         // Balance Card
         SummaryCard(
             title = "Balance",
             amount = summary.balance,
-            color =
-                if (summary.balance >= 0) {
-                    MaterialTheme.colorScheme.primary
-                } else {
-                    MaterialTheme.colorScheme.error
-                },
-            isPositive = summary.balance >= 0,
+            isBalance = true,
         )
     }
 }
@@ -146,19 +142,19 @@ private fun SummaryCards(
 private fun SummaryCard(
     title: String,
     amount: Long,
-    color: androidx.compose.ui.graphics.Color,
-    isPositive: Boolean,
+    transactionType: TransactionType? = null,
+    isBalance: Boolean = false,
     modifier: Modifier = Modifier,
 ) {
     Card(
         modifier = modifier.fillMaxWidth(),
-        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = DesignSystemElevation.medium),
     ) {
         Column(
             modifier =
                 Modifier
                     .fillMaxWidth()
-                    .padding(20.dp),
+                    .padding(DesignSystemSpacing.xl),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
             Text(
@@ -166,18 +162,24 @@ private fun SummaryCard(
                 style = MaterialTheme.typography.titleMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
-            Text(
-                text =
-                    if (title == "Balance") {
-                        AmountFormatter.formatAmountWithSign(amount, isPositive)
-                    } else {
-                        AmountFormatter.formatAmountWithCurrency(amount)
-                    },
-                style = MaterialTheme.typography.headlineMedium,
-                fontWeight = FontWeight.Bold,
-                color = color,
-                modifier = Modifier.padding(top = 8.dp),
-            )
+
+            if (isBalance) {
+                AmountText(
+                    amount = amount,
+                    showSign = true,
+                    fontWeight = FontWeight.Bold,
+                    textStyle = MaterialTheme.typography.headlineMedium,
+                    modifier = Modifier.padding(top = DesignSystemSpacing.small),
+                )
+            } else {
+                AmountText(
+                    amount = amount,
+                    transactionType = transactionType,
+                    fontWeight = FontWeight.Bold,
+                    textStyle = MaterialTheme.typography.headlineMedium,
+                    modifier = Modifier.padding(top = DesignSystemSpacing.small),
+                )
+            }
         }
     }
 }
@@ -189,13 +191,13 @@ private fun CategoryTotalItem(
 ) {
     Card(
         modifier = modifier.fillMaxWidth(),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = DesignSystemElevation.low),
     ) {
         Row(
             modifier =
                 Modifier
                     .fillMaxWidth()
-                    .padding(16.dp),
+                    .padding(DesignSystemSpacing.large),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically,
         ) {
@@ -203,69 +205,13 @@ private fun CategoryTotalItem(
                 text = categoryTotal.category.name,
                 style = MaterialTheme.typography.bodyLarge,
                 fontWeight = FontWeight.Medium,
+                color = MaterialTheme.colorScheme.onSurface,
             )
-            Text(
-                text = AmountFormatter.formatAmountWithCurrency(categoryTotal.total),
-                style = MaterialTheme.typography.bodyLarge,
+            AmountText(
+                amount = categoryTotal.total,
+                transactionType = TransactionType.EXPENSE,
                 fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.error,
-            )
-        }
-    }
-}
-
-@Composable
-private fun EmptyState(modifier: Modifier = Modifier) {
-    Box(
-        modifier = modifier,
-        contentAlignment = Alignment.Center,
-    ) {
-        Column(
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.Center,
-        ) {
-            Text(
-                text = "No data for this month",
-                style = MaterialTheme.typography.headlineSmall,
-                textAlign = TextAlign.Center,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-            Text(
-                text = "Start adding transactions to see your summary",
-                style = MaterialTheme.typography.bodyMedium,
-                textAlign = TextAlign.Center,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(top = 8.dp),
-            )
-        }
-    }
-}
-
-@Composable
-private fun ErrorState(
-    message: String,
-    modifier: Modifier = Modifier,
-) {
-    Box(
-        modifier = modifier,
-        contentAlignment = Alignment.Center,
-    ) {
-        Column(
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.Center,
-        ) {
-            Text(
-                text = "Error",
-                style = MaterialTheme.typography.headlineSmall,
-                textAlign = TextAlign.Center,
-                color = MaterialTheme.colorScheme.error,
-            )
-            Text(
-                text = message,
-                style = MaterialTheme.typography.bodyMedium,
-                textAlign = TextAlign.Center,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(top = 8.dp),
+                textStyle = MaterialTheme.typography.bodyLarge,
             )
         }
     }

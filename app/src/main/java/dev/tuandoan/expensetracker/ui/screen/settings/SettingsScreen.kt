@@ -14,7 +14,10 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.unit.dp
+import dev.tuandoan.expensetracker.ui.component.SectionHeader
+import dev.tuandoan.expensetracker.ui.component.SectionTitle
+import dev.tuandoan.expensetracker.ui.theme.DesignSystemElevation
+import dev.tuandoan.expensetracker.ui.theme.DesignSystemSpacing
 
 @Composable
 fun SettingsScreen(modifier: Modifier = Modifier) {
@@ -22,15 +25,11 @@ fun SettingsScreen(modifier: Modifier = Modifier) {
         modifier =
             modifier
                 .fillMaxSize()
-                .padding(16.dp)
+                .padding(DesignSystemSpacing.screenPadding)
                 .verticalScroll(rememberScrollState()),
     ) {
         // Title
-        Text(
-            text = "Settings",
-            style = MaterialTheme.typography.headlineMedium,
-            modifier = Modifier.padding(bottom = 16.dp),
-        )
+        SectionHeader(title = "Settings")
 
         // App Information Section
         SettingsSection(title = "App Information") {
@@ -43,31 +42,31 @@ fun SettingsScreen(modifier: Modifier = Modifier) {
 
             SettingsItem(
                 title = "Contact Email",
-                subtitle = "support@expensetracker.com",
+                subtitle = "doananhtuan22111996@gmail.com",
             )
         }
 
         // Privacy Section
         SettingsSection(title = "Privacy") {
-            Column(modifier = Modifier.padding(16.dp)) {
+            Column(modifier = Modifier.padding(DesignSystemSpacing.large)) {
                 Text(
                     text = "Privacy Statement",
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Medium,
-                    modifier = Modifier.padding(bottom = 8.dp),
+                    modifier = Modifier.padding(bottom = DesignSystemSpacing.small),
                 )
                 Text(
                     text = "All data is stored locally on your device. No data is collected or shared.",
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.padding(bottom = 16.dp),
+                    modifier = Modifier.padding(bottom = DesignSystemSpacing.large),
                 )
 
                 Text(
                     text = "Data Privacy",
                     style = MaterialTheme.typography.titleSmall,
                     fontWeight = FontWeight.Medium,
-                    modifier = Modifier.padding(bottom = 4.dp),
+                    modifier = Modifier.padding(bottom = DesignSystemSpacing.xs),
                 )
                 Text(
                     text =
@@ -78,14 +77,14 @@ fun SettingsScreen(modifier: Modifier = Modifier) {
                             "• No account creation or login is required",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.padding(bottom = 16.dp),
+                    modifier = Modifier.padding(bottom = DesignSystemSpacing.large),
                 )
 
                 Text(
                     text = "Data Storage",
                     style = MaterialTheme.typography.titleSmall,
                     fontWeight = FontWeight.Medium,
-                    modifier = Modifier.padding(bottom = 4.dp),
+                    modifier = Modifier.padding(bottom = DesignSystemSpacing.xs),
                 )
                 Text(
                     text =
@@ -100,12 +99,12 @@ fun SettingsScreen(modifier: Modifier = Modifier) {
 
         // About Section
         SettingsSection(title = "About") {
-            Column(modifier = Modifier.padding(16.dp)) {
+            Column(modifier = Modifier.padding(DesignSystemSpacing.large)) {
                 Text(
                     text = "Expense Tracker",
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Medium,
-                    modifier = Modifier.padding(bottom = 8.dp),
+                    modifier = Modifier.padding(bottom = DesignSystemSpacing.small),
                 )
                 Text(
                     text =
@@ -125,18 +124,12 @@ private fun SettingsSection(
     modifier: Modifier = Modifier,
     content: @Composable () -> Unit,
 ) {
-    Column(modifier = modifier.padding(bottom = 16.dp)) {
-        Text(
-            text = title,
-            style = MaterialTheme.typography.titleMedium,
-            fontWeight = FontWeight.Medium,
-            color = MaterialTheme.colorScheme.primary,
-            modifier = Modifier.padding(bottom = 8.dp),
-        )
+    Column(modifier = modifier.padding(bottom = DesignSystemSpacing.large)) {
+        SectionTitle(title = title)
 
         Card(
             modifier = Modifier.fillMaxWidth(),
-            elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+            elevation = CardDefaults.cardElevation(defaultElevation = DesignSystemElevation.low),
         ) {
             content()
         }
@@ -153,18 +146,19 @@ private fun SettingsItem(
         modifier =
             modifier
                 .fillMaxWidth()
-                .padding(16.dp),
+                .padding(DesignSystemSpacing.large),
     ) {
         Text(
             text = title,
             style = MaterialTheme.typography.bodyLarge,
             fontWeight = FontWeight.Medium,
+            color = MaterialTheme.colorScheme.onSurface,
         )
         Text(
             text = subtitle,
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.padding(top = 2.dp),
+            modifier = Modifier.padding(top = DesignSystemSpacing.xs),
         )
     }
 }

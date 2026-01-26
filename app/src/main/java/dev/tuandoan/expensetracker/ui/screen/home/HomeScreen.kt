@@ -33,12 +33,14 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.unit.dp
-import dev.tuandoan.expensetracker.core.formatter.AmountFormatter
 import dev.tuandoan.expensetracker.core.util.DateTimeUtil
 import dev.tuandoan.expensetracker.domain.model.Transaction
 import dev.tuandoan.expensetracker.domain.model.TransactionType
+import dev.tuandoan.expensetracker.ui.component.AmountText
+import dev.tuandoan.expensetracker.ui.component.EmptyStateMessage
+import dev.tuandoan.expensetracker.ui.component.SectionHeader
+import dev.tuandoan.expensetracker.ui.theme.DesignSystemElevation
+import dev.tuandoan.expensetracker.ui.theme.DesignSystemSpacing
 
 @Composable
 fun HomeScreen(
@@ -62,20 +64,16 @@ fun HomeScreen(
             modifier =
                 Modifier
                     .fillMaxSize()
-                    .padding(16.dp),
+                    .padding(DesignSystemSpacing.screenPadding),
         ) {
             // Title
-            Text(
-                text = "This Month",
-                style = MaterialTheme.typography.headlineMedium,
-                modifier = Modifier.padding(bottom = 16.dp),
-            )
+            SectionHeader(title = "This Month")
 
             // Filter chips
             FilterChips(
                 selectedFilter = uiState.filter,
                 onFilterChanged = viewModel::onFilterChanged,
-                modifier = Modifier.padding(bottom = 16.dp),
+                modifier = Modifier.padding(bottom = DesignSystemSpacing.large),
             )
 
             // Content
@@ -89,7 +87,11 @@ fun HomeScreen(
                     }
                 }
                 uiState.transactions.isEmpty() -> {
-                    EmptyState(modifier = Modifier.fillMaxSize())
+                    EmptyStateMessage(
+                        title = "No transactions yet",
+                        subtitle = "Tap the + button to add your first transaction",
+                        modifier = Modifier.fillMaxSize(),
+                    )
                 }
                 else -> {
                     TransactionsList(
@@ -108,9 +110,12 @@ fun HomeScreen(
             modifier =
                 Modifier
                     .align(Alignment.BottomEnd)
-                    .padding(16.dp),
+                    .padding(DesignSystemSpacing.large),
         ) {
-            Icon(Icons.Default.Add, contentDescription = "Add Transaction")
+            Icon(
+                imageVector = Icons.Default.Add,
+                contentDescription = "Add Transaction",
+            )
         }
 
         // Snackbar
@@ -128,7 +133,7 @@ private fun FilterChips(
     modifier: Modifier = Modifier,
 ) {
     LazyRow(
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        horizontalArrangement = Arrangement.spacedBy(DesignSystemSpacing.small),
         modifier = modifier,
     ) {
         item {
@@ -163,8 +168,13 @@ private fun TransactionsList(
     modifier: Modifier = Modifier,
 ) {
     LazyColumn(
-        verticalArrangement = Arrangement.spacedBy(8.dp),
-        contentPadding = PaddingValues(bottom = 80.dp), // Leave space for FAB
+        verticalArrangement = Arrangement.spacedBy(DesignSystemSpacing.listItemSpacing),
+        contentPadding =
+            PaddingValues(
+                bottom =
+                    DesignSystemSpacing.xxl + DesignSystemSpacing.xxl + DesignSystemSpacing.large,
+            ),
+        // Leave space for FAB
         modifier = modifier,
     ) {
         items(transactions, key = { it.id }) { transaction ->
@@ -187,96 +197,75 @@ private fun TransactionItem(
     Card(
         onClick = onClick,
         modifier = modifier.fillMaxWidth(),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = DesignSystemElevation.low),
     ) {
         Row(
             modifier =
                 Modifier
                     .fillMaxWidth()
-                    .padding(16.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically,
+                    .padding(DesignSystemSpacing.large),
+            verticalAlignment = Alignment.Top,
         ) {
-            Column(modifier = Modifier.weight(1f)) {
-                Row(
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    modifier = Modifier.fillMaxWidth(),
-                ) {
-                    Text(
-                        text = transaction.category.name,
-                        style = MaterialTheme.typography.bodyLarge,
-                        fontWeight = FontWeight.Medium,
-                    )
-                    Text(
-                        text =
-                            AmountFormatter.formatAmountWithSign(
-                                transaction.amount,
-                                transaction.type == TransactionType.INCOME,
-                            ),
-                        style = MaterialTheme.typography.bodyLarge,
-                        fontWeight = FontWeight.Bold,
-                        color =
-                            if (transaction.type == TransactionType.INCOME) {
-                                MaterialTheme.colorScheme.primary
-                            } else {
-                                MaterialTheme.colorScheme.error
-                            },
-                    )
-                }
+            // Main content column with improved hierarchy
+            Column(
+                modifier = Modifier.weight(1f),
+                verticalArrangement = Arrangement.spacedBy(DesignSystemSpacing.xs),
+            ) {
+                // Primary row: Category name (most important)
+                Text(
+                    text = transaction.category.name,
+                    style = MaterialTheme.typography.bodyLarge,
+                    fontWeight = FontWeight.Medium,
+                    color = MaterialTheme.colorScheme.onSurface,
+                )
 
-                Row(
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    modifier = Modifier.fillMaxWidth().padding(top = 4.dp),
-                ) {
-                    if (!transaction.note.isNullOrBlank()) {
-                        Text(
-                            text = transaction.note,
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
-                    }
+                // Secondary row: Note (if present)
+                if (!transaction.note.isNullOrBlank()) {
                     Text(
-                        text = DateTimeUtil.formatShortDate(transaction.timestamp),
-                        style = MaterialTheme.typography.bodySmall,
+                        text = transaction.note,
+                        style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 }
-            }
 
-            IconButton(onClick = onDeleteClick) {
-                Icon(
-                    imageVector = Icons.Default.Delete,
-                    contentDescription = "Delete",
-                    tint = MaterialTheme.colorScheme.error,
+                // Tertiary row: Date
+                Text(
+                    text = DateTimeUtil.formatShortDate(transaction.timestamp),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
-        }
-    }
-}
 
-@Composable
-private fun EmptyState(modifier: Modifier = Modifier) {
-    Box(
-        modifier = modifier,
-        contentAlignment = Alignment.Center,
-    ) {
-        Column(
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.Center,
-        ) {
-            Text(
-                text = "No transactions yet",
-                style = MaterialTheme.typography.headlineSmall,
-                textAlign = TextAlign.Center,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-            Text(
-                text = "Tap the + button to add your first transaction",
-                style = MaterialTheme.typography.bodyMedium,
-                textAlign = TextAlign.Center,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(top = 8.dp),
-            )
+            // Amount and action section
+            Column(
+                horizontalAlignment = Alignment.End,
+                verticalArrangement = Arrangement.spacedBy(DesignSystemSpacing.small),
+            ) {
+                // Amount - most prominent secondary element
+                AmountText(
+                    amount = transaction.amount,
+                    transactionType = transaction.type,
+                    showSign = true,
+                    fontWeight = FontWeight.Bold,
+                    textStyle = MaterialTheme.typography.bodyLarge,
+                )
+
+                // Delete button with proper touch target
+                IconButton(
+                    onClick = onDeleteClick,
+                    modifier =
+                        Modifier.then(
+                            // Ensure minimum 48dp touch target
+                            if (transaction.note.isNullOrBlank()) Modifier else Modifier,
+                        ),
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Delete,
+                        contentDescription = "Delete transaction",
+                        tint = MaterialTheme.colorScheme.error,
+                    )
+                }
+            }
         }
     }
 }
