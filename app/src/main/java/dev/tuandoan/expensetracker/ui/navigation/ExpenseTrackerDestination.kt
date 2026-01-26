@@ -6,36 +6,53 @@ import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.outlined.BarChart
 import androidx.compose.ui.graphics.vector.ImageVector
 
-sealed class ExpenseTrackerDestination(
+/**
+ * Bottom Navigation Destinations - Main app flow with persistent bottom navigation
+ */
+sealed class BottomNavDestination(
     val route: String,
     val title: String,
     val icon: ImageVector,
 ) {
-    data object Home : ExpenseTrackerDestination(
-        route = "home",
+    data object Home : BottomNavDestination(
+        route = "main/home",
         title = "Home",
         icon = Icons.Default.Home,
     )
 
-    data object Summary : ExpenseTrackerDestination(
-        route = "summary",
+    data object Summary : BottomNavDestination(
+        route = "main/summary",
         title = "Summary",
         icon = Icons.Outlined.BarChart,
     )
 
-    data object Settings : ExpenseTrackerDestination(
-        route = "settings",
+    data object Settings : BottomNavDestination(
+        route = "main/settings",
         title = "Settings",
         icon = Icons.Default.Settings,
     )
 
-    data object AddEditTransaction : ExpenseTrackerDestination(
-        route = "add_edit_transaction",
-        title = "Transaction",
-        icon = Icons.Default.Home, // Not used for bottom nav
-    )
+    companion object {
+        val allDestinations = listOf(Home, Summary, Settings)
+        const val MAIN_GRAPH_ROUTE = "main_graph"
+    }
+}
+
+/**
+ * Modal Destinations - Full-screen overlays that don't show bottom navigation
+ */
+sealed class ModalDestination(val route: String) {
+    data object AddEditTransaction : ModalDestination("modal/add_edit_transaction")
 
     companion object {
-        val bottomNavDestinations = listOf(Home, Summary, Settings)
+        const val MODAL_GRAPH_ROUTE = "modal_graph"
     }
+}
+
+/**
+ * Legacy compatibility object - can be removed after migration
+ */
+@Deprecated("Use BottomNavDestination and ModalDestination instead")
+object ExpenseTrackerDestination {
+    val bottomNavDestinations = BottomNavDestination.allDestinations
 }
