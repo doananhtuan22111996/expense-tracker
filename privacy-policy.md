@@ -6,7 +6,7 @@
 
 This Privacy Policy describes how **Expense Tracker** (“the app”) handles user data.
 
-Expense Tracker is an **offline personal expense tracking application**.  
+Expense Tracker is an **offline personal expense tracking application**.
 We are committed to protecting your privacy and being transparent about our data practices.
 
 ---
