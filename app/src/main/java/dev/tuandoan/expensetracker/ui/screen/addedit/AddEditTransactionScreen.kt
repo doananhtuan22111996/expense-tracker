@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
@@ -19,6 +20,7 @@ import androidx.compose.material.icons.filled.CalendarToday
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -49,7 +51,11 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusDirection
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
@@ -98,15 +104,26 @@ fun AddEditTransactionScreen(
             TopAppBar(
                 title = { Text(if (isEditMode) "Edit Transaction" else "Add Transaction") },
                 navigationIcon = {
+                    val hapticFeedback = LocalHapticFeedback.current
                     IconButton(
                         onClick = {
+                            hapticFeedback.performHapticFeedback(HapticFeedbackType.LongPress)
                             viewModel.onBackPressed()
                             if (!isEditMode || !uiState.hasUnsavedChanges) {
                                 onNavigateBack()
                             }
                         },
+                        modifier =
+                            Modifier.semantics {
+                                contentDescription =
+                                    if (isEditMode && uiState.hasUnsavedChanges) {
+                                        "Go back, will prompt to save changes"
+                                    } else {
+                                        "Go back to home screen"
+                                    }
+                            },
                     ) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = null)
                     }
                 },
             )
@@ -122,7 +139,12 @@ fun AddEditTransactionScreen(
                         .padding(innerPadding),
                 contentAlignment = Alignment.Center,
             ) {
-                CircularProgressIndicator()
+                CircularProgressIndicator(
+                    modifier =
+                        Modifier.semantics {
+                            contentDescription = if (isEditMode) "Loading transaction details" else "Loading form"
+                        },
+                )
             }
         } else {
             TransactionForm(
@@ -144,6 +166,7 @@ fun AddEditTransactionScreen(
 
     // Discard Changes Confirmation Dialog
     if (uiState.showDiscardDialog) {
+        val hapticFeedback = LocalHapticFeedback.current
         AlertDialog(
             onDismissRequest = { viewModel.onCancelDiscard() },
             title = { Text("Discard changes?") },
@@ -151,15 +174,29 @@ fun AddEditTransactionScreen(
             confirmButton = {
                 TextButton(
                     onClick = {
+                        hapticFeedback.performHapticFeedback(HapticFeedbackType.LongPress)
                         viewModel.onDiscardChanges()
                         onNavigateBack()
                     },
+                    modifier =
+                        Modifier.semantics {
+                            contentDescription = "Discard changes and go back"
+                        },
                 ) {
                     Text("Discard")
                 }
             },
             dismissButton = {
-                TextButton(onClick = { viewModel.onCancelDiscard() }) {
+                TextButton(
+                    onClick = {
+                        hapticFeedback.performHapticFeedback(HapticFeedbackType.LongPress)
+                        viewModel.onCancelDiscard()
+                    },
+                    modifier =
+                        Modifier.semantics {
+                            contentDescription = "Cancel and continue editing"
+                        },
+                ) {
                     Text("Cancel")
                 }
             },
@@ -286,16 +323,51 @@ private fun TransactionForm(
         Spacer(modifier = Modifier.padding(DesignSystemSpacing.medium))
 
         // Save Button - Enhanced visual weight when enabled
+        val hapticFeedback = LocalHapticFeedback.current
         Button(
-            onClick = { viewModel.saveTransaction(onNavigateBack) },
+            onClick = {
+                hapticFeedback.performHapticFeedback(HapticFeedbackType.LongPress)
+                viewModel.saveTransaction(onNavigateBack)
+            },
             enabled = uiState.isSaveEnabled && !uiState.isLoading,
-            modifier = Modifier.fillMaxWidth(),
+            modifier =
+                Modifier
+                    .fillMaxWidth()
+                    .semantics {
+                        contentDescription =
+                            if (uiState.isSaveEnabled && !uiState.isLoading) {
+                                if (isEditMode) "Save changes to transaction" else "Save new transaction"
+                            } else if (uiState.isLoading) {
+                                "Saving transaction, please wait"
+                            } else {
+                                "Complete form to enable save button"
+                            }
+                    },
         ) {
-            Text(
-                text = if (isEditMode) "Update Transaction" else "Save Transaction",
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Medium,
-            )
+            if (uiState.isLoading) {
+                Row(
+                    horizontalArrangement = Arrangement.Center,
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(16.dp),
+                        strokeWidth = 2.dp,
+                        color = ButtonDefaults.buttonColors().contentColor,
+                    )
+                    Text(
+                        text = if (isEditMode) "Updating..." else "Saving...",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Medium,
+                        modifier = Modifier.padding(start = DesignSystemSpacing.small),
+                    )
+                }
+            } else {
+                Text(
+                    text = if (isEditMode) "Update Transaction" else "Save Transaction",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Medium,
+                )
+            }
         }
 
         // Form status hint
@@ -323,6 +395,8 @@ private fun TransactionTypeSelector(
     onTypeChanged: (TransactionType) -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val hapticFeedback = LocalHapticFeedback.current
+
     Column(
         modifier = modifier,
         verticalArrangement = Arrangement.spacedBy(DesignSystemSpacing.xs),
@@ -336,13 +410,37 @@ private fun TransactionTypeSelector(
         Row(horizontalArrangement = Arrangement.spacedBy(DesignSystemSpacing.small)) {
             FilterChip(
                 selected = selectedType == TransactionType.EXPENSE,
-                onClick = { onTypeChanged(TransactionType.EXPENSE) },
+                onClick = {
+                    hapticFeedback.performHapticFeedback(HapticFeedbackType.LongPress)
+                    onTypeChanged(TransactionType.EXPENSE)
+                },
                 label = { Text("Expense") },
+                modifier =
+                    Modifier.semantics {
+                        contentDescription =
+                            if (selectedType == TransactionType.EXPENSE) {
+                                "Expense type selected"
+                            } else {
+                                "Select expense transaction type"
+                            }
+                    },
             )
             FilterChip(
                 selected = selectedType == TransactionType.INCOME,
-                onClick = { onTypeChanged(TransactionType.INCOME) },
+                onClick = {
+                    hapticFeedback.performHapticFeedback(HapticFeedbackType.LongPress)
+                    onTypeChanged(TransactionType.INCOME)
+                },
                 label = { Text("Income") },
+                modifier =
+                    Modifier.semantics {
+                        contentDescription =
+                            if (selectedType == TransactionType.INCOME) {
+                                "Income type selected"
+                            } else {
+                                "Select income transaction type"
+                            }
+                    },
             )
         }
     }
@@ -368,9 +466,23 @@ private fun EnhancedCategoryDropdown(
             color = MaterialTheme.colorScheme.onSurface,
         )
 
+        val hapticFeedback = LocalHapticFeedback.current
         Card(
-            onClick = { expanded = true },
-            modifier = Modifier.fillMaxWidth(),
+            onClick = {
+                hapticFeedback.performHapticFeedback(HapticFeedbackType.LongPress)
+                expanded = true
+            },
+            modifier =
+                Modifier
+                    .fillMaxWidth()
+                    .semantics {
+                        contentDescription =
+                            if (selectedCategory != null) {
+                                "${selectedCategory.name} category selected, tap to change"
+                            } else {
+                                "Select category from ${categories.size} available options"
+                            }
+                    },
             elevation = CardDefaults.cardElevation(defaultElevation = DesignSystemElevation.low),
             colors =
                 CardDefaults.cardColors(
@@ -435,9 +547,14 @@ private fun EnhancedCategoryDropdown(
                         )
                     },
                     onClick = {
+                        hapticFeedback.performHapticFeedback(HapticFeedbackType.LongPress)
                         onCategorySelected(category)
                         expanded = false
                     },
+                    modifier =
+                        Modifier.semantics {
+                            contentDescription = "Select ${category.name} category"
+                        },
                 )
             }
         }
@@ -452,6 +569,7 @@ private fun EnhancedDateSelector(
     modifier: Modifier = Modifier,
 ) {
     var showDatePicker by remember { mutableStateOf(false) }
+    val hapticFeedback = LocalHapticFeedback.current
 
     Column(
         modifier = modifier,
@@ -466,9 +584,15 @@ private fun EnhancedDateSelector(
 
         Card(
             onClick = {
+                hapticFeedback.performHapticFeedback(HapticFeedbackType.LongPress)
                 showDatePicker = true
             },
-            modifier = Modifier.fillMaxWidth(),
+            modifier =
+                Modifier
+                    .fillMaxWidth()
+                    .semantics {
+                        contentDescription = "Selected date: ${DateTimeUtil.formatTimestamp(timestamp)}, tap to change"
+                    },
             elevation = CardDefaults.cardElevation(defaultElevation = DesignSystemElevation.low),
         ) {
             Row(
@@ -515,12 +639,17 @@ private fun EnhancedDateSelector(
             confirmButton = {
                 TextButton(
                     onClick = {
+                        hapticFeedback.performHapticFeedback(HapticFeedbackType.LongPress)
                         datePickerState.selectedDateMillis?.let { selectedDate ->
                             // Convert to start of day in local timezone for consistency
                             onDateSelected(selectedDate)
                         }
                         showDatePicker = false
                     },
+                    modifier =
+                        Modifier.semantics {
+                            contentDescription = "Confirm date selection"
+                        },
                 ) {
                     Text("OK")
                 }
@@ -528,8 +657,13 @@ private fun EnhancedDateSelector(
             dismissButton = {
                 TextButton(
                     onClick = {
+                        hapticFeedback.performHapticFeedback(HapticFeedbackType.LongPress)
                         showDatePicker = false
                     },
+                    modifier =
+                        Modifier.semantics {
+                            contentDescription = "Cancel date selection"
+                        },
                 ) {
                     Text("Cancel")
                 }
@@ -556,6 +690,7 @@ private fun DateSelector(
     modifier: Modifier = Modifier,
 ) {
     var showDatePicker by remember { mutableStateOf(false) }
+    val hapticFeedback = LocalHapticFeedback.current
 
     Column(
         modifier = modifier,
@@ -611,12 +746,17 @@ private fun DateSelector(
             confirmButton = {
                 TextButton(
                     onClick = {
+                        hapticFeedback.performHapticFeedback(HapticFeedbackType.LongPress)
                         datePickerState.selectedDateMillis?.let { selectedDate ->
                             // Convert to start of day in local timezone for consistency
                             onDateSelected(selectedDate)
                         }
                         showDatePicker = false
                     },
+                    modifier =
+                        Modifier.semantics {
+                            contentDescription = "Confirm date selection"
+                        },
                 ) {
                     Text("OK")
                 }
@@ -624,8 +764,13 @@ private fun DateSelector(
             dismissButton = {
                 TextButton(
                     onClick = {
+                        hapticFeedback.performHapticFeedback(HapticFeedbackType.LongPress)
                         showDatePicker = false
                     },
+                    modifier =
+                        Modifier.semantics {
+                            contentDescription = "Cancel date selection"
+                        },
                 ) {
                     Text("Cancel")
                 }

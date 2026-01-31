@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
@@ -32,7 +33,16 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.role
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.dp
+import dev.tuandoan.expensetracker.core.formatter.AmountFormatter
 import dev.tuandoan.expensetracker.core.util.DateTimeUtil
 import dev.tuandoan.expensetracker.domain.model.Transaction
 import dev.tuandoan.expensetracker.domain.model.TransactionType
@@ -83,7 +93,12 @@ fun HomeScreen(
                         modifier = Modifier.fillMaxSize(),
                         contentAlignment = Alignment.Center,
                     ) {
-                        CircularProgressIndicator()
+                        CircularProgressIndicator(
+                            modifier =
+                                Modifier.semantics {
+                                    contentDescription = "Loading transactions"
+                                },
+                        )
                     }
                 }
                 uiState.transactions.isEmpty() -> {
@@ -105,8 +120,12 @@ fun HomeScreen(
         }
 
         // FAB
+        val hapticFeedback = LocalHapticFeedback.current
         FloatingActionButton(
-            onClick = onNavigateToAddTransaction,
+            onClick = {
+                hapticFeedback.performHapticFeedback(HapticFeedbackType.LongPress)
+                onNavigateToAddTransaction()
+            },
             modifier =
                 Modifier
                     .align(Alignment.BottomEnd)
@@ -114,7 +133,7 @@ fun HomeScreen(
         ) {
             Icon(
                 imageVector = Icons.Default.Add,
-                contentDescription = "Add Transaction",
+                contentDescription = "Add new transaction",
             )
         }
 
@@ -132,6 +151,8 @@ private fun FilterChips(
     onFilterChanged: (TransactionType?) -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val hapticFeedback = LocalHapticFeedback.current
+
     LazyRow(
         horizontalArrangement = Arrangement.spacedBy(DesignSystemSpacing.small),
         modifier = modifier,
@@ -139,22 +160,64 @@ private fun FilterChips(
         item {
             FilterChip(
                 selected = selectedFilter == null,
-                onClick = { onFilterChanged(null) },
+                onClick = {
+                    hapticFeedback.performHapticFeedback(HapticFeedbackType.LongPress)
+                    onFilterChanged(null)
+                },
                 label = { Text("All") },
+                modifier =
+                    Modifier.semantics {
+                        contentDescription =
+                            if (selectedFilter == null) {
+                                "All transactions filter selected"
+                            } else {
+                                "Filter by all transactions"
+                            }
+                        role = Role.Tab
+                        stateDescription = if (selectedFilter == null) "Selected" else "Not selected"
+                    },
             )
         }
         item {
             FilterChip(
                 selected = selectedFilter == TransactionType.EXPENSE,
-                onClick = { onFilterChanged(TransactionType.EXPENSE) },
+                onClick = {
+                    hapticFeedback.performHapticFeedback(HapticFeedbackType.LongPress)
+                    onFilterChanged(TransactionType.EXPENSE)
+                },
                 label = { Text("Expenses") },
+                modifier =
+                    Modifier.semantics {
+                        contentDescription =
+                            if (selectedFilter == TransactionType.EXPENSE) {
+                                "Expense transactions filter selected"
+                            } else {
+                                "Filter by expense transactions"
+                            }
+                        role = Role.Tab
+                        stateDescription = if (selectedFilter == TransactionType.EXPENSE) "Selected" else "Not selected"
+                    },
             )
         }
         item {
             FilterChip(
                 selected = selectedFilter == TransactionType.INCOME,
-                onClick = { onFilterChanged(TransactionType.INCOME) },
+                onClick = {
+                    hapticFeedback.performHapticFeedback(HapticFeedbackType.LongPress)
+                    onFilterChanged(TransactionType.INCOME)
+                },
                 label = { Text("Income") },
+                modifier =
+                    Modifier.semantics {
+                        contentDescription =
+                            if (selectedFilter == TransactionType.INCOME) {
+                                "Income transactions filter selected"
+                            } else {
+                                "Filter by income transactions"
+                            }
+                        role = Role.Tab
+                        stateDescription = if (selectedFilter == TransactionType.INCOME) "Selected" else "Not selected"
+                    },
             )
         }
     }
@@ -194,9 +257,29 @@ private fun TransactionItem(
     onDeleteClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val hapticFeedback = LocalHapticFeedback.current
+
     Card(
-        onClick = onClick,
-        modifier = modifier.fillMaxWidth(),
+        onClick = {
+            hapticFeedback.performHapticFeedback(HapticFeedbackType.LongPress)
+            onClick()
+        },
+        modifier =
+            modifier
+                .fillMaxWidth()
+                .semantics {
+                    contentDescription =
+                        buildString {
+                            append("${transaction.type.name.lowercase()} transaction")
+                            append(", ${transaction.category.name}")
+                            append(", ${AmountFormatter.formatAmountWithCurrency(transaction.amount)}")
+                            if (!transaction.note.isNullOrBlank()) {
+                                append(", note: ${transaction.note}")
+                            }
+                            append(", ${DateTimeUtil.formatShortDate(transaction.timestamp)}")
+                            append(", double tap to edit")
+                        }
+                },
         elevation = CardDefaults.cardElevation(defaultElevation = DesignSystemElevation.low),
     ) {
         Row(
@@ -250,18 +333,23 @@ private fun TransactionItem(
                     textStyle = MaterialTheme.typography.bodyLarge,
                 )
 
-                // Delete button with proper touch target
+                // Delete button with proper 48dp touch target
                 IconButton(
-                    onClick = onDeleteClick,
+                    onClick = {
+                        hapticFeedback.performHapticFeedback(HapticFeedbackType.LongPress)
+                        onDeleteClick()
+                    },
                     modifier =
-                        Modifier.then(
-                            // Ensure minimum 48dp touch target
-                            if (transaction.note.isNullOrBlank()) Modifier else Modifier,
-                        ),
+                        Modifier
+                            .size(48.dp)
+                            .semantics {
+                                contentDescription = "Delete ${transaction.category.name} transaction of " +
+                                    "${AmountFormatter.formatAmountWithCurrency(transaction.amount)}"
+                            },
                 ) {
                     Icon(
                         imageVector = Icons.Default.Delete,
-                        contentDescription = "Delete transaction",
+                        contentDescription = null, // Using semantics above instead
                         tint = MaterialTheme.colorScheme.error,
                     )
                 }
