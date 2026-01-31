@@ -6,52 +6,52 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
-import dev.tuandoan.expensetracker.ui.screen.addedit.AddEditTransactionScreen
 import dev.tuandoan.expensetracker.ui.screen.home.HomeScreen
 import dev.tuandoan.expensetracker.ui.screen.settings.SettingsScreen
 import dev.tuandoan.expensetracker.ui.screen.summary.SummaryScreen
 
+/**
+ * Main Navigation Host with stable, single NavController architecture
+ * Properly separates bottom navigation from modal navigation while maintaining stability
+ */
 @Composable
 fun ExpenseTrackerNavigation(
     navController: NavHostController,
     modifier: Modifier = Modifier,
+    onNavigateToAddTransaction: () -> Unit,
+    onNavigateToEditTransaction: (transactionId: Long) -> Unit,
 ) {
     NavHost(
         navController = navController,
-        startDestination = ExpenseTrackerDestination.Home.route,
+        startDestination = BottomNavDestination.Home.route,
         modifier = modifier,
     ) {
-        composable(ExpenseTrackerDestination.Home.route) {
+        composable(BottomNavDestination.Home.route) {
             HomeScreen(
-                onNavigateToAddTransaction = {
-                    navController.navigate("${ExpenseTrackerDestination.AddEditTransaction.route}/0")
-                },
-                onNavigateToEditTransaction = { transactionId ->
-                    navController.navigate("${ExpenseTrackerDestination.AddEditTransaction.route}/$transactionId")
-                },
+                onNavigateToAddTransaction = onNavigateToAddTransaction,
+                onNavigateToEditTransaction = onNavigateToEditTransaction,
                 viewModel = hiltViewModel(),
             )
         }
 
-        composable(ExpenseTrackerDestination.Summary.route) {
+        composable(BottomNavDestination.Summary.route) {
             SummaryScreen(
                 viewModel = hiltViewModel(),
             )
         }
 
-        composable(ExpenseTrackerDestination.Settings.route) {
+        composable(BottomNavDestination.Settings.route) {
             SettingsScreen()
         }
-
-        composable("${ExpenseTrackerDestination.AddEditTransaction.route}/{transactionId}") { backStackEntry ->
-            val transactionId = backStackEntry.arguments?.getString("transactionId")?.toLongOrNull() ?: 0L
-            AddEditTransactionScreen(
-                transactionId = if (transactionId == 0L) null else transactionId,
-                onNavigateBack = {
-                    navController.popBackStack()
-                },
-                viewModel = hiltViewModel(),
-            )
-        }
     }
+}
+
+/**
+ * Type-safe navigation routes with proper parameter resolution
+ */
+object ModalNavRoutes {
+    fun addTransactionRoute(): String = "${ModalDestination.AddEditTransaction.route}/0"
+
+    fun editTransactionRoute(transactionId: Long): String =
+        "${ModalDestination.AddEditTransaction.route}/$transactionId"
 }

@@ -1,5 +1,6 @@
 package dev.tuandoan.expensetracker.core.util
 
+import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
@@ -21,12 +22,20 @@ object DateTimeUtil {
     }
 
     fun formatTimestamp(timestamp: Long): String {
-        val localDate = LocalDate.ofEpochDay(timestamp / (24 * 60 * 60 * 1000))
+        val localDate =
+            Instant
+                .ofEpochMilli(timestamp)
+                .atZone(ZoneId.systemDefault())
+                .toLocalDate()
         return localDate.format(dateFormatter)
     }
 
     fun formatShortDate(timestamp: Long): String {
-        val localDate = LocalDate.ofEpochDay(timestamp / (24 * 60 * 60 * 1000))
+        val localDate =
+            Instant
+                .ofEpochMilli(timestamp)
+                .atZone(ZoneId.systemDefault())
+                .toLocalDate()
         return localDate.format(shortDateFormatter)
     }
 

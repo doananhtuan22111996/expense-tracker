@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dev.tuandoan.expensetracker.core.util.DateTimeUtil
+import dev.tuandoan.expensetracker.core.util.ErrorUtils
 import dev.tuandoan.expensetracker.domain.model.MonthlySummary
 import dev.tuandoan.expensetracker.domain.repository.TransactionRepository
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -43,7 +44,7 @@ class SummaryViewModel
                             _uiState.value.copy(
                                 isLoading = false,
                                 isError = true,
-                                errorMessage = "Failed to load summary: ${e.message}",
+                                errorMessage = ErrorUtils.getErrorMessage(e),
                             )
                     }.collect { summary ->
                         _uiState.value =

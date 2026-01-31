@@ -1,4 +1,5 @@
 import java.io.FileInputStream
+import java.time.Instant
 import java.util.Properties
 
 plugins {
@@ -17,7 +18,7 @@ android {
         applicationId = "dev.tuandoan.expensetracker"
         minSdk = 26
         targetSdk = 36
-        versionCode = 1
+        versionCode = Instant.now().epochSecond.toInt() // Epoch seconds: safe until 2038, always increasing
         versionName = "1.0.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
@@ -82,6 +83,7 @@ android {
     }
     buildFeatures {
         compose = true
+        buildConfig = true
     }
 }
 
@@ -121,6 +123,8 @@ dependencies {
     implementation(libs.datastore.preferences)
 
     testImplementation(libs.junit)
+    testImplementation(libs.mockito.core)
+    testImplementation(libs.mockito.inline)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
     androidTestImplementation(platform(libs.androidx.compose.bom))

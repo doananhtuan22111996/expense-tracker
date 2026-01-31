@@ -6,14 +6,17 @@ import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dev.tuandoan.expensetracker.core.formatter.AmountFormatter
 import dev.tuandoan.expensetracker.core.util.DateTimeUtil
+import dev.tuandoan.expensetracker.core.util.ErrorUtils
 import dev.tuandoan.expensetracker.domain.model.Category
 import dev.tuandoan.expensetracker.domain.model.Transaction
 import dev.tuandoan.expensetracker.domain.model.TransactionType
 import dev.tuandoan.expensetracker.domain.repository.CategoryRepository
 import dev.tuandoan.expensetracker.domain.repository.TransactionRepository
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
@@ -25,11 +28,14 @@ class AddEditTransactionViewModel
         private val categoryRepository: CategoryRepository,
         savedStateHandle: SavedStateHandle,
     ) : ViewModel() {
-        private val transactionId: Long = savedStateHandle.get<String>("transactionId")?.toLongOrNull() ?: 0L
+        private val transactionId: Long = savedStateHandle.get<Long>("transactionId") ?: 0L
         private val isEditMode = transactionId > 0L
 
         private val _uiState = MutableStateFlow(AddEditTransactionUiState())
         val uiState: StateFlow<AddEditTransactionUiState> = _uiState.asStateFlow()
+
+        // Job to track and cancel ongoing category loading operations
+        private var categoryLoadingJob: Job? = null
 
         init {
             loadInitialData()
@@ -58,6 +64,29 @@ class AddEditTransactionViewModel
 
         fun onNoteChanged(note: String) {
             _uiState.value = _uiState.value.copy(note = note)
+        }
+
+        fun onBackPressed() {
+            val state = _uiState.value
+            if (isEditMode && state.hasUnsavedChanges) {
+                _uiState.value = state.copy(showDiscardDialog = true)
+            } else {
+                // No changes or not in edit mode - navigate back immediately
+                // This will be handled by the UI
+            }
+        }
+
+        fun onDiscardChanges() {
+            _uiState.value = _uiState.value.copy(showDiscardDialog = false)
+            // Navigation will be handled by UI
+        }
+
+        fun onCancelDiscard() {
+            _uiState.value = _uiState.value.copy(showDiscardDialog = false)
+        }
+
+        fun clearError() {
+            _uiState.value = _uiState.value.copy(errorMessage = null)
         }
 
         fun saveTransaction(onSuccess: () -> Unit) {
@@ -107,7 +136,7 @@ class AddEditTransactionViewModel
                     _uiState.value =
                         _uiState.value.copy(
                             isLoading = false,
-                            errorMessage = "Failed to save transaction: ${e.message}",
+                            errorMessage = ErrorUtils.getErrorMessage(e),
                         )
                 }
             }
@@ -153,30 +182,44 @@ class AddEditTransactionViewModel
                     _uiState.value =
                         _uiState.value.copy(
                             isLoading = false,
-                            errorMessage = "Failed to load data: ${e.message}",
+                            errorMessage = ErrorUtils.getErrorMessage(e),
                         )
                 }
             }
         }
 
         private fun loadCategories(type: TransactionType) {
-            viewModelScope.launch {
-                try {
-                    categoryRepository.observeCategories(type).collect { categories ->
-                        _uiState.value =
-                            _uiState.value.copy(
-                                categories = categories,
-                                isLoading = false,
-                            )
+            // Cancel any ongoing category loading operation to prevent resource leaks
+            categoryLoadingJob?.cancel()
+
+            categoryLoadingJob =
+                viewModelScope.launch {
+                    try {
+                        categoryRepository.observeCategories(type).collect { categories ->
+                            _uiState.value =
+                                _uiState.value.copy(
+                                    categories = categories,
+                                    isLoading = false,
+                                    errorMessage = null, // Clear any previous errors
+                                )
+                        }
+                    } catch (e: Exception) {
+                        // Only update error state if this job hasn't been cancelled
+                        if (isActive) {
+                            _uiState.value =
+                                _uiState.value.copy(
+                                    isLoading = false,
+                                    errorMessage = ErrorUtils.getErrorMessage(e),
+                                )
+                        }
                     }
-                } catch (e: Exception) {
-                    _uiState.value =
-                        _uiState.value.copy(
-                            isLoading = false,
-                            errorMessage = "Failed to load categories: ${e.message}",
-                        )
                 }
-            }
+        }
+
+        override fun onCleared() {
+            super.onCleared()
+            // Ensure category loading job is cancelled when ViewModel is destroyed
+            categoryLoadingJob?.cancel()
         }
     }
 
@@ -190,10 +233,34 @@ data class AddEditTransactionUiState(
     val note: String = "",
     val isLoading: Boolean = false,
     val errorMessage: String? = null,
+    val showDiscardDialog: Boolean = false,
 ) {
     val isFormValid: Boolean
         get() =
             amountText.isNotBlank() &&
                 selectedCategory != null &&
                 AmountFormatter.parseAmount(amountText)?.let { it > 0 } == true
+
+    val hasUnsavedChanges: Boolean
+        get() {
+            val original = originalTransaction ?: return false
+
+            // Compare current state with original transaction
+            val currentAmount = AmountFormatter.parseAmount(amountText) ?: 0L
+            val currentNote = note.ifBlank { null }
+
+            return type != original.type ||
+                currentAmount != original.amount ||
+                selectedCategory?.id != original.category.id ||
+                timestamp != original.timestamp ||
+                currentNote != original.note
+        }
+
+    val isSaveEnabled: Boolean
+        get() {
+            if (!isFormValid) return false
+
+            // For edit mode, also check if there are changes
+            return originalTransaction == null || hasUnsavedChanges
+        }
 }

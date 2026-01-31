@@ -22,8 +22,20 @@ object AmountFormatter {
     fun parseAmount(text: String): Long? =
         try {
             val cleanText = text.replace("[^0-9]".toRegex(), "")
-            if (cleanText.isBlank()) null else cleanText.toLong()
-        } catch (e: Exception) {
+            if (cleanText.isBlank()) {
+                null
+            } else {
+                // Prevent parsing strings that are too long to be valid Long values
+                // Long.MAX_VALUE is 19 digits, so anything longer than 19 digits will overflow
+                if (cleanText.length > 19) {
+                    null
+                } else {
+                    val amount = cleanText.toLong()
+                    // Accept any positive value within Long range, including 0
+                    if (amount >= 0) amount else null
+                }
+            }
+        } catch (e: NumberFormatException) {
             null
         }
 }
