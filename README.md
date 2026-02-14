@@ -36,6 +36,21 @@ This app follows modern Android development best practices:
 - **Coroutines**: For background operations
 - **Material Design**: Material 3
 
+## Phase 2.1 - Multi-Currency Foundation (v1.2)
+
+### Data Model Upgrade (Backward Compatible)
+
+Added a `currency_code` field to the transactions table to prepare for future multi-currency support:
+
+- **New column**: `currency_code TEXT NOT NULL DEFAULT 'VND'` (ISO 4217 currency code)
+- **Default value**: All existing and new transactions default to `VND` (Vietnamese Dong)
+- **Room migration**: Automatic migration from database version 1 to 2 via `MIGRATION_1_2`
+- **Backward compatible**: Existing data is fully preserved; no user-visible changes
+- **Amount unchanged**: The `amount` field remains `Long` and existing amounts are not modified
+
+This is a data-layer-only change. No UI, settings, or display logic is affected. Future phases will
+add a currency picker and currency-aware formatting.
+
 ## Phase 2 - Feature Enhancements
 
 ### Edit Transaction - UX Polish
@@ -222,7 +237,8 @@ app/src/main/java/dev/tuandoan/expensetracker/
 ### Transactions
 - `id`: Primary key (auto-generated)
 - `type`: Transaction type (0=EXPENSE, 1=INCOME)
-- `amount`: Amount in VND format (no decimals)
+- `amount`: Amount stored as Long (no decimals)
+- `currency_code`: ISO 4217 currency code (default: `VND`)
 - `category_id`: Foreign key to categories table
 - `note`: Optional note
 - `timestamp`: Transaction date (epoch millis)
@@ -371,4 +387,5 @@ For support or questions, please contact: support@expensetracker.com
 
 ## Version History
 
+- **v1.2.0** - Phase 2.1: Multi-currency data foundation (`currency_code` field, Room migration v1->v2)
 - **v1.0.0** - Initial MVP release with core transaction management features

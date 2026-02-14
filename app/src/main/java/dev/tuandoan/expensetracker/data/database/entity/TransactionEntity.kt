@@ -22,7 +22,9 @@ data class TransactionEntity(
     @ColumnInfo(name = "type")
     val type: Int, // 0 = EXPENSE, 1 = INCOME
     @ColumnInfo(name = "amount")
-    val amount: Long, // Amount in VND style (no decimals)
+    val amount: Long, // Amount stored as Long (no decimals for VND)
+    @ColumnInfo(name = "currency_code", defaultValue = "VND")
+    val currencyCode: String = "VND",
     @ColumnInfo(name = "category_id")
     val categoryId: Long,
     @ColumnInfo(name = "note")
