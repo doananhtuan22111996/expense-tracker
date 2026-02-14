@@ -9,7 +9,7 @@ import dev.tuandoan.expensetracker.data.database.entity.TransactionEntity
 
 @Database(
     entities = [TransactionEntity::class, CategoryEntity::class],
-    version = 1,
+    version = 2,
     exportSchema = false,
 )
 abstract class AppDatabase : RoomDatabase() {

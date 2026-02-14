@@ -53,6 +53,7 @@ class TransactionRepositoryImpl
             categoryId: Long,
             note: String?,
             timestamp: Long,
+            currencyCode: String,
         ): Long =
             withContext(ioDispatcher) {
                 val now = System.currentTimeMillis()
@@ -60,6 +61,7 @@ class TransactionRepositoryImpl
                     TransactionEntity(
                         type = type.toInt(),
                         amount = amount,
+                        currencyCode = currencyCode,
                         categoryId = categoryId,
                         note = note,
                         timestamp = timestamp,

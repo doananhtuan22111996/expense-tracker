@@ -18,6 +18,7 @@ interface TransactionRepository {
         categoryId: Long,
         note: String?,
         timestamp: Long,
+        currencyCode: String = "VND",
     ): Long
 
     suspend fun updateTransaction(transaction: Transaction)
