@@ -4,7 +4,7 @@ data class Transaction(
     val id: Long = 0L,
     val type: TransactionType,
     val amount: Long,
-    val currencyCode: String = "VND",
+    val currencyCode: String = SupportedCurrencies.default().code,
     val category: Category,
     val note: String? = null,
     val timestamp: Long,

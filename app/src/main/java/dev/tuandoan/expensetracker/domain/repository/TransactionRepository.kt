@@ -1,6 +1,7 @@
 package dev.tuandoan.expensetracker.domain.repository
 
 import dev.tuandoan.expensetracker.domain.model.MonthlySummary
+import dev.tuandoan.expensetracker.domain.model.SupportedCurrencies
 import dev.tuandoan.expensetracker.domain.model.Transaction
 import dev.tuandoan.expensetracker.domain.model.TransactionType
 import kotlinx.coroutines.flow.Flow
@@ -18,7 +19,7 @@ interface TransactionRepository {
         categoryId: Long,
         note: String?,
         timestamp: Long,
-        currencyCode: String = "VND",
+        currencyCode: String = SupportedCurrencies.default().code,
     ): Long
 
     suspend fun updateTransaction(transaction: Transaction)

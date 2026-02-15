@@ -4,6 +4,7 @@ import androidx.room.ColumnInfo
 import androidx.room.Entity
 import androidx.room.ForeignKey
 import androidx.room.PrimaryKey
+import dev.tuandoan.expensetracker.domain.model.SupportedCurrencies
 
 @Entity(
     tableName = "transactions",
@@ -23,8 +24,9 @@ data class TransactionEntity(
     val type: Int, // 0 = EXPENSE, 1 = INCOME
     @ColumnInfo(name = "amount")
     val amount: Long, // Amount stored as Long (no decimals for VND)
+    // Room @ColumnInfo defaultValue requires a literal; Kotlin default uses SupportedCurrencies
     @ColumnInfo(name = "currency_code", defaultValue = "VND")
-    val currencyCode: String = "VND",
+    val currencyCode: String = SupportedCurrencies.default().code,
     @ColumnInfo(name = "category_id")
     val categoryId: Long,
     @ColumnInfo(name = "note")
