@@ -3,8 +3,8 @@ package dev.tuandoan.expensetracker.ui.screen.summary
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
-import dev.tuandoan.expensetracker.core.util.DateTimeUtil
 import dev.tuandoan.expensetracker.core.util.ErrorUtils
+import dev.tuandoan.expensetracker.core.util.TimeProvider
 import dev.tuandoan.expensetracker.domain.model.MonthlySummary
 import dev.tuandoan.expensetracker.domain.repository.TransactionRepository
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -19,6 +19,7 @@ class SummaryViewModel
     @Inject
     constructor(
         private val transactionRepository: TransactionRepository,
+        private val timeProvider: TimeProvider,
     ) : ViewModel() {
         private val _uiState = MutableStateFlow(SummaryUiState())
         val uiState: StateFlow<SummaryUiState> = _uiState.asStateFlow()
@@ -35,7 +36,7 @@ class SummaryViewModel
             viewModelScope.launch {
                 _uiState.value = _uiState.value.copy(isLoading = true, isError = false)
 
-                val (startMillis, endMillis) = DateTimeUtil.getCurrentMonthRange()
+                val (startMillis, endMillis) = timeProvider.currentMonthRange()
 
                 transactionRepository
                     .observeMonthlySummary(startMillis, endMillis)

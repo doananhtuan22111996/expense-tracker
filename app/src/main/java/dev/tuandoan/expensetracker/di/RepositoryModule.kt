@@ -4,6 +4,8 @@ import dagger.Binds
 import dagger.Module
 import dagger.hilt.InstallIn
 import dagger.hilt.components.SingletonComponent
+import dev.tuandoan.expensetracker.core.util.SystemTimeProvider
+import dev.tuandoan.expensetracker.core.util.TimeProvider
 import dev.tuandoan.expensetracker.domain.repository.CategoryRepository
 import dev.tuandoan.expensetracker.domain.repository.TransactionRepository
 import dev.tuandoan.expensetracker.repository.CategoryRepositoryImpl
@@ -17,4 +19,7 @@ abstract class RepositoryModule {
 
     @Binds
     abstract fun bindCategoryRepository(categoryRepositoryImpl: CategoryRepositoryImpl): CategoryRepository
+
+    @Binds
+    abstract fun bindTimeProvider(systemTimeProvider: SystemTimeProvider): TimeProvider
 }

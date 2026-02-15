@@ -3,8 +3,8 @@ package dev.tuandoan.expensetracker.ui.screen.home
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
-import dev.tuandoan.expensetracker.core.util.DateTimeUtil
 import dev.tuandoan.expensetracker.core.util.ErrorUtils
+import dev.tuandoan.expensetracker.core.util.TimeProvider
 import dev.tuandoan.expensetracker.domain.model.Transaction
 import dev.tuandoan.expensetracker.domain.model.TransactionType
 import dev.tuandoan.expensetracker.domain.repository.TransactionRepository
@@ -20,6 +20,7 @@ class HomeViewModel
     @Inject
     constructor(
         private val transactionRepository: TransactionRepository,
+        private val timeProvider: TimeProvider,
     ) : ViewModel() {
         private val _uiState = MutableStateFlow(HomeUiState())
         val uiState: StateFlow<HomeUiState> = _uiState.asStateFlow()
@@ -56,7 +57,7 @@ class HomeViewModel
             viewModelScope.launch {
                 _uiState.value = _uiState.value.copy(isLoading = true, isError = false)
 
-                val (startMillis, endMillis) = DateTimeUtil.getCurrentMonthRange()
+                val (startMillis, endMillis) = timeProvider.currentMonthRange()
 
                 transactionRepository
                     .observeTransactions(

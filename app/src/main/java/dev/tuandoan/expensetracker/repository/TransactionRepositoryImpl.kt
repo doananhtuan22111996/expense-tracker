@@ -1,5 +1,6 @@
 package dev.tuandoan.expensetracker.repository
 
+import dev.tuandoan.expensetracker.core.util.TimeProvider
 import dev.tuandoan.expensetracker.data.database.dao.CategoryDao
 import dev.tuandoan.expensetracker.data.database.dao.TransactionDao
 import dev.tuandoan.expensetracker.data.database.entity.TransactionEntity
@@ -23,6 +24,7 @@ class TransactionRepositoryImpl
     constructor(
         private val transactionDao: TransactionDao,
         private val categoryDao: CategoryDao,
+        private val timeProvider: TimeProvider,
         @IoDispatcher private val ioDispatcher: CoroutineDispatcher,
     ) : TransactionRepository {
         override fun observeTransactions(
@@ -56,7 +58,7 @@ class TransactionRepositoryImpl
             currencyCode: String,
         ): Long =
             withContext(ioDispatcher) {
-                val now = System.currentTimeMillis()
+                val now = timeProvider.currentTimeMillis()
                 val entity =
                     TransactionEntity(
                         type = type.toInt(),
@@ -73,7 +75,7 @@ class TransactionRepositoryImpl
 
         override suspend fun updateTransaction(transaction: Transaction): Unit =
             withContext(ioDispatcher) {
-                val updatedEntity = transaction.toEntity().copy(updatedAt = System.currentTimeMillis())
+                val updatedEntity = transaction.toEntity().copy(updatedAt = timeProvider.currentTimeMillis())
                 transactionDao.update(updatedEntity)
             }
 
