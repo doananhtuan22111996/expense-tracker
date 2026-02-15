@@ -5,8 +5,8 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dev.tuandoan.expensetracker.core.formatter.AmountFormatter
-import dev.tuandoan.expensetracker.core.util.DateTimeUtil
 import dev.tuandoan.expensetracker.core.util.ErrorUtils
+import dev.tuandoan.expensetracker.core.util.TimeProvider
 import dev.tuandoan.expensetracker.domain.model.Category
 import dev.tuandoan.expensetracker.domain.model.Transaction
 import dev.tuandoan.expensetracker.domain.model.TransactionType
@@ -26,6 +26,7 @@ class AddEditTransactionViewModel
     constructor(
         private val transactionRepository: TransactionRepository,
         private val categoryRepository: CategoryRepository,
+        private val timeProvider: TimeProvider,
         savedStateHandle: SavedStateHandle,
     ) : ViewModel() {
         private val transactionId: Long = savedStateHandle.get<Long>("transactionId") ?: 0L
@@ -118,7 +119,7 @@ class AddEditTransactionViewModel
                                 category = category,
                                 note = state.note.ifBlank { null },
                                 timestamp = state.timestamp,
-                                updatedAt = DateTimeUtil.getCurrentTimeMillis(),
+                                updatedAt = timeProvider.currentTimeMillis(),
                             )
                         transactionRepository.updateTransaction(updatedTransaction)
                     } else {
@@ -174,7 +175,7 @@ class AddEditTransactionViewModel
                         _uiState.value =
                             _uiState.value.copy(
                                 type = TransactionType.EXPENSE,
-                                timestamp = DateTimeUtil.getCurrentTimeMillis(),
+                                timestamp = timeProvider.currentTimeMillis(),
                             )
                         loadCategories(TransactionType.EXPENSE)
                     }
@@ -229,7 +230,7 @@ data class AddEditTransactionUiState(
     val amountText: String = "",
     val categories: List<Category> = emptyList(),
     val selectedCategory: Category? = null,
-    val timestamp: Long = DateTimeUtil.getCurrentTimeMillis(),
+    val timestamp: Long = System.currentTimeMillis(),
     val note: String = "",
     val isLoading: Boolean = false,
     val errorMessage: String? = null,

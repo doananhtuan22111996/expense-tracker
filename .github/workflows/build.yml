@@ -36,6 +36,12 @@ jobs:
         run: |
           echo $KEYSTORE_FILE | base64 -d > keystore.jks
 
+      - name: Run spotlessCheck
+        run: ./gradlew spotlessCheck
+
+      - name: Run Unitest
+        run: ./gradlew testReleaseUnitTest
+
       - name: Build Release
         run: ./gradlew assembleRelease
 
