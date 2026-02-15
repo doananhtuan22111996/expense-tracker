@@ -186,7 +186,7 @@ class CurrencyDefinitionTest {
     // --- Integration with existing defaults ---
 
     @Test
-    fun defaultCode_matchesTransactionEntityDefault() {
+    fun default_codeIsVnd() {
         assertEquals("VND", SupportedCurrencies.default().code)
     }
 }
