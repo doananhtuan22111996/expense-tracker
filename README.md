@@ -51,6 +51,33 @@ Added a `currency_code` field to the transactions table to prepare for future mu
 This is a data-layer-only change. No UI, settings, or display logic is affected. Future phases will
 add a currency picker and currency-aware formatting.
 
+### Currency Definition (Offline – Static)
+
+Added a static, offline-only registry of supported currencies with helper APIs:
+
+**Supported Currencies:**
+
+| Code | Name | Symbol | Minor Unit Digits |
+|------|------|--------|-------------------|
+| VND | Vietnamese Dong | ₫ | 0 |
+| USD | US Dollar | $ | 2 |
+| EUR | Euro | € | 2 |
+| JPY | Japanese Yen | ¥ | 0 |
+| KRW | South Korean Won | ₩ | 0 |
+| SGD | Singapore Dollar | S$ | 2 |
+
+**Helper APIs (`SupportedCurrencies` object):**
+- `all()` — returns all 6 currencies in deterministic order (VND first)
+- `byCode(code)` — lookup by ISO 4217 code, returns null if unsupported
+- `requireByCode(code)` — lookup by code, throws `IllegalArgumentException` if unsupported
+- `default()` — returns VND (the app's default currency)
+
+**Design rules:**
+- Offline only: no API calls, no online updates, no `java.util.Currency` dependency
+- Static data: currency list is compile-time constant, defined in `domain/model/CurrencyDefinition.kt`
+- Thread-safe: immutable data class + Kotlin object singleton
+- Domain model defaults (`Transaction.currencyCode`, `TransactionRepository.addTransaction`) reference `SupportedCurrencies.default().code` instead of hardcoded `"VND"`
+
 ## Phase 2 - Feature Enhancements
 
 ### Edit Transaction - UX Polish
@@ -131,7 +158,7 @@ object DesignSystemElevation {
 
 ### VND Currency Standards
 
-**💰 VND-Only Policy**: The app is designed exclusively for Vietnamese Dong (₫)
+**💰 VND-Default Policy**: The app defaults to Vietnamese Dong (₫) with a multi-currency foundation (see Phase 2.1)
 - **Integer amounts only**: No decimal places (VND doesn't use fractional currency)
 - **Thousand separators**: Uses locale-aware comma formatting (1,234,567)
 - **Consistent formatting**: Single `AmountFormatter` utility used throughout
@@ -387,5 +414,5 @@ For support or questions, please contact: support@expensetracker.com
 
 ## Version History
 
-- **v1.2.0** - Phase 2.1: Multi-currency data foundation (`currency_code` field, Room migration v1->v2)
+- **v1.2.0** - Phase 2.1: Multi-currency data foundation (`currency_code` field, Room migration v1->v2, static currency definitions)
 - **v1.0.0** - Initial MVP release with core transaction management features
