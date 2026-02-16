@@ -1,23 +1,33 @@
 package dev.tuandoan.expensetracker.core.formatter
 
-import java.text.DecimalFormat
-import java.text.DecimalFormatSymbols
-import java.util.Locale
-
+/**
+ * VND-default static formatting facade.
+ *
+ * Delegates all formatting to [DefaultCurrencyFormatter]. Provides a static entry
+ * point for contexts that cannot receive Hilt-injected dependencies (e.g., data-class
+ * computed properties and Composable functions).
+ *
+ * For DI-capable classes (ViewModels, repositories), prefer injecting [CurrencyFormatter].
+ */
 object AmountFormatter {
-    private val formatter = DecimalFormat("#,###", DecimalFormatSymbols(Locale.getDefault()))
+    private val delegate: CurrencyFormatter = DefaultCurrencyFormatter()
+    private const val DEFAULT_CURRENCY = "VND"
 
-    fun formatAmount(amount: Long): String = formatter.format(amount)
+    fun formatAmount(
+        amount: Long,
+        currencyCode: String = DEFAULT_CURRENCY,
+    ): String = delegate.formatBareAmount(amount, currencyCode)
 
-    fun formatAmountWithCurrency(amount: Long): String = "${formatAmount(amount)} ₫"
+    fun formatAmountWithCurrency(
+        amount: Long,
+        currencyCode: String = DEFAULT_CURRENCY,
+    ): String = delegate.format(amount, currencyCode)
 
     fun formatAmountWithSign(
         amount: Long,
         isIncome: Boolean,
-    ): String {
-        val formattedAmount = formatAmountWithCurrency(amount)
-        return if (isIncome) "+$formattedAmount" else "-$formattedAmount"
-    }
+        currencyCode: String = DEFAULT_CURRENCY,
+    ): String = delegate.formatWithSign(amount, currencyCode, isIncome)
 
     fun parseAmount(text: String): Long? =
         try {

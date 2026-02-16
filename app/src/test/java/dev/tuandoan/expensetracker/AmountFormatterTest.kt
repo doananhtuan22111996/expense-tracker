@@ -5,8 +5,9 @@ import org.junit.Assert.*
 import org.junit.Test
 
 /**
- * Unit tests for AmountFormatter
- * Critical business logic for VND currency formatting
+ * Unit tests for AmountFormatter (VND-default static facade).
+ * Verifies backward compatibility: all format methods delegate to DefaultCurrencyFormatter.
+ * VND uses dot as thousands separator per Vietnamese convention.
  */
 class AmountFormatterTest {
     @Test
@@ -17,39 +18,51 @@ class AmountFormatterTest {
     }
 
     @Test
-    fun formatAmount_withThousands_returnsWithCommas() {
-        assertEquals("1,000", AmountFormatter.formatAmount(1000L))
-        assertEquals("1,234", AmountFormatter.formatAmount(1234L))
-        assertEquals("12,345", AmountFormatter.formatAmount(12345L))
-        assertEquals("123,456", AmountFormatter.formatAmount(123456L))
+    fun formatAmount_withThousands_returnsWithDots() {
+        assertEquals("1.000", AmountFormatter.formatAmount(1000L))
+        assertEquals("1.234", AmountFormatter.formatAmount(1234L))
+        assertEquals("12.345", AmountFormatter.formatAmount(12345L))
+        assertEquals("123.456", AmountFormatter.formatAmount(123456L))
     }
 
     @Test
-    fun formatAmount_withMillions_returnsWithCommas() {
-        assertEquals("1,000,000", AmountFormatter.formatAmount(1000000L))
-        assertEquals("1,234,567", AmountFormatter.formatAmount(1234567L))
-        assertEquals("12,345,678", AmountFormatter.formatAmount(12345678L))
+    fun formatAmount_withMillions_returnsWithDots() {
+        assertEquals("1.000.000", AmountFormatter.formatAmount(1000000L))
+        assertEquals("1.234.567", AmountFormatter.formatAmount(1234567L))
+        assertEquals("12.345.678", AmountFormatter.formatAmount(12345678L))
     }
 
     @Test
     fun formatAmountWithCurrency_addsVNDSymbol() {
         assertEquals("0 ₫", AmountFormatter.formatAmountWithCurrency(0L))
-        assertEquals("1,000 ₫", AmountFormatter.formatAmountWithCurrency(1000L))
-        assertEquals("1,234,567 ₫", AmountFormatter.formatAmountWithCurrency(1234567L))
+        assertEquals("1.000 ₫", AmountFormatter.formatAmountWithCurrency(1000L))
+        assertEquals("1.234.567 ₫", AmountFormatter.formatAmountWithCurrency(1234567L))
     }
 
     @Test
     fun formatAmountWithSign_income_returnsPlusSign() {
         assertEquals("+0 ₫", AmountFormatter.formatAmountWithSign(0L, true))
-        assertEquals("+1,000 ₫", AmountFormatter.formatAmountWithSign(1000L, true))
-        assertEquals("+1,234,567 ₫", AmountFormatter.formatAmountWithSign(1234567L, true))
+        assertEquals("+1.000 ₫", AmountFormatter.formatAmountWithSign(1000L, true))
+        assertEquals("+1.234.567 ₫", AmountFormatter.formatAmountWithSign(1234567L, true))
     }
 
     @Test
     fun formatAmountWithSign_expense_returnsMinusSign() {
         assertEquals("-0 ₫", AmountFormatter.formatAmountWithSign(0L, false))
-        assertEquals("-1,000 ₫", AmountFormatter.formatAmountWithSign(1000L, false))
-        assertEquals("-1,234,567 ₫", AmountFormatter.formatAmountWithSign(1234567L, false))
+        assertEquals("-1.000 ₫", AmountFormatter.formatAmountWithSign(1000L, false))
+        assertEquals("-1.234.567 ₫", AmountFormatter.formatAmountWithSign(1234567L, false))
+    }
+
+    @Test
+    fun formatAmount_withCurrencyCode_formatsCorrectly() {
+        assertEquals("120.00", AmountFormatter.formatAmount(12000L, "USD"))
+        assertEquals("1,500", AmountFormatter.formatAmount(1500L, "JPY"))
+    }
+
+    @Test
+    fun formatAmountWithCurrency_withCurrencyCode_formatsCorrectly() {
+        assertEquals("$120.00", AmountFormatter.formatAmountWithCurrency(12000L, "USD"))
+        assertEquals("¥1,500", AmountFormatter.formatAmountWithCurrency(1500L, "JPY"))
     }
 
     @Test
@@ -61,15 +74,18 @@ class AmountFormatterTest {
     }
 
     @Test
-    fun parseAmount_withCommas_stripsAndParses() {
+    fun parseAmount_withSeparators_stripsAndParses() {
         assertEquals(1000L, AmountFormatter.parseAmount("1,000"))
+        assertEquals(1000L, AmountFormatter.parseAmount("1.000"))
         assertEquals(1234567L, AmountFormatter.parseAmount("1,234,567"))
+        assertEquals(1234567L, AmountFormatter.parseAmount("1.234.567"))
         assertEquals(12345678L, AmountFormatter.parseAmount("12,345,678"))
     }
 
     @Test
     fun parseAmount_withMixedCharacters_extractsNumbers() {
         assertEquals(1000L, AmountFormatter.parseAmount("1,000 ₫"))
+        assertEquals(1000L, AmountFormatter.parseAmount("1.000 ₫"))
         assertEquals(1234L, AmountFormatter.parseAmount("abc1234def"))
         assertEquals(567L, AmountFormatter.parseAmount("VND 567 currency"))
         assertEquals(0L, AmountFormatter.parseAmount("0000"))

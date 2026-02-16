@@ -23,7 +23,10 @@ import dev.tuandoan.expensetracker.ui.theme.DesignSystemSpacing
 import dev.tuandoan.expensetracker.ui.theme.FinancialColors
 
 /**
- * Reusable component for displaying VND amounts with consistent formatting
+ * Reusable component for displaying monetary amounts with consistent formatting.
+ *
+ * @param currencyCode ISO 4217 code. Defaults to "VND" for backward compatibility.
+ *   Callers displaying a Transaction should pass transaction.currencyCode.
  */
 @Composable
 fun AmountText(
@@ -31,6 +34,7 @@ fun AmountText(
     transactionType: TransactionType? = null,
     showSign: Boolean = false,
     showCurrency: Boolean = true,
+    currencyCode: String = "VND",
     modifier: Modifier = Modifier,
     fontWeight: FontWeight = FontWeight.Normal,
     textStyle: androidx.compose.ui.text.TextStyle = MaterialTheme.typography.bodyLarge,
@@ -38,11 +42,15 @@ fun AmountText(
     val formattedAmount =
         when {
             showSign && transactionType != null ->
-                AmountFormatter.formatAmountWithSign(amount, transactionType == TransactionType.INCOME)
+                AmountFormatter.formatAmountWithSign(
+                    amount,
+                    transactionType == TransactionType.INCOME,
+                    currencyCode,
+                )
             showCurrency ->
-                AmountFormatter.formatAmountWithCurrency(amount)
+                AmountFormatter.formatAmountWithCurrency(amount, currencyCode)
             else ->
-                AmountFormatter.formatAmount(amount)
+                AmountFormatter.formatAmount(amount, currencyCode)
         }
 
     val color =
