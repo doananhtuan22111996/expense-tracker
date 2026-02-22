@@ -1,6 +1,7 @@
 package dev.tuandoan.expensetracker.ui.screen.addedit
 
 import androidx.lifecycle.SavedStateHandle
+import dev.tuandoan.expensetracker.core.formatter.DefaultCurrencyFormatter
 import dev.tuandoan.expensetracker.domain.model.Category
 import dev.tuandoan.expensetracker.domain.model.MonthlySummary
 import dev.tuandoan.expensetracker.domain.model.Transaction
@@ -46,6 +47,7 @@ class AddEditTransactionViewModelTest {
             fakeTransactionRepo,
             fakeCategoryRepo,
             fakeTimeProvider,
+            DefaultCurrencyFormatter(),
             savedStateHandle,
         )
     }

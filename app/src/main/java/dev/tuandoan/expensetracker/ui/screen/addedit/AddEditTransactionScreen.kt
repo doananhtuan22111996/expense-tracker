@@ -236,7 +236,7 @@ private fun TransactionForm(
             OutlinedTextField(
                 value = uiState.amountText,
                 onValueChange = { input ->
-                    // Format input with commas as user types for better UX
+                    // Format input with thousands separators as user types for better UX
                     val cleanInput = input.replace("[^0-9]".toRegex(), "")
                     if (cleanInput.isNotEmpty()) {
                         val formattedInput = AmountFormatter.formatAmount(cleanInput.toLongOrNull() ?: 0L)
@@ -246,7 +246,7 @@ private fun TransactionForm(
                     }
                 },
                 label = { Text("Enter amount in VND") },
-                placeholder = { Text("1,000,000") },
+                placeholder = { Text("1.000.000") },
                 suffix = {
                     Text(
                         "₫",

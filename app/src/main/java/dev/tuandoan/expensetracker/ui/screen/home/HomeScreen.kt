@@ -272,7 +272,12 @@ private fun TransactionItem(
                         buildString {
                             append("${transaction.type.name.lowercase()} transaction")
                             append(", ${transaction.category.name}")
-                            append(", ${AmountFormatter.formatAmountWithCurrency(transaction.amount)}")
+                            append(
+                                ", ${AmountFormatter.formatAmountWithCurrency(
+                                    transaction.amount,
+                                    transaction.currencyCode,
+                                )}",
+                            )
                             if (!transaction.note.isNullOrBlank()) {
                                 append(", note: ${transaction.note}")
                             }
@@ -329,6 +334,7 @@ private fun TransactionItem(
                     amount = transaction.amount,
                     transactionType = transaction.type,
                     showSign = true,
+                    currencyCode = transaction.currencyCode,
                     fontWeight = FontWeight.Bold,
                     textStyle = MaterialTheme.typography.bodyLarge,
                 )
@@ -344,7 +350,10 @@ private fun TransactionItem(
                             .size(48.dp)
                             .semantics {
                                 contentDescription = "Delete ${transaction.category.name} transaction of " +
-                                    "${AmountFormatter.formatAmountWithCurrency(transaction.amount)}"
+                                    AmountFormatter.formatAmountWithCurrency(
+                                        transaction.amount,
+                                        transaction.currencyCode,
+                                    )
                             },
                 ) {
                     Icon(

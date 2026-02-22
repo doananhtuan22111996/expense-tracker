@@ -78,6 +78,39 @@ Added a static, offline-only registry of supported currencies with helper APIs:
 - Thread-safe: immutable data class + Kotlin object singleton
 - Domain model defaults (`Transaction.currencyCode`, `TransactionRepository.addTransaction`) reference `SupportedCurrencies.default().code` instead of hardcoded `"VND"`
 
+### Currency Formatter Layer (Locale-Independent)
+
+Added a deterministic, locale-independent currency formatting layer that renders monetary amounts
+correctly for all 6 supported currencies. Formatting is pure string manipulation with no dependency
+on `java.util.Locale`, `java.text.NumberFormat`, or any Android framework API.
+
+**Interface & Implementation:**
+- `CurrencyFormatter` interface (`core/formatter/CurrencyFormatter.kt`) — three methods: `format`, `formatWithSign`, `formatBareAmount`
+- `DefaultCurrencyFormatter` (`core/formatter/DefaultCurrencyFormatter.kt`) — `@Singleton`, `@Inject`-constructable production implementation
+- `AmountFormatter` object — static facade delegating to `DefaultCurrencyFormatter`, used where Hilt injection is unavailable (Composables, data-class computed properties)
+- Hilt binding: `@Binds` in `RepositoryModule` maps `DefaultCurrencyFormatter` to `CurrencyFormatter`
+
+**Formatting Rules by Currency:**
+
+| Currency | Thousands Sep | Decimal Sep | Decimal Places | Symbol Position | Example |
+|----------|---------------|-------------|----------------|-----------------|---------|
+| VND | `.` (dot) | N/A | 0 | Suffix with space | `120.000 ₫` |
+| USD | `,` (comma) | `.` (dot) | 2 | Prefix | `$120.00` |
+| EUR | `,` (comma) | `.` (dot) | 2 | Prefix | `€2,500.75` |
+| JPY | `,` (comma) | N/A | 0 | Prefix | `¥1,500` |
+| KRW | `,` (comma) | N/A | 0 | Prefix | `₩5,000,000` |
+| SGD | `,` (comma) | `.` (dot) | 2 | Prefix | `S$120.00` |
+| Unknown | `,` (comma) | N/A | 0 | Suffix code | `1,500 GBP` |
+
+**Amount Representation:**
+- Currencies with `minorUnitDigits=0` (VND, JPY, KRW): amount Long is the whole-unit value
+- Currencies with `minorUnitDigits=2` (USD, EUR, SGD): amount Long is in minor units (cents)
+
+**Design Constraints:**
+- Deterministic: output is identical on every device regardless of system locale
+- Stateless and thread-safe: no mutable shared state in `DefaultCurrencyFormatter`
+- VND remains the default currency throughout the app
+
 ## Phase 2 - Feature Enhancements
 
 ### Edit Transaction - UX Polish
@@ -160,8 +193,8 @@ object DesignSystemElevation {
 
 **💰 VND-Default Policy**: The app defaults to Vietnamese Dong (₫) with a multi-currency foundation (see Phase 2.1)
 - **Integer amounts only**: No decimal places (VND doesn't use fractional currency)
-- **Thousand separators**: Uses locale-aware comma formatting (1,234,567)
-- **Consistent formatting**: Single `AmountFormatter` utility used throughout
+- **Thousand separators**: Deterministic dot separators for VND (1.234.567), comma for others
+- **Consistent formatting**: Single `CurrencyFormatter` implementation used throughout via `AmountFormatter` facade
 - **Color coding**: Green for income, red for expenses, contextual for balance
 
 **🚫 No Charts Constraint**: Deliberately excludes charts/graphs to maintain simplicity
@@ -351,7 +384,8 @@ This project uses [Spotless](https://github.com/diffplug/spotless) with ktlint f
 ```
 
 **Core Unit Tests Coverage:**
-- `AmountFormatterTest`: Comprehensive VND formatting, parsing, and edge cases
+- `CurrencyFormatterTest`: Comprehensive multi-currency formatting for all 6 currencies + unknown fallback + edge cases
+- `AmountFormatterTest`: VND-default facade tests, parsing, and backward compatibility
 - `DateTimeUtilTest`: Date range calculations, formatting, and time utilities
 - Critical business logic for currency handling and date operations
 

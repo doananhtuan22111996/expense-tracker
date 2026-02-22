@@ -5,6 +5,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dev.tuandoan.expensetracker.core.formatter.AmountFormatter
+import dev.tuandoan.expensetracker.core.formatter.CurrencyFormatter
 import dev.tuandoan.expensetracker.core.util.ErrorUtils
 import dev.tuandoan.expensetracker.core.util.TimeProvider
 import dev.tuandoan.expensetracker.domain.model.Category
@@ -27,6 +28,7 @@ class AddEditTransactionViewModel
         private val transactionRepository: TransactionRepository,
         private val categoryRepository: CategoryRepository,
         private val timeProvider: TimeProvider,
+        private val currencyFormatter: CurrencyFormatter,
         savedStateHandle: SavedStateHandle,
     ) : ViewModel() {
         private val transactionId: Long = savedStateHandle.get<Long>("transactionId") ?: 0L
@@ -156,7 +158,11 @@ class AddEditTransactionViewModel
                                 _uiState.value.copy(
                                     originalTransaction = transaction,
                                     type = transaction.type,
-                                    amountText = AmountFormatter.formatAmount(transaction.amount),
+                                    amountText =
+                                        currencyFormatter.formatBareAmount(
+                                            transaction.amount,
+                                            transaction.currencyCode,
+                                        ),
                                     selectedCategory = transaction.category,
                                     timestamp = transaction.timestamp,
                                     note = transaction.note ?: "",
