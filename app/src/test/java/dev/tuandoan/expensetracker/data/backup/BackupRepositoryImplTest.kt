@@ -22,7 +22,9 @@ class BackupRepositoryImplTest {
     private lateinit var fakeTransactionDao: FakeTransactionDao
     private lateinit var fakeTimeProvider: FakeTimeProvider
     private lateinit var validator: BackupValidator
+    private lateinit var serializer: BackupSerializer
     private lateinit var repository: BackupRepositoryImpl
+    private var globalCallOrder = 0
 
     @Before
     fun setup() {
@@ -30,51 +32,58 @@ class BackupRepositoryImplTest {
         fakeTransactionDao = FakeTransactionDao()
         fakeTimeProvider = FakeTimeProvider()
         validator = BackupValidator()
+        serializer = BackupSerializer()
+        globalCallOrder = 0
         repository =
             BackupRepositoryImpl(
                 categoryDao = fakeCategoryDao,
                 transactionDao = fakeTransactionDao,
                 backupValidator = validator,
+                backupSerializer = serializer,
                 timeProvider = fakeTimeProvider,
                 transactionRunner = FakeTransactionRunner(),
             )
     }
 
     @Test
-    fun createBackupDocument_emptyDatabase_returnsEmptyLists() =
+    fun exportBackupJson_emptyDatabase_returnsJsonWithEmptyLists() =
         runTest {
-            val document = repository.createBackupDocument()
+            val json = repository.exportBackupJson()
+            val document = serializer.decode(json)!!
 
             assertEquals(0, document.categories.size)
             assertEquals(0, document.transactions.size)
         }
 
     @Test
-    fun createBackupDocument_setsTimestampFromTimeProvider() =
+    fun exportBackupJson_setsTimestampFromTimeProvider() =
         runTest {
             fakeTimeProvider.setCurrentMillis(1700500000000L)
 
-            val document = repository.createBackupDocument()
+            val json = repository.exportBackupJson()
+            val document = serializer.decode(json)!!
 
             assertEquals(1700500000000L, document.createdAtEpochMs)
         }
 
     @Test
-    fun createBackupDocument_setsSchemaVersion() =
+    fun exportBackupJson_setsSchemaVersion() =
         runTest {
-            val document = repository.createBackupDocument()
+            val json = repository.exportBackupJson()
+            val document = serializer.decode(json)!!
 
             assertEquals(1, document.schemaVersion)
         }
 
     @Test
-    fun createBackupDocument_mapsCategoriesToDtos() =
+    fun exportBackupJson_mapsCategoriesToDtos() =
         runTest {
             fakeCategoryDao.allCategories.addAll(
                 listOf(TestData.expenseCategoryEntity, TestData.incomeCategoryEntity),
             )
 
-            val document = repository.createBackupDocument()
+            val json = repository.exportBackupJson()
+            val document = serializer.decode(json)!!
 
             assertEquals(2, document.categories.size)
             assertEquals("Food", document.categories[0].name)
@@ -84,11 +93,12 @@ class BackupRepositoryImplTest {
         }
 
     @Test
-    fun createBackupDocument_mapsTransactionsToDtos() =
+    fun exportBackupJson_mapsTransactionsToDtos() =
         runTest {
             fakeTransactionDao.allTransactions.add(TestData.sampleExpenseEntity)
 
-            val document = repository.createBackupDocument()
+            val json = repository.exportBackupJson()
+            val document = serializer.decode(json)!!
 
             assertEquals(1, document.transactions.size)
             assertEquals(50000L, document.transactions[0].amount)
@@ -97,7 +107,7 @@ class BackupRepositoryImplTest {
         }
 
     @Test
-    fun restoreFromBackup_validDocument_clearsThenInsertsData() =
+    fun importBackupJson_validJson_clearsThenInsertsData() =
         runTest {
             // Pre-populate with existing data
             fakeCategoryDao.allCategories.add(
@@ -117,21 +127,23 @@ class BackupRepositoryImplTest {
                 ),
             )
 
-            repository.restoreFromBackup(TestData.sampleBackupDocument)
+            val json = serializer.encode(TestData.sampleBackupDocument)
+            val result = repository.importBackupJson(json)
 
             // Old data should be gone, replaced with backup data
             assertEquals(1, fakeCategoryDao.allCategories.size)
             assertEquals("Food", fakeCategoryDao.allCategories[0].name)
             assertEquals(1, fakeTransactionDao.allTransactions.size)
             assertEquals(50000L, fakeTransactionDao.allTransactions[0].amount)
+            assertEquals(1, result.categoryCount)
+            assertEquals(1, result.transactionCount)
         }
 
     @Test
-    fun restoreFromBackup_deletesTransactionsBeforeCategories() =
+    fun importBackupJson_deletesTransactionsBeforeCategories() =
         runTest {
-            globalCallOrder = 0
-
-            repository.restoreFromBackup(TestData.sampleBackupDocument)
+            val json = serializer.encode(TestData.sampleBackupDocument)
+            repository.importBackupJson(json)
 
             // Transactions deleted first (FK constraint), then categories
             assertTrue(
@@ -140,23 +152,25 @@ class BackupRepositoryImplTest {
         }
 
     @Test(expected = BackupValidationException::class)
-    fun restoreFromBackup_invalidDocument_throwsValidationException() =
+    fun importBackupJson_invalidSchemaVersion_throwsValidationException() =
         runTest {
             val invalidDocument = TestData.sampleBackupDocument.copy(schemaVersion = 99)
+            val json = serializer.encode(invalidDocument)
 
-            repository.restoreFromBackup(invalidDocument)
+            repository.importBackupJson(json)
         }
 
     @Test
-    fun restoreFromBackup_invalidDocument_doesNotModifyData() =
+    fun importBackupJson_invalidDocument_doesNotModifyData() =
         runTest {
             fakeCategoryDao.allCategories.add(TestData.expenseCategoryEntity)
             fakeTransactionDao.allTransactions.add(TestData.sampleExpenseEntity)
 
+            val invalidDocument = TestData.sampleBackupDocument.copy(schemaVersion = 99)
+            val json = serializer.encode(invalidDocument)
+
             try {
-                repository.restoreFromBackup(
-                    TestData.sampleBackupDocument.copy(schemaVersion = 99),
-                )
+                repository.importBackupJson(json)
             } catch (_: BackupValidationException) {
                 // Expected
             }
@@ -168,7 +182,7 @@ class BackupRepositoryImplTest {
         }
 
     @Test
-    fun restoreFromBackup_emptyLists_clearsAllData() =
+    fun importBackupJson_emptyLists_clearsAllData() =
         runTest {
             fakeCategoryDao.allCategories.add(TestData.expenseCategoryEntity)
             fakeTransactionDao.allTransactions.add(TestData.sampleExpenseEntity)
@@ -178,20 +192,39 @@ class BackupRepositoryImplTest {
                     categories = emptyList(),
                     transactions = emptyList(),
                 )
+            val json = serializer.encode(emptyDocument)
 
-            repository.restoreFromBackup(emptyDocument)
+            val result = repository.importBackupJson(json)
 
             assertEquals(0, fakeCategoryDao.allCategories.size)
             assertEquals(0, fakeTransactionDao.allTransactions.size)
+            assertEquals(0, result.categoryCount)
+            assertEquals(0, result.transactionCount)
+        }
+
+    @Test(expected = IllegalArgumentException::class)
+    fun importBackupJson_invalidJsonFormat_throwsIllegalArgument() =
+        runTest {
+            repository.importBackupJson("not valid json")
+        }
+
+    @Test
+    fun importBackupJson_returnsCorrectCounts() =
+        runTest {
+            val json = serializer.encode(TestData.sampleBackupDocument)
+            val result = repository.importBackupJson(json)
+
+            assertEquals(1, result.categoryCount)
+            assertEquals(1, result.transactionCount)
         }
 
     // Fakes
 
-    private class FakeTransactionRunner : TransactionRunner {
+    private inner class FakeTransactionRunner : TransactionRunner {
         override suspend fun <R> runInTransaction(block: suspend () -> R): R = block()
     }
 
-    private class FakeTransactionDao : TransactionDao {
+    private inner class FakeTransactionDao : TransactionDao {
         val allTransactions = mutableListOf<TransactionEntity>()
         var deleteAllOrder = 0
 
@@ -237,7 +270,7 @@ class BackupRepositoryImplTest {
         ): Flow<List<CurrencyCategorySumRow>> = MutableStateFlow(emptyList())
     }
 
-    private class FakeCategoryDao : CategoryDao {
+    private inner class FakeCategoryDao : CategoryDao {
         val allCategories = mutableListOf<CategoryEntity>()
         var deleteAllOrder = 0
 
@@ -255,9 +288,5 @@ class BackupRepositoryImplTest {
             deleteAllOrder = ++globalCallOrder
             allCategories.clear()
         }
-    }
-
-    companion object {
-        private var globalCallOrder = 0
     }
 }

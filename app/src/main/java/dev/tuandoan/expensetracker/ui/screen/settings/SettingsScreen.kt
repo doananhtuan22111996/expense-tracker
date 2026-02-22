@@ -1,6 +1,5 @@
 package dev.tuandoan.expensetracker.ui.screen.settings
 
-import android.text.format.DateFormat
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.clickable
@@ -40,7 +39,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
@@ -53,7 +51,9 @@ import dev.tuandoan.expensetracker.ui.component.SectionHeader
 import dev.tuandoan.expensetracker.ui.component.SectionTitle
 import dev.tuandoan.expensetracker.ui.theme.DesignSystemElevation
 import dev.tuandoan.expensetracker.ui.theme.DesignSystemSpacing
+import java.text.SimpleDateFormat
 import java.util.Date
+import java.util.Locale
 
 @Composable
 fun SettingsScreen(
@@ -61,7 +61,6 @@ fun SettingsScreen(
     viewModel: SettingsViewModel = hiltViewModel(),
 ) {
     val uiState by viewModel.uiState.collectAsState()
-    val context = LocalContext.current
     var showCurrencyDialog by remember { mutableStateOf(false) }
     var showImportConfirmDialog by remember { mutableStateOf(false) }
     val snackbarHostState = remember { SnackbarHostState() }
@@ -70,14 +69,14 @@ fun SettingsScreen(
         rememberLauncherForActivityResult(
             contract = ActivityResultContracts.CreateDocument("application/json"),
         ) { uri ->
-            uri?.let { viewModel.exportBackup(context, it) }
+            uri?.let { viewModel.exportBackup(it) }
         }
 
     val importLauncher =
         rememberLauncherForActivityResult(
             contract = ActivityResultContracts.OpenDocument(),
         ) { uri ->
-            uri?.let { viewModel.importBackup(context, it) }
+            uri?.let { viewModel.importBackup(it) }
         }
 
     LaunchedEffect(uiState.errorMessage) {
@@ -171,7 +170,7 @@ fun SettingsScreen(
                             .fillMaxWidth()
                             .clickable(enabled = !isOperating) {
                                 val timestamp =
-                                    DateFormat.format("yyyyMMdd_HHmmss", Date()).toString()
+                                    SimpleDateFormat("yyyyMMdd_HHmmss", Locale.US).format(Date())
                                 exportLauncher.launch("expense_tracker_backup_$timestamp.json")
                             }.padding(DesignSystemSpacing.large)
                             .semantics {

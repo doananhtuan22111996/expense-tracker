@@ -1,11 +1,11 @@
 package dev.tuandoan.expensetracker.ui.screen.settings
 
-import android.content.Context
+import android.content.ContentResolver
 import android.net.Uri
+import android.provider.OpenableColumns
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
-import dev.tuandoan.expensetracker.data.backup.BackupSerializer
 import dev.tuandoan.expensetracker.data.backup.BackupValidationException
 import dev.tuandoan.expensetracker.domain.model.CurrencyDefinition
 import dev.tuandoan.expensetracker.domain.model.SupportedCurrencies
@@ -24,7 +24,7 @@ class SettingsViewModel
     constructor(
         private val currencyPreferenceRepository: CurrencyPreferenceRepository,
         private val backupRepository: BackupRepository,
-        private val backupSerializer: BackupSerializer,
+        private val contentResolver: ContentResolver,
     ) : ViewModel() {
         private val _uiState = MutableStateFlow(SettingsUiState())
         val uiState: StateFlow<SettingsUiState> = _uiState.asStateFlow()
@@ -51,16 +51,12 @@ class SettingsViewModel
             }
         }
 
-        fun exportBackup(
-            context: Context,
-            uri: Uri,
-        ) {
+        fun exportBackup(uri: Uri) {
             viewModelScope.launch {
                 _uiState.value = _uiState.value.copy(backupOperation = BackupOperation.Exporting)
                 try {
-                    val document = backupRepository.createBackupDocument()
-                    val json = backupSerializer.encode(document)
-                    context.contentResolver.openOutputStream(uri)?.use { outputStream ->
+                    val json = backupRepository.exportBackupJson()
+                    contentResolver.openOutputStream(uri)?.use { outputStream ->
                         outputStream.write(json.toByteArray(Charsets.UTF_8))
                     } ?: throw IllegalStateException("Cannot open output stream")
                     _uiState.value =
@@ -78,30 +74,30 @@ class SettingsViewModel
             }
         }
 
-        fun importBackup(
-            context: Context,
-            uri: Uri,
-        ) {
+        fun importBackup(uri: Uri) {
             viewModelScope.launch {
                 _uiState.value = _uiState.value.copy(backupOperation = BackupOperation.Importing)
                 try {
+                    val fileSize = getFileSize(uri)
+                    if (fileSize > MAX_IMPORT_FILE_SIZE) {
+                        throw IllegalArgumentException(
+                            "File too large (${fileSize / 1024 / 1024} MB). Maximum is ${MAX_IMPORT_FILE_SIZE / 1024 / 1024} MB.",
+                        )
+                    }
+
                     val json =
-                        context.contentResolver.openInputStream(uri)?.use { inputStream ->
+                        contentResolver.openInputStream(uri)?.use { inputStream ->
                             inputStream.bufferedReader(Charsets.UTF_8).readText()
                         } ?: throw IllegalStateException("Cannot open input stream")
 
-                    val document =
-                        backupSerializer.decode(json)
-                            ?: throw IllegalArgumentException("Invalid backup file format")
-
-                    backupRepository.restoreFromBackup(document)
+                    val result = backupRepository.importBackupJson(json)
 
                     _uiState.value =
                         _uiState.value.copy(
                             backupOperation = BackupOperation.Idle,
                             backupMessage =
-                                "Backup restored: ${document.categories.size} categories, " +
-                                    "${document.transactions.size} transactions",
+                                "Backup restored: ${result.categoryCount} categories, " +
+                                    "${result.transactionCount} transactions",
                         )
                 } catch (e: BackupValidationException) {
                     _uiState.value =
@@ -117,6 +113,16 @@ class SettingsViewModel
                         )
                 }
             }
+        }
+
+        private fun getFileSize(uri: Uri): Long {
+            contentResolver.query(uri, null, null, null, null)?.use { cursor ->
+                val sizeIndex = cursor.getColumnIndex(OpenableColumns.SIZE)
+                if (sizeIndex >= 0 && cursor.moveToFirst()) {
+                    return cursor.getLong(sizeIndex)
+                }
+            }
+            return 0L
         }
 
         fun clearError() {
@@ -140,6 +146,10 @@ class SettingsViewModel
                             )
                     }
             }
+        }
+
+        companion object {
+            const val MAX_IMPORT_FILE_SIZE = 50L * 1024L * 1024L // 50 MB
         }
     }
 

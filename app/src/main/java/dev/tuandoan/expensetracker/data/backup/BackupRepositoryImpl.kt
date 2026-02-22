@@ -9,6 +9,7 @@ import dev.tuandoan.expensetracker.data.database.TransactionRunner
 import dev.tuandoan.expensetracker.data.database.dao.CategoryDao
 import dev.tuandoan.expensetracker.data.database.dao.TransactionDao
 import dev.tuandoan.expensetracker.domain.repository.BackupRepository
+import dev.tuandoan.expensetracker.domain.repository.BackupRestoreResult
 import javax.inject.Inject
 
 class BackupRepositoryImpl
@@ -17,22 +18,34 @@ class BackupRepositoryImpl
         private val categoryDao: CategoryDao,
         private val transactionDao: TransactionDao,
         private val backupValidator: BackupValidator,
+        private val backupSerializer: BackupSerializer,
         private val timeProvider: TimeProvider,
         private val transactionRunner: TransactionRunner,
     ) : BackupRepository {
-        override suspend fun createBackupDocument(): BackupDocumentV1 {
-            val categories = categoryDao.getAll().map { it.toBackupDto() }
-            val transactions = transactionDao.getAll().map { it.toBackupDto() }
+        override suspend fun exportBackupJson(): String {
+            val (categories, transactions) =
+                transactionRunner.runInTransaction {
+                    val cats = categoryDao.getAll().map { it.toBackupDto() }
+                    val txns = transactionDao.getAll().map { it.toBackupDto() }
+                    cats to txns
+                }
 
-            return BackupDocumentV1(
-                appVersionName = AppInfo.getVersionName(),
-                createdAtEpochMs = timeProvider.currentTimeMillis(),
-                categories = categories,
-                transactions = transactions,
-            )
+            val document =
+                BackupDocumentV1(
+                    appVersionName = AppInfo.getVersionName(),
+                    createdAtEpochMs = timeProvider.currentTimeMillis(),
+                    categories = categories,
+                    transactions = transactions,
+                )
+
+            return backupSerializer.encode(document)
         }
 
-        override suspend fun restoreFromBackup(document: BackupDocumentV1) {
+        override suspend fun importBackupJson(json: String): BackupRestoreResult {
+            val document =
+                backupSerializer.decode(json)
+                    ?: throw IllegalArgumentException("Invalid backup file format")
+
             val validationResult = backupValidator.validate(document)
             if (validationResult is BackupValidationResult.Invalid) {
                 throw BackupValidationException(validationResult.errors)
@@ -47,6 +60,11 @@ class BackupRepositoryImpl
                 categoryDao.insertAll(categoryEntities)
                 transactionDao.insertAll(transactionEntities)
             }
+
+            return BackupRestoreResult(
+                categoryCount = document.categories.size,
+                transactionCount = document.transactions.size,
+            )
         }
     }
 

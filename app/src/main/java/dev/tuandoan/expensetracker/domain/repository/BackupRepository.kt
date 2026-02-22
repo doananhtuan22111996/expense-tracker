@@ -1,9 +1,12 @@
 package dev.tuandoan.expensetracker.domain.repository
 
-import dev.tuandoan.expensetracker.data.backup.model.BackupDocumentV1
-
 interface BackupRepository {
-    suspend fun createBackupDocument(): BackupDocumentV1
+    suspend fun exportBackupJson(): String
 
-    suspend fun restoreFromBackup(document: BackupDocumentV1)
+    suspend fun importBackupJson(json: String): BackupRestoreResult
 }
+
+data class BackupRestoreResult(
+    val categoryCount: Int,
+    val transactionCount: Int,
+)
