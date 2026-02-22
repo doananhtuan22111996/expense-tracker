@@ -4,7 +4,8 @@ import androidx.room.Dao
 import androidx.room.Insert
 import androidx.room.Query
 import androidx.room.Update
-import dev.tuandoan.expensetracker.data.database.entity.CategorySumRow
+import dev.tuandoan.expensetracker.data.database.entity.CurrencyCategorySumRow
+import dev.tuandoan.expensetracker.data.database.entity.CurrencySumRow
 import dev.tuandoan.expensetracker.data.database.entity.TransactionEntity
 import kotlinx.coroutines.flow.Flow
 
@@ -38,41 +39,45 @@ interface TransactionDao {
 
     @Query(
         """
-        SELECT SUM(amount) FROM transactions
+        SELECT currency_code AS currencyCode, SUM(amount) AS total
+        FROM transactions
         WHERE timestamp >= :from AND timestamp < :to
         AND type = ${TransactionEntity.TYPE_EXPENSE}
+        GROUP BY currency_code
     """,
     )
-    fun sumExpense(
+    fun sumExpenseByCurrency(
         from: Long,
         to: Long,
-    ): Flow<Long?>
+    ): Flow<List<CurrencySumRow>>
 
     @Query(
         """
-        SELECT SUM(amount) FROM transactions
+        SELECT currency_code AS currencyCode, SUM(amount) AS total
+        FROM transactions
         WHERE timestamp >= :from AND timestamp < :to
         AND type = ${TransactionEntity.TYPE_INCOME}
+        GROUP BY currency_code
     """,
     )
-    fun sumIncome(
+    fun sumIncomeByCurrency(
         from: Long,
         to: Long,
-    ): Flow<Long?>
+    ): Flow<List<CurrencySumRow>>
 
     @Query(
         """
-        SELECT category_id as categoryId, SUM(amount) as total
+        SELECT currency_code AS currencyCode, category_id AS categoryId, SUM(amount) AS total
         FROM transactions
         WHERE timestamp >= :from AND timestamp < :to
         AND type = :type
-        GROUP BY category_id
-        ORDER BY total DESC
+        GROUP BY currency_code, category_id
+        ORDER BY currency_code ASC, total DESC
     """,
     )
-    fun sumByCategory(
+    fun sumByCurrencyAndCategory(
         from: Long,
         to: Long,
         type: Int,
-    ): Flow<List<CategorySumRow>>
+    ): Flow<List<CurrencyCategorySumRow>>
 }

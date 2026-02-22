@@ -1,10 +1,10 @@
 package dev.tuandoan.expensetracker.testutil
 
 import dev.tuandoan.expensetracker.data.database.entity.CategoryEntity
-import dev.tuandoan.expensetracker.data.database.entity.CategorySumRow
 import dev.tuandoan.expensetracker.data.database.entity.TransactionEntity
 import dev.tuandoan.expensetracker.domain.model.Category
 import dev.tuandoan.expensetracker.domain.model.CategoryTotal
+import dev.tuandoan.expensetracker.domain.model.CurrencyMonthlySummary
 import dev.tuandoan.expensetracker.domain.model.MonthlySummary
 import dev.tuandoan.expensetracker.domain.model.Transaction
 import dev.tuandoan.expensetracker.domain.model.TransactionType
@@ -124,21 +124,21 @@ object TestData {
             updatedAt = FIXED_TIME,
         )
 
-    val sampleCategorySumRows =
-        listOf(
-            CategorySumRow(categoryId = 1L, total = 150000L),
-            CategorySumRow(categoryId = 3L, total = 50000L),
-        )
-
     val sampleMonthlySummary =
         MonthlySummary(
-            totalExpense = 200000L,
-            totalIncome = 10000000L,
-            balance = 9800000L,
-            topExpenseCategories =
+            currencySummaries =
                 listOf(
-                    CategoryTotal(category = expenseCategory, total = 150000L),
-                    CategoryTotal(category = transportCategory, total = 50000L),
+                    CurrencyMonthlySummary(
+                        currencyCode = "VND",
+                        totalExpense = 200000L,
+                        totalIncome = 10000000L,
+                        balance = 9800000L,
+                        topExpenseCategories =
+                            listOf(
+                                CategoryTotal(category = expenseCategory, total = 150000L),
+                                CategoryTotal(category = transportCategory, total = 50000L),
+                            ),
+                    ),
                 ),
         )
 }

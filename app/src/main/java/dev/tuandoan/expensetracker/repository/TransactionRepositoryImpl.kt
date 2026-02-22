@@ -3,10 +3,16 @@ package dev.tuandoan.expensetracker.repository
 import dev.tuandoan.expensetracker.core.util.TimeProvider
 import dev.tuandoan.expensetracker.data.database.dao.CategoryDao
 import dev.tuandoan.expensetracker.data.database.dao.TransactionDao
+import dev.tuandoan.expensetracker.data.database.entity.CategoryEntity
+import dev.tuandoan.expensetracker.data.database.entity.CurrencyCategorySumRow
+import dev.tuandoan.expensetracker.data.database.entity.CurrencySumRow
 import dev.tuandoan.expensetracker.data.database.entity.TransactionEntity
 import dev.tuandoan.expensetracker.di.IoDispatcher
+import dev.tuandoan.expensetracker.domain.model.Category
 import dev.tuandoan.expensetracker.domain.model.CategoryTotal
+import dev.tuandoan.expensetracker.domain.model.CurrencyMonthlySummary
 import dev.tuandoan.expensetracker.domain.model.MonthlySummary
+import dev.tuandoan.expensetracker.domain.model.SupportedCurrencies
 import dev.tuandoan.expensetracker.domain.model.Transaction
 import dev.tuandoan.expensetracker.domain.model.TransactionType
 import dev.tuandoan.expensetracker.domain.repository.TransactionRepository
@@ -96,35 +102,138 @@ class TransactionRepositoryImpl
             to: Long,
         ): Flow<MonthlySummary> =
             combine(
-                transactionDao.sumExpense(from, to),
-                transactionDao.sumIncome(from, to),
-                transactionDao.sumByCategory(from, to, TransactionType.EXPENSE.toInt()),
-                // Add categories as a Flow to avoid blocking calls
+                transactionDao.sumExpenseByCurrency(from, to),
+                transactionDao.sumIncomeByCurrency(from, to),
+                transactionDao.sumByCurrencyAndCategory(from, to, TransactionType.EXPENSE.toInt()),
                 categoryDao.getCategories(TransactionType.EXPENSE.toInt()),
-            ) { expenseSum, incomeSum, expenseCategories, categories ->
-                val totalExpense = expenseSum ?: 0L
-                val totalIncome = incomeSum ?: 0L
-                val balance = totalIncome - totalExpense
-
-                // Create category lookup map for efficient access
-                val categoryMap = categories.associateBy { it.id }
-
-                // Get category details for top expenses using non-blocking lookup
-                val topExpenseCategories =
-                    expenseCategories.take(5).mapNotNull { categorySum ->
-                        categoryMap[categorySum.categoryId]?.let { categoryEntity ->
-                            CategoryTotal(
-                                category = categoryEntity.toDomain(),
-                                total = categorySum.total,
-                            )
-                        }
-                    }
-
-                MonthlySummary(
-                    totalExpense = totalExpense,
-                    totalIncome = totalIncome,
-                    balance = balance,
-                    topExpenseCategories = topExpenseCategories,
-                )
+            ) { expenseByCurrency, incomeByCurrency, categorySums, categories ->
+                buildMonthlySummary(expenseByCurrency, incomeByCurrency, categorySums, categories)
             }.flowOn(ioDispatcher)
+
+        private fun buildMonthlySummary(
+            expenseByCurrency: List<CurrencySumRow>,
+            incomeByCurrency: List<CurrencySumRow>,
+            categorySums: List<CurrencyCategorySumRow>,
+            categories: List<CategoryEntity>,
+        ): MonthlySummary {
+            val categoryMap = categories.associateBy { it.id }
+
+            // Collect all distinct currency codes from all data sources
+            val allCurrencyCodes =
+                (
+                    expenseByCurrency.map { it.currencyCode } +
+                        incomeByCurrency.map { it.currencyCode } +
+                        categorySums.map { it.currencyCode }
+                ).toSet()
+
+            if (allCurrencyCodes.isEmpty()) {
+                return MonthlySummary(currencySummaries = emptyList())
+            }
+
+            val expenseMap = expenseByCurrency.associateBy { it.currencyCode }
+            val incomeMap = incomeByCurrency.associateBy { it.currencyCode }
+            val categorySumsByCurrency = categorySums.groupBy { it.currencyCode }
+
+            // Build currency ordering: SupportedCurrencies registry order first, then unknown alphabetically
+            val registryOrder = SupportedCurrencies.all().map { it.code }
+            val registryOrderMap = registryOrder.withIndex().associate { (index, code) -> code to index }
+
+            val sortedCurrencyCodes =
+                allCurrencyCodes.sortedWith(
+                    compareBy<String> { code ->
+                        registryOrderMap[code] ?: (registryOrder.size + 1)
+                    }.thenBy { it },
+                )
+
+            val currencySummaries =
+                sortedCurrencyCodes.map { currencyCode ->
+                    val totalExpense = expenseMap[currencyCode]?.total ?: 0L
+                    val totalIncome = incomeMap[currencyCode]?.total ?: 0L
+                    val balance = totalIncome - totalExpense
+
+                    val currencyCategorySums = categorySumsByCurrency[currencyCode] ?: emptyList()
+                    val topExpenseCategories = buildTopCategories(currencyCategorySums, categoryMap)
+
+                    CurrencyMonthlySummary(
+                        currencyCode = currencyCode,
+                        totalExpense = totalExpense,
+                        totalIncome = totalIncome,
+                        balance = balance,
+                        topExpenseCategories = topExpenseCategories,
+                    )
+                }
+
+            return MonthlySummary(currencySummaries = currencySummaries)
+        }
+
+        private fun buildTopCategories(
+            categorySums: List<CurrencyCategorySumRow>,
+            categoryMap: Map<Long, CategoryEntity>,
+        ): List<CategoryTotal> {
+            if (categorySums.isEmpty()) return emptyList()
+
+            // Sort deterministically: amount DESC, then category id ASC
+            val sorted =
+                categorySums.sortedWith(
+                    compareByDescending<CurrencyCategorySumRow> { it.total }
+                        .thenBy { it.categoryId },
+                )
+
+            if (sorted.size <= TOP_CATEGORIES_LIMIT) {
+                return sorted.map { row ->
+                    CategoryTotal(
+                        category = categoryMap[row.categoryId]?.toDomain() ?: unknownCategory(row.categoryId),
+                        total = row.total,
+                    )
+                }
+            }
+
+            // Take top 5, aggregate the rest into "Other"
+            val topRows = sorted.take(TOP_CATEGORIES_LIMIT)
+            val otherRows = sorted.drop(TOP_CATEGORIES_LIMIT)
+
+            val topCategories =
+                topRows.map { row ->
+                    CategoryTotal(
+                        category = categoryMap[row.categoryId]?.toDomain() ?: unknownCategory(row.categoryId),
+                        total = row.total,
+                    )
+                }
+
+            val otherTotal = otherRows.sumOf { it.total }
+            if (otherTotal > 0L) {
+                return topCategories +
+                    CategoryTotal(
+                        category = OTHER_CATEGORY,
+                        total = otherTotal,
+                    )
+            }
+
+            return topCategories
+        }
+
+        companion object {
+            private const val TOP_CATEGORIES_LIMIT = 5
+            const val OTHER_CATEGORY_ID = -1L
+
+            internal val OTHER_CATEGORY =
+                Category(
+                    id = OTHER_CATEGORY_ID,
+                    name = "Other",
+                    type = TransactionType.EXPENSE,
+                    iconKey = "more_horiz",
+                    colorKey = "gray",
+                    isDefault = false,
+                )
+
+            private fun unknownCategory(id: Long): Category =
+                Category(
+                    id = id,
+                    name = "Unknown",
+                    type = TransactionType.EXPENSE,
+                    iconKey = "help_outline",
+                    colorKey = "gray",
+                    isDefault = false,
+                )
+        }
     }
