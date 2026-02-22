@@ -188,7 +188,7 @@ top expense categories.
 - Each currency used in the current month gets its own section with Income/Expenses/Balance cards
 - Top 5 expense categories are shown per currency; remaining categories are aggregated into an "Other" row
 - Currency sections are ordered by the SupportedCurrencies registry order (VND, USD, EUR, JPY, KRW, SGD), with unknown currencies sorted alphabetically at the end
-- When more than one currency has transactions, a disclaimer reads: "Totals are shown per currency. Amounts in different currencies are not combined."
+- A policy-safe disclaimer reads: "Totals are shown per currency. No currency conversion is applied." -- visible whenever the month has at least one transaction, clarifying that totals are per currency with no conversion
 - If no transactions exist for the month, the empty state message is shown
 - Balance card correctly displays +/- sign with income/expense coloring for positive/negative balances
 
@@ -555,7 +555,7 @@ For support or questions, please contact: support@expensetracker.com
 
 ## Version History
 
-- **v1.4.0** - Phase 2.3: Monthly Summary per currency (per-currency sections on Summary screen, top-5 + Other aggregation, registry-ordered currency sorting, disclaimer text for multi-currency months)
+- **v1.4.0** - Phase 2.3: Monthly Summary per currency (per-currency sections on Summary screen, top-5 + Other aggregation, registry-ordered currency sorting, policy-safe disclaimer for all non-empty months)
 - **v1.3.0** - Phase 2.2: App-level default currency setting, per-transaction currency picker, home list currency visibility (Settings → Currency selector, DataStore persistence, inline currency override on Add/Edit screen, per-transaction symbol display on Home list)
 - **v1.2.0** - Phase 2.1: Multi-currency data foundation (`currency_code` field, Room migration v1->v2, static currency definitions)
 - **v1.0.0** - Initial MVP release with core transaction management features

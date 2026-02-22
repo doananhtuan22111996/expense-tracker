@@ -1,3 +1,4 @@
 <resources>
     <string name="app_name">Expense Tracker</string>
+    <string name="summary_disclaimer">Totals are shown per currency. No currency conversion is applied.</string>
 </resources>

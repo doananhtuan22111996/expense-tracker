@@ -20,10 +20,12 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
+import dev.tuandoan.expensetracker.R
 import dev.tuandoan.expensetracker.domain.model.CategoryTotal
 import dev.tuandoan.expensetracker.domain.model.CurrencyMonthlySummary
 import dev.tuandoan.expensetracker.domain.model.MonthlySummary
@@ -89,8 +91,6 @@ private fun SummaryContent(
     summary: MonthlySummary,
     modifier: Modifier = Modifier,
 ) {
-    val showDisclaimer = summary.currencySummaries.size > 1
-
     LazyColumn(
         modifier = modifier.padding(DesignSystemSpacing.screenPadding),
         verticalArrangement = Arrangement.spacedBy(DesignSystemSpacing.large),
@@ -99,10 +99,8 @@ private fun SummaryContent(
             SectionHeader(title = "This Month")
         }
 
-        if (showDisclaimer) {
-            item(key = "disclaimer") {
-                DisclaimerText()
-            }
+        item(key = "disclaimer") {
+            DisclaimerText()
         }
 
         itemsIndexed(
@@ -171,7 +169,7 @@ private fun CurrencySectionHeader(
 @Composable
 private fun DisclaimerText(modifier: Modifier = Modifier) {
     Text(
-        text = "Totals are shown per currency. Amounts in different currencies are not combined.",
+        text = stringResource(R.string.summary_disclaimer),
         style = MaterialTheme.typography.bodySmall,
         color = MaterialTheme.colorScheme.onSurfaceVariant,
         modifier = modifier,
