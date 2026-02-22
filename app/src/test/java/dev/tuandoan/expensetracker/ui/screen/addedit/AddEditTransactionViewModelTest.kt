@@ -1,6 +1,7 @@
 package dev.tuandoan.expensetracker.ui.screen.addedit
 
 import androidx.lifecycle.SavedStateHandle
+import dev.tuandoan.expensetracker.core.formatter.AmountFormatter
 import dev.tuandoan.expensetracker.core.formatter.DefaultCurrencyFormatter
 import dev.tuandoan.expensetracker.domain.model.Category
 import dev.tuandoan.expensetracker.domain.model.MonthlySummary
@@ -421,6 +422,113 @@ class AddEditTransactionViewModelTest {
             assertTrue(successCalled)
             assertTrue(fakeTransactionRepo.addCalled)
             assertEquals("EUR", fakeTransactionRepo.lastAddedCurrencyCode)
+        }
+
+    // Currency change tests
+
+    @Test
+    fun onCurrencyChanged_updatesCurrencyCode() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            fakeCategoryRepo.categoriesToEmit = listOf(TestData.expenseCategory)
+            val viewModel = createViewModel()
+            advanceUntilIdle()
+
+            viewModel.onCurrencyChanged("USD")
+
+            assertEquals("USD", viewModel.uiState.value.currencyCode)
+        }
+
+    @Test
+    fun onCurrencyChanged_emptyAmount_preservesEmptyText() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            fakeCategoryRepo.categoriesToEmit = listOf(TestData.expenseCategory)
+            val viewModel = createViewModel()
+            advanceUntilIdle()
+
+            // Ensure amount is empty
+            viewModel.onAmountChanged("")
+            viewModel.onCurrencyChanged("USD")
+
+            assertEquals("", viewModel.uiState.value.amountText)
+        }
+
+    @Test
+    fun onCurrencyChanged_sameCurrency_noChange() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            fakeCategoryRepo.categoriesToEmit = listOf(TestData.expenseCategory)
+            val viewModel = createViewModel()
+            advanceUntilIdle()
+
+            val defaultCode = viewModel.uiState.value.currencyCode
+            val originalState = viewModel.uiState.value
+
+            viewModel.onCurrencyChanged(defaultCode)
+
+            // State should be exactly the same object (no copy triggered)
+            assertEquals(originalState, viewModel.uiState.value)
+        }
+
+    @Test
+    fun saveTransaction_afterCurrencyOverride_passesNewCurrency() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            fakeCategoryRepo.categoriesToEmit = listOf(TestData.expenseCategory)
+            val viewModel = createViewModel()
+            advanceUntilIdle()
+
+            viewModel.onAmountChanged("50000")
+            viewModel.onCategorySelected(TestData.expenseCategory)
+            viewModel.onCurrencyChanged("JPY")
+
+            var successCalled = false
+            viewModel.saveTransaction { successCalled = true }
+            advanceUntilIdle()
+
+            assertTrue(successCalled)
+            assertTrue(fakeTransactionRepo.addCalled)
+            assertEquals("JPY", fakeTransactionRepo.lastAddedCurrencyCode)
+        }
+
+    @Test
+    fun onCurrencyChanged_unsupportedCode_noStateChange() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            fakeCategoryRepo.categoriesToEmit = listOf(TestData.expenseCategory)
+            val viewModel = createViewModel()
+            advanceUntilIdle()
+
+            val originalState = viewModel.uiState.value
+            viewModel.onCurrencyChanged("XYZ")
+
+            assertEquals(originalState, viewModel.uiState.value)
+        }
+
+    @Test
+    fun onCurrencyChanged_withAmount_reformatsText() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            fakeCategoryRepo.categoriesToEmit = listOf(TestData.expenseCategory)
+            val viewModel = createViewModel()
+            advanceUntilIdle()
+
+            viewModel.onAmountChanged("50000")
+            viewModel.onCurrencyChanged("USD")
+
+            val expected = AmountFormatter.formatAmount(50000L, "USD")
+            assertEquals(expected, viewModel.uiState.value.amountText)
+        }
+
+    @Test
+    fun onCurrencyChanged_editMode_triggersHasUnsavedChanges() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            fakeTransactionRepo.transactionById = TestData.sampleExpenseTransaction
+            fakeCategoryRepo.categoriesToEmit = listOf(TestData.expenseCategory)
+            val viewModel = createViewModel(transactionId = 1L)
+            advanceUntilIdle()
+
+            // Confirm no unsaved changes initially
+            assertFalse(viewModel.uiState.value.hasUnsavedChanges)
+
+            viewModel.onCurrencyChanged("USD")
+
+            assertTrue(viewModel.uiState.value.hasUnsavedChanges)
         }
 
     // Fake implementations

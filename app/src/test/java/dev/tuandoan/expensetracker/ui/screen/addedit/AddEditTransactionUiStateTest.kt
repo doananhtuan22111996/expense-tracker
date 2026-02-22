@@ -249,4 +249,38 @@ class AddEditTransactionUiStateTest {
             )
         assertTrue(state.isSaveEnabled)
     }
+
+    // Currency-related hasUnsavedChanges tests
+
+    @Test
+    fun hasUnsavedChanges_differentCurrencyCode_returnsTrue() {
+        val original = TestData.sampleExpenseTransaction
+        val state =
+            AddEditTransactionUiState(
+                originalTransaction = original,
+                type = original.type,
+                amountText = "50,000",
+                selectedCategory = original.category,
+                timestamp = original.timestamp,
+                note = original.note ?: "",
+                currencyCode = "USD",
+            )
+        assertTrue(state.hasUnsavedChanges)
+    }
+
+    @Test
+    fun hasUnsavedChanges_sameCurrencyCode_returnsFalse() {
+        val original = TestData.sampleExpenseTransaction
+        val state =
+            AddEditTransactionUiState(
+                originalTransaction = original,
+                type = original.type,
+                amountText = "50,000",
+                selectedCategory = original.category,
+                timestamp = original.timestamp,
+                note = original.note ?: "",
+                currencyCode = original.currencyCode,
+            )
+        assertFalse(state.hasUnsavedChanges)
+    }
 }
