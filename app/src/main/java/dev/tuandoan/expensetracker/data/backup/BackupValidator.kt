@@ -5,6 +5,7 @@ import dev.tuandoan.expensetracker.data.database.entity.CategoryEntity
 import dev.tuandoan.expensetracker.data.database.entity.TransactionEntity
 import dev.tuandoan.expensetracker.domain.model.SupportedCurrencies
 import javax.inject.Inject
+import javax.inject.Singleton
 
 sealed class BackupValidationResult {
     data object Valid : BackupValidationResult()
@@ -57,6 +58,7 @@ sealed class BackupValidationError {
     ) : BackupValidationError()
 }
 
+@Singleton
 class BackupValidator
     @Inject
     constructor() {

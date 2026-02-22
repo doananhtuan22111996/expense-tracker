@@ -4,7 +4,9 @@ import dev.tuandoan.expensetracker.data.backup.model.BackupDocumentV1
 import kotlinx.serialization.SerializationException
 import kotlinx.serialization.json.Json
 import javax.inject.Inject
+import javax.inject.Singleton
 
+@Singleton
 class BackupSerializer
     @Inject
     constructor() {
