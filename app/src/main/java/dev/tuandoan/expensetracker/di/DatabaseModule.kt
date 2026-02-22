@@ -1,5 +1,6 @@
 package dev.tuandoan.expensetracker.di
 
+import android.content.ContentResolver
 import android.content.Context
 import androidx.room.Room
 import dagger.Module
@@ -34,4 +35,9 @@ object DatabaseModule {
 
     @Provides
     fun provideCategoryDao(database: AppDatabase): CategoryDao = database.categoryDao()
+
+    @Provides
+    fun provideContentResolver(
+        @ApplicationContext context: Context,
+    ): ContentResolver = context.contentResolver
 }

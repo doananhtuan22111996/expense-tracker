@@ -585,6 +585,7 @@ class TransactionRepositoryImplTest {
         var lastInserted: TransactionEntity? = null
         var lastUpdated: TransactionEntity? = null
         var lastDeletedId: Long? = null
+        var allTransactions = mutableListOf<TransactionEntity>()
 
         override fun getTransactions(
             from: Long,
@@ -606,6 +607,16 @@ class TransactionRepositoryImplTest {
         }
 
         override suspend fun getById(id: Long): TransactionEntity? = transactionsById[id]
+
+        override suspend fun getAll(): List<TransactionEntity> = allTransactions
+
+        override suspend fun insertAll(list: List<TransactionEntity>) {
+            allTransactions.addAll(list)
+        }
+
+        override suspend fun deleteAll() {
+            allTransactions.clear()
+        }
 
         override fun sumExpenseByCurrency(
             from: Long,
@@ -638,8 +649,14 @@ class TransactionRepositoryImplTest {
 
         override suspend fun getById(id: Long): CategoryEntity? = categoriesById[id]
 
+        override suspend fun getAll(): List<CategoryEntity> = categoriesById.values.toList()
+
         override suspend fun insertAll(list: List<CategoryEntity>) {
             list.forEach { categoriesById[it.id] = it }
+        }
+
+        override suspend fun deleteAll() {
+            categoriesById.clear()
         }
     }
 }

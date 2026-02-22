@@ -90,8 +90,14 @@ class CategoryRepositoryImplTest {
 
         override suspend fun getById(id: Long): CategoryEntity? = categoriesById[id]
 
+        override suspend fun getAll(): List<CategoryEntity> = categoriesById.values.toList()
+
         override suspend fun insertAll(list: List<CategoryEntity>) {
             list.forEach { categoriesById[it.id] = it }
+        }
+
+        override suspend fun deleteAll() {
+            categoriesById.clear()
         }
     }
 }
