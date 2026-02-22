@@ -9,9 +9,11 @@ import dev.tuandoan.expensetracker.core.formatter.CurrencyFormatter
 import dev.tuandoan.expensetracker.core.util.ErrorUtils
 import dev.tuandoan.expensetracker.core.util.TimeProvider
 import dev.tuandoan.expensetracker.domain.model.Category
+import dev.tuandoan.expensetracker.domain.model.SupportedCurrencies
 import dev.tuandoan.expensetracker.domain.model.Transaction
 import dev.tuandoan.expensetracker.domain.model.TransactionType
 import dev.tuandoan.expensetracker.domain.repository.CategoryRepository
+import dev.tuandoan.expensetracker.domain.repository.CurrencyPreferenceRepository
 import dev.tuandoan.expensetracker.domain.repository.TransactionRepository
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -29,6 +31,7 @@ class AddEditTransactionViewModel
         private val categoryRepository: CategoryRepository,
         private val timeProvider: TimeProvider,
         private val currencyFormatter: CurrencyFormatter,
+        private val currencyPreferenceRepository: CurrencyPreferenceRepository,
         savedStateHandle: SavedStateHandle,
     ) : ViewModel() {
         private val transactionId: Long = savedStateHandle.get<Long>("transactionId") ?: 0L
@@ -118,6 +121,7 @@ class AddEditTransactionViewModel
                             state.originalTransaction!!.copy(
                                 type = state.type,
                                 amount = amount,
+                                currencyCode = state.currencyCode,
                                 category = category,
                                 note = state.note.ifBlank { null },
                                 timestamp = state.timestamp,
@@ -132,6 +136,7 @@ class AddEditTransactionViewModel
                             categoryId = category.id,
                             note = state.note.ifBlank { null },
                             timestamp = state.timestamp,
+                            currencyCode = state.currencyCode,
                         )
                     }
                     onSuccess()
@@ -166,6 +171,7 @@ class AddEditTransactionViewModel
                                     selectedCategory = transaction.category,
                                     timestamp = transaction.timestamp,
                                     note = transaction.note ?: "",
+                                    currencyCode = transaction.currencyCode,
                                 )
                             loadCategories(transaction.type)
                         } else {
@@ -178,10 +184,12 @@ class AddEditTransactionViewModel
                         }
                     } else {
                         // New transaction - set defaults
+                        val defaultCurrency = currencyPreferenceRepository.getDefaultCurrency()
                         _uiState.value =
                             _uiState.value.copy(
                                 type = TransactionType.EXPENSE,
                                 timestamp = timeProvider.currentTimeMillis(),
+                                currencyCode = defaultCurrency,
                             )
                         loadCategories(TransactionType.EXPENSE)
                     }
@@ -238,6 +246,7 @@ data class AddEditTransactionUiState(
     val selectedCategory: Category? = null,
     val timestamp: Long = System.currentTimeMillis(),
     val note: String = "",
+    val currencyCode: String = SupportedCurrencies.default().code,
     val isLoading: Boolean = false,
     val errorMessage: String? = null,
     val showDiscardDialog: Boolean = false,
@@ -260,7 +269,8 @@ data class AddEditTransactionUiState(
                 currentAmount != original.amount ||
                 selectedCategory?.id != original.category.id ||
                 timestamp != original.timestamp ||
-                currentNote != original.note
+                currentNote != original.note ||
+                currencyCode != original.currencyCode
         }
 
     val isSaveEnabled: Boolean

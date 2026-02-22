@@ -111,6 +111,48 @@ on `java.util.Locale`, `java.text.NumberFormat`, or any Android framework API.
 - Stateless and thread-safe: no mutable shared state in `DefaultCurrencyFormatter`
 - VND remains the default currency throughout the app
 
+
+## Phase 2.2 - Default Currency Setting (v1.3)
+
+### App-Level Default Currency Preference
+
+Added a persistent, app-level default currency setting accessible from Settings. When the user selects
+a default currency, all **new** transactions automatically use that currency. Existing transactions are
+never modified.
+
+**Behavior:**
+- Navigate to Settings and tap "Default Currency" to open a currency selection dialog
+- The selected currency is persisted via Jetpack DataStore (`currency_preferences`)
+- When creating a new transaction, the Add/Edit screen reads the current default currency preference
+- When editing an existing transaction, the screen uses that transaction's stored `currency_code` (not the preference)
+- If no preference has been set, the app defaults to VND (Vietnamese Dong)
+
+**Important: No automatic conversion.** Changing the default currency does not convert amounts on existing
+transactions. Each transaction retains the currency it was created with. This is a display/entry default only.
+
+**Offline-only:** The preference is stored locally in DataStore. There are no network calls, no cloud sync,
+and no external dependencies. The feature works entirely offline, consistent with the app's privacy-first design.
+
+**New Files:**
+
+| File | Layer | Purpose |
+|------|-------|---------|
+| `domain/repository/CurrencyPreferenceRepository.kt` | Domain | Repository interface (`observeDefaultCurrency`, `setDefaultCurrency`, `getDefaultCurrency`) |
+| `data/preferences/CurrencyPreferenceRepositoryImpl.kt` | Data | DataStore-backed implementation with `@Singleton` scope and `@IoDispatcher` |
+| `ui/screen/settings/SettingsViewModel.kt` | UI | `@HiltViewModel` exposing `SettingsUiState` with selected currency and available currencies |
+| `ui/screen/settings/SettingsScreen.kt` | UI | Settings screen with currency selector dialog, app info, and privacy sections |
+| `testutil/FakeCurrencyPreferenceRepository.kt` | Test | In-memory fake with verification flags (`setDefaultCurrencyCalled`, `lastSetCurrencyCode`) |
+| `data/preferences/FakeCurrencyPreferenceRepositoryTest.kt` | Test | Validates fake repository behavior (default, set, observe, all supported codes) |
+| `ui/screen/settings/SettingsViewModelTest.kt` | Test | ViewModel tests (init load, currency selection, error handling) |
+
+**Modified Files:**
+
+| File | Change |
+|------|--------|
+| `di/RepositoryModule.kt` | Added `@Binds` for `CurrencyPreferenceRepository` to `CurrencyPreferenceRepositoryImpl` |
+| `ui/screen/addedit/AddEditTransactionViewModel.kt` | Injects `CurrencyPreferenceRepository`; new transactions use preference, edits use transaction's code |
+| `ui/screen/addedit/AddEditTransactionViewModelTest.kt` | Added 3 currency-related tests (new mode preference, edit mode transaction code, save passes code) |
+
 ## Phase 2 - Feature Enhancements
 
 ### Edit Transaction - UX Polish
@@ -269,6 +311,8 @@ app/src/main/java/dev/tuandoan/expensetracker/
 │   ├── database/                   # Room database
 │   │   ├── dao/                   # Data Access Objects
 │   │   └── entity/                # Database entities
+│   ├── preferences/                # DataStore preferences
+│   │   └── CurrencyPreferenceRepositoryImpl.kt
 │   └── seed/                      # Database seeding
 ├── di/                            # Dependency injection modules
 ├── domain/                        # Domain layer
@@ -387,7 +431,10 @@ This project uses [Spotless](https://github.com/diffplug/spotless) with ktlint f
 - `CurrencyFormatterTest`: Comprehensive multi-currency formatting for all 6 currencies + unknown fallback + edge cases
 - `AmountFormatterTest`: VND-default facade tests, parsing, and backward compatibility
 - `DateTimeUtilTest`: Date range calculations, formatting, and time utilities
-- Critical business logic for currency handling and date operations
+- `FakeCurrencyPreferenceRepositoryTest`: Default currency preference storage, validation, and observation
+- `SettingsViewModelTest`: Settings screen state management, currency selection, and error handling
+- `AddEditTransactionViewModelTest`: Transaction CRUD operations including currency preference integration (3 new currency tests)
+- Critical business logic for currency handling, preferences, and date operations
 
 ## Usage
 
@@ -448,5 +495,6 @@ For support or questions, please contact: support@expensetracker.com
 
 ## Version History
 
+- **v1.3.0** - Phase 2.2: App-level default currency setting (Settings → Currency selector, DataStore persistence, applies to new transactions only)
 - **v1.2.0** - Phase 2.1: Multi-currency data foundation (`currency_code` field, Room migration v1->v2, static currency definitions)
 - **v1.0.0** - Initial MVP release with core transaction management features
