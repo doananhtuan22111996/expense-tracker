@@ -8,10 +8,11 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -19,10 +20,16 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import dev.tuandoan.expensetracker.domain.model.CategoryTotal
+import dev.tuandoan.expensetracker.domain.model.CurrencyMonthlySummary
 import dev.tuandoan.expensetracker.domain.model.MonthlySummary
+import dev.tuandoan.expensetracker.domain.model.SupportedCurrencies
 import dev.tuandoan.expensetracker.domain.model.TransactionType
+import dev.tuandoan.expensetracker.repository.TransactionRepositoryImpl
 import dev.tuandoan.expensetracker.ui.component.AmountText
 import dev.tuandoan.expensetracker.ui.component.EmptyStateMessage
 import dev.tuandoan.expensetracker.ui.component.ErrorStateMessage
@@ -57,7 +64,7 @@ fun SummaryScreen(
                     modifier = Modifier.fillMaxSize(),
                 )
             }
-            uiState.summary == null -> {
+            uiState.summary == null || uiState.summary?.isEmpty != false -> {
                 EmptyStateMessage(
                     title = "No data for this month",
                     subtitle = "Start adding transactions to see your summary",
@@ -82,36 +89,98 @@ private fun SummaryContent(
     summary: MonthlySummary,
     modifier: Modifier = Modifier,
 ) {
+    val showDisclaimer = summary.currencySummaries.size > 1
+
     LazyColumn(
         modifier = modifier.padding(DesignSystemSpacing.screenPadding),
         verticalArrangement = Arrangement.spacedBy(DesignSystemSpacing.large),
     ) {
-        item {
+        item(key = "header") {
             SectionHeader(title = "This Month")
         }
 
-        item {
-            SummaryCards(summary = summary)
+        if (showDisclaimer) {
+            item(key = "disclaimer") {
+                DisclaimerText()
+            }
         }
 
-        if (summary.topExpenseCategories.isNotEmpty()) {
-            item {
-                SectionTitle(
-                    title = "Top Expense Categories",
-                    modifier = Modifier.padding(top = DesignSystemSpacing.small),
-                )
-            }
+        itemsIndexed(
+            items = summary.currencySummaries,
+            key = { _, cs -> "currency_${cs.currencyCode}" },
+        ) { index, currencySummary ->
+            Column(
+                verticalArrangement = Arrangement.spacedBy(DesignSystemSpacing.large),
+            ) {
+                if (index > 0) {
+                    HorizontalDivider(
+                        modifier = Modifier.padding(vertical = DesignSystemSpacing.small),
+                    )
+                }
 
-            items(summary.topExpenseCategories) { categoryTotal ->
-                CategoryTotalItem(categoryTotal = categoryTotal)
+                CurrencySectionHeader(currencyCode = currencySummary.currencyCode)
+
+                SummaryCards(
+                    currencySummary = currencySummary,
+                )
+
+                if (currencySummary.topExpenseCategories.isNotEmpty()) {
+                    SectionTitle(
+                        title = "Top Expense Categories",
+                        modifier = Modifier.padding(top = DesignSystemSpacing.small),
+                    )
+
+                    currencySummary.topExpenseCategories.forEach { categoryTotal ->
+                        CategoryTotalItem(
+                            categoryTotal = categoryTotal,
+                            currencyCode = currencySummary.currencyCode,
+                        )
+                    }
+                }
             }
         }
     }
 }
 
 @Composable
+private fun CurrencySectionHeader(
+    currencyCode: String,
+    modifier: Modifier = Modifier,
+) {
+    val currencyDef = SupportedCurrencies.byCode(currencyCode)
+    val label =
+        if (currencyDef != null) {
+            "${currencyDef.symbol} ${currencyDef.displayName} ($currencyCode)"
+        } else {
+            currencyCode
+        }
+
+    Text(
+        text = label,
+        style = MaterialTheme.typography.titleLarge,
+        fontWeight = FontWeight.SemiBold,
+        color = MaterialTheme.colorScheme.onSurface,
+        modifier =
+            modifier.semantics {
+                heading()
+                contentDescription = "Currency section: $label"
+            },
+    )
+}
+
+@Composable
+private fun DisclaimerText(modifier: Modifier = Modifier) {
+    Text(
+        text = "Totals are shown per currency. Amounts in different currencies are not combined.",
+        style = MaterialTheme.typography.bodySmall,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        modifier = modifier,
+    )
+}
+
+@Composable
 private fun SummaryCards(
-    summary: MonthlySummary,
+    currencySummary: CurrencyMonthlySummary,
     modifier: Modifier = Modifier,
 ) {
     Column(
@@ -121,21 +190,30 @@ private fun SummaryCards(
         // Income Card
         SummaryCard(
             title = "Income",
-            amount = summary.totalIncome,
+            amount = currencySummary.totalIncome,
+            currencyCode = currencySummary.currencyCode,
             transactionType = TransactionType.INCOME,
         )
 
         // Expense Card
         SummaryCard(
             title = "Expenses",
-            amount = summary.totalExpense,
+            amount = currencySummary.totalExpense,
+            currencyCode = currencySummary.currencyCode,
             transactionType = TransactionType.EXPENSE,
         )
 
         // Balance Card
         SummaryCard(
             title = "Balance",
-            amount = summary.balance,
+            amount = currencySummary.balance,
+            currencyCode = currencySummary.currencyCode,
+            transactionType =
+                if (currencySummary.balance >= 0L) {
+                    TransactionType.INCOME
+                } else {
+                    TransactionType.EXPENSE
+                },
             isBalance = true,
         )
     }
@@ -145,6 +223,7 @@ private fun SummaryCards(
 private fun SummaryCard(
     title: String,
     amount: Long,
+    currencyCode: String,
     transactionType: TransactionType? = null,
     isBalance: Boolean = false,
     modifier: Modifier = Modifier,
@@ -166,23 +245,15 @@ private fun SummaryCard(
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
 
-            if (isBalance) {
-                AmountText(
-                    amount = amount,
-                    showSign = true,
-                    fontWeight = FontWeight.Bold,
-                    textStyle = MaterialTheme.typography.headlineMedium,
-                    modifier = Modifier.padding(top = DesignSystemSpacing.small),
-                )
-            } else {
-                AmountText(
-                    amount = amount,
-                    transactionType = transactionType,
-                    fontWeight = FontWeight.Bold,
-                    textStyle = MaterialTheme.typography.headlineMedium,
-                    modifier = Modifier.padding(top = DesignSystemSpacing.small),
-                )
-            }
+            AmountText(
+                amount = if (isBalance && amount < 0L) -amount else amount,
+                showSign = isBalance,
+                transactionType = transactionType,
+                currencyCode = currencyCode,
+                fontWeight = FontWeight.Bold,
+                textStyle = MaterialTheme.typography.headlineMedium,
+                modifier = Modifier.padding(top = DesignSystemSpacing.small),
+            )
         }
     }
 }
@@ -190,8 +261,11 @@ private fun SummaryCard(
 @Composable
 private fun CategoryTotalItem(
     categoryTotal: CategoryTotal,
+    currencyCode: String,
     modifier: Modifier = Modifier,
 ) {
+    val isOtherCategory = categoryTotal.category.id == TransactionRepositoryImpl.OTHER_CATEGORY_ID
+
     Card(
         modifier = modifier.fillMaxWidth(),
         elevation = CardDefaults.cardElevation(defaultElevation = DesignSystemElevation.low),
@@ -208,11 +282,17 @@ private fun CategoryTotalItem(
                 text = categoryTotal.category.name,
                 style = MaterialTheme.typography.bodyLarge,
                 fontWeight = FontWeight.Medium,
-                color = MaterialTheme.colorScheme.onSurface,
+                color =
+                    if (isOtherCategory) {
+                        MaterialTheme.colorScheme.onSurfaceVariant
+                    } else {
+                        MaterialTheme.colorScheme.onSurface
+                    },
             )
             AmountText(
                 amount = categoryTotal.total,
                 transactionType = TransactionType.EXPENSE,
+                currencyCode = currencyCode,
                 fontWeight = FontWeight.Bold,
                 textStyle = MaterialTheme.typography.bodyLarge,
             )

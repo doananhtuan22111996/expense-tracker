@@ -176,6 +176,43 @@ derived from the transaction's own `currency_code`, not the app-level default cu
 | `ui/screen/addedit/AddEditTransactionViewModelTest.kt` | Added 10 currency-related tests (preference, edit mode, save, currency change, reformatting, unsupported code) |
 | `ui/screen/addedit/AddEditTransactionUiStateTest.kt` | Added 2 tests for `hasUnsavedChanges` with currency code changes |
 
+## Phase 2.3 - Monthly Summary Per Currency (v1.4)
+
+### Monthly Summary -- Per Currency
+
+The Summary screen now groups totals by currency instead of showing a single aggregate total.
+Each currency section shows its own Income, Expenses, and Balance cards, along with that currency's
+top expense categories.
+
+**Behavior:**
+- Each currency used in the current month gets its own section with Income/Expenses/Balance cards
+- Top 5 expense categories are shown per currency; remaining categories are aggregated into an "Other" row
+- Currency sections are ordered by the SupportedCurrencies registry order (VND, USD, EUR, JPY, KRW, SGD), with unknown currencies sorted alphabetically at the end
+- When more than one currency has transactions, a disclaimer reads: "Totals are shown per currency. Amounts in different currencies are not combined."
+- If no transactions exist for the month, the empty state message is shown
+- Balance card correctly displays +/- sign with income/expense coloring for positive/negative balances
+
+**Important: No conversion, no combined totals.** Amounts in different currencies are never summed
+together. There are no exchange rates, no cross-currency aggregation, and no "total across all
+currencies" figure. Each currency section is independent.
+
+**New Files:**
+
+| File | Layer | Purpose |
+|------|-------|---------|
+| `data/database/entity/CurrencySumRow.kt` | Data | Room projection for per-currency sum queries |
+| `data/database/entity/CurrencyCategorySumRow.kt` | Data | Room projection for per-currency-and-category sum queries |
+
+**Modified Files:**
+
+| File | Change |
+|------|--------|
+| `data/database/dao/TransactionDao.kt` | Added `sumExpenseByCurrency`, `sumIncomeByCurrency`, `sumByCurrencyAndCategory` queries; removed dead `sumExpense`, `sumIncome`, `sumByCategory` methods |
+| `domain/model/MonthlySummary.kt` | Restructured to `MonthlySummary(currencySummaries: List<CurrencyMonthlySummary>)` with `isEmpty` property |
+| `repository/TransactionRepositoryImpl.kt` | Rewrote `observeMonthlySummary` to use per-currency flows, top-5 + Other aggregation, registry-ordered currency sorting, and orphaned category fallback |
+| `ui/screen/summary/SummaryScreen.kt` | Per-currency sections with `CurrencySectionHeader`, `DisclaimerText`, dividers, balance sign fix, and "Other" muted styling |
+| `ui/screen/summary/SummaryViewModel.kt` | Empty state check updated for new `isEmpty` property; refresh race condition fix with Job cancellation |
+
 ## Phase 2 - Feature Enhancements
 
 ### Edit Transaction - UX Polish
@@ -518,6 +555,7 @@ For support or questions, please contact: support@expensetracker.com
 
 ## Version History
 
+- **v1.4.0** - Phase 2.3: Monthly Summary per currency (per-currency sections on Summary screen, top-5 + Other aggregation, registry-ordered currency sorting, disclaimer text for multi-currency months)
 - **v1.3.0** - Phase 2.2: App-level default currency setting, per-transaction currency picker, home list currency visibility (Settings → Currency selector, DataStore persistence, inline currency override on Add/Edit screen, per-transaction symbol display on Home list)
 - **v1.2.0** - Phase 2.1: Multi-currency data foundation (`currency_code` field, Room migration v1->v2, static currency definitions)
 - **v1.0.0** - Initial MVP release with core transaction management features

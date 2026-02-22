@@ -1,6 +1,7 @@
 package dev.tuandoan.expensetracker.data.database.entity
 
-data class CategorySumRow(
+data class CurrencyCategorySumRow(
+    val currencyCode: String,
     val categoryId: Long,
     val total: Long,
 )

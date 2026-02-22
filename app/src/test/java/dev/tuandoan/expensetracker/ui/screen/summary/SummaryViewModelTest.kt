@@ -1,5 +1,6 @@
 package dev.tuandoan.expensetracker.ui.screen.summary
 
+import dev.tuandoan.expensetracker.domain.model.CurrencyMonthlySummary
 import dev.tuandoan.expensetracker.domain.model.MonthlySummary
 import dev.tuandoan.expensetracker.domain.model.Transaction
 import dev.tuandoan.expensetracker.domain.model.TransactionType
@@ -47,9 +48,14 @@ class SummaryViewModelTest {
 
             val state = viewModel.uiState.value
             assertNotNull(state.summary)
-            assertEquals(200000L, state.summary!!.totalExpense)
-            assertEquals(10000000L, state.summary!!.totalIncome)
-            assertEquals(9800000L, state.summary!!.balance)
+            assertFalse(state.summary!!.isEmpty)
+            assertEquals(1, state.summary!!.currencySummaries.size)
+
+            val vnd = state.summary!!.currencySummaries[0]
+            assertEquals("VND", vnd.currencyCode)
+            assertEquals(200000L, vnd.totalExpense)
+            assertEquals(10000000L, vnd.totalIncome)
+            assertEquals(9800000L, vnd.balance)
             assertFalse(state.isLoading)
             assertFalse(state.isError)
         }
@@ -75,18 +81,29 @@ class SummaryViewModelTest {
             val viewModel = createViewModel()
             advanceUntilIdle()
 
-            // Update data
-            val updatedSummary = TestData.sampleMonthlySummary.copy(totalExpense = 500000L)
+            // Update data with higher expense
+            val updatedSummary =
+                MonthlySummary(
+                    currencySummaries =
+                        listOf(
+                            CurrencyMonthlySummary(
+                                currencyCode = "VND",
+                                totalExpense = 500000L,
+                                totalIncome = 10000000L,
+                                balance = 9500000L,
+                                topExpenseCategories = emptyList(),
+                            ),
+                        ),
+                )
             fakeRepository.summaryToEmit = updatedSummary
 
             viewModel.refresh()
             advanceUntilIdle()
 
-            assertEquals(
-                500000L,
+            val vnd =
                 viewModel.uiState.value.summary!!
-                    .totalExpense,
-            )
+                    .currencySummaries[0]
+            assertEquals(500000L, vnd.totalExpense)
         }
 
     @Test
@@ -103,24 +120,54 @@ class SummaryViewModelTest {
         }
 
     @Test
-    fun init_summaryWithZeroValues() =
+    fun init_emptySummary_showsIsEmpty() =
         runTest(mainDispatcherRule.testDispatcher) {
             fakeRepository.summaryToEmit =
                 MonthlySummary(
-                    totalExpense = 0L,
-                    totalIncome = 0L,
-                    balance = 0L,
-                    topExpenseCategories = emptyList(),
+                    currencySummaries = emptyList(),
                 )
 
             val viewModel = createViewModel()
             advanceUntilIdle()
 
             val summary = viewModel.uiState.value.summary!!
-            assertEquals(0L, summary.totalExpense)
-            assertEquals(0L, summary.totalIncome)
-            assertEquals(0L, summary.balance)
-            assertTrue(summary.topExpenseCategories.isEmpty())
+            assertTrue(summary.isEmpty)
+            assertTrue(summary.currencySummaries.isEmpty())
+        }
+
+    @Test
+    fun init_multiCurrencySummary_loadsCorrectly() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            val multiCurrencySummary =
+                MonthlySummary(
+                    currencySummaries =
+                        listOf(
+                            CurrencyMonthlySummary(
+                                currencyCode = "VND",
+                                totalExpense = 200000L,
+                                totalIncome = 10000000L,
+                                balance = 9800000L,
+                                topExpenseCategories = emptyList(),
+                            ),
+                            CurrencyMonthlySummary(
+                                currencyCode = "USD",
+                                totalExpense = 5000L,
+                                totalIncome = 300000L,
+                                balance = 295000L,
+                                topExpenseCategories = emptyList(),
+                            ),
+                        ),
+                )
+            fakeRepository.summaryToEmit = multiCurrencySummary
+
+            val viewModel = createViewModel()
+            advanceUntilIdle()
+
+            val summary = viewModel.uiState.value.summary!!
+            assertFalse(summary.isEmpty)
+            assertEquals(2, summary.currencySummaries.size)
+            assertEquals("VND", summary.currencySummaries[0].currencyCode)
+            assertEquals("USD", summary.currencySummaries[1].currencyCode)
         }
 
     @Test

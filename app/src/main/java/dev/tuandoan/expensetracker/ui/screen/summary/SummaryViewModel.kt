@@ -7,6 +7,7 @@ import dev.tuandoan.expensetracker.core.util.ErrorUtils
 import dev.tuandoan.expensetracker.core.util.TimeProvider
 import dev.tuandoan.expensetracker.domain.model.MonthlySummary
 import dev.tuandoan.expensetracker.domain.repository.TransactionRepository
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -23,6 +24,7 @@ class SummaryViewModel
     ) : ViewModel() {
         private val _uiState = MutableStateFlow(SummaryUiState())
         val uiState: StateFlow<SummaryUiState> = _uiState.asStateFlow()
+        private var summaryJob: Job? = null
 
         init {
             loadMonthlySummary()
@@ -33,29 +35,31 @@ class SummaryViewModel
         }
 
         private fun loadMonthlySummary() {
-            viewModelScope.launch {
-                _uiState.value = _uiState.value.copy(isLoading = true, isError = false)
+            summaryJob?.cancel()
+            summaryJob =
+                viewModelScope.launch {
+                    _uiState.value = _uiState.value.copy(isLoading = true, isError = false)
 
-                val (startMillis, endMillis) = timeProvider.currentMonthRange()
+                    val (startMillis, endMillis) = timeProvider.currentMonthRange()
 
-                transactionRepository
-                    .observeMonthlySummary(startMillis, endMillis)
-                    .catch { e ->
-                        _uiState.value =
-                            _uiState.value.copy(
-                                isLoading = false,
-                                isError = true,
-                                errorMessage = ErrorUtils.getErrorMessage(e),
-                            )
-                    }.collect { summary ->
-                        _uiState.value =
-                            _uiState.value.copy(
-                                summary = summary,
-                                isLoading = false,
-                                isError = false,
-                            )
-                    }
-            }
+                    transactionRepository
+                        .observeMonthlySummary(startMillis, endMillis)
+                        .catch { e ->
+                            _uiState.value =
+                                _uiState.value.copy(
+                                    isLoading = false,
+                                    isError = true,
+                                    errorMessage = ErrorUtils.getErrorMessage(e),
+                                )
+                        }.collect { summary ->
+                            _uiState.value =
+                                _uiState.value.copy(
+                                    summary = summary,
+                                    isLoading = false,
+                                    isError = false,
+                                )
+                        }
+                }
         }
     }
 
