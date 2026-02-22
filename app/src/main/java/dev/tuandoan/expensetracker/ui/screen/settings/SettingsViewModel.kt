@@ -1,10 +1,15 @@
 package dev.tuandoan.expensetracker.ui.screen.settings
 
+import android.content.Context
+import android.net.Uri
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
+import dev.tuandoan.expensetracker.data.backup.BackupSerializer
+import dev.tuandoan.expensetracker.data.backup.BackupValidationException
 import dev.tuandoan.expensetracker.domain.model.CurrencyDefinition
 import dev.tuandoan.expensetracker.domain.model.SupportedCurrencies
+import dev.tuandoan.expensetracker.domain.repository.BackupRepository
 import dev.tuandoan.expensetracker.domain.repository.CurrencyPreferenceRepository
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -18,6 +23,8 @@ class SettingsViewModel
     @Inject
     constructor(
         private val currencyPreferenceRepository: CurrencyPreferenceRepository,
+        private val backupRepository: BackupRepository,
+        private val backupSerializer: BackupSerializer,
     ) : ViewModel() {
         private val _uiState = MutableStateFlow(SettingsUiState())
         val uiState: StateFlow<SettingsUiState> = _uiState.asStateFlow()
@@ -44,8 +51,80 @@ class SettingsViewModel
             }
         }
 
+        fun exportBackup(
+            context: Context,
+            uri: Uri,
+        ) {
+            viewModelScope.launch {
+                _uiState.value = _uiState.value.copy(backupOperation = BackupOperation.Exporting)
+                try {
+                    val document = backupRepository.createBackupDocument()
+                    val json = backupSerializer.encode(document)
+                    context.contentResolver.openOutputStream(uri)?.use { outputStream ->
+                        outputStream.write(json.toByteArray(Charsets.UTF_8))
+                    } ?: throw IllegalStateException("Cannot open output stream")
+                    _uiState.value =
+                        _uiState.value.copy(
+                            backupOperation = BackupOperation.Idle,
+                            backupMessage = "Backup exported successfully",
+                        )
+                } catch (e: Exception) {
+                    _uiState.value =
+                        _uiState.value.copy(
+                            backupOperation = BackupOperation.Idle,
+                            errorMessage = "Export failed: ${e.message ?: "Unknown error"}",
+                        )
+                }
+            }
+        }
+
+        fun importBackup(
+            context: Context,
+            uri: Uri,
+        ) {
+            viewModelScope.launch {
+                _uiState.value = _uiState.value.copy(backupOperation = BackupOperation.Importing)
+                try {
+                    val json =
+                        context.contentResolver.openInputStream(uri)?.use { inputStream ->
+                            inputStream.bufferedReader(Charsets.UTF_8).readText()
+                        } ?: throw IllegalStateException("Cannot open input stream")
+
+                    val document =
+                        backupSerializer.decode(json)
+                            ?: throw IllegalArgumentException("Invalid backup file format")
+
+                    backupRepository.restoreFromBackup(document)
+
+                    _uiState.value =
+                        _uiState.value.copy(
+                            backupOperation = BackupOperation.Idle,
+                            backupMessage =
+                                "Backup restored: ${document.categories.size} categories, " +
+                                    "${document.transactions.size} transactions",
+                        )
+                } catch (e: BackupValidationException) {
+                    _uiState.value =
+                        _uiState.value.copy(
+                            backupOperation = BackupOperation.Idle,
+                            errorMessage = "Backup validation failed with ${e.errors.size} error(s)",
+                        )
+                } catch (e: Exception) {
+                    _uiState.value =
+                        _uiState.value.copy(
+                            backupOperation = BackupOperation.Idle,
+                            errorMessage = "Import failed: ${e.message ?: "Unknown error"}",
+                        )
+                }
+            }
+        }
+
         fun clearError() {
             _uiState.value = _uiState.value.copy(errorMessage = null)
+        }
+
+        fun clearBackupMessage() {
+            _uiState.value = _uiState.value.copy(backupMessage = null)
         }
 
         private fun observeDefaultCurrency() {
@@ -64,8 +143,16 @@ class SettingsViewModel
         }
     }
 
+enum class BackupOperation {
+    Idle,
+    Exporting,
+    Importing,
+}
+
 data class SettingsUiState(
     val selectedCurrencyCode: String = SupportedCurrencies.default().code,
     val availableCurrencies: List<CurrencyDefinition> = SupportedCurrencies.all(),
     val errorMessage: String? = null,
+    val backupOperation: BackupOperation = BackupOperation.Idle,
+    val backupMessage: String? = null,
 )

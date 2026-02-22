@@ -425,6 +425,61 @@ SectionHeader(title = "This Month")
 - Confirm empty states display properly
 - Test dark/light mode consistency
 
+## Phase 3.2 - Backup Export & Import (v1.5)
+
+### Full Export/Import via Settings
+
+Added user-facing backup export and import functionality to the Settings screen, building on the
+Phase 3.1 schema foundation. Uses Android's Storage Access Framework (SAF) for secure file access
+without requiring storage permissions.
+
+**Export Flow:**
+1. User taps "Export Backup" in Settings > Data Management
+2. SAF file picker opens with a suggested filename (`expense_tracker_backup_YYYYMMDD_HHmmss.json`)
+3. `BackupRepository.createBackupDocument()` reads all categories and transactions from DAOs
+4. `BackupSerializer.encode()` converts to pretty-printed JSON
+5. JSON is written to the selected URI via `ContentResolver`
+6. Success/error feedback shown via Snackbar
+
+**Import Flow:**
+1. User taps "Import Backup" in Settings > Data Management
+2. Confirmation dialog warns that import replaces all existing data
+3. SAF file picker opens (filtered to `application/json`)
+4. JSON is read from the selected URI, decoded via `BackupSerializer.decode()`
+5. `BackupValidator.validate()` checks structural integrity (schema version, types, amounts, FK refs)
+6. `BackupRepository.restoreFromBackup()` atomically replaces all data in a Room transaction
+7. Success message shows restored counts; validation errors show error count
+
+**Key Implementation Details:**
+
+| Component | File | Role |
+|-----------|------|------|
+| `BackupRepository` | `domain/repository/BackupRepository.kt` | Interface: `createBackupDocument()`, `restoreFromBackup()` |
+| `BackupRepositoryImpl` | `data/backup/BackupRepositoryImpl.kt` | Implementation with atomic Room transaction via `TransactionRunner` |
+| `TransactionRunner` | `data/database/TransactionRunner.kt` | Abstraction over `RoomDatabase.withTransaction` for testability |
+| `SettingsViewModel` | `ui/screen/settings/SettingsViewModel.kt` | Orchestrates export/import with `BackupOperation` state |
+| `SettingsScreen` | `ui/screen/settings/SettingsScreen.kt` | Data Management section with SAF launchers, confirmation dialog, Snackbar |
+
+**New DAO Methods:**
+
+| DAO | Method | Purpose |
+|-----|--------|---------|
+| `CategoryDao` | `getAll()` | Read all categories for export |
+| `CategoryDao` | `deleteAll()` | Clear categories during import |
+| `TransactionDao` | `getAll()` | Read all transactions for export |
+| `TransactionDao` | `insertAll(list)` | Batch insert transactions during import |
+| `TransactionDao` | `deleteAll()` | Clear transactions during import |
+
+**Import Atomicity:** Uses `TransactionRunner.runInTransaction` (wraps `RoomDatabase.withTransaction`)
+to ensure the delete-all + insert-all sequence is atomic. On validation failure, data remains untouched.
+
+**Test Coverage:**
+
+| Test Class | Tests | Coverage |
+|------------|-------|----------|
+| `BackupRepositoryImplTest` | 8 | Export mapping, import replace, validation rejection, ordering, empty lists |
+| `SettingsViewModelTest` | 7 | Currency selection, backup state lifecycle, initialization |
+
 ## Project Structure
 
 ```
@@ -436,11 +491,13 @@ app/src/main/java/dev/tuandoan/expensetracker/
 │   ├── backup/                    # Backup/restore data format
 │   │   ├── model/                 # BackupDocumentV1, DTOs
 │   │   ├── mapper/                # Entity <-> DTO mappers
+│   │   ├── BackupRepositoryImpl.kt # Export/import with atomic transactions
 │   │   ├── BackupSerializer.kt    # JSON encode/decode
 │   │   └── BackupValidator.kt     # Structural validation
 │   ├── database/                   # Room database
 │   │   ├── dao/                   # Data Access Objects
-│   │   └── entity/                # Database entities
+│   │   ├── entity/                # Database entities
+│   │   └── TransactionRunner.kt   # Room transaction abstraction
 │   ├── preferences/                # DataStore preferences
 │   │   └── CurrencyPreferenceRepositoryImpl.kt
 │   └── seed/                      # Database seeding
@@ -625,7 +682,7 @@ For support or questions, please contact: support@expensetracker.com
 
 ## Version History
 
-- **v1.5.0** - Phase 3.1: Backup Schema v1 (BackupDocumentV1 DTOs, kotlinx-serialization, BackupValidator with 9 error types, bidirectional entity-DTO mappers, ProGuard rules, 48 unit tests)
+- **v1.5.0** - Phase 3.1 + 3.2: Backup Schema v1 and Export/Import (BackupDocumentV1 DTOs, kotlinx-serialization, BackupValidator, entity-DTO mappers, BackupRepository with atomic import, Settings Data Management UI with SAF export/import, ProGuard rules, 56 unit tests)
 - **v1.4.0** - Phase 2.3: Monthly Summary per currency (per-currency sections on Summary screen, top-5 + Other aggregation, registry-ordered currency sorting, policy-safe disclaimer for all non-empty months)
 - **v1.3.0** - Phase 2.2: App-level default currency setting, per-transaction currency picker, home list currency visibility (Settings → Currency selector, DataStore persistence, inline currency override on Add/Edit screen, per-transaction symbol display on Home list)
 - **v1.2.0** - Phase 2.1: Multi-currency data foundation (`currency_code` field, Room migration v1->v2, static currency definitions)

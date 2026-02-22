@@ -1,6 +1,9 @@
 package dev.tuandoan.expensetracker.ui.screen.settings
 
+import dev.tuandoan.expensetracker.data.backup.BackupSerializer
+import dev.tuandoan.expensetracker.data.backup.model.BackupDocumentV1
 import dev.tuandoan.expensetracker.domain.model.SupportedCurrencies
+import dev.tuandoan.expensetracker.domain.repository.BackupRepository
 import dev.tuandoan.expensetracker.testutil.FakeCurrencyPreferenceRepository
 import dev.tuandoan.expensetracker.testutil.MainDispatcherRule
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -18,13 +21,20 @@ class SettingsViewModelTest {
     val mainDispatcherRule = MainDispatcherRule()
 
     private lateinit var fakeCurrencyPreferenceRepo: FakeCurrencyPreferenceRepository
+    private lateinit var fakeBackupRepository: FakeBackupRepository
 
     @Before
     fun setup() {
         fakeCurrencyPreferenceRepo = FakeCurrencyPreferenceRepository()
+        fakeBackupRepository = FakeBackupRepository()
     }
 
-    private fun createViewModel(): SettingsViewModel = SettingsViewModel(fakeCurrencyPreferenceRepo)
+    private fun createViewModel(): SettingsViewModel =
+        SettingsViewModel(
+            fakeCurrencyPreferenceRepo,
+            fakeBackupRepository,
+            BackupSerializer(),
+        )
 
     @Test
     fun init_loadsDefaultCurrency() =
@@ -81,4 +91,42 @@ class SettingsViewModelTest {
 
             assertEquals("JPY", viewModel.uiState.value.selectedCurrencyCode)
         }
+
+    @Test
+    fun init_backupOperationIsIdle() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            val viewModel = createViewModel()
+            advanceUntilIdle()
+
+            assertEquals(BackupOperation.Idle, viewModel.uiState.value.backupOperation)
+        }
+
+    @Test
+    fun clearBackupMessage_clearsMessage() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            val viewModel = createViewModel()
+            advanceUntilIdle()
+
+            viewModel.clearBackupMessage()
+
+            assertEquals(null, viewModel.uiState.value.backupMessage)
+        }
+
+    private class FakeBackupRepository : BackupRepository {
+        var shouldThrow: Exception? = null
+
+        override suspend fun createBackupDocument(): BackupDocumentV1 {
+            shouldThrow?.let { throw it }
+            return BackupDocumentV1(
+                appVersionName = "1.5.0",
+                createdAtEpochMs = 1700000000000L,
+                categories = emptyList(),
+                transactions = emptyList(),
+            )
+        }
+
+        override suspend fun restoreFromBackup(document: BackupDocumentV1) {
+            shouldThrow?.let { throw it }
+        }
+    }
 }
