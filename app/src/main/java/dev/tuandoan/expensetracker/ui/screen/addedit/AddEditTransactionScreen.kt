@@ -63,6 +63,7 @@ import androidx.compose.ui.unit.dp
 import dev.tuandoan.expensetracker.core.formatter.AmountFormatter
 import dev.tuandoan.expensetracker.core.util.DateTimeUtil
 import dev.tuandoan.expensetracker.domain.model.Category
+import dev.tuandoan.expensetracker.domain.model.SupportedCurrencies
 import dev.tuandoan.expensetracker.domain.model.TransactionType
 import dev.tuandoan.expensetracker.ui.theme.DesignSystemElevation
 import dev.tuandoan.expensetracker.ui.theme.DesignSystemSpacing
@@ -225,6 +226,14 @@ private fun TransactionForm(
         )
 
         // Primary section: Amount (most important field)
+        val currency = SupportedCurrencies.byCode(uiState.currencyCode) ?: SupportedCurrencies.default()
+        val amountPlaceholder =
+            if (currency.minorUnitDigits == 0) {
+                AmountFormatter.formatAmount(1000000L, currency.code)
+            } else {
+                AmountFormatter.formatAmount(100000L, currency.code)
+            }
+
         Column(verticalArrangement = Arrangement.spacedBy(DesignSystemSpacing.xs)) {
             Text(
                 text = "Amount",
@@ -239,17 +248,21 @@ private fun TransactionForm(
                     // Format input with thousands separators as user types for better UX
                     val cleanInput = input.replace("[^0-9]".toRegex(), "")
                     if (cleanInput.isNotEmpty()) {
-                        val formattedInput = AmountFormatter.formatAmount(cleanInput.toLongOrNull() ?: 0L)
+                        val formattedInput =
+                            AmountFormatter.formatAmount(
+                                cleanInput.toLongOrNull() ?: 0L,
+                                currency.code,
+                            )
                         viewModel.onAmountChanged(formattedInput)
                     } else {
                         viewModel.onAmountChanged("")
                     }
                 },
-                label = { Text("Enter amount in VND") },
-                placeholder = { Text("1.000.000") },
+                label = { Text("Enter amount in ${currency.code}") },
+                placeholder = { Text(amountPlaceholder) },
                 suffix = {
                     Text(
-                        "₫",
+                        currency.symbol,
                         style = MaterialTheme.typography.titleMedium,
                         color = MaterialTheme.colorScheme.primary,
                     )
@@ -272,10 +285,17 @@ private fun TransactionForm(
                             color = MaterialTheme.colorScheme.error,
                         )
                     } else if (uiState.amountText.isEmpty()) {
-                        Text(
-                            "Enter amount without decimals (VND doesn't use cents)",
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
+                        if (currency.minorUnitDigits == 0) {
+                            Text(
+                                "Enter amount without decimals (${currency.code} doesn't use cents)",
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        } else {
+                            Text(
+                                "Enter amount in ${currency.code} minor units (cents)",
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
                     }
                 },
                 textStyle = MaterialTheme.typography.headlineSmall,

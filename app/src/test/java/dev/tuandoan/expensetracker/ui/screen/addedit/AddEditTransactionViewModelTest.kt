@@ -8,6 +8,7 @@ import dev.tuandoan.expensetracker.domain.model.Transaction
 import dev.tuandoan.expensetracker.domain.model.TransactionType
 import dev.tuandoan.expensetracker.domain.repository.CategoryRepository
 import dev.tuandoan.expensetracker.domain.repository.TransactionRepository
+import dev.tuandoan.expensetracker.testutil.FakeCurrencyPreferenceRepository
 import dev.tuandoan.expensetracker.testutil.FakeTimeProvider
 import dev.tuandoan.expensetracker.testutil.MainDispatcherRule
 import dev.tuandoan.expensetracker.testutil.TestData
@@ -33,12 +34,14 @@ class AddEditTransactionViewModelTest {
     private lateinit var fakeTransactionRepo: FakeTransactionRepository
     private lateinit var fakeCategoryRepo: FakeCategoryRepository
     private lateinit var fakeTimeProvider: FakeTimeProvider
+    private lateinit var fakeCurrencyPreferenceRepo: FakeCurrencyPreferenceRepository
 
     @Before
     fun setup() {
         fakeTransactionRepo = FakeTransactionRepository()
         fakeCategoryRepo = FakeCategoryRepository()
         fakeTimeProvider = FakeTimeProvider(currentMillis = 1700000000000L)
+        fakeCurrencyPreferenceRepo = FakeCurrencyPreferenceRepository()
     }
 
     private fun createViewModel(transactionId: Long = 0L): AddEditTransactionViewModel {
@@ -48,6 +51,7 @@ class AddEditTransactionViewModelTest {
             fakeCategoryRepo,
             fakeTimeProvider,
             DefaultCurrencyFormatter(),
+            fakeCurrencyPreferenceRepo,
             savedStateHandle,
         )
     }
@@ -368,6 +372,57 @@ class AddEditTransactionViewModelTest {
             assertNull(viewModel.uiState.value.errorMessage)
         }
 
+    // Currency preference tests
+
+    @Test
+    fun init_newMode_usesDefaultCurrencyFromPreference() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            fakeCurrencyPreferenceRepo = FakeCurrencyPreferenceRepository(initialCurrency = "USD")
+            fakeCategoryRepo.categoriesToEmit = listOf(TestData.expenseCategory)
+
+            val viewModel = createViewModel()
+            advanceUntilIdle()
+
+            assertEquals("USD", viewModel.uiState.value.currencyCode)
+        }
+
+    @Test
+    fun init_editMode_usesTransactionCurrencyCode() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            val usdTransaction =
+                TestData.sampleExpenseTransaction.copy(currencyCode = "USD")
+            fakeTransactionRepo.transactionById = usdTransaction
+            fakeCategoryRepo.categoriesToEmit = listOf(TestData.expenseCategory)
+            // Default preference is VND, but edit mode should use the transaction's currency
+            fakeCurrencyPreferenceRepo = FakeCurrencyPreferenceRepository(initialCurrency = "VND")
+
+            val viewModel = createViewModel(transactionId = 1L)
+            advanceUntilIdle()
+
+            assertEquals("USD", viewModel.uiState.value.currencyCode)
+        }
+
+    @Test
+    fun saveTransaction_newMode_passesCurrencyCodeToRepository() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            fakeCurrencyPreferenceRepo = FakeCurrencyPreferenceRepository(initialCurrency = "EUR")
+            fakeCategoryRepo.categoriesToEmit = listOf(TestData.expenseCategory)
+
+            val viewModel = createViewModel()
+            advanceUntilIdle()
+
+            viewModel.onAmountChanged("50000")
+            viewModel.onCategorySelected(TestData.expenseCategory)
+
+            var successCalled = false
+            viewModel.saveTransaction { successCalled = true }
+            advanceUntilIdle()
+
+            assertTrue(successCalled)
+            assertTrue(fakeTransactionRepo.addCalled)
+            assertEquals("EUR", fakeTransactionRepo.lastAddedCurrencyCode)
+        }
+
     // Fake implementations
 
     private class FakeTransactionRepository : TransactionRepository {
@@ -376,6 +431,7 @@ class AddEditTransactionViewModelTest {
         var addCalled = false
         var updateCalled = false
         var lastUpdatedTransaction: Transaction? = null
+        var lastAddedCurrencyCode: String? = null
 
         override fun observeTransactions(
             from: Long,
@@ -393,6 +449,7 @@ class AddEditTransactionViewModelTest {
         ): Long {
             if (shouldThrowOnSave) throw RuntimeException("Save failed")
             addCalled = true
+            lastAddedCurrencyCode = currencyCode
             return 1L
         }
 
