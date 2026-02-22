@@ -143,6 +143,17 @@ currency on a per-transaction basis.
 - No conversion / no exchange rates -- the numeric amount is preserved as-is
 - In edit mode, changing the currency is tracked as an unsaved change
 
+### Home List Currency Visibility
+
+Each transaction in the Home screen list displays its amount with the correct currency symbol
+derived from the transaction's own `currency_code`, not the app-level default currency preference.
+
+- **Per-transaction formatting**: `TransactionItem` passes `transaction.currencyCode` to `AmountText`
+- **Symbol rendering**: Supported currencies show their native symbol (₫, $, €, ¥, ₩, S$); unknown currencies fall back to the raw ISO code suffix (e.g., `1,500 GBP`)
+- **Accessibility**: Screen reader content descriptions include the currency-formatted amount
+- **No conversion**: Amounts are displayed as-is with their stored currency; no exchange rate logic
+- **No merging**: Each row uses its transaction's stored `currencyCode` independently
+
 **New Files:**
 
 | File | Layer | Purpose |
@@ -507,6 +518,6 @@ For support or questions, please contact: support@expensetracker.com
 
 ## Version History
 
-- **v1.3.0** - Phase 2.2: App-level default currency setting + per-transaction currency picker (Settings → Currency selector, DataStore persistence, inline currency override on Add/Edit screen)
+- **v1.3.0** - Phase 2.2: App-level default currency setting, per-transaction currency picker, home list currency visibility (Settings → Currency selector, DataStore persistence, inline currency override on Add/Edit screen, per-transaction symbol display on Home list)
 - **v1.2.0** - Phase 2.1: Multi-currency data foundation (`currency_code` field, Room migration v1->v2, static currency definitions)
 - **v1.0.0** - Initial MVP release with core transaction management features
