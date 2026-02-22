@@ -113,6 +113,57 @@ class AmountFormatterTest {
         assertEquals(Long.MAX_VALUE, AmountFormatter.parseAmount(maxLongStr))
     }
 
+    // Home list currency visibility – Phase 2.2 Item 6
+    // Guards the exact call path used by TransactionItem: AmountText(showSign=true) -> formatAmountWithSign
+
+    @Test
+    fun formatAmountWithSign_usd_income_includesSymbolAndSign() {
+        val result = AmountFormatter.formatAmountWithSign(12000L, isIncome = true, currencyCode = "USD")
+        assertEquals("+$120.00", result)
+        assertTrue(result.contains("$"))
+    }
+
+    @Test
+    fun formatAmountWithSign_usd_expense_includesSymbolAndSign() {
+        val result = AmountFormatter.formatAmountWithSign(12000L, isIncome = false, currencyCode = "USD")
+        assertEquals("-$120.00", result)
+        assertTrue(result.contains("$"))
+    }
+
+    @Test
+    fun formatAmountWithSign_eur_income_includesSymbolAndSign() {
+        val result = AmountFormatter.formatAmountWithSign(250075L, isIncome = true, currencyCode = "EUR")
+        assertEquals("+€2,500.75", result)
+        assertTrue(result.contains("€"))
+    }
+
+    @Test
+    fun formatAmountWithSign_jpy_income_includesSymbolAndSign() {
+        val result = AmountFormatter.formatAmountWithSign(1500L, isIncome = true, currencyCode = "JPY")
+        assertEquals("+¥1,500", result)
+        assertTrue(result.contains("¥"))
+    }
+
+    @Test
+    fun formatAmountWithSign_unknownCurrency_includesCodeAsFallback() {
+        val result = AmountFormatter.formatAmountWithSign(1500L, isIncome = false, currencyCode = "GBP")
+        assertEquals("-1,500 GBP", result)
+        assertTrue(result.contains("GBP"))
+        assertFalse(result.contains("₫"))
+        assertFalse(result.contains("$"))
+    }
+
+    @Test
+    fun formatAmountWithSign_perTransactionIsolation_eachUsesOwnCurrency() {
+        val vndResult = AmountFormatter.formatAmountWithSign(50000L, isIncome = false, currencyCode = "VND")
+        val usdResult = AmountFormatter.formatAmountWithSign(12000L, isIncome = true, currencyCode = "USD")
+
+        assertTrue(vndResult.contains("₫"))
+        assertFalse(vndResult.contains("$"))
+        assertTrue(usdResult.contains("$"))
+        assertFalse(usdResult.contains("₫"))
+    }
+
     @Test
     fun formatAndParse_roundTrip_maintainsValue() {
         val testValues = listOf(0L, 1L, 1000L, 1234567L, 999999999L)

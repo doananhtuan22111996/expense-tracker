@@ -151,6 +151,50 @@ class HomeViewModelTest {
             assertNull(viewModel.uiState.value.errorMessage)
         }
 
+    // Home list currency visibility – Phase 2.2 Item 6
+    // Guards that currencyCode survives the ViewModel pipeline to HomeUiState
+
+    @Test
+    fun init_loadsTransactions_preservesCurrencyCode() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            val usdTransaction =
+                TestData.sampleExpenseTransaction.copy(
+                    id = 10L,
+                    currencyCode = "USD",
+                    amount = 12000L,
+                )
+            fakeRepository.transactionsToEmit = listOf(usdTransaction)
+
+            val viewModel = createViewModel()
+            advanceUntilIdle()
+
+            val state = viewModel.uiState.value
+            assertEquals(1, state.transactions.size)
+            assertEquals("USD", state.transactions[0].currencyCode)
+            assertEquals(12000L, state.transactions[0].amount)
+        }
+
+    @Test
+    fun init_mixedCurrencies_preservesEachCurrencyCode() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            val vndTransaction =
+                TestData.sampleExpenseTransaction.copy(id = 1L, currencyCode = "VND", amount = 50000L)
+            val usdTransaction =
+                TestData.sampleExpenseTransaction.copy(id = 2L, currencyCode = "USD", amount = 12000L)
+            val jpyTransaction =
+                TestData.sampleIncomeTransaction.copy(id = 3L, currencyCode = "JPY", amount = 1500L)
+            fakeRepository.transactionsToEmit = listOf(vndTransaction, usdTransaction, jpyTransaction)
+
+            val viewModel = createViewModel()
+            advanceUntilIdle()
+
+            val state = viewModel.uiState.value
+            assertEquals(3, state.transactions.size)
+            assertEquals("VND", state.transactions[0].currencyCode)
+            assertEquals("USD", state.transactions[1].currencyCode)
+            assertEquals("JPY", state.transactions[2].currencyCode)
+        }
+
     @Test
     fun init_usesTimeProviderMonthRange() =
         runTest(mainDispatcherRule.testDispatcher) {
