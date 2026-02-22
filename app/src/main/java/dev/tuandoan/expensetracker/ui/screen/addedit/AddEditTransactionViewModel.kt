@@ -72,6 +72,26 @@ class AddEditTransactionViewModel
             _uiState.value = _uiState.value.copy(note = note)
         }
 
+        fun onCurrencyChanged(currencyCode: String) {
+            val state = _uiState.value
+            if (currencyCode == state.currencyCode) return
+            if (SupportedCurrencies.byCode(currencyCode) == null) return
+
+            val currentAmount = AmountFormatter.parseAmount(state.amountText)
+            val reformattedText =
+                if (currentAmount != null && currentAmount >= 0 && state.amountText.isNotEmpty()) {
+                    AmountFormatter.formatAmount(currentAmount, currencyCode)
+                } else {
+                    state.amountText
+                }
+
+            _uiState.value =
+                state.copy(
+                    currencyCode = currencyCode,
+                    amountText = reformattedText,
+                )
+        }
+
         fun onBackPressed() {
             val state = _uiState.value
             if (isEditMode && state.hasUnsavedChanges) {

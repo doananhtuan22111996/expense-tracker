@@ -133,6 +133,16 @@ transactions. Each transaction retains the currency it was created with. This is
 **Offline-only:** The preference is stored locally in DataStore. There are no network calls, no cloud sync,
 and no external dependencies. The feature works entirely offline, consistent with the app's privacy-first design.
 
+### Per-Transaction Currency Picker
+
+Added an inline currency picker on the Add/Edit Transaction screen, allowing users to override the default
+currency on a per-transaction basis.
+
+- Per-transaction currency can be selected on Add/Edit screen via an inline dropdown
+- Changing the currency reformats the current amount text for the target currency
+- No conversion / no exchange rates -- the numeric amount is preserved as-is
+- In edit mode, changing the currency is tracked as an unsaved change
+
 **New Files:**
 
 | File | Layer | Purpose |
@@ -150,8 +160,10 @@ and no external dependencies. The feature works entirely offline, consistent wit
 | File | Change |
 |------|--------|
 | `di/RepositoryModule.kt` | Added `@Binds` for `CurrencyPreferenceRepository` to `CurrencyPreferenceRepositoryImpl` |
-| `ui/screen/addedit/AddEditTransactionViewModel.kt` | Injects `CurrencyPreferenceRepository`; new transactions use preference, edits use transaction's code |
-| `ui/screen/addedit/AddEditTransactionViewModelTest.kt` | Added 3 currency-related tests (new mode preference, edit mode transaction code, save passes code) |
+| `ui/screen/addedit/AddEditTransactionViewModel.kt` | Injects `CurrencyPreferenceRepository`; new transactions use preference, edits use transaction's code; `onCurrencyChanged()` with amount reformatting |
+| `ui/screen/addedit/AddEditTransactionScreen.kt` | Added `CurrencyDropdown` composable between type selector and amount field |
+| `ui/screen/addedit/AddEditTransactionViewModelTest.kt` | Added 10 currency-related tests (preference, edit mode, save, currency change, reformatting, unsupported code) |
+| `ui/screen/addedit/AddEditTransactionUiStateTest.kt` | Added 2 tests for `hasUnsavedChanges` with currency code changes |
 
 ## Phase 2 - Feature Enhancements
 
@@ -495,6 +507,6 @@ For support or questions, please contact: support@expensetracker.com
 
 ## Version History
 
-- **v1.3.0** - Phase 2.2: App-level default currency setting (Settings → Currency selector, DataStore persistence, applies to new transactions only)
+- **v1.3.0** - Phase 2.2: App-level default currency setting + per-transaction currency picker (Settings → Currency selector, DataStore persistence, inline currency override on Add/Edit screen)
 - **v1.2.0** - Phase 2.1: Multi-currency data foundation (`currency_code` field, Room migration v1->v2, static currency definitions)
 - **v1.0.0** - Initial MVP release with core transaction management features
