@@ -1,5 +1,8 @@
 package dev.tuandoan.expensetracker.testutil
 
+import dev.tuandoan.expensetracker.data.backup.model.BackupCategoryDto
+import dev.tuandoan.expensetracker.data.backup.model.BackupDocumentV1
+import dev.tuandoan.expensetracker.data.backup.model.BackupTransactionDto
 import dev.tuandoan.expensetracker.data.database.entity.CategoryEntity
 import dev.tuandoan.expensetracker.data.database.entity.TransactionEntity
 import dev.tuandoan.expensetracker.domain.model.Category
@@ -122,6 +125,38 @@ object TestData {
             timestamp = FIXED_TIME,
             createdAt = FIXED_TIME,
             updatedAt = FIXED_TIME,
+        )
+
+    val sampleBackupCategoryDto =
+        BackupCategoryDto(
+            id = 1L,
+            name = "Food",
+            type = 0,
+            iconKey = "restaurant",
+            colorKey = "red",
+            isDefault = true,
+        )
+
+    val sampleBackupTransactionDto =
+        BackupTransactionDto(
+            id = 1L,
+            type = 0,
+            amount = 50000L,
+            currencyCode = "VND",
+            categoryId = 1L,
+            note = "Lunch",
+            timestamp = FIXED_TIME,
+            createdAt = FIXED_TIME,
+            updatedAt = FIXED_TIME,
+        )
+
+    val sampleBackupDocument =
+        BackupDocumentV1(
+            schemaVersion = BackupDocumentV1.CURRENT_SCHEMA_VERSION,
+            appVersionName = "1.5.0",
+            createdAtEpochMs = FIXED_TIME,
+            categories = listOf(sampleBackupCategoryDto),
+            transactions = listOf(sampleBackupTransactionDto),
         )
 
     val sampleMonthlySummary =

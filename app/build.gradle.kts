@@ -8,6 +8,7 @@ plugins {
     alias(libs.plugins.kotlin.compose)
     alias(libs.plugins.ksp)
     alias(libs.plugins.hilt)
+    alias(libs.plugins.kotlin.serialization)
 }
 
 android {
@@ -19,7 +20,7 @@ android {
         minSdk = 26
         targetSdk = 36
         versionCode = Instant.now().epochSecond.toInt() // Epoch seconds: safe until 2038, always increasing
-        versionName = "1.4.0"
+        versionName = "1.5.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
@@ -121,6 +122,9 @@ dependencies {
 
     // DataStore
     implementation(libs.datastore.preferences)
+
+    // Serialization
+    implementation(libs.kotlinx.serialization.json)
 
     testImplementation(libs.junit)
     testImplementation(libs.mockito.core)

@@ -8,7 +8,11 @@ import dev.tuandoan.expensetracker.core.formatter.CurrencyFormatter
 import dev.tuandoan.expensetracker.core.formatter.DefaultCurrencyFormatter
 import dev.tuandoan.expensetracker.core.util.SystemTimeProvider
 import dev.tuandoan.expensetracker.core.util.TimeProvider
+import dev.tuandoan.expensetracker.data.backup.BackupRepositoryImpl
+import dev.tuandoan.expensetracker.data.database.RoomTransactionRunner
+import dev.tuandoan.expensetracker.data.database.TransactionRunner
 import dev.tuandoan.expensetracker.data.preferences.CurrencyPreferenceRepositoryImpl
+import dev.tuandoan.expensetracker.domain.repository.BackupRepository
 import dev.tuandoan.expensetracker.domain.repository.CategoryRepository
 import dev.tuandoan.expensetracker.domain.repository.CurrencyPreferenceRepository
 import dev.tuandoan.expensetracker.domain.repository.TransactionRepository
@@ -34,4 +38,10 @@ abstract class RepositoryModule {
     abstract fun bindCurrencyPreferenceRepository(
         currencyPreferenceRepositoryImpl: CurrencyPreferenceRepositoryImpl,
     ): CurrencyPreferenceRepository
+
+    @Binds
+    abstract fun bindBackupRepository(backupRepositoryImpl: BackupRepositoryImpl): BackupRepository
+
+    @Binds
+    abstract fun bindTransactionRunner(roomTransactionRunner: RoomTransactionRunner): TransactionRunner
 }

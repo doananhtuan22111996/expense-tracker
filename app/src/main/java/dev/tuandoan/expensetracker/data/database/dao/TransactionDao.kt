@@ -37,6 +37,15 @@ interface TransactionDao {
     @Query("SELECT * FROM transactions WHERE id = :id")
     suspend fun getById(id: Long): TransactionEntity?
 
+    @Query("SELECT * FROM transactions ORDER BY timestamp DESC")
+    suspend fun getAll(): List<TransactionEntity>
+
+    @Insert
+    suspend fun insertAll(list: List<TransactionEntity>)
+
+    @Query("DELETE FROM transactions")
+    suspend fun deleteAll()
+
     @Query(
         """
         SELECT currency_code AS currencyCode, SUM(amount) AS total

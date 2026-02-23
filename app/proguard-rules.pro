@@ -101,6 +101,25 @@
 # An annotation used for build tooling, won't be directly accessed.
 -dontwarn org.codehaus.mojo.animal_sniffer.IgnoreJRERequirement
 
+# ===== KOTLINX SERIALIZATION RULES =====
+-keepattributes *Annotation*, InnerClasses
+-dontnote kotlinx.serialization.AnnotationsKt
+
+-keepclassmembers class kotlinx.serialization.json.** {
+    *** Companion;
+}
+-keepclasseswithmembers class kotlinx.serialization.json.** {
+    kotlinx.serialization.KSerializer serializer(...);
+}
+
+-keep,includedescriptorclasses class dev.tuandoan.expensetracker.**$$serializer { *; }
+-keepclassmembers class dev.tuandoan.expensetracker.** {
+    *** Companion;
+}
+-keepclasseswithmembers class dev.tuandoan.expensetracker.** {
+    kotlinx.serialization.KSerializer serializer(...);
+}
+
 # ===== GENERAL ANDROID RULES =====
 # Keep line numbers and source file names for better crash reports
 -keepattributes SourceFile,LineNumberTable
