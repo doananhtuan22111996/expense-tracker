@@ -31,6 +31,8 @@ data class BackupDocumentV1(
     @SerialName("schema_version") val schemaVersion: Int = CURRENT_SCHEMA_VERSION,
     @SerialName("app_version_name") val appVersionName: String,
     @SerialName("created_at_epoch_ms") val createdAtEpochMs: Long,
+    @SerialName("default_currency_code") val defaultCurrencyCode: String = "",
+    @SerialName("device_locale") val deviceLocale: String = "",
     @SerialName("categories") val categories: List<BackupCategoryDto>,
     @SerialName("transactions") val transactions: List<BackupTransactionDto>,
 ) {

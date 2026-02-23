@@ -7,6 +7,7 @@ import dev.tuandoan.expensetracker.data.database.entity.CategoryEntity
 import dev.tuandoan.expensetracker.data.database.entity.CurrencyCategorySumRow
 import dev.tuandoan.expensetracker.data.database.entity.CurrencySumRow
 import dev.tuandoan.expensetracker.data.database.entity.TransactionEntity
+import dev.tuandoan.expensetracker.testutil.FakeCurrencyPreferenceRepository
 import dev.tuandoan.expensetracker.testutil.FakeTimeProvider
 import dev.tuandoan.expensetracker.testutil.TestData
 import kotlinx.coroutines.flow.Flow
@@ -21,8 +22,10 @@ class BackupRepositoryImplTest {
     private lateinit var fakeCategoryDao: FakeCategoryDao
     private lateinit var fakeTransactionDao: FakeTransactionDao
     private lateinit var fakeTimeProvider: FakeTimeProvider
+    private lateinit var fakeCurrencyPreferenceRepo: FakeCurrencyPreferenceRepository
     private lateinit var validator: BackupValidator
     private lateinit var serializer: BackupSerializer
+    private lateinit var assembler: BackupAssembler
     private lateinit var repository: BackupRepositoryImpl
     private var globalCallOrder = 0
 
@@ -31,8 +34,10 @@ class BackupRepositoryImplTest {
         fakeCategoryDao = FakeCategoryDao()
         fakeTransactionDao = FakeTransactionDao()
         fakeTimeProvider = FakeTimeProvider()
+        fakeCurrencyPreferenceRepo = FakeCurrencyPreferenceRepository()
         validator = BackupValidator()
         serializer = BackupSerializer()
+        assembler = BackupAssembler()
         globalCallOrder = 0
         repository =
             BackupRepositoryImpl(
@@ -40,8 +45,10 @@ class BackupRepositoryImplTest {
                 transactionDao = fakeTransactionDao,
                 backupValidator = validator,
                 backupSerializer = serializer,
+                backupAssembler = assembler,
                 timeProvider = fakeTimeProvider,
                 transactionRunner = FakeTransactionRunner(),
+                currencyPreferenceRepository = fakeCurrencyPreferenceRepo,
             )
     }
 
@@ -104,6 +111,60 @@ class BackupRepositoryImplTest {
             assertEquals(50000L, document.transactions[0].amount)
             assertEquals("VND", document.transactions[0].currencyCode)
             assertEquals("Lunch", document.transactions[0].note)
+        }
+
+    @Test
+    fun exportBackupJson_includesDefaultCurrencyCode() =
+        runTest {
+            fakeCurrencyPreferenceRepo.setDefaultCurrency("USD")
+
+            val json = repository.exportBackupJson()
+            val document = serializer.decode(json)!!
+
+            assertEquals("USD", document.defaultCurrencyCode)
+        }
+
+    @Test
+    fun exportBackupJson_includesDeviceLocale() =
+        runTest {
+            val json = repository.exportBackupJson()
+            val document = serializer.decode(json)!!
+
+            assertTrue(document.deviceLocale.isNotEmpty())
+        }
+
+    @Test
+    fun exportBackupJson_categoriesSortedById() =
+        runTest {
+            fakeCategoryDao.allCategories.addAll(
+                listOf(
+                    TestData.expenseCategoryEntity.copy(id = 3L, name = "Z"),
+                    TestData.expenseCategoryEntity.copy(id = 1L, name = "A"),
+                    TestData.expenseCategoryEntity.copy(id = 2L, name = "M"),
+                ),
+            )
+
+            val json = repository.exportBackupJson()
+            val document = serializer.decode(json)!!
+
+            assertEquals(listOf(1L, 2L, 3L), document.categories.map { it.id })
+        }
+
+    @Test
+    fun exportBackupJson_transactionsSortedById() =
+        runTest {
+            fakeTransactionDao.allTransactions.addAll(
+                listOf(
+                    TestData.sampleExpenseEntity.copy(id = 3L),
+                    TestData.sampleExpenseEntity.copy(id = 1L),
+                    TestData.sampleExpenseEntity.copy(id = 2L),
+                ),
+            )
+
+            val json = repository.exportBackupJson()
+            val document = serializer.decode(json)!!
+
+            assertEquals(listOf(1L, 2L, 3L), document.transactions.map { it.id })
         }
 
     @Test

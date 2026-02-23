@@ -425,60 +425,77 @@ SectionHeader(title = "This Month")
 - Confirm empty states display properly
 - Test dark/light mode consistency
 
-## Phase 3.2 - Backup Export & Import (v1.5)
+## Phase 3.2 - Export Backup (Offline) (v1.6)
 
-### Full Export/Import via Settings
+### Export Backup via Settings
 
-Added user-facing backup export and import functionality to the Settings screen, building on the
-Phase 3.1 schema foundation. Uses Android's Storage Access Framework (SAF) for secure file access
-without requiring storage permissions.
+Added user-facing backup export functionality to the Settings screen, building on the Phase 3.1
+schema foundation. Uses Android's Storage Access Framework (SAF) for secure, offline file access
+without requiring storage permissions. This phase implements **export only**; import will follow
+in a future phase.
 
-**Export Flow:**
-1. User taps "Export Backup" in Settings > Data Management
-2. SAF file picker opens with a suggested filename (`expense_tracker_backup_YYYYMMDD_HHmmss.json`)
-3. `BackupRepository.createBackupDocument()` reads all categories and transactions from DAOs
+**How to Export:**
+1. Open Settings > "Backup & Restore"
+2. Tap "Export Backup"
+3. Choose a save location in the system file picker
+4. The app writes a JSON backup file containing all your data
+
+**File Format:**
+- Format: JSON (`application/json`)
+- Schema version: 1 (`BackupDocumentV1`)
+- Default filename: `expense-tracker-backup_YYYY-MM-DD.json`
+- Encoding: UTF-8, pretty-printed
+
+**Backup Contents:**
+- All categories (sorted by ID)
+- All transactions (sorted by ID)
+- Default currency code preference
+- Device locale at export time
+- App version and schema version
+- Export timestamp
+
+**Offline-Only:** The export is entirely offline. The app does not upload your data. You choose
+where to save the backup file (internal storage, SD card, or a cloud-synced folder via the system
+file picker). The app itself makes no network calls.
+
+**Export Flow (Technical):**
+1. User taps "Export Backup" in Settings > Backup & Restore
+2. SAF file picker opens with suggested filename `expense-tracker-backup_YYYY-MM-DD.json`
+3. `BackupAssembler` deterministically builds `BackupDocumentV1` from DAOs + preferences
 4. `BackupSerializer.encode()` converts to pretty-printed JSON
-5. JSON is written to the selected URI via `ContentResolver`
+5. JSON is written to the selected URI via `ContentResolver` on IO dispatcher
 6. Success/error feedback shown via Snackbar
 
-**Import Flow:**
-1. User taps "Import Backup" in Settings > Data Management
-2. Confirmation dialog warns that import replaces all existing data
-3. SAF file picker opens (filtered to `application/json`)
-4. JSON is read from the selected URI, decoded via `BackupSerializer.decode()`
-5. `BackupValidator.validate()` checks structural integrity (schema version, types, amounts, FK refs)
-6. `BackupRepository.restoreFromBackup()` atomically replaces all data in a Room transaction
-7. Success message shows restored counts; validation errors show error count
-
-**Key Implementation Details:**
+**Key Components:**
 
 | Component | File | Role |
 |-----------|------|------|
-| `BackupRepository` | `domain/repository/BackupRepository.kt` | Interface: `createBackupDocument()`, `restoreFromBackup()` |
-| `BackupRepositoryImpl` | `data/backup/BackupRepositoryImpl.kt` | Implementation with atomic Room transaction via `TransactionRunner` |
+| `BackupAssembler` | `data/backup/BackupAssembler.kt` | Pure, deterministic document assembly (sorts by ID) |
+| `BackupRepositoryImpl` | `data/backup/BackupRepositoryImpl.kt` | Reads DAOs + preferences, delegates to assembler + serializer |
 | `TransactionRunner` | `data/database/TransactionRunner.kt` | Abstraction over `RoomDatabase.withTransaction` for testability |
-| `SettingsViewModel` | `ui/screen/settings/SettingsViewModel.kt` | Orchestrates export/import with `BackupOperation` state |
-| `SettingsScreen` | `ui/screen/settings/SettingsScreen.kt` | Data Management section with SAF launchers, confirmation dialog, Snackbar |
+| `SettingsViewModel` | `ui/screen/settings/SettingsViewModel.kt` | Orchestrates export with `BackupOperation` state, uses `@IoDispatcher` |
+| `SettingsScreen` | `ui/screen/settings/SettingsScreen.kt` | Backup & Restore section with SAF launcher, loading state, Snackbar |
 
-**New DAO Methods:**
+**BackupDocumentV1 Fields:**
 
-| DAO | Method | Purpose |
-|-----|--------|---------|
-| `CategoryDao` | `getAll()` | Read all categories for export |
-| `CategoryDao` | `deleteAll()` | Clear categories during import |
-| `TransactionDao` | `getAll()` | Read all transactions for export |
-| `TransactionDao` | `insertAll(list)` | Batch insert transactions during import |
-| `TransactionDao` | `deleteAll()` | Clear transactions during import |
-
-**Import Atomicity:** Uses `TransactionRunner.runInTransaction` (wraps `RoomDatabase.withTransaction`)
-to ensure the delete-all + insert-all sequence is atomic. On validation failure, data remains untouched.
+| Field | Type | Description |
+|-------|------|-------------|
+| `schema_version` | Int | Always `1` |
+| `app_version_name` | String | App version that created the backup |
+| `created_at_epoch_ms` | Long | Timestamp when the backup was created |
+| `default_currency_code` | String | User's default currency preference |
+| `device_locale` | String | Device locale at export time (BCP 47) |
+| `categories` | List | All categories sorted by ID ascending |
+| `transactions` | List | All transactions sorted by ID ascending |
 
 **Test Coverage:**
 
 | Test Class | Tests | Coverage |
 |------------|-------|----------|
-| `BackupRepositoryImplTest` | 8 | Export mapping, import replace, validation rejection, ordering, empty lists |
-| `SettingsViewModelTest` | 7 | Currency selection, backup state lifecycle, initialization |
+| `BackupAssemblerTest` | 7 | Sorting, metadata, determinism, empty lists, fixture stability |
+| `BackupRepositoryImplTest` | 15 | Export mapping, sorting, new fields, import atomicity, validation |
+| `BackupSerializerTest` | 22 | Round-trip, new fields, backward compat, snake_case, edge cases |
+| `SettingsViewModelTest` | 12 | Currency selection, export lifecycle, error handling |
 
 ## Project Structure
 
@@ -682,7 +699,8 @@ For support or questions, please contact: support@expensetracker.com
 
 ## Version History
 
-- **v1.5.0** - Phase 3.1 + 3.2: Backup Schema v1 and Export/Import (BackupDocumentV1 DTOs, kotlinx-serialization, BackupValidator, entity-DTO mappers, BackupRepository with atomic import, Settings Data Management UI with SAF export/import, ProGuard rules, 56 unit tests)
+- **v1.6.0** - Phase 3.2: Export Backup (Offline) -- BackupAssembler for deterministic export, defaultCurrencyCode + deviceLocale in BackupDocumentV1, Settings "Backup & Restore" section with SAF export, @IoDispatcher threading, 56 unit tests
+- **v1.5.0** - Phase 3.1: Backup Schema v1 (BackupDocumentV1 DTOs, kotlinx-serialization, BackupValidator, entity-DTO mappers, BackupRepository, ProGuard rules, 48 unit tests)
 - **v1.4.0** - Phase 2.3: Monthly Summary per currency (per-currency sections on Summary screen, top-5 + Other aggregation, registry-ordered currency sorting, policy-safe disclaimer for all non-empty months)
 - **v1.3.0** - Phase 2.2: App-level default currency setting, per-transaction currency picker, home list currency visibility (Settings → Currency selector, DataStore persistence, inline currency override on Add/Edit screen, per-transaction symbol display on Home list)
 - **v1.2.0** - Phase 2.1: Multi-currency data foundation (`currency_code` field, Room migration v1->v2, static currency definitions)
