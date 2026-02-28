@@ -155,6 +155,8 @@ object TestData {
             schemaVersion = BackupDocumentV1.CURRENT_SCHEMA_VERSION,
             appVersionName = "1.5.0",
             createdAtEpochMs = FIXED_TIME,
+            defaultCurrencyCode = "VND",
+            deviceLocale = "en-US",
             categories = listOf(sampleBackupCategoryDto),
             transactions = listOf(sampleBackupTransactionDto),
         )

@@ -16,7 +16,6 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
-import androidx.compose.material.icons.filled.FileDownload
 import androidx.compose.material.icons.filled.FileUpload
 import androidx.compose.material.icons.filled.KeyboardArrowRight
 import androidx.compose.material3.AlertDialog
@@ -62,7 +61,6 @@ fun SettingsScreen(
 ) {
     val uiState by viewModel.uiState.collectAsState()
     var showCurrencyDialog by remember { mutableStateOf(false) }
-    var showImportConfirmDialog by remember { mutableStateOf(false) }
     val snackbarHostState = remember { SnackbarHostState() }
 
     val exportLauncher =
@@ -70,13 +68,6 @@ fun SettingsScreen(
             contract = ActivityResultContracts.CreateDocument("application/json"),
         ) { uri ->
             uri?.let { viewModel.exportBackup(it) }
-        }
-
-    val importLauncher =
-        rememberLauncherForActivityResult(
-            contract = ActivityResultContracts.OpenDocument(),
-        ) { uri ->
-            uri?.let { viewModel.importBackup(it) }
         }
 
     LaunchedEffect(uiState.errorMessage) {
@@ -160,26 +151,31 @@ fun SettingsScreen(
                 )
             }
 
-            // Data Management Section
-            SettingsSection(title = "Data Management") {
-                val isOperating = uiState.backupOperation != BackupOperation.Idle
+            // Backup & Restore Section
+            SettingsSection(title = "Backup & Restore") {
+                val isExporting = uiState.backupOperation == BackupOperation.Exporting
 
                 Row(
                     modifier =
                         Modifier
                             .fillMaxWidth()
-                            .clickable(enabled = !isOperating) {
-                                val timestamp =
-                                    SimpleDateFormat("yyyyMMdd_HHmmss", Locale.US).format(Date())
-                                exportLauncher.launch("expense_tracker_backup_$timestamp.json")
+                            .clickable(enabled = !isExporting) {
+                                val date =
+                                    SimpleDateFormat("yyyy-MM-dd", Locale.US).format(Date())
+                                exportLauncher.launch("expense-tracker-backup_$date.json")
                             }.padding(DesignSystemSpacing.large)
                             .semantics {
-                                contentDescription = "Export backup to JSON file"
+                                contentDescription =
+                                    if (isExporting) {
+                                        "Export backup to JSON file, currently exporting"
+                                    } else {
+                                        "Export backup to JSON file"
+                                    }
                             },
                     horizontalArrangement = Arrangement.spacedBy(DesignSystemSpacing.medium),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    if (uiState.backupOperation == BackupOperation.Exporting) {
+                    if (isExporting) {
                         CircularProgressIndicator(modifier = Modifier.size(24.dp))
                     } else {
                         Icon(
@@ -204,50 +200,12 @@ fun SettingsScreen(
                     }
                 }
 
-                HorizontalDivider()
-
-                Row(
-                    modifier =
-                        Modifier
-                            .fillMaxWidth()
-                            .clickable(enabled = !isOperating) {
-                                showImportConfirmDialog = true
-                            }.padding(DesignSystemSpacing.large)
-                            .semantics {
-                                contentDescription = "Import backup from JSON file"
-                            },
-                    horizontalArrangement = Arrangement.spacedBy(DesignSystemSpacing.medium),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    if (uiState.backupOperation == BackupOperation.Importing) {
-                        CircularProgressIndicator(modifier = Modifier.size(24.dp))
-                    } else {
-                        Icon(
-                            Icons.Default.FileDownload,
-                            contentDescription = null,
-                            tint = MaterialTheme.colorScheme.error,
-                        )
-                    }
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text(
-                            text = "Import Backup",
-                            style = MaterialTheme.typography.bodyLarge,
-                            fontWeight = FontWeight.Medium,
-                            color = MaterialTheme.colorScheme.onSurface,
-                        )
-                        Text(
-                            text = "Restore data from a JSON backup file",
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier = Modifier.padding(top = DesignSystemSpacing.xs),
-                        )
-                    }
-                }
-
                 Text(
-                    text = "Importing will replace all existing data",
+                    text =
+                        "Backups are stored where you choose. " +
+                            "The app does not upload your data.",
                     style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.error,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier =
                         Modifier.padding(
                             start = DesignSystemSpacing.large,
@@ -378,35 +336,6 @@ fun SettingsScreen(
                 showCurrencyDialog = false
             },
             onDismiss = { showCurrencyDialog = false },
-        )
-    }
-
-    // Import Confirmation Dialog
-    if (showImportConfirmDialog) {
-        AlertDialog(
-            onDismissRequest = { showImportConfirmDialog = false },
-            title = { Text("Import Backup") },
-            text = {
-                Text(
-                    "Importing a backup will replace all existing categories and transactions. " +
-                        "This action cannot be undone.\n\nDo you want to continue?",
-                )
-            },
-            confirmButton = {
-                TextButton(
-                    onClick = {
-                        showImportConfirmDialog = false
-                        importLauncher.launch(arrayOf("application/json"))
-                    },
-                ) {
-                    Text("Import", color = MaterialTheme.colorScheme.error)
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = { showImportConfirmDialog = false }) {
-                    Text("Cancel")
-                }
-            },
         )
     }
 }

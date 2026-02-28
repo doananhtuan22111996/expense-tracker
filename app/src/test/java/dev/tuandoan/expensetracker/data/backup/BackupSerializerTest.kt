@@ -138,6 +138,8 @@ class BackupSerializerTest {
         assertTrue(json.contains("\"schema_version\""))
         assertTrue(json.contains("\"app_version_name\""))
         assertTrue(json.contains("\"created_at_epoch_ms\""))
+        assertTrue(json.contains("\"default_currency_code\""))
+        assertTrue(json.contains("\"device_locale\""))
         assertTrue(json.contains("\"icon_key\""))
         assertTrue(json.contains("\"color_key\""))
         assertTrue(json.contains("\"is_default\""))
@@ -210,6 +212,60 @@ class BackupSerializerTest {
         val decoded = serializer.decode(json)!!
 
         assertEquals("Food \uD83C\uDF54\uD83C\uDF5C", decoded.categories[0].name)
+    }
+
+    @Test
+    fun encode_includesDefaultCurrencyCode() {
+        val document = TestData.sampleBackupDocument.copy(defaultCurrencyCode = "USD")
+        val json = serializer.encode(document)
+
+        assertTrue(json.contains("\"default_currency_code\""))
+        assertTrue(json.contains("\"USD\""))
+    }
+
+    @Test
+    fun encode_includesDeviceLocale() {
+        val document = TestData.sampleBackupDocument.copy(deviceLocale = "vi-VN")
+        val json = serializer.encode(document)
+
+        assertTrue(json.contains("\"device_locale\""))
+        assertTrue(json.contains("\"vi-VN\""))
+    }
+
+    @Test
+    fun decode_missingNewFields_usesDefaults() {
+        val oldJson =
+            """
+            {
+                "schema_version": 1,
+                "app_version_name": "1.4.0",
+                "created_at_epoch_ms": 1700000000000,
+                "categories": [],
+                "transactions": []
+            }
+            """.trimIndent()
+
+        val decoded = serializer.decode(oldJson)
+
+        assertNotNull(decoded)
+        assertEquals("", decoded!!.defaultCurrencyCode)
+        assertEquals("", decoded.deviceLocale)
+    }
+
+    @Test
+    fun roundTrip_newFieldsPreserved() {
+        val document =
+            TestData.sampleBackupDocument.copy(
+                defaultCurrencyCode = "EUR",
+                deviceLocale = "ja-JP",
+            )
+
+        val json = serializer.encode(document)
+        val decoded = serializer.decode(json)
+
+        assertNotNull(decoded)
+        assertEquals("EUR", decoded!!.defaultCurrencyCode)
+        assertEquals("ja-JP", decoded.deviceLocale)
     }
 
     @Test

@@ -1,10 +1,7 @@
 package dev.tuandoan.expensetracker.ui.screen.settings
 
 import android.content.ContentResolver
-import android.database.Cursor
 import android.net.Uri
-import dev.tuandoan.expensetracker.data.backup.BackupValidationError
-import dev.tuandoan.expensetracker.data.backup.BackupValidationException
 import dev.tuandoan.expensetracker.domain.model.SupportedCurrencies
 import dev.tuandoan.expensetracker.domain.repository.BackupRepository
 import dev.tuandoan.expensetracker.domain.repository.BackupRestoreResult
@@ -19,10 +16,7 @@ import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
-import org.mockito.ArgumentMatchers.anyInt
-import org.mockito.ArgumentMatchers.anyString
 import org.mockito.Mockito
-import java.io.ByteArrayInputStream
 import java.io.ByteArrayOutputStream
 
 @OptIn(ExperimentalCoroutinesApi::class)
@@ -48,6 +42,7 @@ class SettingsViewModelTest {
             fakeCurrencyPreferenceRepo,
             fakeBackupRepository,
             mockContentResolver,
+            mainDispatcherRule.testDispatcher,
         )
 
     // --- Currency tests ---
@@ -214,166 +209,17 @@ class SettingsViewModelTest {
             )
         }
 
-    // --- Import tests ---
-
-    @Test
-    fun importBackup_success_setsBackupMessage() =
-        runTest(mainDispatcherRule.testDispatcher) {
-            val json = """{"valid": "json"}"""
-            val inputStream = ByteArrayInputStream(json.toByteArray(Charsets.UTF_8))
-            Mockito
-                .`when`(mockContentResolver.openInputStream(mockUri))
-                .thenReturn(inputStream)
-            setupFileSizeCursor(json.length.toLong())
-
-            fakeBackupRepository.importResult =
-                BackupRestoreResult(
-                    categoryCount = 3,
-                    transactionCount = 10,
-                )
-
-            val viewModel = createViewModel()
-            advanceUntilIdle()
-
-            viewModel.importBackup(mockUri)
-            advanceUntilIdle()
-
-            assertEquals(BackupOperation.Idle, viewModel.uiState.value.backupOperation)
-            assertEquals(
-                "Backup restored: 3 categories, 10 transactions",
-                viewModel.uiState.value.backupMessage,
-            )
-        }
-
-    @Test
-    fun importBackup_repositoryThrows_setsErrorMessage() =
-        runTest(mainDispatcherRule.testDispatcher) {
-            val json = """{"some": "json"}"""
-            val inputStream = ByteArrayInputStream(json.toByteArray(Charsets.UTF_8))
-            Mockito
-                .`when`(mockContentResolver.openInputStream(mockUri))
-                .thenReturn(inputStream)
-            setupFileSizeCursor(json.length.toLong())
-
-            fakeBackupRepository.importException = RuntimeException("Parse error")
-
-            val viewModel = createViewModel()
-            advanceUntilIdle()
-
-            viewModel.importBackup(mockUri)
-            advanceUntilIdle()
-
-            assertEquals(BackupOperation.Idle, viewModel.uiState.value.backupOperation)
-            assertEquals("Import failed: Parse error", viewModel.uiState.value.errorMessage)
-        }
-
-    @Test
-    fun importBackup_validationException_setsErrorMessage() =
-        runTest(mainDispatcherRule.testDispatcher) {
-            val json = """{"some": "json"}"""
-            val inputStream = ByteArrayInputStream(json.toByteArray(Charsets.UTF_8))
-            Mockito
-                .`when`(mockContentResolver.openInputStream(mockUri))
-                .thenReturn(inputStream)
-            setupFileSizeCursor(json.length.toLong())
-
-            fakeBackupRepository.importException =
-                BackupValidationException(
-                    listOf(
-                        BackupValidationError.UnsupportedSchemaVersion(99),
-                        BackupValidationError.DuplicateCategoryId(1L),
-                    ),
-                )
-
-            val viewModel = createViewModel()
-            advanceUntilIdle()
-
-            viewModel.importBackup(mockUri)
-            advanceUntilIdle()
-
-            assertEquals(BackupOperation.Idle, viewModel.uiState.value.backupOperation)
-            assertEquals(
-                "Backup validation failed with 2 error(s)",
-                viewModel.uiState.value.errorMessage,
-            )
-        }
-
-    @Test
-    fun importBackup_fileTooLarge_setsErrorMessage() =
-        runTest(mainDispatcherRule.testDispatcher) {
-            val tooLargeSize = SettingsViewModel.MAX_IMPORT_FILE_SIZE + 1
-            setupFileSizeCursor(tooLargeSize)
-
-            val viewModel = createViewModel()
-            advanceUntilIdle()
-
-            viewModel.importBackup(mockUri)
-            advanceUntilIdle()
-
-            assertEquals(BackupOperation.Idle, viewModel.uiState.value.backupOperation)
-            assertTrue(
-                viewModel.uiState.value.errorMessage!!
-                    .contains("File too large"),
-            )
-        }
-
-    @Test
-    fun importBackup_nullInputStream_setsErrorMessage() =
-        runTest(mainDispatcherRule.testDispatcher) {
-            setupFileSizeCursor(100L)
-            Mockito
-                .`when`(mockContentResolver.openInputStream(mockUri))
-                .thenReturn(null)
-
-            val viewModel = createViewModel()
-            advanceUntilIdle()
-
-            viewModel.importBackup(mockUri)
-            advanceUntilIdle()
-
-            assertEquals(BackupOperation.Idle, viewModel.uiState.value.backupOperation)
-            assertEquals(
-                "Import failed: Cannot open input stream",
-                viewModel.uiState.value.errorMessage,
-            )
-        }
-
-    // --- Helpers ---
-
-    private fun setupFileSizeCursor(size: Long) {
-        val cursor = Mockito.mock(Cursor::class.java)
-        Mockito
-            .`when`(
-                mockContentResolver.query(
-                    Mockito.eq(mockUri),
-                    Mockito.isNull(),
-                    Mockito.isNull(),
-                    Mockito.isNull(),
-                    Mockito.isNull(),
-                ),
-            ).thenReturn(cursor)
-        Mockito.`when`(cursor.getColumnIndex(anyString())).thenReturn(0)
-        Mockito.`when`(cursor.moveToFirst()).thenReturn(true)
-        Mockito.`when`(cursor.getLong(anyInt())).thenReturn(size)
-    }
-
     private class FakeBackupRepository : BackupRepository {
         var exportException: Exception? = null
-        var importException: Exception? = null
-        var importResult: BackupRestoreResult =
-            BackupRestoreResult(
-                categoryCount = 0,
-                transactionCount = 0,
-            )
 
         override suspend fun exportBackupJson(): String {
             exportException?.let { throw it }
-            return """{"schema_version":1,"categories":[],"transactions":[]}"""
+            return "{\"schema_version\":1,\"app_version_name\":\"1.5.0\"," +
+                "\"created_at_epoch_ms\":0,\"default_currency_code\":\"VND\"," +
+                "\"device_locale\":\"en-US\",\"categories\":[],\"transactions\":[]}"
         }
 
-        override suspend fun importBackupJson(json: String): BackupRestoreResult {
-            importException?.let { throw it }
-            return importResult
-        }
+        override suspend fun importBackupJson(json: String): BackupRestoreResult =
+            BackupRestoreResult(categoryCount = 0, transactionCount = 0)
     }
 }

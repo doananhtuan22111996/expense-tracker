@@ -4,12 +4,13 @@ import dev.tuandoan.expensetracker.core.util.AppInfo
 import dev.tuandoan.expensetracker.core.util.TimeProvider
 import dev.tuandoan.expensetracker.data.backup.mapper.toBackupDto
 import dev.tuandoan.expensetracker.data.backup.mapper.toEntity
-import dev.tuandoan.expensetracker.data.backup.model.BackupDocumentV1
 import dev.tuandoan.expensetracker.data.database.TransactionRunner
 import dev.tuandoan.expensetracker.data.database.dao.CategoryDao
 import dev.tuandoan.expensetracker.data.database.dao.TransactionDao
 import dev.tuandoan.expensetracker.domain.repository.BackupRepository
 import dev.tuandoan.expensetracker.domain.repository.BackupRestoreResult
+import dev.tuandoan.expensetracker.domain.repository.CurrencyPreferenceRepository
+import java.util.Locale
 import javax.inject.Inject
 
 class BackupRepositoryImpl
@@ -19,8 +20,10 @@ class BackupRepositoryImpl
         private val transactionDao: TransactionDao,
         private val backupValidator: BackupValidator,
         private val backupSerializer: BackupSerializer,
+        private val backupAssembler: BackupAssembler,
         private val timeProvider: TimeProvider,
         private val transactionRunner: TransactionRunner,
+        private val currencyPreferenceRepository: CurrencyPreferenceRepository,
     ) : BackupRepository {
         override suspend fun exportBackupJson(): String {
             val (categories, transactions) =
@@ -30,12 +33,16 @@ class BackupRepositoryImpl
                     cats to txns
                 }
 
+            val defaultCurrencyCode = currencyPreferenceRepository.getDefaultCurrency()
+
             val document =
-                BackupDocumentV1(
-                    appVersionName = AppInfo.getVersionName(),
-                    createdAtEpochMs = timeProvider.currentTimeMillis(),
+                backupAssembler.assemble(
                     categories = categories,
                     transactions = transactions,
+                    defaultCurrencyCode = defaultCurrencyCode,
+                    appVersionName = AppInfo.getVersionName(),
+                    createdAtEpochMs = timeProvider.currentTimeMillis(),
+                    deviceLocale = Locale.getDefault().toLanguageTag(),
                 )
 
             return backupSerializer.encode(document)
