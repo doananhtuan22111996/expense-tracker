@@ -48,7 +48,7 @@ import dev.tuandoan.expensetracker.domain.model.Transaction
 import dev.tuandoan.expensetracker.domain.model.TransactionType
 import dev.tuandoan.expensetracker.ui.component.AmountText
 import dev.tuandoan.expensetracker.ui.component.EmptyStateMessage
-import dev.tuandoan.expensetracker.ui.component.SectionHeader
+import dev.tuandoan.expensetracker.ui.component.MonthSelector
 import dev.tuandoan.expensetracker.ui.theme.DesignSystemElevation
 import dev.tuandoan.expensetracker.ui.theme.DesignSystemSpacing
 
@@ -76,8 +76,12 @@ fun HomeScreen(
                     .fillMaxSize()
                     .padding(DesignSystemSpacing.screenPadding),
         ) {
-            // Title
-            SectionHeader(title = "This Month")
+            // Month selector
+            MonthSelector(
+                monthLabel = uiState.monthLabel,
+                onPreviousMonth = viewModel::goToPreviousMonth,
+                onNextMonth = viewModel::goToNextMonth,
+            )
 
             // Filter chips
             FilterChips(

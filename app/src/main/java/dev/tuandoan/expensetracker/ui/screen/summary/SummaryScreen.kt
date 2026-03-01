@@ -35,7 +35,7 @@ import dev.tuandoan.expensetracker.repository.TransactionRepositoryImpl
 import dev.tuandoan.expensetracker.ui.component.AmountText
 import dev.tuandoan.expensetracker.ui.component.EmptyStateMessage
 import dev.tuandoan.expensetracker.ui.component.ErrorStateMessage
-import dev.tuandoan.expensetracker.ui.component.SectionHeader
+import dev.tuandoan.expensetracker.ui.component.MonthSelector
 import dev.tuandoan.expensetracker.ui.component.SectionTitle
 import dev.tuandoan.expensetracker.ui.theme.DesignSystemElevation
 import dev.tuandoan.expensetracker.ui.theme.DesignSystemSpacing
@@ -67,17 +67,28 @@ fun SummaryScreen(
                 )
             }
             uiState.summary == null || uiState.summary?.isEmpty != false -> {
-                EmptyStateMessage(
-                    title = "No data for this month",
-                    subtitle = "Start adding transactions to see your summary",
-                    modifier = Modifier.fillMaxSize(),
-                )
+                Column(modifier = Modifier.fillMaxSize()) {
+                    MonthSelector(
+                        monthLabel = uiState.monthLabel,
+                        onPreviousMonth = viewModel::goToPreviousMonth,
+                        onNextMonth = viewModel::goToNextMonth,
+                        modifier = Modifier.padding(DesignSystemSpacing.screenPadding),
+                    )
+                    EmptyStateMessage(
+                        title = "No data for this month",
+                        subtitle = "Start adding transactions to see your summary",
+                        modifier = Modifier.weight(1f),
+                    )
+                }
             }
             else -> {
                 val summary = uiState.summary
                 if (summary != null) {
                     SummaryContent(
                         summary = summary,
+                        monthLabel = uiState.monthLabel,
+                        onPreviousMonth = viewModel::goToPreviousMonth,
+                        onNextMonth = viewModel::goToNextMonth,
                         modifier = Modifier.fillMaxSize(),
                     )
                 }
@@ -89,6 +100,9 @@ fun SummaryScreen(
 @Composable
 private fun SummaryContent(
     summary: MonthlySummary,
+    monthLabel: String,
+    onPreviousMonth: () -> Unit,
+    onNextMonth: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     LazyColumn(
@@ -96,7 +110,11 @@ private fun SummaryContent(
         verticalArrangement = Arrangement.spacedBy(DesignSystemSpacing.large),
     ) {
         item(key = "header") {
-            SectionHeader(title = "This Month")
+            MonthSelector(
+                monthLabel = monthLabel,
+                onPreviousMonth = onPreviousMonth,
+                onNextMonth = onNextMonth,
+            )
         }
 
         item(key = "disclaimer") {

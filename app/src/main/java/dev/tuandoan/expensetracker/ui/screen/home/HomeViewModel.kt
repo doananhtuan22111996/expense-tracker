@@ -3,16 +3,19 @@ package dev.tuandoan.expensetracker.ui.screen.home
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
+import dev.tuandoan.expensetracker.core.util.DateRangeCalculator
 import dev.tuandoan.expensetracker.core.util.ErrorUtils
 import dev.tuandoan.expensetracker.core.util.TimeProvider
 import dev.tuandoan.expensetracker.domain.model.Transaction
 import dev.tuandoan.expensetracker.domain.model.TransactionType
 import dev.tuandoan.expensetracker.domain.repository.TransactionRepository
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.launch
+import java.time.YearMonth
 import javax.inject.Inject
 
 @HiltViewModel
@@ -21,9 +24,13 @@ class HomeViewModel
     constructor(
         private val transactionRepository: TransactionRepository,
         private val timeProvider: TimeProvider,
+        private val dateRangeCalculator: DateRangeCalculator,
     ) : ViewModel() {
         private val _uiState = MutableStateFlow(HomeUiState())
         val uiState: StateFlow<HomeUiState> = _uiState.asStateFlow()
+        private var transactionJob: Job? = null
+
+        private var selectedMonth: YearMonth = dateRangeCalculator.currentMonth()
 
         init {
             loadTransactions()
@@ -34,11 +41,20 @@ class HomeViewModel
             loadTransactions()
         }
 
+        fun goToPreviousMonth() {
+            selectedMonth = dateRangeCalculator.previousMonth(selectedMonth)
+            loadTransactions()
+        }
+
+        fun goToNextMonth() {
+            selectedMonth = dateRangeCalculator.nextMonth(selectedMonth)
+            loadTransactions()
+        }
+
         fun deleteTransaction(transactionId: Long) {
             viewModelScope.launch {
                 try {
                     transactionRepository.deleteTransaction(transactionId)
-                    // Transactions will be updated automatically via Flow
                 } catch (e: Exception) {
                     _uiState.value =
                         _uiState.value.copy(
@@ -54,32 +70,39 @@ class HomeViewModel
         }
 
         private fun loadTransactions() {
-            viewModelScope.launch {
-                _uiState.value = _uiState.value.copy(isLoading = true, isError = false)
+            transactionJob?.cancel()
+            transactionJob =
+                viewModelScope.launch {
+                    _uiState.value =
+                        _uiState.value.copy(
+                            isLoading = true,
+                            isError = false,
+                            monthLabel = dateRangeCalculator.displayLabel(selectedMonth),
+                        )
 
-                val (startMillis, endMillis) = timeProvider.currentMonthRange()
+                    val range = dateRangeCalculator.rangeOf(selectedMonth)
 
-                transactionRepository
-                    .observeTransactions(
-                        from = startMillis,
-                        to = endMillis,
-                        filterType = _uiState.value.filter,
-                    ).catch { e ->
-                        _uiState.value =
-                            _uiState.value.copy(
-                                isLoading = false,
-                                isError = true,
-                                errorMessage = ErrorUtils.getErrorMessage(e),
-                            )
-                    }.collect { transactions ->
-                        _uiState.value =
-                            _uiState.value.copy(
-                                transactions = transactions,
-                                isLoading = false,
-                                isError = false,
-                            )
-                    }
-            }
+                    transactionRepository
+                        .observeTransactions(
+                            from = range.startMillis,
+                            to = range.endMillisExclusive,
+                            filterType = _uiState.value.filter,
+                        ).catch { e ->
+                            _uiState.value =
+                                _uiState.value.copy(
+                                    isLoading = false,
+                                    isError = true,
+                                    errorMessage = ErrorUtils.getErrorMessage(e),
+                                )
+                        }.collect { transactions ->
+                            _uiState.value =
+                                _uiState.value.copy(
+                                    transactions = transactions,
+                                    isLoading = false,
+                                    isError = false,
+                                )
+                        }
+                }
         }
     }
 
@@ -89,4 +112,5 @@ data class HomeUiState(
     val isLoading: Boolean = false,
     val isError: Boolean = false,
     val errorMessage: String? = null,
+    val monthLabel: String = "",
 )

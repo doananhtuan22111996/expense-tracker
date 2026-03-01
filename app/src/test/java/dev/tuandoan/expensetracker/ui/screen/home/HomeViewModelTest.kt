@@ -1,5 +1,6 @@
 package dev.tuandoan.expensetracker.ui.screen.home
 
+import dev.tuandoan.expensetracker.core.util.DateRangeCalculator
 import dev.tuandoan.expensetracker.domain.model.MonthlySummary
 import dev.tuandoan.expensetracker.domain.model.Transaction
 import dev.tuandoan.expensetracker.domain.model.TransactionType
@@ -19,6 +20,9 @@ import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
+import java.time.Clock
+import java.time.Instant
+import java.time.ZoneId
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class HomeViewModelTest {
@@ -27,14 +31,21 @@ class HomeViewModelTest {
 
     private lateinit var fakeRepository: FakeTransactionRepository
     private lateinit var fakeTimeProvider: FakeTimeProvider
+    private lateinit var dateRangeCalculator: DateRangeCalculator
+
+    private val fixedZone: ZoneId = ZoneId.of("UTC")
+
+    // 2026-03-15T12:00:00Z -> YearMonth = March 2026
+    private val fixedClock: Clock = Clock.fixed(Instant.parse("2026-03-15T12:00:00Z"), fixedZone)
 
     @Before
     fun setup() {
         fakeRepository = FakeTransactionRepository()
         fakeTimeProvider = FakeTimeProvider()
+        dateRangeCalculator = DateRangeCalculator(fixedClock, fixedZone)
     }
 
-    private fun createViewModel(): HomeViewModel = HomeViewModel(fakeRepository, fakeTimeProvider)
+    private fun createViewModel(): HomeViewModel = HomeViewModel(fakeRepository, fakeTimeProvider, dateRangeCalculator)
 
     @Test
     fun init_loadsTransactions() =
@@ -151,9 +162,6 @@ class HomeViewModelTest {
             assertNull(viewModel.uiState.value.errorMessage)
         }
 
-    // Home list currency visibility – Phase 2.2 Item 6
-    // Guards that currencyCode survives the ViewModel pipeline to HomeUiState
-
     @Test
     fun init_loadsTransactions_preservesCurrencyCode() =
         runTest(mainDispatcherRule.testDispatcher) {
@@ -196,16 +204,113 @@ class HomeViewModelTest {
         }
 
     @Test
-    fun init_usesTimeProviderMonthRange() =
+    fun init_usesDateRangeCalculatorForCurrentMonth() =
         runTest(mainDispatcherRule.testDispatcher) {
-            fakeTimeProvider.setMonthRange(100L to 200L)
             fakeRepository.transactionsToEmit = emptyList()
 
             createViewModel()
             advanceUntilIdle()
 
-            assertEquals(100L, fakeRepository.lastObservedFrom)
-            assertEquals(200L, fakeRepository.lastObservedTo)
+            // March 2026 UTC: 2026-03-01T00:00:00Z to 2026-04-01T00:00:00Z
+            assertEquals(1772323200000L, fakeRepository.lastObservedFrom)
+            assertEquals(1775001600000L, fakeRepository.lastObservedTo)
+        }
+
+    @Test
+    fun init_monthLabel_showsCurrentMonth() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            fakeRepository.transactionsToEmit = emptyList()
+
+            val viewModel = createViewModel()
+            advanceUntilIdle()
+
+            assertEquals("Mar 2026", viewModel.uiState.value.monthLabel)
+        }
+
+    // --- Month navigation ---
+
+    @Test
+    fun goToPreviousMonth_queriesFebruary() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            fakeRepository.transactionsToEmit = emptyList()
+            val viewModel = createViewModel()
+            advanceUntilIdle()
+
+            viewModel.goToPreviousMonth()
+            advanceUntilIdle()
+
+            assertEquals("Feb 2026", viewModel.uiState.value.monthLabel)
+            // Feb 2026 UTC: 2026-02-01T00:00:00Z to 2026-03-01T00:00:00Z
+            assertEquals(1769904000000L, fakeRepository.lastObservedFrom)
+            assertEquals(1772323200000L, fakeRepository.lastObservedTo)
+        }
+
+    @Test
+    fun goToNextMonth_queriesApril() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            fakeRepository.transactionsToEmit = emptyList()
+            val viewModel = createViewModel()
+            advanceUntilIdle()
+
+            viewModel.goToNextMonth()
+            advanceUntilIdle()
+
+            assertEquals("Apr 2026", viewModel.uiState.value.monthLabel)
+        }
+
+    @Test
+    fun goToPreviousMonth_crossesYearBoundary() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            // Start at Jan 2026, go back to Dec 2025
+            val janClock = Clock.fixed(Instant.parse("2026-01-15T12:00:00Z"), fixedZone)
+            val janCalc = DateRangeCalculator(janClock, fixedZone)
+            fakeRepository.transactionsToEmit = emptyList()
+
+            val viewModel = HomeViewModel(fakeRepository, fakeTimeProvider, janCalc)
+            advanceUntilIdle()
+
+            viewModel.goToPreviousMonth()
+            advanceUntilIdle()
+
+            assertEquals("Dec 2025", viewModel.uiState.value.monthLabel)
+        }
+
+    @Test
+    fun goToNextMonth_crossesYearBoundary() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            // Start at Dec 2025, go forward to Jan 2026
+            val decClock = Clock.fixed(Instant.parse("2025-12-15T12:00:00Z"), fixedZone)
+            val decCalc = DateRangeCalculator(decClock, fixedZone)
+            fakeRepository.transactionsToEmit = emptyList()
+
+            val viewModel = HomeViewModel(fakeRepository, fakeTimeProvider, decCalc)
+            advanceUntilIdle()
+
+            viewModel.goToNextMonth()
+            advanceUntilIdle()
+
+            assertEquals("Jan 2026", viewModel.uiState.value.monthLabel)
+        }
+
+    @Test
+    fun previousMonthTransactions_areRetrieable() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            // Start with current month showing nothing
+            fakeRepository.transactionsToEmit = emptyList()
+            val viewModel = createViewModel()
+            advanceUntilIdle()
+            assertTrue(
+                viewModel.uiState.value.transactions
+                    .isEmpty(),
+            )
+
+            // Go to previous month where there IS data
+            fakeRepository.transactionsToEmit = listOf(TestData.sampleExpenseTransaction)
+            viewModel.goToPreviousMonth()
+            advanceUntilIdle()
+
+            assertEquals(1, viewModel.uiState.value.transactions.size)
+            assertEquals("Feb 2026", viewModel.uiState.value.monthLabel)
         }
 
     private class FakeTransactionRepository : TransactionRepository {

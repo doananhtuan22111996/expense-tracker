@@ -497,6 +497,65 @@ file picker). The app itself makes no network calls.
 | `BackupSerializerTest` | 22 | Round-trip, new fields, backward compat, snake_case, edge cases |
 | `SettingsViewModelTest` | 12 | Currency selection, export lifecycle, error handling |
 
+## Phase 4.1 – Data Retention Guardrails (v2.2)
+
+### Root Cause: "Data Disappears"
+
+Investigation confirmed that **no data is actually lost**. The database has no destructive migrations,
+no `clearAllTables()` on startup, and no scheduled cleanup jobs. The perceived "data disappearance"
+was caused by the UI being hardcoded to query only the current calendar month — when a new month
+begins, all previous transactions become invisible even though they remain in the database.
+
+### Guardrails Added
+
+- **No `fallbackToDestructiveMigration()`** — confirmed absent; Room uses explicit migrations only.
+- **Database version 3** — adds performance indices on `transactions.timestamp` and
+  `transactions.category_id`. No data changes; all existing rows preserved.
+- **Data retention regression tests** (`DataRetentionTest`) — verify that:
+  - Consecutive months have no gaps and no overlaps
+  - A full year of months covers exactly 365/366 days
+  - Transactions at exact month boundaries belong to the correct month
+  - Year-boundary navigation (Dec→Jan) is seamless
+
+## Phase 4.2 – Time Range System + Month Navigation (v2.3)
+
+### Multi-Month Tracking
+
+Users can now navigate between months on both the Home and Summary screens using
+prev/next arrow buttons. Transactions from all months remain in the database and
+are retrievable by selecting the desired month.
+
+**How to Use:**
+1. Open Home or Summary
+2. The current month is shown by default (e.g., "Mar 2026")
+3. Tap the left arrow to go to the previous month
+4. Tap the right arrow to go to the next month
+5. Both the transaction list and summary update to show the selected month's data
+
+**Key Components:**
+
+| Component | File | Role |
+|-----------|------|------|
+| `DateRange` | `domain/model/DateRange.kt` | Half-open time range `[start, end)` |
+| `DateRangeCalculator` | `core/util/DateRangeCalculator.kt` | Month boundary computation with injectable `Clock`/`ZoneId` |
+| `MonthSelector` | `ui/component/MonthSelector.kt` | Reusable prev/label/next composable |
+| `HomeViewModel` | `ui/screen/home/HomeViewModel.kt` | Month navigation with `goToPreviousMonth()` / `goToNextMonth()` |
+| `SummaryViewModel` | `ui/screen/summary/SummaryViewModel.kt` | Same month navigation pattern |
+
+**Database Migration (v2→v3):**
+- Adds index on `transactions.timestamp` for date-range query performance
+- Adds index on `transactions.category_id` for foreign key cascade performance
+- No data changes; existing rows fully preserved
+
+**Test Coverage:**
+
+| Test Class | Tests | Coverage |
+|------------|-------|----------|
+| `DateRangeCalculatorTest` | 17 | Month boundaries, leap years, year crossings, timezones, round-trips |
+| `DataRetentionTest` | 8 | No-gap coverage, boundary correctness, year totals |
+| `HomeViewModelTest` | 16 | Month navigation, year boundary crossings, label display |
+| `SummaryViewModelTest` | 12 | Month navigation, year boundary crossings, label display |
+
 ## Project Structure
 
 ```
@@ -699,6 +758,8 @@ For support or questions, please contact: support@expensetracker.com
 
 ## Version History
 
+- **v2.3.0** - Phase 4.2: Time Range System + Month Navigation (DateRange model, DateRangeCalculator with injectable Clock/ZoneId, MonthSelector composable, prev/next month navigation on Home + Summary, timestamp + category_id indices, Room migration v2→v3, 43 new/updated unit tests)
+- **v2.2.0** - Phase 4.1: Data Retention Guardrails (root cause analysis – no data loss, only current-month visibility issue; 8 regression tests proving no gaps/overlaps in date ranges; confirmed no destructive migration)
 - **v1.6.0** - Phase 3.2: Export Backup (Offline) -- BackupAssembler for deterministic export, defaultCurrencyCode + deviceLocale in BackupDocumentV1, Settings "Backup & Restore" section with SAF export, @IoDispatcher threading, 56 unit tests
 - **v1.5.0** - Phase 3.1: Backup Schema v1 (BackupDocumentV1 DTOs, kotlinx-serialization, BackupValidator, entity-DTO mappers, BackupRepository, ProGuard rules, 48 unit tests)
 - **v1.4.0** - Phase 2.3: Monthly Summary per currency (per-currency sections on Summary screen, top-5 + Other aggregation, registry-ordered currency sorting, policy-safe disclaimer for all non-empty months)

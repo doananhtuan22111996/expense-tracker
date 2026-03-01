@@ -1,5 +1,6 @@
 package dev.tuandoan.expensetracker.ui.screen.summary
 
+import dev.tuandoan.expensetracker.core.util.DateRangeCalculator
 import dev.tuandoan.expensetracker.domain.model.CurrencyMonthlySummary
 import dev.tuandoan.expensetracker.domain.model.MonthlySummary
 import dev.tuandoan.expensetracker.domain.model.Transaction
@@ -21,6 +22,9 @@ import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
+import java.time.Clock
+import java.time.Instant
+import java.time.ZoneId
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class SummaryViewModelTest {
@@ -29,14 +33,20 @@ class SummaryViewModelTest {
 
     private lateinit var fakeRepository: FakeTransactionRepository
     private lateinit var fakeTimeProvider: FakeTimeProvider
+    private lateinit var dateRangeCalculator: DateRangeCalculator
+
+    private val fixedZone: ZoneId = ZoneId.of("UTC")
+    private val fixedClock: Clock = Clock.fixed(Instant.parse("2026-03-15T12:00:00Z"), fixedZone)
 
     @Before
     fun setup() {
         fakeRepository = FakeTransactionRepository()
         fakeTimeProvider = FakeTimeProvider()
+        dateRangeCalculator = DateRangeCalculator(fixedClock, fixedZone)
     }
 
-    private fun createViewModel(): SummaryViewModel = SummaryViewModel(fakeRepository, fakeTimeProvider)
+    private fun createViewModel(): SummaryViewModel =
+        SummaryViewModel(fakeRepository, fakeTimeProvider, dateRangeCalculator)
 
     @Test
     fun init_loadsSummary() =
@@ -81,7 +91,6 @@ class SummaryViewModelTest {
             val viewModel = createViewModel()
             advanceUntilIdle()
 
-            // Update data with higher expense
             val updatedSummary =
                 MonthlySummary(
                     currencySummaries =
@@ -107,16 +116,16 @@ class SummaryViewModelTest {
         }
 
     @Test
-    fun init_usesTimeProviderMonthRange() =
+    fun init_usesDateRangeCalculatorForCurrentMonth() =
         runTest(mainDispatcherRule.testDispatcher) {
-            fakeTimeProvider.setMonthRange(100L to 200L)
             fakeRepository.summaryToEmit = TestData.sampleMonthlySummary
 
             createViewModel()
             advanceUntilIdle()
 
-            assertEquals(100L, fakeRepository.lastFrom)
-            assertEquals(200L, fakeRepository.lastTo)
+            // March 2026 UTC
+            assertEquals(1772323200000L, fakeRepository.lastFrom)
+            assertEquals(1775001600000L, fakeRepository.lastTo)
         }
 
     @Test
@@ -172,13 +181,70 @@ class SummaryViewModelTest {
 
     @Test
     fun initialState_isDefault() {
-        // Don't create ViewModel yet - just check default state
         val state = SummaryUiState()
         assertNull(state.summary)
         assertFalse(state.isLoading)
         assertFalse(state.isError)
         assertNull(state.errorMessage)
+        assertEquals("", state.monthLabel)
     }
+
+    @Test
+    fun init_monthLabel_showsCurrentMonth() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            fakeRepository.summaryToEmit = TestData.sampleMonthlySummary
+
+            val viewModel = createViewModel()
+            advanceUntilIdle()
+
+            assertEquals("Mar 2026", viewModel.uiState.value.monthLabel)
+        }
+
+    // --- Month navigation ---
+
+    @Test
+    fun goToPreviousMonth_queriesFebruary() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            fakeRepository.summaryToEmit = TestData.sampleMonthlySummary
+            val viewModel = createViewModel()
+            advanceUntilIdle()
+
+            viewModel.goToPreviousMonth()
+            advanceUntilIdle()
+
+            assertEquals("Feb 2026", viewModel.uiState.value.monthLabel)
+            assertEquals(1769904000000L, fakeRepository.lastFrom)
+            assertEquals(1772323200000L, fakeRepository.lastTo)
+        }
+
+    @Test
+    fun goToNextMonth_queriesApril() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            fakeRepository.summaryToEmit = TestData.sampleMonthlySummary
+            val viewModel = createViewModel()
+            advanceUntilIdle()
+
+            viewModel.goToNextMonth()
+            advanceUntilIdle()
+
+            assertEquals("Apr 2026", viewModel.uiState.value.monthLabel)
+        }
+
+    @Test
+    fun goToPreviousMonth_crossesYearBoundary() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            val janClock = Clock.fixed(Instant.parse("2026-01-15T12:00:00Z"), fixedZone)
+            val janCalc = DateRangeCalculator(janClock, fixedZone)
+            fakeRepository.summaryToEmit = TestData.sampleMonthlySummary
+
+            val viewModel = SummaryViewModel(fakeRepository, fakeTimeProvider, janCalc)
+            advanceUntilIdle()
+
+            viewModel.goToPreviousMonth()
+            advanceUntilIdle()
+
+            assertEquals("Dec 2025", viewModel.uiState.value.monthLabel)
+        }
 
     private class FakeTransactionRepository : TransactionRepository {
         var summaryToEmit: MonthlySummary = TestData.sampleMonthlySummary
