@@ -279,6 +279,40 @@ class BackupRepositoryImplTest {
             assertEquals(1, result.transactionCount)
         }
 
+    @Test
+    fun importBackupJson_restoresSupportedCurrencyPreference() =
+        runTest {
+            val document = TestData.sampleBackupDocument.copy(defaultCurrencyCode = "USD")
+            val json = serializer.encode(document)
+
+            repository.importBackupJson(json)
+
+            assertTrue(fakeCurrencyPreferenceRepo.setDefaultCurrencyCalled)
+            assertEquals("USD", fakeCurrencyPreferenceRepo.lastSetCurrencyCode)
+        }
+
+    @Test
+    fun importBackupJson_skipsUnsupportedCurrencyPreference() =
+        runTest {
+            val document = TestData.sampleBackupDocument.copy(defaultCurrencyCode = "INVALID")
+            val json = serializer.encode(document)
+
+            repository.importBackupJson(json)
+
+            assertEquals(false, fakeCurrencyPreferenceRepo.setDefaultCurrencyCalled)
+        }
+
+    @Test
+    fun importBackupJson_skipsBlankCurrencyPreference() =
+        runTest {
+            val document = TestData.sampleBackupDocument.copy(defaultCurrencyCode = "")
+            val json = serializer.encode(document)
+
+            repository.importBackupJson(json)
+
+            assertEquals(false, fakeCurrencyPreferenceRepo.setDefaultCurrencyCalled)
+        }
+
     // Fakes
 
     private inner class FakeTransactionRunner : TransactionRunner {

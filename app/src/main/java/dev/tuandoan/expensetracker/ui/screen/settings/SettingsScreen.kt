@@ -17,6 +17,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.FileDownload
 import androidx.compose.material.icons.filled.FileUpload
 import androidx.compose.material.icons.filled.KeyboardArrowRight
 import androidx.compose.material3.AlertDialog
@@ -69,6 +70,13 @@ fun SettingsScreen(
             contract = ActivityResultContracts.CreateDocument("application/json"),
         ) { uri ->
             uri?.let { viewModel.exportBackup(it) }
+        }
+
+    val importLauncher =
+        rememberLauncherForActivityResult(
+            contract = ActivityResultContracts.OpenDocument(),
+        ) { uri ->
+            uri?.let { viewModel.onRestoreFileSelected(it) }
         }
 
     LaunchedEffect(uiState.errorMessage) {
@@ -154,13 +162,15 @@ fun SettingsScreen(
 
             // Backup & Restore Section
             SettingsSection(title = "Backup & Restore") {
+                val isBusy = uiState.backupOperation != BackupOperation.Idle
                 val isExporting = uiState.backupOperation == BackupOperation.Exporting
+                val isImporting = uiState.backupOperation == BackupOperation.Importing
 
                 Row(
                     modifier =
                         Modifier
                             .fillMaxWidth()
-                            .clickable(enabled = !isExporting) {
+                            .clickable(enabled = !isBusy) {
                                 val date =
                                     SimpleDateFormat("yyyy-MM-dd", Locale.US).format(Date())
                                 exportLauncher.launch("expense-tracker-backup_$date.json")
@@ -194,6 +204,51 @@ fun SettingsScreen(
                         )
                         Text(
                             text = "Save all data as a JSON file",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.padding(top = DesignSystemSpacing.xs),
+                        )
+                    }
+                }
+
+                HorizontalDivider()
+
+                Row(
+                    modifier =
+                        Modifier
+                            .fillMaxWidth()
+                            .clickable(enabled = !isBusy) {
+                                importLauncher.launch(arrayOf("application/json"))
+                            }.padding(DesignSystemSpacing.large)
+                            .semantics {
+                                contentDescription =
+                                    if (isImporting) {
+                                        "Import backup from JSON file, currently importing"
+                                    } else {
+                                        "Import backup from JSON file"
+                                    }
+                            },
+                    horizontalArrangement = Arrangement.spacedBy(DesignSystemSpacing.medium),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    if (isImporting) {
+                        CircularProgressIndicator(modifier = Modifier.size(24.dp))
+                    } else {
+                        Icon(
+                            Icons.Default.FileDownload,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.primary,
+                        )
+                    }
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = "Import Backup",
+                            style = MaterialTheme.typography.bodyLarge,
+                            fontWeight = FontWeight.Medium,
+                            color = MaterialTheme.colorScheme.onSurface,
+                        )
+                        Text(
+                            text = "Restore from a JSON backup file",
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                             modifier = Modifier.padding(top = DesignSystemSpacing.xs),
@@ -340,6 +395,36 @@ fun SettingsScreen(
                 showCurrencyDialog = false
             },
             onDismiss = { showCurrencyDialog = false },
+        )
+    }
+
+    // Restore Confirmation Dialog
+    if (uiState.pendingRestoreUri != null) {
+        AlertDialog(
+            onDismissRequest = { viewModel.dismissRestoreConfirmation() },
+            title = { Text("Replace all data?") },
+            text = {
+                Text(
+                    "This will permanently delete all existing transactions " +
+                        "and categories, then replace them with the data from " +
+                        "the selected backup file.\n\nThis action cannot be undone.",
+                )
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = { viewModel.confirmRestore() },
+                ) {
+                    Text(
+                        "Replace All",
+                        color = MaterialTheme.colorScheme.error,
+                    )
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { viewModel.dismissRestoreConfirmation() }) {
+                    Text("Cancel")
+                }
+            },
         )
     }
 }

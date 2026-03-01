@@ -7,6 +7,7 @@ import dev.tuandoan.expensetracker.data.backup.mapper.toEntity
 import dev.tuandoan.expensetracker.data.database.TransactionRunner
 import dev.tuandoan.expensetracker.data.database.dao.CategoryDao
 import dev.tuandoan.expensetracker.data.database.dao.TransactionDao
+import dev.tuandoan.expensetracker.domain.model.SupportedCurrencies
 import dev.tuandoan.expensetracker.domain.repository.BackupRepository
 import dev.tuandoan.expensetracker.domain.repository.BackupRestoreResult
 import dev.tuandoan.expensetracker.domain.repository.CurrencyPreferenceRepository
@@ -66,6 +67,18 @@ class BackupRepositoryImpl
                 categoryDao.deleteAll()
                 categoryDao.insertAll(categoryEntities)
                 transactionDao.insertAll(transactionEntities)
+            }
+
+            // Best-effort currency preference restore: DataStore is independent of Room,
+            // so a failure here should not mask a successful database restore.
+            val currencyCode = document.defaultCurrencyCode
+            if (currencyCode.isNotBlank() && SupportedCurrencies.byCode(currencyCode) != null) {
+                @Suppress("TooGenericExceptionCaught")
+                try {
+                    currencyPreferenceRepository.setDefaultCurrency(currencyCode)
+                } catch (_: Exception) {
+                    // Currency preference will keep its previous value
+                }
             }
 
             return BackupRestoreResult(

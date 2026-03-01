@@ -89,6 +89,48 @@ class SettingsViewModel
             _uiState.value = _uiState.value.copy(backupMessage = null)
         }
 
+        fun onRestoreFileSelected(uri: Uri) {
+            _uiState.value = _uiState.value.copy(pendingRestoreUri = uri)
+        }
+
+        fun dismissRestoreConfirmation() {
+            _uiState.value = _uiState.value.copy(pendingRestoreUri = null)
+        }
+
+        fun confirmRestore() {
+            val uri = _uiState.value.pendingRestoreUri ?: return
+            _uiState.value =
+                _uiState.value.copy(
+                    pendingRestoreUri = null,
+                    backupOperation = BackupOperation.Importing,
+                )
+            viewModelScope.launch {
+                try {
+                    val result =
+                        withContext(ioDispatcher) {
+                            val json =
+                                contentResolver.openInputStream(uri)?.use { inputStream ->
+                                    inputStream.bufferedReader(Charsets.UTF_8).readText()
+                                } ?: throw IllegalStateException("Cannot open file")
+                            backupRepository.importBackupJson(json)
+                        }
+                    _uiState.value =
+                        _uiState.value.copy(
+                            backupOperation = BackupOperation.Idle,
+                            backupMessage = "Imported ${result.transactionCount} transactions",
+                        )
+                } catch (e: CancellationException) {
+                    throw e
+                } catch (e: Exception) {
+                    _uiState.value =
+                        _uiState.value.copy(
+                            backupOperation = BackupOperation.Idle,
+                            errorMessage = "Import failed: ${e.message ?: "Unknown error"}",
+                        )
+                }
+            }
+        }
+
         private fun observeDefaultCurrency() {
             viewModelScope.launch {
                 currencyPreferenceRepository
@@ -108,6 +150,7 @@ class SettingsViewModel
 enum class BackupOperation {
     Idle,
     Exporting,
+    Importing,
 }
 
 data class SettingsUiState(
@@ -116,4 +159,5 @@ data class SettingsUiState(
     val errorMessage: String? = null,
     val backupOperation: BackupOperation = BackupOperation.Idle,
     val backupMessage: String? = null,
+    val pendingRestoreUri: Uri? = null,
 )

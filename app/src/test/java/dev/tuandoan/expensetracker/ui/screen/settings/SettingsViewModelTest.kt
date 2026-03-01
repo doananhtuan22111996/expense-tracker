@@ -2,6 +2,8 @@ package dev.tuandoan.expensetracker.ui.screen.settings
 
 import android.content.ContentResolver
 import android.net.Uri
+import dev.tuandoan.expensetracker.data.backup.BackupValidationError
+import dev.tuandoan.expensetracker.data.backup.BackupValidationException
 import dev.tuandoan.expensetracker.domain.model.SupportedCurrencies
 import dev.tuandoan.expensetracker.domain.repository.BackupRepository
 import dev.tuandoan.expensetracker.domain.repository.BackupRestoreResult
@@ -17,6 +19,7 @@ import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
 import org.mockito.Mockito
+import java.io.ByteArrayInputStream
 import java.io.ByteArrayOutputStream
 
 @OptIn(ExperimentalCoroutinesApi::class)
@@ -209,8 +212,141 @@ class SettingsViewModelTest {
             )
         }
 
+    // --- Import tests ---
+
+    @Test
+    fun onRestoreFileSelected_setsPendingRestoreUri() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            val viewModel = createViewModel()
+            advanceUntilIdle()
+
+            viewModel.onRestoreFileSelected(mockUri)
+
+            assertEquals(mockUri, viewModel.uiState.value.pendingRestoreUri)
+        }
+
+    @Test
+    fun dismissRestoreConfirmation_clearsPendingRestoreUri() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            val viewModel = createViewModel()
+            advanceUntilIdle()
+
+            viewModel.onRestoreFileSelected(mockUri)
+            viewModel.dismissRestoreConfirmation()
+
+            assertNull(viewModel.uiState.value.pendingRestoreUri)
+        }
+
+    @Test
+    fun confirmRestore_success_setsBackupMessage() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            val inputStream = ByteArrayInputStream("{}".toByteArray())
+            Mockito
+                .`when`(mockContentResolver.openInputStream(mockUri))
+                .thenReturn(inputStream)
+            fakeBackupRepository.importResult = BackupRestoreResult(5, 42)
+
+            val viewModel = createViewModel()
+            advanceUntilIdle()
+
+            viewModel.onRestoreFileSelected(mockUri)
+            viewModel.confirmRestore()
+            advanceUntilIdle()
+
+            assertEquals(BackupOperation.Idle, viewModel.uiState.value.backupOperation)
+            assertEquals("Imported 42 transactions", viewModel.uiState.value.backupMessage)
+            assertNull(viewModel.uiState.value.pendingRestoreUri)
+        }
+
+    @Test
+    fun confirmRestore_repositoryThrows_setsErrorMessage() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            val inputStream = ByteArrayInputStream("{}".toByteArray())
+            Mockito
+                .`when`(mockContentResolver.openInputStream(mockUri))
+                .thenReturn(inputStream)
+            fakeBackupRepository.importException =
+                IllegalArgumentException("Invalid backup file format")
+
+            val viewModel = createViewModel()
+            advanceUntilIdle()
+
+            viewModel.onRestoreFileSelected(mockUri)
+            viewModel.confirmRestore()
+            advanceUntilIdle()
+
+            assertEquals(BackupOperation.Idle, viewModel.uiState.value.backupOperation)
+            assertEquals(
+                "Import failed: Invalid backup file format",
+                viewModel.uiState.value.errorMessage,
+            )
+        }
+
+    @Test
+    fun confirmRestore_validationException_setsErrorMessage() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            val inputStream = ByteArrayInputStream("{}".toByteArray())
+            Mockito
+                .`when`(mockContentResolver.openInputStream(mockUri))
+                .thenReturn(inputStream)
+            fakeBackupRepository.importException =
+                BackupValidationException(
+                    listOf(BackupValidationError.UnsupportedSchemaVersion(99)),
+                )
+
+            val viewModel = createViewModel()
+            advanceUntilIdle()
+
+            viewModel.onRestoreFileSelected(mockUri)
+            viewModel.confirmRestore()
+            advanceUntilIdle()
+
+            assertEquals(BackupOperation.Idle, viewModel.uiState.value.backupOperation)
+            assertTrue(
+                viewModel.uiState.value.errorMessage!!
+                    .startsWith("Import failed:"),
+            )
+        }
+
+    @Test
+    fun confirmRestore_nullInputStream_setsErrorMessage() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            Mockito
+                .`when`(mockContentResolver.openInputStream(mockUri))
+                .thenReturn(null)
+
+            val viewModel = createViewModel()
+            advanceUntilIdle()
+
+            viewModel.onRestoreFileSelected(mockUri)
+            viewModel.confirmRestore()
+            advanceUntilIdle()
+
+            assertEquals(BackupOperation.Idle, viewModel.uiState.value.backupOperation)
+            assertEquals(
+                "Import failed: Cannot open file",
+                viewModel.uiState.value.errorMessage,
+            )
+        }
+
+    @Test
+    fun confirmRestore_noPendingUri_doesNothing() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            val viewModel = createViewModel()
+            advanceUntilIdle()
+
+            viewModel.confirmRestore()
+            advanceUntilIdle()
+
+            assertEquals(BackupOperation.Idle, viewModel.uiState.value.backupOperation)
+            assertNull(viewModel.uiState.value.backupMessage)
+            assertNull(viewModel.uiState.value.errorMessage)
+        }
+
     private class FakeBackupRepository : BackupRepository {
         var exportException: Exception? = null
+        var importException: Exception? = null
+        var importResult: BackupRestoreResult = BackupRestoreResult(categoryCount = 0, transactionCount = 0)
 
         override suspend fun exportBackupJson(): String {
             exportException?.let { throw it }
@@ -219,7 +355,9 @@ class SettingsViewModelTest {
                 "\"device_locale\":\"en-US\",\"categories\":[],\"transactions\":[]}"
         }
 
-        override suspend fun importBackupJson(json: String): BackupRestoreResult =
-            BackupRestoreResult(categoryCount = 0, transactionCount = 0)
+        override suspend fun importBackupJson(json: String): BackupRestoreResult {
+            importException?.let { throw it }
+            return importResult
+        }
     }
 }
