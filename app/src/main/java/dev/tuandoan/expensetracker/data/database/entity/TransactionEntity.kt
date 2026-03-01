@@ -3,6 +3,7 @@ package dev.tuandoan.expensetracker.data.database.entity
 import androidx.room.ColumnInfo
 import androidx.room.Entity
 import androidx.room.ForeignKey
+import androidx.room.Index
 import androidx.room.PrimaryKey
 import dev.tuandoan.expensetracker.domain.model.SupportedCurrencies
 
@@ -15,6 +16,10 @@ import dev.tuandoan.expensetracker.domain.model.SupportedCurrencies
             childColumns = ["category_id"],
             onDelete = ForeignKey.CASCADE,
         ),
+    ],
+    indices = [
+        Index(value = ["timestamp"]),
+        Index(value = ["category_id"]),
     ],
 )
 data class TransactionEntity(
