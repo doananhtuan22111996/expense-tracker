@@ -5,8 +5,8 @@ import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dev.tuandoan.expensetracker.core.util.DateRangeCalculator
 import dev.tuandoan.expensetracker.core.util.ErrorUtils
-import dev.tuandoan.expensetracker.core.util.TimeProvider
 import dev.tuandoan.expensetracker.domain.model.MonthlySummary
+import dev.tuandoan.expensetracker.domain.repository.SelectedMonthRepository
 import dev.tuandoan.expensetracker.domain.repository.TransactionRepository
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -22,34 +22,40 @@ class SummaryViewModel
     @Inject
     constructor(
         private val transactionRepository: TransactionRepository,
-        private val timeProvider: TimeProvider,
+        private val selectedMonthRepository: SelectedMonthRepository,
         private val dateRangeCalculator: DateRangeCalculator,
     ) : ViewModel() {
         private val _uiState = MutableStateFlow(SummaryUiState())
         val uiState: StateFlow<SummaryUiState> = _uiState.asStateFlow()
         private var summaryJob: Job? = null
 
-        private var selectedMonth: YearMonth = dateRangeCalculator.currentMonth()
-
         init {
-            loadMonthlySummary()
+            viewModelScope.launch {
+                selectedMonthRepository.selectedMonth.collect { month ->
+                    loadMonthlySummary(month)
+                }
+            }
         }
 
         fun refresh() {
-            loadMonthlySummary()
+            loadMonthlySummary(selectedMonthRepository.selectedMonth.value)
         }
 
         fun goToPreviousMonth() {
-            selectedMonth = dateRangeCalculator.previousMonth(selectedMonth)
-            loadMonthlySummary()
+            selectedMonthRepository.goToPreviousMonth()
         }
 
         fun goToNextMonth() {
-            selectedMonth = dateRangeCalculator.nextMonth(selectedMonth)
-            loadMonthlySummary()
+            selectedMonthRepository.goToNextMonth()
         }
 
-        private fun loadMonthlySummary() {
+        fun setMonth(yearMonth: YearMonth) {
+            selectedMonthRepository.setMonth(yearMonth)
+        }
+
+        fun currentSelectedMonth(): YearMonth = selectedMonthRepository.selectedMonth.value
+
+        private fun loadMonthlySummary(selectedMonth: YearMonth) {
             summaryJob?.cancel()
             summaryJob =
                 viewModelScope.launch {

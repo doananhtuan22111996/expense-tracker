@@ -556,6 +556,49 @@ are retrievable by selecting the desired month.
 | `HomeViewModelTest` | 16 | Month navigation, year boundary crossings, label display |
 | `SummaryViewModelTest` | 12 | Month navigation, year boundary crossings, label display |
 
+## Phase 4.3 – Shared Month/Year Navigation + Picker (v2.4)
+
+### Synchronized Month Selection
+
+Home and Summary now share a single selected-month state. Changing the month on
+one screen automatically updates the other — no more independent navigation.
+
+**New: Month/Year Picker Dialog**
+Tapping the month label (e.g., "Mar 2026") opens a picker dialog with a 4x3
+month grid and year stepper, allowing users to jump directly to any month/year.
+
+**How to Use:**
+1. Tap the left/right arrows to step one month at a time (same as Phase 4.2)
+2. **New:** Tap the month label to open the month/year picker
+3. In the picker, use the year arrows to change year, then tap a month to select
+4. Switch tabs — the selected month is shared between Home and Summary
+
+**Data Retention:** Changing months is purely a view filter. No data is created
+or deleted. Multi-currency summaries remain per-currency (Phase 2.3 preserved).
+
+**Key Components:**
+
+| Component | File | Role |
+|-----------|------|------|
+| `SelectedMonthRepository` | `domain/repository/SelectedMonthRepository.kt` | Shared month state interface |
+| `SelectedMonthRepositoryImpl` | `data/preferences/SelectedMonthRepositoryImpl.kt` | `@Singleton` in-memory `StateFlow<YearMonth>` |
+| `MonthYearPickerDialog` | `ui/component/MonthYearPickerDialog.kt` | Material 3 month/year picker dialog |
+| `MonthSelector` | `ui/component/MonthSelector.kt` | Updated with `onMonthLabelClick` callback |
+
+**Architecture:**
+- `SelectedMonthRepository` is a `@Singleton` scoped in-memory `StateFlow<YearMonth>`
+- Both ViewModels inject and observe the same instance via Hilt
+- On cold start, the month resets to "current month" (no DataStore persistence needed)
+- The picker dialog uses `rememberSaveable` for year state across config changes
+
+**Test Coverage:**
+
+| Test Class | Tests | Coverage |
+|------------|-------|----------|
+| `SelectedMonthRepositoryImplTest` | 8 | Default month, set/nav, year boundaries, accumulation |
+| `HomeViewModelTest` | 19 | Shared month, setMonth, external change, picker integration |
+| `SummaryViewModelTest` | 16 | Shared month, setMonth, external change, cross-VM consistency |
+
 ## Project Structure
 
 ```
@@ -575,7 +618,8 @@ app/src/main/java/dev/tuandoan/expensetracker/
 │   │   ├── entity/                # Database entities
 │   │   └── TransactionRunner.kt   # Room transaction abstraction
 │   ├── preferences/                # DataStore preferences
-│   │   └── CurrencyPreferenceRepositoryImpl.kt
+│   │   ├── CurrencyPreferenceRepositoryImpl.kt
+│   │   └── SelectedMonthRepositoryImpl.kt
 │   └── seed/                      # Database seeding
 ├── di/                            # Dependency injection modules
 ├── domain/                        # Domain layer
@@ -585,7 +629,9 @@ app/src/main/java/dev/tuandoan/expensetracker/
 │   └── mapper/                    # Entity-Domain mappers
 └── ui/                           # UI layer
     ├── component/                 # Reusable UI components
-    │   └── CommonComponents.kt    # AmountText, EmptyStateMessage, etc.
+    │   ├── CommonComponents.kt    # AmountText, EmptyStateMessage, etc.
+    │   ├── MonthSelector.kt       # Month prev/next selector with label tap
+    │   └── MonthYearPickerDialog.kt # Month/year picker dialog
     ├── navigation/                # Navigation setup
     ├── screen/                    # Compose screens
     │   ├── home/                  # Home screen (transaction list)
@@ -758,6 +804,7 @@ For support or questions, please contact: support@expensetracker.com
 
 ## Version History
 
+- **v2.4.0** - Phase 4.3: Shared Month/Year Navigation + Picker (SelectedMonthRepository singleton for synchronized Home + Summary month state, MonthYearPickerDialog with 4x3 month grid + year stepper, tap-on-label to pick, 43 unit tests including cross-VM consistency)
 - **v2.3.0** - Phase 4.2: Time Range System + Month Navigation (DateRange model, DateRangeCalculator with injectable Clock/ZoneId, MonthSelector composable, prev/next month navigation on Home + Summary, timestamp + category_id indices, Room migration v2→v3, 43 new/updated unit tests)
 - **v2.2.0** - Phase 4.1: Data Retention Guardrails (root cause analysis – no data loss, only current-month visibility issue; 8 regression tests proving no gaps/overlaps in date ranges; confirmed no destructive migration)
 - **v1.6.0** - Phase 3.2: Export Backup (Offline) -- BackupAssembler for deterministic export, defaultCurrencyCode + deviceLocale in BackupDocumentV1, Settings "Backup & Restore" section with SAF export, @IoDispatcher threading, 56 unit tests
