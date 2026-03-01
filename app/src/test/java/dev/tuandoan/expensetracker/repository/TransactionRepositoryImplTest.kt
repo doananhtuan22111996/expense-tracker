@@ -633,6 +633,13 @@ class TransactionRepositoryImplTest {
             to: Long,
             type: Int,
         ): Flow<List<CurrencyCategorySumRow>> = categorySumByCurrencyFlow
+
+        override fun searchTransactions(
+            from: Long,
+            to: Long,
+            query: String,
+            type: Int?,
+        ): Flow<List<TransactionEntity>> = transactionsFlow
     }
 
     private class FakeCategoryDao : CategoryDao {

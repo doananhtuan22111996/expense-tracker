@@ -29,6 +29,7 @@ fun MonthSelector(
     onNextMonth: () -> Unit,
     modifier: Modifier = Modifier,
     onMonthLabelClick: (() -> Unit)? = null,
+    periodType: String = "month",
 ) {
     Row(
         modifier =
@@ -42,7 +43,7 @@ fun MonthSelector(
             onClick = onPreviousMonth,
             modifier =
                 Modifier.semantics {
-                    contentDescription = "Go to previous month"
+                    contentDescription = "Go to previous $periodType"
                 },
         ) {
             Icon(
@@ -67,9 +68,9 @@ fun MonthSelector(
                         heading()
                         contentDescription =
                             if (onMonthLabelClick != null) {
-                                "Selected month: $monthLabel. Tap to pick month"
+                                "Selected $periodType: $monthLabel. Tap to pick $periodType"
                             } else {
-                                "Selected month: $monthLabel"
+                                "Selected $periodType: $monthLabel"
                             }
                     },
         )
@@ -78,7 +79,7 @@ fun MonthSelector(
             onClick = onNextMonth,
             modifier =
                 Modifier.semantics {
-                    contentDescription = "Go to next month"
+                    contentDescription = "Go to next $periodType"
                 },
         ) {
             Icon(

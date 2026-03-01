@@ -123,6 +123,53 @@ class DateRangeCalculatorTest {
         assertEquals("Dec 2024", calculator.displayLabel(YearMonth.of(2024, 12)))
     }
 
+    // --- currentYear ---
+
+    @Test
+    fun currentYear_returns2026() {
+        assertEquals(2026, calculator.currentYear())
+    }
+
+    // --- rangeOfYear ---
+
+    @Test
+    fun rangeOfYear_2026_startsAtJan1() {
+        val range = calculator.rangeOfYear(2026)
+        // 2026-01-01T00:00:00Z
+        assertEquals(1767225600000L, range.startMillis)
+    }
+
+    @Test
+    fun rangeOfYear_2026_endsAtJan1_2027() {
+        val range = calculator.rangeOfYear(2026)
+        // 2027-01-01T00:00:00Z
+        assertEquals(1798761600000L, range.endMillisExclusive)
+    }
+
+    @Test
+    fun rangeOfYear_2026_spans365Days() {
+        val range = calculator.rangeOfYear(2026)
+        val daysInMillis = range.endMillisExclusive - range.startMillis
+        assertEquals(365L * 24 * 60 * 60 * 1000, daysInMillis)
+    }
+
+    @Test
+    fun rangeOfYear_leapYear2024_spans366Days() {
+        val range = calculator.rangeOfYear(2024)
+        val daysInMillis = range.endMillisExclusive - range.startMillis
+        assertEquals(366L * 24 * 60 * 60 * 1000, daysInMillis)
+    }
+
+    @Test
+    fun rangeOfYear_respectsTimezone() {
+        val hcmZone = ZoneId.of("Asia/Ho_Chi_Minh")
+        val hcmCalc = DateRangeCalculator(Clock.systemDefaultZone(), hcmZone)
+
+        val range = hcmCalc.rangeOfYear(2026)
+        // 2026-01-01T00:00:00+07:00 = 2025-12-31T17:00:00Z
+        assertEquals(1767200400000L, range.startMillis)
+    }
+
     // --- timezone-aware ---
 
     @Test

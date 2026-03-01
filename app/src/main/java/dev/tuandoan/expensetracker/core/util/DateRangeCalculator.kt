@@ -2,14 +2,16 @@ package dev.tuandoan.expensetracker.core.util
 
 import dev.tuandoan.expensetracker.domain.model.DateRange
 import java.time.Clock
+import java.time.LocalDate
+import java.time.Year
 import java.time.YearMonth
 import java.time.ZoneId
 import javax.inject.Inject
 import javax.inject.Singleton
 
 /**
- * Computes calendar-month [DateRange]s using an injectable [Clock] and [ZoneId]
- * so that boundaries are deterministic in tests.
+ * Computes calendar-month and calendar-year [DateRange]s using an injectable
+ * [Clock] and [ZoneId] so that boundaries are deterministic in tests.
  */
 @Singleton
 class DateRangeCalculator
@@ -20,6 +22,9 @@ class DateRangeCalculator
     ) {
         /** The calendar month that contains "now". */
         fun currentMonth(): YearMonth = YearMonth.now(clock.withZone(zoneId))
+
+        /** The calendar year that contains "now". */
+        fun currentYear(): Int = Year.now(clock.withZone(zoneId)).value
 
         /** Half-open millis range for the given [yearMonth]. */
         fun rangeOf(yearMonth: YearMonth): DateRange {
@@ -33,6 +38,23 @@ class DateRangeCalculator
                 yearMonth
                     .plusMonths(1)
                     .atDay(1)
+                    .atStartOfDay(zoneId)
+                    .toInstant()
+                    .toEpochMilli()
+            return DateRange(startMillis = start, endMillisExclusive = end)
+        }
+
+        /** Half-open millis range for the given [year] (Jan 1 to Jan 1 next year). */
+        fun rangeOfYear(year: Int): DateRange {
+            val start =
+                LocalDate
+                    .of(year, 1, 1)
+                    .atStartOfDay(zoneId)
+                    .toInstant()
+                    .toEpochMilli()
+            val end =
+                LocalDate
+                    .of(year + 1, 1, 1)
                     .atStartOfDay(zoneId)
                     .toInstant()
                     .toEpochMilli()

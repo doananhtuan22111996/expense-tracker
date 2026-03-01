@@ -14,7 +14,9 @@ import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -23,6 +25,7 @@ import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
@@ -96,6 +99,14 @@ fun HomeScreen(
                 onMonthLabelClick = { showMonthPicker = true },
             )
 
+            // Search bar
+            SearchBar(
+                query = uiState.searchQuery,
+                onQueryChanged = viewModel::onSearchQueryChanged,
+                onClear = viewModel::clearSearch,
+                modifier = Modifier.padding(bottom = DesignSystemSpacing.small),
+            )
+
             // Filter chips
             FilterChips(
                 selectedFilter = uiState.filter,
@@ -119,11 +130,19 @@ fun HomeScreen(
                     }
                 }
                 uiState.transactions.isEmpty() -> {
-                    EmptyStateMessage(
-                        title = "No transactions yet",
-                        subtitle = "Tap the + button to add your first transaction",
-                        modifier = Modifier.fillMaxSize(),
-                    )
+                    if (uiState.searchQuery.isNotEmpty()) {
+                        EmptyStateMessage(
+                            title = "No results found",
+                            subtitle = "Try a different search term",
+                            modifier = Modifier.fillMaxSize(),
+                        )
+                    } else {
+                        EmptyStateMessage(
+                            title = "No transactions yet",
+                            subtitle = "Tap the + button to add your first transaction",
+                            modifier = Modifier.fillMaxSize(),
+                        )
+                    }
                 }
                 else -> {
                     TransactionsList(
@@ -382,4 +401,41 @@ private fun TransactionItem(
             }
         }
     }
+}
+
+@Composable
+private fun SearchBar(
+    query: String,
+    onQueryChanged: (String) -> Unit,
+    onClear: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    OutlinedTextField(
+        value = query,
+        onValueChange = onQueryChanged,
+        placeholder = { Text("Search by note") },
+        leadingIcon = {
+            Icon(
+                imageVector = Icons.Default.Search,
+                contentDescription = null,
+            )
+        },
+        trailingIcon = {
+            if (query.isNotEmpty()) {
+                IconButton(onClick = onClear) {
+                    Icon(
+                        imageVector = Icons.Default.Clear,
+                        contentDescription = "Clear search",
+                    )
+                }
+            }
+        },
+        singleLine = true,
+        modifier =
+            modifier
+                .fillMaxWidth()
+                .semantics {
+                    contentDescription = "Search transactions by note"
+                },
+    )
 }
