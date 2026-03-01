@@ -18,6 +18,9 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
@@ -36,6 +39,7 @@ import dev.tuandoan.expensetracker.ui.component.AmountText
 import dev.tuandoan.expensetracker.ui.component.EmptyStateMessage
 import dev.tuandoan.expensetracker.ui.component.ErrorStateMessage
 import dev.tuandoan.expensetracker.ui.component.MonthSelector
+import dev.tuandoan.expensetracker.ui.component.MonthYearPickerDialog
 import dev.tuandoan.expensetracker.ui.component.SectionTitle
 import dev.tuandoan.expensetracker.ui.theme.DesignSystemElevation
 import dev.tuandoan.expensetracker.ui.theme.DesignSystemSpacing
@@ -46,6 +50,15 @@ fun SummaryScreen(
     modifier: Modifier = Modifier,
 ) {
     val uiState by viewModel.uiState.collectAsState()
+    var showMonthPicker by remember { mutableStateOf(false) }
+
+    if (showMonthPicker) {
+        MonthYearPickerDialog(
+            currentSelection = viewModel.currentSelectedMonth(),
+            onMonthSelected = { viewModel.setMonth(it) },
+            onDismiss = { showMonthPicker = false },
+        )
+    }
 
     Box(modifier = modifier.fillMaxSize()) {
         when {
@@ -72,6 +85,7 @@ fun SummaryScreen(
                         monthLabel = uiState.monthLabel,
                         onPreviousMonth = viewModel::goToPreviousMonth,
                         onNextMonth = viewModel::goToNextMonth,
+                        onMonthLabelClick = { showMonthPicker = true },
                         modifier = Modifier.padding(DesignSystemSpacing.screenPadding),
                     )
                     EmptyStateMessage(
@@ -89,6 +103,7 @@ fun SummaryScreen(
                         monthLabel = uiState.monthLabel,
                         onPreviousMonth = viewModel::goToPreviousMonth,
                         onNextMonth = viewModel::goToNextMonth,
+                        onMonthLabelClick = { showMonthPicker = true },
                         modifier = Modifier.fillMaxSize(),
                     )
                 }
@@ -103,6 +118,7 @@ private fun SummaryContent(
     monthLabel: String,
     onPreviousMonth: () -> Unit,
     onNextMonth: () -> Unit,
+    onMonthLabelClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     LazyColumn(
@@ -114,6 +130,7 @@ private fun SummaryContent(
                 monthLabel = monthLabel,
                 onPreviousMonth = onPreviousMonth,
                 onNextMonth = onNextMonth,
+                onMonthLabelClick = onMonthLabelClick,
             )
         }
 

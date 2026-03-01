@@ -5,7 +5,7 @@ import dev.tuandoan.expensetracker.domain.model.MonthlySummary
 import dev.tuandoan.expensetracker.domain.model.Transaction
 import dev.tuandoan.expensetracker.domain.model.TransactionType
 import dev.tuandoan.expensetracker.domain.repository.TransactionRepository
-import dev.tuandoan.expensetracker.testutil.FakeTimeProvider
+import dev.tuandoan.expensetracker.testutil.FakeSelectedMonthRepository
 import dev.tuandoan.expensetracker.testutil.MainDispatcherRule
 import dev.tuandoan.expensetracker.testutil.TestData
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -22,6 +22,7 @@ import org.junit.Rule
 import org.junit.Test
 import java.time.Clock
 import java.time.Instant
+import java.time.YearMonth
 import java.time.ZoneId
 
 @OptIn(ExperimentalCoroutinesApi::class)
@@ -30,7 +31,7 @@ class HomeViewModelTest {
     val mainDispatcherRule = MainDispatcherRule()
 
     private lateinit var fakeRepository: FakeTransactionRepository
-    private lateinit var fakeTimeProvider: FakeTimeProvider
+    private lateinit var fakeSelectedMonth: FakeSelectedMonthRepository
     private lateinit var dateRangeCalculator: DateRangeCalculator
 
     private val fixedZone: ZoneId = ZoneId.of("UTC")
@@ -41,11 +42,11 @@ class HomeViewModelTest {
     @Before
     fun setup() {
         fakeRepository = FakeTransactionRepository()
-        fakeTimeProvider = FakeTimeProvider()
+        fakeSelectedMonth = FakeSelectedMonthRepository()
         dateRangeCalculator = DateRangeCalculator(fixedClock, fixedZone)
     }
 
-    private fun createViewModel(): HomeViewModel = HomeViewModel(fakeRepository, fakeTimeProvider, dateRangeCalculator)
+    private fun createViewModel(): HomeViewModel = HomeViewModel(fakeRepository, fakeSelectedMonth, dateRangeCalculator)
 
     @Test
     fun init_loadsTransactions() =
@@ -261,12 +262,10 @@ class HomeViewModelTest {
     @Test
     fun goToPreviousMonth_crossesYearBoundary() =
         runTest(mainDispatcherRule.testDispatcher) {
-            // Start at Jan 2026, go back to Dec 2025
-            val janClock = Clock.fixed(Instant.parse("2026-01-15T12:00:00Z"), fixedZone)
-            val janCalc = DateRangeCalculator(janClock, fixedZone)
+            fakeSelectedMonth.setMonth(YearMonth.of(2026, 1))
             fakeRepository.transactionsToEmit = emptyList()
 
-            val viewModel = HomeViewModel(fakeRepository, fakeTimeProvider, janCalc)
+            val viewModel = createViewModel()
             advanceUntilIdle()
 
             viewModel.goToPreviousMonth()
@@ -278,12 +277,10 @@ class HomeViewModelTest {
     @Test
     fun goToNextMonth_crossesYearBoundary() =
         runTest(mainDispatcherRule.testDispatcher) {
-            // Start at Dec 2025, go forward to Jan 2026
-            val decClock = Clock.fixed(Instant.parse("2025-12-15T12:00:00Z"), fixedZone)
-            val decCalc = DateRangeCalculator(decClock, fixedZone)
+            fakeSelectedMonth.setMonth(YearMonth.of(2025, 12))
             fakeRepository.transactionsToEmit = emptyList()
 
-            val viewModel = HomeViewModel(fakeRepository, fakeTimeProvider, decCalc)
+            val viewModel = createViewModel()
             advanceUntilIdle()
 
             viewModel.goToNextMonth()
@@ -311,6 +308,50 @@ class HomeViewModelTest {
 
             assertEquals(1, viewModel.uiState.value.transactions.size)
             assertEquals("Feb 2026", viewModel.uiState.value.monthLabel)
+        }
+
+    // --- Shared month / setMonth ---
+
+    @Test
+    fun setMonth_jumpsToSelectedMonth() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            fakeRepository.transactionsToEmit = emptyList()
+            val viewModel = createViewModel()
+            advanceUntilIdle()
+
+            viewModel.setMonth(YearMonth.of(2024, 6))
+            advanceUntilIdle()
+
+            assertEquals("Jun 2024", viewModel.uiState.value.monthLabel)
+        }
+
+    @Test
+    fun currentSelectedMonth_returnsSharedState() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            fakeRepository.transactionsToEmit = emptyList()
+            val viewModel = createViewModel()
+            advanceUntilIdle()
+
+            assertEquals(YearMonth.of(2026, 3), viewModel.currentSelectedMonth())
+
+            viewModel.setMonth(YearMonth.of(2025, 1))
+            assertEquals(YearMonth.of(2025, 1), viewModel.currentSelectedMonth())
+        }
+
+    @Test
+    fun externalMonthChange_triggersReload() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            fakeRepository.transactionsToEmit = emptyList()
+            val viewModel = createViewModel()
+            advanceUntilIdle()
+
+            assertEquals("Mar 2026", viewModel.uiState.value.monthLabel)
+
+            // External change (e.g., from Summary screen via shared repo)
+            fakeSelectedMonth.setMonth(YearMonth.of(2025, 11))
+            advanceUntilIdle()
+
+            assertEquals("Nov 2025", viewModel.uiState.value.monthLabel)
         }
 
     private class FakeTransactionRepository : TransactionRepository {

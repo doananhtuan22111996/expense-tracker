@@ -5,9 +5,9 @@ import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dev.tuandoan.expensetracker.core.util.DateRangeCalculator
 import dev.tuandoan.expensetracker.core.util.ErrorUtils
-import dev.tuandoan.expensetracker.core.util.TimeProvider
 import dev.tuandoan.expensetracker.domain.model.Transaction
 import dev.tuandoan.expensetracker.domain.model.TransactionType
+import dev.tuandoan.expensetracker.domain.repository.SelectedMonthRepository
 import dev.tuandoan.expensetracker.domain.repository.TransactionRepository
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -23,33 +23,39 @@ class HomeViewModel
     @Inject
     constructor(
         private val transactionRepository: TransactionRepository,
-        private val timeProvider: TimeProvider,
+        private val selectedMonthRepository: SelectedMonthRepository,
         private val dateRangeCalculator: DateRangeCalculator,
     ) : ViewModel() {
         private val _uiState = MutableStateFlow(HomeUiState())
         val uiState: StateFlow<HomeUiState> = _uiState.asStateFlow()
         private var transactionJob: Job? = null
 
-        private var selectedMonth: YearMonth = dateRangeCalculator.currentMonth()
-
         init {
-            loadTransactions()
+            viewModelScope.launch {
+                selectedMonthRepository.selectedMonth.collect { month ->
+                    loadTransactions(month)
+                }
+            }
         }
 
         fun onFilterChanged(filter: TransactionType?) {
             _uiState.value = _uiState.value.copy(filter = filter)
-            loadTransactions()
+            loadTransactions(selectedMonthRepository.selectedMonth.value)
         }
 
         fun goToPreviousMonth() {
-            selectedMonth = dateRangeCalculator.previousMonth(selectedMonth)
-            loadTransactions()
+            selectedMonthRepository.goToPreviousMonth()
         }
 
         fun goToNextMonth() {
-            selectedMonth = dateRangeCalculator.nextMonth(selectedMonth)
-            loadTransactions()
+            selectedMonthRepository.goToNextMonth()
         }
+
+        fun setMonth(yearMonth: YearMonth) {
+            selectedMonthRepository.setMonth(yearMonth)
+        }
+
+        fun currentSelectedMonth(): YearMonth = selectedMonthRepository.selectedMonth.value
 
         fun deleteTransaction(transactionId: Long) {
             viewModelScope.launch {
@@ -69,7 +75,7 @@ class HomeViewModel
             _uiState.value = _uiState.value.copy(isError = false, errorMessage = null)
         }
 
-        private fun loadTransactions() {
+        private fun loadTransactions(selectedMonth: YearMonth) {
             transactionJob?.cancel()
             transactionJob =
                 viewModelScope.launch {

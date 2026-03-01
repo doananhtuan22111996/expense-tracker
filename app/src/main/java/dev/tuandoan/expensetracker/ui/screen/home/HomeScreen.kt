@@ -30,7 +30,9 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
@@ -49,6 +51,7 @@ import dev.tuandoan.expensetracker.domain.model.TransactionType
 import dev.tuandoan.expensetracker.ui.component.AmountText
 import dev.tuandoan.expensetracker.ui.component.EmptyStateMessage
 import dev.tuandoan.expensetracker.ui.component.MonthSelector
+import dev.tuandoan.expensetracker.ui.component.MonthYearPickerDialog
 import dev.tuandoan.expensetracker.ui.theme.DesignSystemElevation
 import dev.tuandoan.expensetracker.ui.theme.DesignSystemSpacing
 
@@ -61,12 +64,21 @@ fun HomeScreen(
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val snackbarHostState = remember { SnackbarHostState() }
+    var showMonthPicker by remember { mutableStateOf(false) }
 
     LaunchedEffect(uiState.isError) {
         if (uiState.isError && !uiState.errorMessage.isNullOrBlank()) {
             snackbarHostState.showSnackbar(uiState.errorMessage!!)
             viewModel.clearError()
         }
+    }
+
+    if (showMonthPicker) {
+        MonthYearPickerDialog(
+            currentSelection = viewModel.currentSelectedMonth(),
+            onMonthSelected = { viewModel.setMonth(it) },
+            onDismiss = { showMonthPicker = false },
+        )
     }
 
     Box(modifier = modifier.fillMaxSize()) {
@@ -81,6 +93,7 @@ fun HomeScreen(
                 monthLabel = uiState.monthLabel,
                 onPreviousMonth = viewModel::goToPreviousMonth,
                 onNextMonth = viewModel::goToNextMonth,
+                onMonthLabelClick = { showMonthPicker = true },
             )
 
             // Filter chips
