@@ -247,6 +247,21 @@ class SummaryViewModelTest {
             assertEquals("Dec 2025", viewModel.uiState.value.monthLabel)
         }
 
+    @Test
+    fun goToNextMonth_crossesYearBoundary() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            fakeSelectedMonth.setMonth(YearMonth.of(2025, 12))
+            fakeRepository.summaryToEmit = TestData.sampleMonthlySummary
+
+            val viewModel = createViewModel()
+            advanceUntilIdle()
+
+            viewModel.goToNextMonth()
+            advanceUntilIdle()
+
+            assertEquals("Jan 2026", viewModel.uiState.value.monthLabel)
+        }
+
     // --- Shared month / setMonth ---
 
     @Test

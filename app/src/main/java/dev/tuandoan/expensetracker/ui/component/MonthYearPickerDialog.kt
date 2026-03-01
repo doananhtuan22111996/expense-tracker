@@ -6,7 +6,6 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
-import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
@@ -21,7 +20,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
-import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -43,7 +42,7 @@ fun MonthYearPickerDialog(
     onDismiss: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    var pickerYear by rememberSaveable { mutableIntStateOf(currentSelection.year) }
+    var pickerYear by remember { mutableIntStateOf(currentSelection.year) }
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -109,9 +108,9 @@ fun MonthYearPickerDialog(
                     horizontalArrangement = Arrangement.spacedBy(DesignSystemSpacing.small),
                     verticalArrangement = Arrangement.spacedBy(DesignSystemSpacing.small),
                 ) {
-                    items(MONTH_LABELS) { label ->
-                        val monthIndex = MONTH_LABELS.indexOf(label) + 1
-                        val month = Month.of(monthIndex)
+                    items(MONTH_LABELS.size) { index ->
+                        val label = MONTH_LABELS[index]
+                        val month = Month.of(index + 1)
                         val ym = YearMonth.of(pickerYear, month)
                         val isSelected = ym == currentSelection
 

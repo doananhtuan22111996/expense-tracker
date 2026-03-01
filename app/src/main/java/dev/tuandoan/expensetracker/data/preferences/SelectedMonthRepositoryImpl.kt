@@ -5,6 +5,7 @@ import dev.tuandoan.expensetracker.domain.repository.SelectedMonthRepository
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.update
 import java.time.YearMonth
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -23,10 +24,10 @@ class SelectedMonthRepositoryImpl
         }
 
         override fun goToPreviousMonth() {
-            _selectedMonth.value = dateRangeCalculator.previousMonth(_selectedMonth.value)
+            _selectedMonth.update { dateRangeCalculator.previousMonth(it) }
         }
 
         override fun goToNextMonth() {
-            _selectedMonth.value = dateRangeCalculator.nextMonth(_selectedMonth.value)
+            _selectedMonth.update { dateRangeCalculator.nextMonth(it) }
         }
     }
