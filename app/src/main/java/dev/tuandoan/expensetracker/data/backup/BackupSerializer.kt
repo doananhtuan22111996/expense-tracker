@@ -5,6 +5,7 @@ import kotlinx.serialization.SerializationException
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.decodeFromStream
 import kotlinx.serialization.json.encodeToStream
+import java.io.IOException
 import java.io.InputStream
 import java.io.OutputStream
 import javax.inject.Inject
@@ -52,6 +53,8 @@ class BackupSerializer
             } catch (_: SerializationException) {
                 null
             } catch (_: IllegalArgumentException) {
+                null
+            } catch (_: IOException) {
                 null
             }
     }

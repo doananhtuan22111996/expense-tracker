@@ -17,6 +17,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.catch
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import javax.inject.Inject
@@ -43,15 +44,9 @@ class SettingsViewModel
                 try {
                     currencyPreferenceRepository.setDefaultCurrency(code)
                 } catch (e: IllegalArgumentException) {
-                    _uiState.value =
-                        _uiState.value.copy(
-                            errorMessage = "Unsupported currency code",
-                        )
+                    _uiState.update { it.copy(errorMessage = "Unsupported currency code") }
                 } catch (e: Exception) {
-                    _uiState.value =
-                        _uiState.value.copy(
-                            errorMessage = "Failed to save currency preference",
-                        )
+                    _uiState.update { it.copy(errorMessage = "Failed to save currency preference") }
                 }
             }
         }
@@ -59,11 +54,12 @@ class SettingsViewModel
         fun exportBackup(uri: Uri) {
             backupJob =
                 viewModelScope.launch {
-                    _uiState.value =
-                        _uiState.value.copy(
+                    _uiState.update {
+                        it.copy(
                             backupOperation = BackupOperation.Exporting,
                             backupProgress = 0f,
                         )
+                    }
                     try {
                         withContext(ioDispatcher) {
                             contentResolver.openOutputStream(uri)?.use { outputStream ->
@@ -74,58 +70,62 @@ class SettingsViewModel
                                         } else {
                                             0f
                                         }
-                                    _uiState.value = _uiState.value.copy(backupProgress = fraction)
+                                    _uiState.update { it.copy(backupProgress = fraction) }
                                 }
                             } ?: throw IllegalStateException("Cannot open output stream")
                         }
-                        _uiState.value =
-                            _uiState.value.copy(
+                        _uiState.update {
+                            it.copy(
                                 backupOperation = BackupOperation.Idle,
                                 backupProgress = null,
                                 backupMessage = "Backup exported successfully",
                             )
+                        }
                     } catch (e: CancellationException) {
-                        _uiState.value =
-                            _uiState.value.copy(
+                        _uiState.update {
+                            it.copy(
                                 backupOperation = BackupOperation.Idle,
                                 backupProgress = null,
                             )
+                        }
                         throw e
                     } catch (e: Exception) {
-                        _uiState.value =
-                            _uiState.value.copy(
+                        _uiState.update {
+                            it.copy(
                                 backupOperation = BackupOperation.Idle,
                                 backupProgress = null,
                                 errorMessage = "Export failed: ${e.message ?: "Unknown error"}",
                             )
+                        }
                     }
                 }
         }
 
         fun clearError() {
-            _uiState.value = _uiState.value.copy(errorMessage = null)
+            _uiState.update { it.copy(errorMessage = null) }
         }
 
         fun clearBackupMessage() {
-            _uiState.value = _uiState.value.copy(backupMessage = null)
+            _uiState.update { it.copy(backupMessage = null) }
         }
 
         fun onRestoreFileSelected(uri: Uri) {
-            _uiState.value = _uiState.value.copy(pendingRestoreUri = uri)
+            _uiState.update { it.copy(pendingRestoreUri = uri) }
         }
 
         fun dismissRestoreConfirmation() {
-            _uiState.value = _uiState.value.copy(pendingRestoreUri = null)
+            _uiState.update { it.copy(pendingRestoreUri = null) }
         }
 
         fun confirmRestore() {
             val uri = _uiState.value.pendingRestoreUri ?: return
-            _uiState.value =
-                _uiState.value.copy(
+            _uiState.update {
+                it.copy(
                     pendingRestoreUri = null,
                     backupOperation = BackupOperation.Importing,
                     backupProgress = 0f,
                 )
+            }
             backupJob =
                 viewModelScope.launch {
                     try {
@@ -139,31 +139,33 @@ class SettingsViewModel
                                             } else {
                                                 0f
                                             }
-                                        _uiState.value =
-                                            _uiState.value.copy(backupProgress = fraction)
+                                        _uiState.update { it.copy(backupProgress = fraction) }
                                     }
                                 } ?: throw IllegalStateException("Cannot open file")
                             }
-                        _uiState.value =
-                            _uiState.value.copy(
+                        _uiState.update {
+                            it.copy(
                                 backupOperation = BackupOperation.Idle,
                                 backupProgress = null,
                                 backupMessage = "Imported ${result.transactionCount} transactions",
                             )
+                        }
                     } catch (e: CancellationException) {
-                        _uiState.value =
-                            _uiState.value.copy(
+                        _uiState.update {
+                            it.copy(
                                 backupOperation = BackupOperation.Idle,
                                 backupProgress = null,
                             )
+                        }
                         throw e
                     } catch (e: Exception) {
-                        _uiState.value =
-                            _uiState.value.copy(
+                        _uiState.update {
+                            it.copy(
                                 backupOperation = BackupOperation.Idle,
                                 backupProgress = null,
                                 errorMessage = "Import failed: ${e.message ?: "Unknown error"}",
                             )
+                        }
                     }
                 }
         }
@@ -180,10 +182,7 @@ class SettingsViewModel
                     .catch {
                         // On error, keep default state
                     }.collect { currencyCode ->
-                        _uiState.value =
-                            _uiState.value.copy(
-                                selectedCurrencyCode = currencyCode,
-                            )
+                        _uiState.update { it.copy(selectedCurrencyCode = currencyCode) }
                     }
             }
         }

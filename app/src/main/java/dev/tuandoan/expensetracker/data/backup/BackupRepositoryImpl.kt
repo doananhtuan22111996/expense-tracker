@@ -13,14 +13,15 @@ import dev.tuandoan.expensetracker.domain.repository.BackupProgress
 import dev.tuandoan.expensetracker.domain.repository.BackupRepository
 import dev.tuandoan.expensetracker.domain.repository.BackupRestoreResult
 import dev.tuandoan.expensetracker.domain.repository.CurrencyPreferenceRepository
-import kotlinx.coroutines.ensureActive
+import kotlinx.coroutines.NonCancellable
+import kotlinx.coroutines.withContext
 import java.io.BufferedInputStream
+import java.io.IOException
 import java.io.InputStream
 import java.io.OutputStream
 import java.util.Locale
 import java.util.zip.GZIPInputStream
 import javax.inject.Inject
-import kotlin.coroutines.coroutineContext
 
 class BackupRepositoryImpl
     @Inject
@@ -102,19 +103,22 @@ class BackupRepositoryImpl
             val total = categoryEntities.size + transactionEntities.size
             onProgress(BackupProgress(current = 0, total = total))
 
-            transactionRunner.runInTransaction {
-                transactionDao.deleteAll()
-                categoryDao.deleteAll()
-                categoryDao.insertAll(categoryEntities)
+            // Once the destructive deleteAll() begins, the transaction must run to
+            // completion so we never leave the DB in a half-wiped state.
+            withContext(NonCancellable) {
+                transactionRunner.runInTransaction {
+                    transactionDao.deleteAll()
+                    categoryDao.deleteAll()
+                    categoryDao.insertAll(categoryEntities)
 
-                var inserted = categoryEntities.size
-                onProgress(BackupProgress(current = inserted, total = total))
-
-                for (batch in transactionEntities.chunked(BATCH_SIZE)) {
-                    coroutineContext.ensureActive()
-                    transactionDao.insertAll(batch)
-                    inserted += batch.size
+                    var inserted = categoryEntities.size
                     onProgress(BackupProgress(current = inserted, total = total))
+
+                    for (batch in transactionEntities.chunked(BATCH_SIZE)) {
+                        transactionDao.insertAll(batch)
+                        inserted += batch.size
+                        onProgress(BackupProgress(current = inserted, total = total))
+                    }
                 }
             }
 
@@ -145,7 +149,12 @@ class BackupRepositoryImpl
             val byte2 = buffered.read()
             buffered.reset()
             return if (byte1 == GZIP_MAGIC_BYTE1 && byte2 == GZIP_MAGIC_BYTE2) {
-                GZIPInputStream(buffered)
+                try {
+                    GZIPInputStream(buffered)
+                } catch (e: IOException) {
+                    buffered.close()
+                    throw e
+                }
             } else {
                 buffered
             }
