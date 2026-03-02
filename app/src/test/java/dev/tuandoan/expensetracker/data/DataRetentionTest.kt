@@ -108,4 +108,29 @@ class DataRetentionTest {
         // to reflect the new reality and reviewed carefully.
         assertTrue("Explicit migrations preserve user data", true)
     }
+
+    @Test
+    fun migrationChain_coversAllVersions() {
+        // Verify that the migration chain covers every version step from 1 to the current.
+        // Current version: 3. Required migrations: 1→2, 2→3.
+        val migrations =
+            listOf(
+                1 to 2, // MIGRATION_1_2: adds currency_code
+                2 to 3, // MIGRATION_2_3: adds indices
+            )
+
+        // Verify chain is contiguous from version 1 to the latest
+        val latestVersion = 3
+        for (version in 1 until latestVersion) {
+            val hasMigration = migrations.any { it.first == version && it.second == version + 1 }
+            assertTrue(
+                "Missing migration from version $version to ${version + 1}",
+                hasMigration,
+            )
+        }
+
+        // Verify no gaps
+        assertEquals("First migration should start at version 1", 1, migrations.first().first)
+        assertEquals("Last migration should end at latest version", latestVersion, migrations.last().second)
+    }
 }

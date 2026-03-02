@@ -348,6 +348,8 @@ class BackupRepositoryImplTest {
 
         override suspend fun getAll(): List<CategoryEntity> = allCategories.toList()
 
+        override suspend fun count(): Int = allCategories.size
+
         override suspend fun insertAll(list: List<CategoryEntity>) {
             allCategories.addAll(list)
         }
