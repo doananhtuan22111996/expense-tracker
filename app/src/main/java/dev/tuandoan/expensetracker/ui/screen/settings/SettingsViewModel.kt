@@ -12,6 +12,7 @@ import dev.tuandoan.expensetracker.domain.repository.BackupRepository
 import dev.tuandoan.expensetracker.domain.repository.CurrencyPreferenceRepository
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -31,6 +32,7 @@ class SettingsViewModel
     ) : ViewModel() {
         private val _uiState = MutableStateFlow(SettingsUiState())
         val uiState: StateFlow<SettingsUiState> = _uiState.asStateFlow()
+        private var backupJob: Job? = null
 
         init {
             observeDefaultCurrency()
@@ -55,30 +57,49 @@ class SettingsViewModel
         }
 
         fun exportBackup(uri: Uri) {
-            viewModelScope.launch {
-                _uiState.value = _uiState.value.copy(backupOperation = BackupOperation.Exporting)
-                try {
-                    withContext(ioDispatcher) {
-                        val json = backupRepository.exportBackupJson()
-                        contentResolver.openOutputStream(uri)?.use { outputStream ->
-                            outputStream.write(json.toByteArray(Charsets.UTF_8))
-                        } ?: throw IllegalStateException("Cannot open output stream")
+            backupJob =
+                viewModelScope.launch {
+                    _uiState.value =
+                        _uiState.value.copy(
+                            backupOperation = BackupOperation.Exporting,
+                            backupProgress = 0f,
+                        )
+                    try {
+                        withContext(ioDispatcher) {
+                            contentResolver.openOutputStream(uri)?.use { outputStream ->
+                                backupRepository.exportBackup(outputStream) { progress ->
+                                    val fraction =
+                                        if (progress.total > 0) {
+                                            progress.current.toFloat() / progress.total
+                                        } else {
+                                            0f
+                                        }
+                                    _uiState.value = _uiState.value.copy(backupProgress = fraction)
+                                }
+                            } ?: throw IllegalStateException("Cannot open output stream")
+                        }
+                        _uiState.value =
+                            _uiState.value.copy(
+                                backupOperation = BackupOperation.Idle,
+                                backupProgress = null,
+                                backupMessage = "Backup exported successfully",
+                            )
+                    } catch (e: CancellationException) {
+                        _uiState.value =
+                            _uiState.value.copy(
+                                backupOperation = BackupOperation.Idle,
+                                backupProgress = null,
+                            )
+                        throw e
+                    } catch (e: Exception) {
+                        _uiState.value =
+                            _uiState.value.copy(
+                                backupOperation = BackupOperation.Idle,
+                                backupProgress = null,
+                                errorMessage = "Export failed: ${e.message ?: "Unknown error"}",
+                            )
                     }
-                    _uiState.value =
-                        _uiState.value.copy(
-                            backupOperation = BackupOperation.Idle,
-                            backupMessage = "Backup exported successfully",
-                        )
-                } catch (e: CancellationException) {
-                    throw e
-                } catch (e: Exception) {
-                    _uiState.value =
-                        _uiState.value.copy(
-                            backupOperation = BackupOperation.Idle,
-                            errorMessage = "Export failed: ${e.message ?: "Unknown error"}",
-                        )
                 }
-            }
         }
 
         fun clearError() {
@@ -103,32 +124,53 @@ class SettingsViewModel
                 _uiState.value.copy(
                     pendingRestoreUri = null,
                     backupOperation = BackupOperation.Importing,
+                    backupProgress = 0f,
                 )
-            viewModelScope.launch {
-                try {
-                    val result =
-                        withContext(ioDispatcher) {
-                            val json =
+            backupJob =
+                viewModelScope.launch {
+                    try {
+                        val result =
+                            withContext(ioDispatcher) {
                                 contentResolver.openInputStream(uri)?.use { inputStream ->
-                                    inputStream.bufferedReader(Charsets.UTF_8).readText()
+                                    backupRepository.importBackup(inputStream) { progress ->
+                                        val fraction =
+                                            if (progress.total > 0) {
+                                                progress.current.toFloat() / progress.total
+                                            } else {
+                                                0f
+                                            }
+                                        _uiState.value =
+                                            _uiState.value.copy(backupProgress = fraction)
+                                    }
                                 } ?: throw IllegalStateException("Cannot open file")
-                            backupRepository.importBackupJson(json)
-                        }
-                    _uiState.value =
-                        _uiState.value.copy(
-                            backupOperation = BackupOperation.Idle,
-                            backupMessage = "Imported ${result.transactionCount} transactions",
-                        )
-                } catch (e: CancellationException) {
-                    throw e
-                } catch (e: Exception) {
-                    _uiState.value =
-                        _uiState.value.copy(
-                            backupOperation = BackupOperation.Idle,
-                            errorMessage = "Import failed: ${e.message ?: "Unknown error"}",
-                        )
+                            }
+                        _uiState.value =
+                            _uiState.value.copy(
+                                backupOperation = BackupOperation.Idle,
+                                backupProgress = null,
+                                backupMessage = "Imported ${result.transactionCount} transactions",
+                            )
+                    } catch (e: CancellationException) {
+                        _uiState.value =
+                            _uiState.value.copy(
+                                backupOperation = BackupOperation.Idle,
+                                backupProgress = null,
+                            )
+                        throw e
+                    } catch (e: Exception) {
+                        _uiState.value =
+                            _uiState.value.copy(
+                                backupOperation = BackupOperation.Idle,
+                                backupProgress = null,
+                                errorMessage = "Import failed: ${e.message ?: "Unknown error"}",
+                            )
+                    }
                 }
-            }
+        }
+
+        fun cancelOperation() {
+            backupJob?.cancel()
+            backupJob = null
         }
 
         private fun observeDefaultCurrency() {
@@ -158,6 +200,7 @@ data class SettingsUiState(
     val availableCurrencies: List<CurrencyDefinition> = SupportedCurrencies.all(),
     val errorMessage: String? = null,
     val backupOperation: BackupOperation = BackupOperation.Idle,
+    val backupProgress: Float? = null,
     val backupMessage: String? = null,
     val pendingRestoreUri: Uri? = null,
 )

@@ -180,6 +180,10 @@ class SettingsViewModelTest {
     @Test
     fun exportBackup_repositoryThrows_setsErrorMessage() =
         runTest(mainDispatcherRule.testDispatcher) {
+            val outputStream = ByteArrayOutputStream()
+            Mockito
+                .`when`(mockContentResolver.openOutputStream(mockUri))
+                .thenReturn(outputStream)
             fakeBackupRepository.exportException = RuntimeException("DB error")
 
             val viewModel = createViewModel()
@@ -343,6 +347,56 @@ class SettingsViewModelTest {
             assertNull(viewModel.uiState.value.errorMessage)
         }
 
+    @Test
+    fun exportBackup_success_progressResetsToNull() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            val outputStream = ByteArrayOutputStream()
+            Mockito
+                .`when`(mockContentResolver.openOutputStream(mockUri))
+                .thenReturn(outputStream)
+
+            val viewModel = createViewModel()
+            advanceUntilIdle()
+
+            viewModel.exportBackup(mockUri)
+            advanceUntilIdle()
+
+            assertNull(viewModel.uiState.value.backupProgress)
+        }
+
+    @Test
+    fun confirmRestore_success_progressResetsToNull() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            val inputStream = ByteArrayInputStream("{}".toByteArray())
+            Mockito
+                .`when`(mockContentResolver.openInputStream(mockUri))
+                .thenReturn(inputStream)
+            fakeBackupRepository.importResult = BackupRestoreResult(1, 10)
+
+            val viewModel = createViewModel()
+            advanceUntilIdle()
+
+            viewModel.onRestoreFileSelected(mockUri)
+            viewModel.confirmRestore()
+            advanceUntilIdle()
+
+            assertNull(viewModel.uiState.value.backupProgress)
+            assertEquals(BackupOperation.Idle, viewModel.uiState.value.backupOperation)
+        }
+
+    @Test
+    fun cancelOperation_resetsStateToIdle() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            val viewModel = createViewModel()
+            advanceUntilIdle()
+
+            viewModel.cancelOperation()
+            advanceUntilIdle()
+
+            assertEquals(BackupOperation.Idle, viewModel.uiState.value.backupOperation)
+            assertNull(viewModel.uiState.value.backupProgress)
+        }
+
     private class FakeBackupRepository : BackupRepository {
         var exportException: Exception? = null
         var importException: Exception? = null
@@ -357,6 +411,41 @@ class SettingsViewModelTest {
 
         override suspend fun importBackupJson(json: String): BackupRestoreResult {
             importException?.let { throw it }
+            return importResult
+        }
+
+        override suspend fun exportBackup(
+            outputStream: java.io.OutputStream,
+            onProgress: suspend (dev.tuandoan.expensetracker.domain.repository.BackupProgress) -> Unit,
+        ) {
+            exportException?.let { throw it }
+            val json = exportBackupJson()
+            onProgress(
+                dev.tuandoan.expensetracker.domain.repository
+                    .BackupProgress(0, 0),
+            )
+            outputStream.write(json.toByteArray(Charsets.UTF_8))
+            onProgress(
+                dev.tuandoan.expensetracker.domain.repository
+                    .BackupProgress(0, 0),
+            )
+        }
+
+        override suspend fun importBackup(
+            inputStream: java.io.InputStream,
+            onProgress: suspend (dev.tuandoan.expensetracker.domain.repository.BackupProgress) -> Unit,
+        ): BackupRestoreResult {
+            importException?.let { throw it }
+            onProgress(
+                dev.tuandoan.expensetracker.domain.repository
+                    .BackupProgress(0, importResult.transactionCount),
+            )
+            onProgress(
+                dev.tuandoan.expensetracker.domain.repository.BackupProgress(
+                    importResult.transactionCount,
+                    importResult.transactionCount,
+                ),
+            )
             return importResult
         }
     }

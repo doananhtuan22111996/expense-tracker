@@ -7,6 +7,7 @@ import dev.tuandoan.expensetracker.data.database.entity.CategoryEntity
 import dev.tuandoan.expensetracker.data.database.entity.CurrencyCategorySumRow
 import dev.tuandoan.expensetracker.data.database.entity.CurrencySumRow
 import dev.tuandoan.expensetracker.data.database.entity.TransactionEntity
+import dev.tuandoan.expensetracker.domain.repository.BackupProgress
 import dev.tuandoan.expensetracker.testutil.FakeCurrencyPreferenceRepository
 import dev.tuandoan.expensetracker.testutil.FakeTimeProvider
 import dev.tuandoan.expensetracker.testutil.TestData
@@ -17,6 +18,10 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
+import java.io.ByteArrayInputStream
+import java.io.ByteArrayOutputStream
+import java.util.zip.GZIPOutputStream
+import java.io.ByteArrayInputStream as BAIS
 
 class BackupRepositoryImplTest {
     private lateinit var fakeCategoryDao: FakeCategoryDao
@@ -311,6 +316,144 @@ class BackupRepositoryImplTest {
             repository.importBackupJson(json)
 
             assertEquals(false, fakeCurrencyPreferenceRepo.setDefaultCurrencyCalled)
+        }
+
+    // --- Stream-based export tests ---
+
+    @Test
+    fun exportBackup_writesValidJsonToOutputStream() =
+        runTest {
+            fakeCategoryDao.allCategories.add(TestData.expenseCategoryEntity)
+            fakeTransactionDao.allTransactions.add(TestData.sampleExpenseEntity)
+
+            val outputStream = ByteArrayOutputStream()
+            repository.exportBackup(outputStream)
+
+            val json = outputStream.toString(Charsets.UTF_8.name())
+            val document = serializer.decode(json)!!
+
+            assertEquals(1, document.categories.size)
+            assertEquals(1, document.transactions.size)
+            assertEquals("Food", document.categories[0].name)
+        }
+
+    @Test
+    fun exportBackup_reportsProgress() =
+        runTest {
+            fakeCategoryDao.allCategories.addAll(
+                listOf(TestData.expenseCategoryEntity, TestData.incomeCategoryEntity),
+            )
+            fakeTransactionDao.allTransactions.add(TestData.sampleExpenseEntity)
+
+            val progressUpdates = mutableListOf<BackupProgress>()
+            val outputStream = ByteArrayOutputStream()
+            repository.exportBackup(outputStream) { progressUpdates.add(it) }
+
+            assertTrue(progressUpdates.isNotEmpty())
+            assertEquals(0, progressUpdates.first().current)
+            assertEquals(3, progressUpdates.first().total)
+            assertEquals(3, progressUpdates.last().current)
+            assertEquals(3, progressUpdates.last().total)
+        }
+
+    // --- Stream-based import tests ---
+
+    @Test
+    fun importBackup_validStream_clearsAndInsertsData() =
+        runTest {
+            fakeCategoryDao.allCategories.add(
+                CategoryEntity(id = 99L, name = "Old", type = 0),
+            )
+
+            val json = serializer.encode(TestData.sampleBackupDocument)
+            val inputStream = ByteArrayInputStream(json.toByteArray(Charsets.UTF_8))
+
+            val result = repository.importBackup(inputStream)
+
+            assertEquals(1, fakeCategoryDao.allCategories.size)
+            assertEquals("Food", fakeCategoryDao.allCategories[0].name)
+            assertEquals(1, fakeTransactionDao.allTransactions.size)
+            assertEquals(1, result.categoryCount)
+            assertEquals(1, result.transactionCount)
+        }
+
+    @Test
+    fun importBackup_reportsProgress() =
+        runTest {
+            val json = serializer.encode(TestData.sampleBackupDocument)
+            val inputStream = ByteArrayInputStream(json.toByteArray(Charsets.UTF_8))
+
+            val progressUpdates = mutableListOf<BackupProgress>()
+            repository.importBackup(inputStream) { progressUpdates.add(it) }
+
+            // Should have: initial(0), after categories(1), after transactions batch(2)
+            assertTrue(progressUpdates.size >= 2)
+            assertEquals(0, progressUpdates.first().current)
+            assertEquals(2, progressUpdates.first().total)
+            assertEquals(2, progressUpdates.last().current)
+        }
+
+    @Test
+    fun importBackup_batchInserts_largeDataset() =
+        runTest {
+            val categories = listOf(TestData.sampleBackupCategoryDto)
+            val transactions =
+                (1..1200L).map { i ->
+                    TestData.sampleBackupTransactionDto.copy(id = i)
+                }
+            val document =
+                TestData.sampleBackupDocument.copy(
+                    categories = categories,
+                    transactions = transactions,
+                )
+            val json = serializer.encode(document)
+            val inputStream = ByteArrayInputStream(json.toByteArray(Charsets.UTF_8))
+
+            val progressUpdates = mutableListOf<BackupProgress>()
+            val result = repository.importBackup(inputStream) { progressUpdates.add(it) }
+
+            assertEquals(1, result.categoryCount)
+            assertEquals(1200, result.transactionCount)
+            assertEquals(1200, fakeTransactionDao.allTransactions.size)
+            // Multiple progress updates: initial + categories + transaction batches
+            // 1200 / 500 = 3 batches (500, 500, 200)
+            assertTrue(progressUpdates.size >= 4) // 0, cats, batch1, batch2, batch3
+        }
+
+    @Test
+    fun importBackup_gzipCompressed_decompressesAndImports() =
+        runTest {
+            val json = serializer.encode(TestData.sampleBackupDocument)
+            val compressedBytes =
+                ByteArrayOutputStream()
+                    .also { baos ->
+                        GZIPOutputStream(baos).use { gzip ->
+                            gzip.write(json.toByteArray(Charsets.UTF_8))
+                        }
+                    }.toByteArray()
+
+            val result = repository.importBackup(BAIS(compressedBytes))
+
+            assertEquals(1, result.categoryCount)
+            assertEquals(1, result.transactionCount)
+            assertEquals("Food", fakeCategoryDao.allCategories[0].name)
+        }
+
+    @Test(expected = IllegalArgumentException::class)
+    fun importBackup_invalidStream_throwsIllegalArgument() =
+        runTest {
+            val inputStream = ByteArrayInputStream("not valid json".toByteArray())
+            repository.importBackup(inputStream)
+        }
+
+    @Test(expected = BackupValidationException::class)
+    fun importBackup_invalidSchemaVersion_throwsValidationException() =
+        runTest {
+            val invalidDocument = TestData.sampleBackupDocument.copy(schemaVersion = 99)
+            val json = serializer.encode(invalidDocument)
+            val inputStream = ByteArrayInputStream(json.toByteArray(Charsets.UTF_8))
+
+            repository.importBackup(inputStream)
         }
 
     // Fakes

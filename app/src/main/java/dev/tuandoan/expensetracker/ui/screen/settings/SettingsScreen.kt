@@ -10,7 +10,6 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
@@ -23,9 +22,9 @@ import androidx.compose.material.icons.filled.KeyboardArrowRight
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
@@ -43,7 +42,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import dev.tuandoan.expensetracker.core.util.AppInfo
 import dev.tuandoan.expensetracker.domain.model.CurrencyDefinition
@@ -186,15 +184,11 @@ fun SettingsScreen(
                     horizontalArrangement = Arrangement.spacedBy(DesignSystemSpacing.medium),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    if (isExporting) {
-                        CircularProgressIndicator(modifier = Modifier.size(24.dp))
-                    } else {
-                        Icon(
-                            Icons.Default.FileUpload,
-                            contentDescription = null,
-                            tint = MaterialTheme.colorScheme.primary,
-                        )
-                    }
+                    Icon(
+                        Icons.Default.FileUpload,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.primary,
+                    )
                     Column(modifier = Modifier.weight(1f)) {
                         Text(
                             text = "Export Backup",
@@ -209,6 +203,15 @@ fun SettingsScreen(
                             modifier = Modifier.padding(top = DesignSystemSpacing.xs),
                         )
                     }
+                    if (isExporting) {
+                        TextButton(onClick = { viewModel.cancelOperation() }) {
+                            Text("Cancel")
+                        }
+                    }
+                }
+
+                if (isExporting) {
+                    BackupProgressBar(progress = uiState.backupProgress)
                 }
 
                 HorizontalDivider()
@@ -218,7 +221,9 @@ fun SettingsScreen(
                         Modifier
                             .fillMaxWidth()
                             .clickable(enabled = !isBusy) {
-                                importLauncher.launch(arrayOf("application/json"))
+                                importLauncher.launch(
+                                    arrayOf("application/json", "application/gzip", "application/octet-stream"),
+                                )
                             }.padding(DesignSystemSpacing.large)
                             .semantics {
                                 contentDescription =
@@ -231,15 +236,11 @@ fun SettingsScreen(
                     horizontalArrangement = Arrangement.spacedBy(DesignSystemSpacing.medium),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    if (isImporting) {
-                        CircularProgressIndicator(modifier = Modifier.size(24.dp))
-                    } else {
-                        Icon(
-                            Icons.Default.FileDownload,
-                            contentDescription = null,
-                            tint = MaterialTheme.colorScheme.primary,
-                        )
-                    }
+                    Icon(
+                        Icons.Default.FileDownload,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.primary,
+                    )
                     Column(modifier = Modifier.weight(1f)) {
                         Text(
                             text = "Import Backup",
@@ -254,6 +255,15 @@ fun SettingsScreen(
                             modifier = Modifier.padding(top = DesignSystemSpacing.xs),
                         )
                     }
+                    if (isImporting) {
+                        TextButton(onClick = { viewModel.cancelOperation() }) {
+                            Text("Cancel")
+                        }
+                    }
+                }
+
+                if (isImporting) {
+                    BackupProgressBar(progress = uiState.backupProgress)
                 }
 
                 Text(
@@ -530,6 +540,39 @@ private fun SettingsItem(
         Text(
             text = subtitle,
             style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.padding(top = DesignSystemSpacing.xs),
+        )
+    }
+}
+
+@Composable
+private fun BackupProgressBar(
+    progress: Float?,
+    modifier: Modifier = Modifier,
+) {
+    Column(
+        modifier =
+            modifier
+                .fillMaxWidth()
+                .padding(
+                    horizontal = DesignSystemSpacing.large,
+                    vertical = DesignSystemSpacing.small,
+                ),
+    ) {
+        val displayProgress = progress ?: 0f
+        LinearProgressIndicator(
+            progress = { displayProgress },
+            modifier =
+                Modifier
+                    .fillMaxWidth()
+                    .semantics {
+                        contentDescription = "${(displayProgress * 100).toInt()}% complete"
+                    },
+        )
+        Text(
+            text = "${(displayProgress * 100).toInt()}%",
+            style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = Modifier.padding(top = DesignSystemSpacing.xs),
         )
