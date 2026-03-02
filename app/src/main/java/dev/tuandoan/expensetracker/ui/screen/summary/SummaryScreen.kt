@@ -12,6 +12,7 @@ import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -81,15 +82,27 @@ fun SummaryScreen(
             }
             uiState.summary == null || uiState.summary?.isEmpty != false -> {
                 Column(modifier = Modifier.fillMaxSize()) {
-                    MonthSelector(
-                        monthLabel = uiState.monthLabel,
-                        onPreviousMonth = viewModel::goToPreviousMonth,
-                        onNextMonth = viewModel::goToNextMonth,
-                        onMonthLabelClick = { showMonthPicker = true },
-                        modifier = Modifier.padding(DesignSystemSpacing.screenPadding),
-                    )
+                    Column(modifier = Modifier.padding(DesignSystemSpacing.screenPadding)) {
+                        SummaryModeChips(
+                            mode = uiState.mode,
+                            onModeChanged = viewModel::setMode,
+                        )
+                        PeriodSelector(
+                            uiState = uiState,
+                            onPreviousMonth = viewModel::goToPreviousMonth,
+                            onNextMonth = viewModel::goToNextMonth,
+                            onPreviousYear = viewModel::goToPreviousYear,
+                            onNextYear = viewModel::goToNextYear,
+                            onMonthLabelClick = { showMonthPicker = true },
+                        )
+                    }
                     EmptyStateMessage(
-                        title = "No data for this month",
+                        title =
+                            if (uiState.mode == SummaryMode.YEAR) {
+                                "No data for this year"
+                            } else {
+                                "No data for this month"
+                            },
                         subtitle = "Start adding transactions to see your summary",
                         modifier = Modifier.weight(1f),
                     )
@@ -100,9 +113,12 @@ fun SummaryScreen(
                 if (summary != null) {
                     SummaryContent(
                         summary = summary,
-                        monthLabel = uiState.monthLabel,
+                        uiState = uiState,
+                        onModeChanged = viewModel::setMode,
                         onPreviousMonth = viewModel::goToPreviousMonth,
                         onNextMonth = viewModel::goToNextMonth,
+                        onPreviousYear = viewModel::goToPreviousYear,
+                        onNextYear = viewModel::goToNextYear,
                         onMonthLabelClick = { showMonthPicker = true },
                         modifier = Modifier.fillMaxSize(),
                     )
@@ -113,11 +129,76 @@ fun SummaryScreen(
 }
 
 @Composable
-private fun SummaryContent(
-    summary: MonthlySummary,
-    monthLabel: String,
+private fun SummaryModeChips(
+    mode: SummaryMode,
+    onModeChanged: (SummaryMode) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Row(
+        modifier = modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(DesignSystemSpacing.small),
+    ) {
+        FilterChip(
+            selected = mode == SummaryMode.MONTH,
+            onClick = { onModeChanged(SummaryMode.MONTH) },
+            label = { Text("Month") },
+            modifier =
+                Modifier.semantics {
+                    contentDescription =
+                        if (mode == SummaryMode.MONTH) "Monthly summary selected" else "Switch to monthly summary"
+                },
+        )
+        FilterChip(
+            selected = mode == SummaryMode.YEAR,
+            onClick = { onModeChanged(SummaryMode.YEAR) },
+            label = { Text("Year") },
+            modifier =
+                Modifier.semantics {
+                    contentDescription =
+                        if (mode == SummaryMode.YEAR) "Yearly summary selected" else "Switch to yearly summary"
+                },
+        )
+    }
+}
+
+@Composable
+private fun PeriodSelector(
+    uiState: SummaryUiState,
     onPreviousMonth: () -> Unit,
     onNextMonth: () -> Unit,
+    onPreviousYear: () -> Unit,
+    onNextYear: () -> Unit,
+    onMonthLabelClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    if (uiState.mode == SummaryMode.YEAR) {
+        MonthSelector(
+            monthLabel = uiState.monthLabel,
+            onPreviousMonth = onPreviousYear,
+            onNextMonth = onNextYear,
+            periodType = "year",
+            modifier = modifier,
+        )
+    } else {
+        MonthSelector(
+            monthLabel = uiState.monthLabel,
+            onPreviousMonth = onPreviousMonth,
+            onNextMonth = onNextMonth,
+            onMonthLabelClick = onMonthLabelClick,
+            modifier = modifier,
+        )
+    }
+}
+
+@Composable
+private fun SummaryContent(
+    summary: MonthlySummary,
+    uiState: SummaryUiState,
+    onModeChanged: (SummaryMode) -> Unit,
+    onPreviousMonth: () -> Unit,
+    onNextMonth: () -> Unit,
+    onPreviousYear: () -> Unit,
+    onNextYear: () -> Unit,
     onMonthLabelClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -125,11 +206,20 @@ private fun SummaryContent(
         modifier = modifier.padding(DesignSystemSpacing.screenPadding),
         verticalArrangement = Arrangement.spacedBy(DesignSystemSpacing.large),
     ) {
+        item(key = "mode_chips") {
+            SummaryModeChips(
+                mode = uiState.mode,
+                onModeChanged = onModeChanged,
+            )
+        }
+
         item(key = "header") {
-            MonthSelector(
-                monthLabel = monthLabel,
+            PeriodSelector(
+                uiState = uiState,
                 onPreviousMonth = onPreviousMonth,
                 onNextMonth = onNextMonth,
+                onPreviousYear = onPreviousYear,
+                onNextYear = onNextYear,
                 onMonthLabelClick = onMonthLabelClick,
             )
         }
@@ -220,23 +310,18 @@ private fun SummaryCards(
         modifier = modifier,
         verticalArrangement = Arrangement.spacedBy(DesignSystemSpacing.medium),
     ) {
-        // Income Card
         SummaryCard(
             title = "Income",
             amount = currencySummary.totalIncome,
             currencyCode = currencySummary.currencyCode,
             transactionType = TransactionType.INCOME,
         )
-
-        // Expense Card
         SummaryCard(
             title = "Expenses",
             amount = currencySummary.totalExpense,
             currencyCode = currencySummary.currencyCode,
             transactionType = TransactionType.EXPENSE,
         )
-
-        // Balance Card
         SummaryCard(
             title = "Balance",
             amount = currencySummary.balance,
@@ -277,7 +362,6 @@ private fun SummaryCard(
                 style = MaterialTheme.typography.titleMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
-
             AmountText(
                 amount = if (isBalance && amount < 0L) -amount else amount,
                 showSign = isBalance,

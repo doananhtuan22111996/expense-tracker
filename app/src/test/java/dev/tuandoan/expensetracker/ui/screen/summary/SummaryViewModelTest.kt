@@ -306,6 +306,130 @@ class SummaryViewModelTest {
             assertEquals("Nov 2025", viewModel.uiState.value.monthLabel)
         }
 
+    // --- Year mode ---
+
+    @Test
+    fun setMode_year_showsYearLabel() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            fakeRepository.summaryToEmit = TestData.sampleMonthlySummary
+            val viewModel = createViewModel()
+            advanceUntilIdle()
+
+            viewModel.setMode(SummaryMode.YEAR)
+            advanceUntilIdle()
+
+            assertEquals(SummaryMode.YEAR, viewModel.uiState.value.mode)
+            assertEquals("2026", viewModel.uiState.value.monthLabel)
+        }
+
+    @Test
+    fun setMode_year_queriesFullYearRange() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            fakeRepository.summaryToEmit = TestData.sampleMonthlySummary
+            val viewModel = createViewModel()
+            advanceUntilIdle()
+
+            viewModel.setMode(SummaryMode.YEAR)
+            advanceUntilIdle()
+
+            // 2026-01-01T00:00:00Z to 2027-01-01T00:00:00Z
+            assertEquals(1767225600000L, fakeRepository.lastFrom)
+            assertEquals(1798761600000L, fakeRepository.lastTo)
+        }
+
+    @Test
+    fun goToPreviousYear_shows2025() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            fakeRepository.summaryToEmit = TestData.sampleMonthlySummary
+            val viewModel = createViewModel()
+            advanceUntilIdle()
+
+            viewModel.setMode(SummaryMode.YEAR)
+            advanceUntilIdle()
+
+            viewModel.goToPreviousYear()
+            advanceUntilIdle()
+
+            assertEquals("2025", viewModel.uiState.value.monthLabel)
+            assertEquals(2025, viewModel.currentSelectedYear())
+        }
+
+    @Test
+    fun goToNextYear_shows2027() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            fakeRepository.summaryToEmit = TestData.sampleMonthlySummary
+            val viewModel = createViewModel()
+            advanceUntilIdle()
+
+            viewModel.setMode(SummaryMode.YEAR)
+            advanceUntilIdle()
+
+            viewModel.goToNextYear()
+            advanceUntilIdle()
+
+            assertEquals("2027", viewModel.uiState.value.monthLabel)
+            assertEquals(2027, viewModel.currentSelectedYear())
+        }
+
+    @Test
+    fun setMode_backToMonth_restoresMonthLabel() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            fakeRepository.summaryToEmit = TestData.sampleMonthlySummary
+            val viewModel = createViewModel()
+            advanceUntilIdle()
+
+            viewModel.setMode(SummaryMode.YEAR)
+            advanceUntilIdle()
+            assertEquals(SummaryMode.YEAR, viewModel.uiState.value.mode)
+
+            viewModel.setMode(SummaryMode.MONTH)
+            advanceUntilIdle()
+
+            assertEquals(SummaryMode.MONTH, viewModel.uiState.value.mode)
+            assertEquals("Mar 2026", viewModel.uiState.value.monthLabel)
+        }
+
+    @Test
+    fun setMode_sameMode_doesNotReload() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            fakeRepository.summaryToEmit = TestData.sampleMonthlySummary
+            val viewModel = createViewModel()
+            advanceUntilIdle()
+
+            val firstFrom = fakeRepository.lastFrom
+
+            // Setting the same mode again should be a no-op
+            viewModel.setMode(SummaryMode.MONTH)
+            advanceUntilIdle()
+
+            assertEquals(firstFrom, fakeRepository.lastFrom)
+        }
+
+    @Test
+    fun yearMode_externalMonthChange_doesNotReload() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            fakeRepository.summaryToEmit = TestData.sampleMonthlySummary
+            val viewModel = createViewModel()
+            advanceUntilIdle()
+
+            viewModel.setMode(SummaryMode.YEAR)
+            advanceUntilIdle()
+            val yearLabel = viewModel.uiState.value.monthLabel
+
+            // External month change should not affect year mode
+            fakeSelectedMonth.setMonth(YearMonth.of(2025, 6))
+            advanceUntilIdle()
+
+            assertEquals(SummaryMode.YEAR, viewModel.uiState.value.mode)
+            assertEquals(yearLabel, viewModel.uiState.value.monthLabel)
+        }
+
+    @Test
+    fun initialState_modeIsMonth() {
+        val state = SummaryUiState()
+        assertEquals(SummaryMode.MONTH, state.mode)
+    }
+
     // --- Shared period consistency ---
 
     @Test
@@ -373,5 +497,12 @@ class SummaryViewModelTest {
                 flow { emit(summaryToEmit) }
             }
         }
+
+        override fun searchTransactions(
+            from: Long,
+            to: Long,
+            query: String,
+            filterType: TransactionType?,
+        ): Flow<List<Transaction>> = flow { emit(emptyList()) }
     }
 }

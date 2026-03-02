@@ -10,8 +10,8 @@ A simple, offline-first personal expense tracker Android app for managing your i
 - **Simple & Clean**: Material 3 design with intuitive navigation
 - **Transaction Management**: Add, edit, delete income and expense transactions
 - **Category Organization**: Pre-defined categories for expenses and income
-- **Monthly Summary**: View your financial overview with balance and top expense categories
-- **Filter & Search**: Filter transactions by type (All, Expenses, Income)
+- **Monthly & Yearly Summary**: View your financial overview with balance and top expense categories, toggle between month and year view
+- **Filter & Search**: Filter transactions by type (All, Expenses, Income) and search by note text
 
 ## Architecture
 
@@ -599,6 +599,68 @@ or deleted. Multi-currency summaries remain per-currency (Phase 2.3 preserved).
 | `HomeViewModelTest` | 19 | Shared month, setMonth, external change, picker integration |
 | `SummaryViewModelTest` | 16 | Shared month, setMonth, external change, cross-VM consistency |
 
+## Phase 4.4 – Year View + Search (v2.5)
+
+### Year Summary
+
+The Summary screen now supports a Year mode in addition to the existing Month mode.
+A toggle (Month / Year FilterChips) lets the user switch between per-month and per-year
+aggregation. Year mode reuses the same per-currency summary pipeline — it simply passes
+full-year boundaries (Jan 1 to Jan 1 next year) to `observeMonthlySummary`.
+
+**How to Use:**
+1. Open Summary
+2. Tap the "Year" chip to switch to yearly view
+3. Use left/right arrows to navigate between years
+4. Tap "Month" to return to per-month view
+
+**Behavior:**
+- Year mode shows per-currency Income/Expenses/Balance cards and Top 5+Other categories
+  for the entire selected year
+- No currency conversion or cross-currency aggregation (Phase 2.3 rules preserved)
+- Policy-safe disclaimer remains visible
+- Switching from Year back to Month restores the previously selected month
+- When entering Year mode, the year is initialized from the current selected month's year
+
+### Search & Filters
+
+The Home screen now includes a search bar for finding transactions by note text.
+
+**How to Use:**
+1. Open Home
+2. Type in the "Search by note" field above the filter chips
+3. Results update after 300ms debounce
+4. Tap the clear (×) button to reset the search
+5. Search combines with the existing type filter and month selection
+
+**Behavior:**
+- Case-insensitive substring match on the transaction `note` field (SQL `LIKE`)
+- Works alongside the All/Expenses/Income filter chips
+- Scoped to the currently selected month
+- Empty search query shows all transactions (normal mode)
+- "No results found" empty state when search yields zero matches
+
+**Key Components:**
+
+| Component | File | Role |
+|-----------|------|------|
+| `DateRangeCalculator` | `core/util/DateRangeCalculator.kt` | Added `currentYear()` and `rangeOfYear(year)` |
+| `TransactionDao` | `data/database/dao/TransactionDao.kt` | Added `searchTransactions()` query |
+| `TransactionRepository` | `domain/repository/TransactionRepository.kt` | Added `searchTransactions()` interface method |
+| `TransactionRepositoryImpl` | `repository/TransactionRepositoryImpl.kt` | Added `searchTransactions()` implementation |
+| `SummaryViewModel` | `ui/screen/summary/SummaryViewModel.kt` | `SummaryMode` enum, year navigation, mode switching |
+| `SummaryScreen` | `ui/screen/summary/SummaryScreen.kt` | Month/Year toggle chips, period selector |
+| `HomeViewModel` | `ui/screen/home/HomeViewModel.kt` | Debounced search query, `searchTransactions` integration |
+| `HomeScreen` | `ui/screen/home/HomeScreen.kt` | `SearchBar` composable, "No results found" empty state |
+
+**Test Coverage:**
+
+| Test Class | Tests Added | Coverage |
+|------------|-------------|----------|
+| `DateRangeCalculatorTest` | 5 | Year range boundaries, leap year, timezone |
+| `HomeViewModelTest` | 4 | Search query, debounce, clear, empty results |
+| `SummaryViewModelTest` | 7 | Year mode, year navigation, mode switching, external month isolation |
+
 ## Project Structure
 
 ```
@@ -804,6 +866,7 @@ For support or questions, please contact: support@expensetracker.com
 
 ## Version History
 
+- **v2.5.0** - Phase 4.4: Year View + Search (Month/Year toggle on Summary, year-range aggregation, search bar on Home with 300ms debounce + SQL LIKE, combined with type filter + month scope, 16 new unit tests)
 - **v2.4.0** - Phase 4.3: Shared Month/Year Navigation + Picker (SelectedMonthRepository singleton for synchronized Home + Summary month state, MonthYearPickerDialog with 4x3 month grid + year stepper, tap-on-label to pick, 43 unit tests including cross-VM consistency)
 - **v2.3.0** - Phase 4.2: Time Range System + Month Navigation (DateRange model, DateRangeCalculator with injectable Clock/ZoneId, MonthSelector composable, prev/next month navigation on Home + Summary, timestamp + category_id indices, Room migration v2→v3, 43 new/updated unit tests)
 - **v2.2.0** - Phase 4.1: Data Retention Guardrails (root cause analysis – no data loss, only current-month visibility issue; 8 regression tests proving no gaps/overlaps in date ranges; confirmed no destructive migration)

@@ -97,6 +97,28 @@ class TransactionRepositoryImpl
                 entity.toDomain(category)
             }
 
+        override fun searchTransactions(
+            from: Long,
+            to: Long,
+            query: String,
+            filterType: TransactionType?,
+        ): Flow<List<Transaction>> =
+            transactionDao
+                .searchTransactions(from, to, escapeLikeQuery(query), filterType?.toInt())
+                .combine(
+                    categoryDao
+                        .getCategories(TransactionType.EXPENSE.toInt())
+                        .combine(categoryDao.getCategories(TransactionType.INCOME.toInt())) { expense, income ->
+                            (expense + income).associateBy { it.id }
+                        },
+                ) { transactions, categoriesMap ->
+                    transactions.mapNotNull { transaction ->
+                        categoriesMap[transaction.categoryId]?.let { category ->
+                            transaction.toDomain(category.toDomain())
+                        }
+                    }
+                }.flowOn(ioDispatcher)
+
         override fun observeMonthlySummary(
             from: Long,
             to: Long,
@@ -215,6 +237,12 @@ class TransactionRepositoryImpl
         companion object {
             private const val TOP_CATEGORIES_LIMIT = 5
             const val OTHER_CATEGORY_ID = -1L
+
+            internal fun escapeLikeQuery(query: String): String =
+                query
+                    .replace("\\", "\\\\")
+                    .replace("%", "\\%")
+                    .replace("_", "\\_")
 
             internal val OTHER_CATEGORY =
                 Category(

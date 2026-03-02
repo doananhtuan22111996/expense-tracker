@@ -17,6 +17,8 @@ import kotlinx.coroutines.launch
 import java.time.YearMonth
 import javax.inject.Inject
 
+enum class SummaryMode { MONTH, YEAR }
+
 @HiltViewModel
 class SummaryViewModel
     @Inject
@@ -29,16 +31,29 @@ class SummaryViewModel
         val uiState: StateFlow<SummaryUiState> = _uiState.asStateFlow()
         private var summaryJob: Job? = null
 
+        private var selectedYear: Int = dateRangeCalculator.currentYear()
+
         init {
             viewModelScope.launch {
                 selectedMonthRepository.selectedMonth.collect { month ->
-                    loadMonthlySummary(month)
+                    if (_uiState.value.mode == SummaryMode.MONTH) {
+                        loadSummary()
+                    }
                 }
             }
         }
 
         fun refresh() {
-            loadMonthlySummary(selectedMonthRepository.selectedMonth.value)
+            loadSummary()
+        }
+
+        fun setMode(mode: SummaryMode) {
+            if (_uiState.value.mode == mode) return
+            _uiState.value = _uiState.value.copy(mode = mode)
+            if (mode == SummaryMode.YEAR) {
+                selectedYear = selectedMonthRepository.selectedMonth.value.year
+            }
+            loadSummary()
         }
 
         fun goToPreviousMonth() {
@@ -49,24 +64,54 @@ class SummaryViewModel
             selectedMonthRepository.goToNextMonth()
         }
 
+        fun goToPreviousYear() {
+            selectedYear--
+            loadSummary()
+        }
+
+        fun goToNextYear() {
+            selectedYear++
+            loadSummary()
+        }
+
         fun setMonth(yearMonth: YearMonth) {
             selectedMonthRepository.setMonth(yearMonth)
         }
 
+        fun setYear(year: Int) {
+            selectedYear = year
+            loadSummary()
+        }
+
         fun currentSelectedMonth(): YearMonth = selectedMonthRepository.selectedMonth.value
 
-        private fun loadMonthlySummary(selectedMonth: YearMonth) {
+        fun currentSelectedYear(): Int = selectedYear
+
+        private fun loadSummary() {
             summaryJob?.cancel()
             summaryJob =
                 viewModelScope.launch {
+                    val mode = _uiState.value.mode
+                    val periodLabel =
+                        if (mode == SummaryMode.YEAR) {
+                            selectedYear.toString()
+                        } else {
+                            dateRangeCalculator.displayLabel(selectedMonthRepository.selectedMonth.value)
+                        }
+
                     _uiState.value =
                         _uiState.value.copy(
                             isLoading = true,
                             isError = false,
-                            monthLabel = dateRangeCalculator.displayLabel(selectedMonth),
+                            monthLabel = periodLabel,
                         )
 
-                    val range = dateRangeCalculator.rangeOf(selectedMonth)
+                    val range =
+                        if (mode == SummaryMode.YEAR) {
+                            dateRangeCalculator.rangeOfYear(selectedYear)
+                        } else {
+                            dateRangeCalculator.rangeOf(selectedMonthRepository.selectedMonth.value)
+                        }
 
                     transactionRepository
                         .observeMonthlySummary(range.startMillis, range.endMillisExclusive)
@@ -95,4 +140,5 @@ data class SummaryUiState(
     val isError: Boolean = false,
     val errorMessage: String? = null,
     val monthLabel: String = "",
+    val mode: SummaryMode = SummaryMode.MONTH,
 )

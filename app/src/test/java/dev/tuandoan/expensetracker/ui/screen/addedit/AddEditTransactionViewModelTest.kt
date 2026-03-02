@@ -575,6 +575,13 @@ class AddEditTransactionViewModelTest {
             from: Long,
             to: Long,
         ): Flow<MonthlySummary> = flow { emit(TestData.sampleMonthlySummary) }
+
+        override fun searchTransactions(
+            from: Long,
+            to: Long,
+            query: String,
+            filterType: TransactionType?,
+        ): Flow<List<Transaction>> = flow { emit(emptyList()) }
     }
 
     private class FakeCategoryRepository : CategoryRepository {

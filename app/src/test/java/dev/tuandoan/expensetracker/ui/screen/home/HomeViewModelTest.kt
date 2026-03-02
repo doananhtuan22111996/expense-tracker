@@ -11,6 +11,7 @@ import dev.tuandoan.expensetracker.testutil.TestData
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.test.advanceTimeBy
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
@@ -338,6 +339,83 @@ class HomeViewModelTest {
             assertEquals(YearMonth.of(2025, 1), viewModel.currentSelectedMonth())
         }
 
+    // --- Search ---
+
+    @Test
+    fun onSearchQueryChanged_updatesUiState() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            fakeRepository.transactionsToEmit = emptyList()
+            val viewModel = createViewModel()
+            advanceUntilIdle()
+
+            viewModel.onSearchQueryChanged("coffee")
+
+            assertEquals("coffee", viewModel.uiState.value.searchQuery)
+        }
+
+    @Test
+    fun onSearchQueryChanged_debounced_callsSearchRepository() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            fakeRepository.transactionsToEmit = emptyList()
+            val matchingTransaction =
+                TestData.sampleExpenseTransaction.copy(id = 5L, note = "Morning coffee")
+            fakeRepository.searchResultsToEmit = listOf(matchingTransaction)
+
+            val viewModel = createViewModel()
+            advanceUntilIdle()
+
+            viewModel.onSearchQueryChanged("coffee")
+            // Advance past debounce (300ms)
+            advanceTimeBy(350)
+            advanceUntilIdle()
+
+            assertEquals("coffee", fakeRepository.lastSearchQuery)
+            assertEquals(1, viewModel.uiState.value.transactions.size)
+        }
+
+    @Test
+    fun clearSearch_resetsQueryAndReloads() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            fakeRepository.transactionsToEmit = listOf(TestData.sampleExpenseTransaction)
+            fakeRepository.searchResultsToEmit = emptyList()
+
+            val viewModel = createViewModel()
+            advanceUntilIdle()
+
+            viewModel.onSearchQueryChanged("xyz")
+            advanceTimeBy(350)
+            advanceUntilIdle()
+
+            // Clear search
+            fakeRepository.transactionsToEmit = listOf(TestData.sampleExpenseTransaction)
+            viewModel.clearSearch()
+            advanceTimeBy(350)
+            advanceUntilIdle()
+
+            assertEquals("", viewModel.uiState.value.searchQuery)
+            assertEquals(1, viewModel.uiState.value.transactions.size)
+        }
+
+    @Test
+    fun search_emptyResults_showsEmptyState() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            fakeRepository.transactionsToEmit = listOf(TestData.sampleExpenseTransaction)
+            fakeRepository.searchResultsToEmit = emptyList()
+
+            val viewModel = createViewModel()
+            advanceUntilIdle()
+
+            viewModel.onSearchQueryChanged("nonexistent")
+            advanceTimeBy(350)
+            advanceUntilIdle()
+
+            assertTrue(
+                viewModel.uiState.value.transactions
+                    .isEmpty(),
+            )
+            assertEquals("nonexistent", viewModel.uiState.value.searchQuery)
+        }
+
     @Test
     fun externalMonthChange_triggersReload() =
         runTest(mainDispatcherRule.testDispatcher) {
@@ -356,11 +434,13 @@ class HomeViewModelTest {
 
     private class FakeTransactionRepository : TransactionRepository {
         var transactionsToEmit: List<Transaction> = emptyList()
+        var searchResultsToEmit: List<Transaction> = emptyList()
         var shouldThrowOnObserve = false
         var shouldThrowOnDelete = false
         var lastDeletedId: Long? = null
         var lastObservedFrom: Long? = null
         var lastObservedTo: Long? = null
+        var lastSearchQuery: String? = null
 
         override fun observeTransactions(
             from: Long,
@@ -398,5 +478,15 @@ class HomeViewModelTest {
             from: Long,
             to: Long,
         ): Flow<MonthlySummary> = flow { emit(TestData.sampleMonthlySummary) }
+
+        override fun searchTransactions(
+            from: Long,
+            to: Long,
+            query: String,
+            filterType: TransactionType?,
+        ): Flow<List<Transaction>> {
+            lastSearchQuery = query
+            return flow { emit(searchResultsToEmit) }
+        }
     }
 }

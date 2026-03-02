@@ -329,6 +329,13 @@ class BackupRepositoryImplTest {
             to: Long,
             type: Int,
         ): Flow<List<CurrencyCategorySumRow>> = MutableStateFlow(emptyList())
+
+        override fun searchTransactions(
+            from: Long,
+            to: Long,
+            query: String,
+            type: Int?,
+        ): Flow<List<TransactionEntity>> = MutableStateFlow(emptyList())
     }
 
     private inner class FakeCategoryDao : CategoryDao {

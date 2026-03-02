@@ -32,4 +32,11 @@ interface TransactionRepository {
         from: Long,
         to: Long,
     ): Flow<MonthlySummary>
+
+    fun searchTransactions(
+        from: Long,
+        to: Long,
+        query: String,
+        filterType: TransactionType? = null,
+    ): Flow<List<Transaction>>
 }
