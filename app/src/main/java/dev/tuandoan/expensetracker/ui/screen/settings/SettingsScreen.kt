@@ -10,21 +10,21 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.FileDownload
 import androidx.compose.material.icons.filled.FileUpload
 import androidx.compose.material.icons.filled.KeyboardArrowRight
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
@@ -42,7 +42,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import dev.tuandoan.expensetracker.core.util.AppInfo
 import dev.tuandoan.expensetracker.domain.model.CurrencyDefinition
@@ -69,6 +68,13 @@ fun SettingsScreen(
             contract = ActivityResultContracts.CreateDocument("application/json"),
         ) { uri ->
             uri?.let { viewModel.exportBackup(it) }
+        }
+
+    val importLauncher =
+        rememberLauncherForActivityResult(
+            contract = ActivityResultContracts.OpenDocument(),
+        ) { uri ->
+            uri?.let { viewModel.onRestoreFileSelected(it) }
         }
 
     LaunchedEffect(uiState.errorMessage) {
@@ -154,13 +160,15 @@ fun SettingsScreen(
 
             // Backup & Restore Section
             SettingsSection(title = "Backup & Restore") {
+                val isBusy = uiState.backupOperation != BackupOperation.Idle
                 val isExporting = uiState.backupOperation == BackupOperation.Exporting
+                val isImporting = uiState.backupOperation == BackupOperation.Importing
 
                 Row(
                     modifier =
                         Modifier
                             .fillMaxWidth()
-                            .clickable(enabled = !isExporting) {
+                            .clickable(enabled = !isBusy) {
                                 val date =
                                     SimpleDateFormat("yyyy-MM-dd", Locale.US).format(Date())
                                 exportLauncher.launch("expense-tracker-backup_$date.json")
@@ -176,15 +184,11 @@ fun SettingsScreen(
                     horizontalArrangement = Arrangement.spacedBy(DesignSystemSpacing.medium),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    if (isExporting) {
-                        CircularProgressIndicator(modifier = Modifier.size(24.dp))
-                    } else {
-                        Icon(
-                            Icons.Default.FileUpload,
-                            contentDescription = null,
-                            tint = MaterialTheme.colorScheme.primary,
-                        )
-                    }
+                    Icon(
+                        Icons.Default.FileUpload,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.primary,
+                    )
                     Column(modifier = Modifier.weight(1f)) {
                         Text(
                             text = "Export Backup",
@@ -199,6 +203,67 @@ fun SettingsScreen(
                             modifier = Modifier.padding(top = DesignSystemSpacing.xs),
                         )
                     }
+                    if (isExporting) {
+                        TextButton(onClick = { viewModel.cancelOperation() }) {
+                            Text("Cancel")
+                        }
+                    }
+                }
+
+                if (isExporting) {
+                    BackupProgressBar(progress = uiState.backupProgress)
+                }
+
+                HorizontalDivider()
+
+                Row(
+                    modifier =
+                        Modifier
+                            .fillMaxWidth()
+                            .clickable(enabled = !isBusy) {
+                                importLauncher.launch(
+                                    arrayOf("application/json", "application/gzip", "application/octet-stream"),
+                                )
+                            }.padding(DesignSystemSpacing.large)
+                            .semantics {
+                                contentDescription =
+                                    if (isImporting) {
+                                        "Import backup from JSON file, currently importing"
+                                    } else {
+                                        "Import backup from JSON file"
+                                    }
+                            },
+                    horizontalArrangement = Arrangement.spacedBy(DesignSystemSpacing.medium),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Icon(
+                        Icons.Default.FileDownload,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.primary,
+                    )
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = "Import Backup",
+                            style = MaterialTheme.typography.bodyLarge,
+                            fontWeight = FontWeight.Medium,
+                            color = MaterialTheme.colorScheme.onSurface,
+                        )
+                        Text(
+                            text = "Restore from a JSON backup file",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.padding(top = DesignSystemSpacing.xs),
+                        )
+                    }
+                    if (isImporting) {
+                        TextButton(onClick = { viewModel.cancelOperation() }) {
+                            Text("Cancel")
+                        }
+                    }
+                }
+
+                if (isImporting) {
+                    BackupProgressBar(progress = uiState.backupProgress)
                 }
 
                 Text(
@@ -342,6 +407,36 @@ fun SettingsScreen(
             onDismiss = { showCurrencyDialog = false },
         )
     }
+
+    // Restore Confirmation Dialog
+    if (uiState.pendingRestoreUri != null) {
+        AlertDialog(
+            onDismissRequest = { viewModel.dismissRestoreConfirmation() },
+            title = { Text("Replace all data?") },
+            text = {
+                Text(
+                    "This will permanently delete all existing transactions " +
+                        "and categories, then replace them with the data from " +
+                        "the selected backup file.\n\nThis action cannot be undone.",
+                )
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = { viewModel.confirmRestore() },
+                ) {
+                    Text(
+                        "Replace All",
+                        color = MaterialTheme.colorScheme.error,
+                    )
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { viewModel.dismissRestoreConfirmation() }) {
+                    Text("Cancel")
+                }
+            },
+        )
+    }
 }
 
 @Composable
@@ -445,6 +540,39 @@ private fun SettingsItem(
         Text(
             text = subtitle,
             style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.padding(top = DesignSystemSpacing.xs),
+        )
+    }
+}
+
+@Composable
+private fun BackupProgressBar(
+    progress: Float?,
+    modifier: Modifier = Modifier,
+) {
+    Column(
+        modifier =
+            modifier
+                .fillMaxWidth()
+                .padding(
+                    horizontal = DesignSystemSpacing.large,
+                    vertical = DesignSystemSpacing.small,
+                ),
+    ) {
+        val displayProgress = progress ?: 0f
+        LinearProgressIndicator(
+            progress = { displayProgress },
+            modifier =
+                Modifier
+                    .fillMaxWidth()
+                    .semantics {
+                        contentDescription = "${(displayProgress * 100).toInt()}% complete"
+                    },
+        )
+        Text(
+            text = "${(displayProgress * 100).toInt()}%",
+            style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = Modifier.padding(top = DesignSystemSpacing.xs),
         )
