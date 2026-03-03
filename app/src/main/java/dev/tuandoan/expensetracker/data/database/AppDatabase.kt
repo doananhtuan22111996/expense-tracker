@@ -10,7 +10,7 @@ import dev.tuandoan.expensetracker.data.database.entity.TransactionEntity
 @Database(
     entities = [TransactionEntity::class, CategoryEntity::class],
     version = 3,
-    exportSchema = false,
+    exportSchema = true,
 )
 abstract class AppDatabase : RoomDatabase() {
     abstract fun transactionDao(): TransactionDao

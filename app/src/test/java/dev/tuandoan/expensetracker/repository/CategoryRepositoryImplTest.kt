@@ -92,6 +92,8 @@ class CategoryRepositoryImplTest {
 
         override suspend fun getAll(): List<CategoryEntity> = categoriesById.values.toList()
 
+        override suspend fun count(): Int = categoriesById.size
+
         override suspend fun insertAll(list: List<CategoryEntity>) {
             list.forEach { categoriesById[it.id] = it }
         }

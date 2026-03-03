@@ -4,6 +4,7 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
@@ -84,11 +85,11 @@ fun SettingsScreen(
         }
     }
 
-    Column(modifier = modifier.fillMaxSize()) {
+    Box(modifier = modifier.fillMaxSize()) {
         Column(
             modifier =
                 Modifier
-                    .weight(1f)
+                    .fillMaxSize()
                     .padding(DesignSystemSpacing.screenPadding)
                     .verticalScroll(rememberScrollState()),
         ) {
@@ -322,7 +323,10 @@ fun SettingsScreen(
 
         SnackbarHost(
             hostState = snackbarHostState,
-            modifier = Modifier.padding(DesignSystemSpacing.large),
+            modifier =
+                Modifier
+                    .padding(DesignSystemSpacing.large)
+                    .align(Alignment.BottomCenter),
         )
     }
 

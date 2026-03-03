@@ -33,8 +33,16 @@ class SeedRepository
                 val preferences = context.dataStore.data.first()
                 val seedComplete = preferences[seedCompleteKey] ?: false
 
-                if (!seedComplete) {
+                // Primary guard: only seed when the categories table is empty.
+                // The DataStore flag is a fast-path optimization; the table-empty
+                // check is the safety net that prevents duplicate seeding after
+                // backup restore or DataStore reset on upgrade.
+                if (!seedComplete && categoryDao.count() == 0) {
                     seedDefaultCategories()
+                    markSeedComplete()
+                } else if (!seedComplete) {
+                    // Categories exist (e.g., restored from backup) but flag was not set.
+                    // Mark complete to avoid re-checking on every launch.
                     markSeedComplete()
                 }
             }

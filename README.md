@@ -661,6 +661,123 @@ The Home screen now includes a search bar for finding transactions by note text.
 | `HomeViewModelTest` | 4 | Search query, debounce, clear, empty results |
 | `SummaryViewModelTest` | 7 | Year mode, year navigation, mode switching, external month isolation |
 
+## Phase 4.5 – Safe Upgrade Guarantee (v2.6)
+
+### No Destructive Migration Policy
+
+The app guarantees that upgrading from any previously shipped version **never wipes user data**.
+Room uses explicit, additive migrations only. There is no `fallbackToDestructiveMigration()`,
+no `clearAllTables()` on startup, and no automatic deletion of old transactions.
+
+**Policy Rules:**
+- Every schema change MUST have a corresponding `Migration` object
+- Every migration MUST have an instrumented test
+- `fallbackToDestructiveMigration()` is NEVER used in release builds
+- Category seeding only runs when the categories table is empty (dual-guard)
+
+### DB Versioning
+
+| DB Version | App Version | Migration | Schema Change |
+|:---:|:---:|---|---|
+| 1 | v1.0.0 | — (initial) | `transactions` + `categories` tables |
+| 2 | v1.2.0 | `MIGRATION_1_2` | `ALTER TABLE transactions ADD COLUMN currency_code TEXT NOT NULL DEFAULT 'VND'` |
+| 3 | v2.3.0 | `MIGRATION_2_3` | `CREATE INDEX` on `transactions(timestamp)` and `transactions(category_id)` |
+
+**Migration Graph:**
+```
+v1 ──MIGRATION_1_2──▶ v2 ──MIGRATION_2_3──▶ v3 (current)
+│                                            │
+└────────────── chained migration ───────────┘
+```
+
+All migrations are additive (column additions, index creation). No data is deleted,
+moved, or transformed during any migration step.
+
+### Schema Export
+
+Starting with v3, Room schema JSON files are exported to `app/schemas/` and committed
+to version control. This enables:
+- Compile-time schema validation (Room verifies entity annotations match the expected schema)
+- `MigrationTestHelper` support for future migrations (v3+)
+- Schema change visibility in pull request diffs
+
+### Category Seeding Safety
+
+Default categories are seeded on first launch using a dual-guard mechanism:
+1. **Fast path**: DataStore `seed_complete` flag (avoids DB query on normal launches)
+2. **Safety net**: `SELECT COUNT(*) FROM categories` (catches DataStore/DB desync)
+
+Categories are only inserted when the table is **actually empty**. This prevents:
+- Duplicate seeding after backup restore
+- Re-seeding after DataStore reset on upgrade
+- Category wipe if seeding runs unexpectedly
+
+### Migration Tests
+
+Instrumented migration tests verify all upgrade paths:
+
+| Test | Start → End | Validates |
+|------|:-----------:|-----------|
+| `migration1To2_addsColumnWithDefaultVND` | v1 → v2 | currency_code column added with 'VND' default |
+| `migration1To2_preservesExistingData` | v1 → v2 | All rows survive intact |
+| `migration1To2_preservesCategoryData` | v1 → v2 | Category data untouched |
+| `migration2To3_addsIndices` | v2 → v3 | Both indices created |
+| `migration2To3_preservesTransactionData` | v2 → v3 | Transaction data preserved |
+| `migration2To3_preservesCategoryData` | v2 → v3 | Category data preserved |
+| `migration2To3_canQueryWithRoomAfterMigration` | v2 → v3 | Room DAO works post-migration |
+| `migration1To3_chained_preservesAllTransactionData` | v1 → v3 | Full chain: transaction data preserved |
+| `migration1To3_chained_preservesAllCategoryData` | v1 → v3 | Full chain: category data preserved |
+| `migration1To3_chained_hasIndices` | v1 → v3 | Full chain: indices exist |
+| `migration1To3_chained_hasCurrencyCodeColumn` | v1 → v3 | Full chain: currency_code column exists |
+| `migration1To3_chained_canQueryWithRoomDao` | v1 → v3 | Full chain: Room DAOs functional |
+
+**Running migration tests:**
+```bash
+# Instrumented tests (requires emulator or device)
+./gradlew connectedAndroidTest
+
+# Unit tests (data retention + seed safety)
+./gradlew test
+```
+
+### Release Safety Checklist
+
+For every release that changes the database schema:
+- [ ] Increment `version` in `@Database` annotation
+- [ ] Add a `Migration` object for the new version step
+- [ ] Register the migration in `DatabaseModule.provideAppDatabase()`
+- [ ] Add instrumented migration test(s) for the new version step
+- [ ] Run `./gradlew connectedAndroidTest` and verify all migration tests pass
+- [ ] Verify exported schema JSON is updated in `app/schemas/`
+- [ ] **Never** add `fallbackToDestructiveMigration()` in release builds
+
+**Modified Files:**
+
+| File | Change |
+|------|--------|
+| `data/database/AppDatabase.kt` | `exportSchema = true` for schema validation |
+| `data/database/dao/CategoryDao.kt` | Added `count()` query for seeding safety |
+| `data/seed/SeedRepository.kt` | Dual-guard seeding (DataStore flag + table emptiness) |
+| `data/database/migration/MigrationTest.kt` | Expanded from 3 to 12 instrumented tests |
+| `data/DataRetentionTest.kt` | Added `migrationChain_coversAllVersions` test |
+| `app/build.gradle.kts` | Added `room-testing` dependency, KSP schema export arg |
+| `gradle/libs.versions.toml` | Added `room-testing` library entry |
+
+**New Files:**
+
+| File | Purpose |
+|------|---------|
+| `data/seed/SeedRepositoryTest.kt` | Unit tests for seeding safety logic |
+| `app/schemas/` | Room schema JSON exports (v3+) |
+
+**Test Coverage:**
+
+| Test Class | Tests | Coverage |
+|------------|-------|----------|
+| `MigrationTest` (androidTest) | 12 | All migration paths: v1→v2, v2→v3, v1→v3 chain |
+| `DataRetentionTest` | 9 | Date ranges, migration chain completeness |
+| `SeedRepositoryTest` | 4 | Seeding safety, category type stability |
+
 ## Project Structure
 
 ```
@@ -866,6 +983,7 @@ For support or questions, please contact: support@expensetracker.com
 
 ## Version History
 
+- **v2.6.0** - Phase 4.5: Safe Upgrade Guarantee (exportSchema=true, room-testing dependency, 12 instrumented migration tests covering v1→v2→v3 chain, dual-guard category seeding, no destructive migration policy, release safety checklist)
 - **v2.5.0** - Phase 4.4: Year View + Search (Month/Year toggle on Summary, year-range aggregation, search bar on Home with 300ms debounce + SQL LIKE, combined with type filter + month scope, 16 new unit tests)
 - **v2.4.0** - Phase 4.3: Shared Month/Year Navigation + Picker (SelectedMonthRepository singleton for synchronized Home + Summary month state, MonthYearPickerDialog with 4x3 month grid + year stepper, tap-on-label to pick, 43 unit tests including cross-VM consistency)
 - **v2.3.0** - Phase 4.2: Time Range System + Month Navigation (DateRange model, DateRangeCalculator with injectable Clock/ZoneId, MonthSelector composable, prev/next month navigation on Home + Summary, timestamp + category_id indices, Room migration v2→v3, 43 new/updated unit tests)

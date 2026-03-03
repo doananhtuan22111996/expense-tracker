@@ -202,10 +202,7 @@ private fun SummaryContent(
     onMonthLabelClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    LazyColumn(
-        modifier = modifier.padding(DesignSystemSpacing.screenPadding),
-        verticalArrangement = Arrangement.spacedBy(DesignSystemSpacing.large),
-    ) {
+    LazyColumn(modifier = modifier.padding(DesignSystemSpacing.screenPadding)) {
         item(key = "mode_chips") {
             SummaryModeChips(
                 mode = uiState.mode,
