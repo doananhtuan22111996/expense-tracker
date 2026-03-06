@@ -27,6 +27,13 @@
     <string name="delete">Delete</string>
     <string name="default_category">Default</string>
     <string name="remove_budget">Remove Budget</string>
+    <string name="spent_of_budget">Spent %1$s of %2$s</string>
+    <string name="over_budget_by">Over budget by %1$s</string>
+    <string name="budget_percentage">%1$d%% of monthly budget</string>
+    <string name="set_monthly_budget">Set Monthly Budget</string>
+    <string name="budget_amount">Budget Amount</string>
+    <string name="budget_must_be_positive">Budget must be greater than 0</string>
+    <string name="monthly_budget">Monthly Budget</string>
     <string name="category_created">Category created</string>
     <string name="category_updated">Category updated</string>
     <string name="category_deleted">Category deleted</string>

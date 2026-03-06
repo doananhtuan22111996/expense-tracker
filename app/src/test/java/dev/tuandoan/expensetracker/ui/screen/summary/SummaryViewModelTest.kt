@@ -1,11 +1,13 @@
 package dev.tuandoan.expensetracker.ui.screen.summary
 
 import dev.tuandoan.expensetracker.core.util.DateRangeCalculator
+import dev.tuandoan.expensetracker.domain.model.BudgetStatusLevel
 import dev.tuandoan.expensetracker.domain.model.CurrencyMonthlySummary
 import dev.tuandoan.expensetracker.domain.model.MonthlyBarPoint
 import dev.tuandoan.expensetracker.domain.model.MonthlySummary
 import dev.tuandoan.expensetracker.domain.model.Transaction
 import dev.tuandoan.expensetracker.domain.model.TransactionType
+import dev.tuandoan.expensetracker.domain.repository.BudgetPreferences
 import dev.tuandoan.expensetracker.domain.repository.TransactionRepository
 import dev.tuandoan.expensetracker.testutil.FakeSelectedMonthRepository
 import dev.tuandoan.expensetracker.testutil.MainDispatcherRule
@@ -13,7 +15,9 @@ import dev.tuandoan.expensetracker.testutil.TestData
 import dev.tuandoan.expensetracker.ui.screen.home.HomeViewModel
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
@@ -36,6 +40,7 @@ class SummaryViewModelTest {
 
     private lateinit var fakeRepository: FakeTransactionRepository
     private lateinit var fakeSelectedMonth: FakeSelectedMonthRepository
+    private lateinit var fakeBudgetPreferences: FakeBudgetPreferences
     private lateinit var dateRangeCalculator: DateRangeCalculator
 
     private val fixedZone: ZoneId = ZoneId.of("UTC")
@@ -45,11 +50,12 @@ class SummaryViewModelTest {
     fun setup() {
         fakeRepository = FakeTransactionRepository()
         fakeSelectedMonth = FakeSelectedMonthRepository()
+        fakeBudgetPreferences = FakeBudgetPreferences()
         dateRangeCalculator = DateRangeCalculator(fixedClock, fixedZone)
     }
 
     private fun createViewModel(): SummaryViewModel =
-        SummaryViewModel(fakeRepository, fakeSelectedMonth, dateRangeCalculator)
+        SummaryViewModel(fakeRepository, fakeSelectedMonth, dateRangeCalculator, fakeBudgetPreferences)
 
     @Test
     fun init_loadsSummary() =
@@ -429,6 +435,7 @@ class SummaryViewModelTest {
     fun initialState_modeIsMonth() {
         val state = SummaryUiState()
         assertEquals(SummaryMode.MONTH, state.mode)
+        assertTrue(state.budgetStatuses.isEmpty())
     }
 
     @Test
@@ -498,6 +505,75 @@ class SummaryViewModelTest {
             assertEquals("Feb 2026", homeVm.uiState.value.monthLabel)
             assertEquals("Feb 2026", summaryVm.uiState.value.monthLabel)
         }
+
+    @Test
+    fun monthMode_budgetStatuses_populatedForCurrenciesWithBudget() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            fakeRepository.summaryToEmit = TestData.sampleMonthlySummary
+            fakeBudgetPreferences.setBudget("VND", 500000L)
+
+            val viewModel = createViewModel()
+            advanceUntilIdle()
+
+            val state = viewModel.uiState.value
+            assertEquals(1, state.budgetStatuses.size)
+            val vndBudget = state.budgetStatuses[0]
+            assertEquals("VND", vndBudget.currency.code)
+            assertEquals(500000L, vndBudget.budgetAmount)
+            assertEquals(200000L, vndBudget.spentAmount)
+            assertEquals(BudgetStatusLevel.OK, vndBudget.status)
+        }
+
+    @Test
+    fun monthMode_noBudgetSet_budgetStatusesEmpty() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            fakeRepository.summaryToEmit = TestData.sampleMonthlySummary
+
+            val viewModel = createViewModel()
+            advanceUntilIdle()
+
+            assertTrue(
+                viewModel.uiState.value.budgetStatuses
+                    .isEmpty(),
+            )
+        }
+
+    @Test
+    fun yearMode_budgetStatuses_alwaysEmpty() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            fakeRepository.summaryToEmit = TestData.sampleMonthlySummary
+            fakeBudgetPreferences.setBudget("VND", 500000L)
+
+            val viewModel = createViewModel()
+            advanceUntilIdle()
+
+            viewModel.setMode(SummaryMode.YEAR)
+            advanceUntilIdle()
+
+            assertTrue(
+                viewModel.uiState.value.budgetStatuses
+                    .isEmpty(),
+            )
+        }
+
+    private class FakeBudgetPreferences : BudgetPreferences {
+        private val budgets = MutableStateFlow<Map<String, Long>>(emptyMap())
+
+        override fun getBudget(currencyCode: String): Flow<Long?> = budgets.map { it[currencyCode] }
+
+        override suspend fun setBudget(
+            currencyCode: String,
+            amount: Long,
+        ) {
+            budgets.value = budgets.value + (currencyCode to amount)
+        }
+
+        override suspend fun clearBudget(currencyCode: String) {
+            budgets.value = budgets.value - currencyCode
+        }
+
+        override fun getAllBudgets(): Flow<Map<String, Long>> = budgets
+    }
 
     private class FakeTransactionRepository : TransactionRepository {
         var summaryToEmit: MonthlySummary = TestData.sampleMonthlySummary

@@ -11,9 +11,11 @@ import dev.tuandoan.expensetracker.core.util.TimeProvider
 import dev.tuandoan.expensetracker.data.backup.BackupRepositoryImpl
 import dev.tuandoan.expensetracker.data.database.RoomTransactionRunner
 import dev.tuandoan.expensetracker.data.database.TransactionRunner
+import dev.tuandoan.expensetracker.data.preferences.BudgetPreferencesImpl
 import dev.tuandoan.expensetracker.data.preferences.CurrencyPreferenceRepositoryImpl
 import dev.tuandoan.expensetracker.data.preferences.SelectedMonthRepositoryImpl
 import dev.tuandoan.expensetracker.domain.repository.BackupRepository
+import dev.tuandoan.expensetracker.domain.repository.BudgetPreferences
 import dev.tuandoan.expensetracker.domain.repository.CategoryRepository
 import dev.tuandoan.expensetracker.domain.repository.CurrencyPreferenceRepository
 import dev.tuandoan.expensetracker.domain.repository.SelectedMonthRepository
@@ -51,4 +53,7 @@ abstract class RepositoryModule {
     abstract fun bindSelectedMonthRepository(
         selectedMonthRepositoryImpl: SelectedMonthRepositoryImpl,
     ): SelectedMonthRepository
+
+    @Binds
+    abstract fun bindBudgetPreferences(budgetPreferencesImpl: BudgetPreferencesImpl): BudgetPreferences
 }
