@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dev.tuandoan.expensetracker.core.util.DateRangeCalculator
 import dev.tuandoan.expensetracker.core.util.ErrorUtils
+import dev.tuandoan.expensetracker.domain.model.MonthlyBarPoint
 import dev.tuandoan.expensetracker.domain.model.MonthlySummary
 import dev.tuandoan.expensetracker.domain.repository.SelectedMonthRepository
 import dev.tuandoan.expensetracker.domain.repository.TransactionRepository
@@ -87,6 +88,26 @@ class SummaryViewModel
 
         fun currentSelectedYear(): Int = selectedYear
 
+        private suspend fun buildMonthlyBarData(
+            summary: MonthlySummary,
+            from: Long,
+            to: Long,
+        ): Map<String, List<MonthlyBarPoint>> {
+            val result = mutableMapOf<String, List<MonthlyBarPoint>>()
+            for (currencySummary in summary.currencySummaries) {
+                if (currencySummary.totalExpense > 0L) {
+                    val points =
+                        transactionRepository.getMonthlyExpenseTotals(
+                            from,
+                            to,
+                            currencySummary.currencyCode,
+                        )
+                    result[currencySummary.currencyCode] = points
+                }
+            }
+            return result
+        }
+
         private fun loadSummary() {
             summaryJob?.cancel()
             summaryJob =
@@ -123,9 +144,16 @@ class SummaryViewModel
                                     errorMessage = ErrorUtils.getErrorMessage(e),
                                 )
                         }.collect { summary ->
+                            val barData =
+                                if (mode == SummaryMode.YEAR) {
+                                    buildMonthlyBarData(summary, range.startMillis, range.endMillisExclusive)
+                                } else {
+                                    emptyMap()
+                                }
                             _uiState.value =
                                 _uiState.value.copy(
                                     summary = summary,
+                                    monthlyBarData = barData,
                                     isLoading = false,
                                     isError = false,
                                 )
@@ -141,4 +169,5 @@ data class SummaryUiState(
     val errorMessage: String? = null,
     val monthLabel: String = "",
     val mode: SummaryMode = SummaryMode.MONTH,
+    val monthlyBarData: Map<String, List<MonthlyBarPoint>> = emptyMap(),
 )

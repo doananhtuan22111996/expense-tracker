@@ -5,4 +5,7 @@
     <string name="export_csv_subtitle">Save all transactions as a CSV file</string>
     <string name="csv_exported_successfully">CSV exported successfully</string>
     <string name="csv_export_failed">CSV export failed: %1$s</string>
+    <string name="no_expenses_this_period">No expenses this period</string>
+    <string name="expense_distribution">Expense Distribution</string>
+    <string name="monthly_expenses">Monthly Expenses</string>
 </resources>

@@ -518,6 +518,12 @@ class BackupRepositoryImplTest {
             query: String,
             type: Int?,
         ): Flow<List<TransactionEntity>> = MutableStateFlow(emptyList())
+
+        override suspend fun getMonthlyExpenseTotals(
+            from: Long,
+            to: Long,
+            currencyCode: String,
+        ): List<dev.tuandoan.expensetracker.data.database.entity.MonthlyTotalRow> = emptyList()
     }
 
     private inner class FakeCategoryDao : CategoryDao {

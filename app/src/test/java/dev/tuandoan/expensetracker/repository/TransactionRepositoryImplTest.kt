@@ -6,7 +6,9 @@ import dev.tuandoan.expensetracker.data.database.dao.TransactionDao
 import dev.tuandoan.expensetracker.data.database.entity.CategoryEntity
 import dev.tuandoan.expensetracker.data.database.entity.CurrencyCategorySumRow
 import dev.tuandoan.expensetracker.data.database.entity.CurrencySumRow
+import dev.tuandoan.expensetracker.data.database.entity.MonthlyTotalRow
 import dev.tuandoan.expensetracker.data.database.entity.TransactionEntity
+import dev.tuandoan.expensetracker.domain.model.MonthlyBarPoint
 import dev.tuandoan.expensetracker.domain.model.TransactionType
 import dev.tuandoan.expensetracker.testutil.FakeTimeProvider
 import dev.tuandoan.expensetracker.testutil.TestData
@@ -574,6 +576,40 @@ class TransactionRepositoryImplTest {
             }
         }
 
+    // getMonthlyExpenseTotals tests
+
+    @Test
+    fun getMonthlyExpenseTotals_fillsAll12Months() =
+        runTest(testDispatcher) {
+            fakeTransactionDao.monthlyTotalRows =
+                listOf(
+                    MonthlyTotalRow(month = "01", total = 100000L),
+                    MonthlyTotalRow(month = "03", total = 300000L),
+                    MonthlyTotalRow(month = "12", total = 50000L),
+                )
+
+            val result = repository.getMonthlyExpenseTotals(0L, Long.MAX_VALUE, "VND")
+
+            assertEquals(12, result.size)
+            assertEquals(MonthlyBarPoint(month = 1, totalExpense = 100000L), result[0])
+            assertEquals(MonthlyBarPoint(month = 2, totalExpense = 0L), result[1])
+            assertEquals(MonthlyBarPoint(month = 3, totalExpense = 300000L), result[2])
+            assertEquals(MonthlyBarPoint(month = 12, totalExpense = 50000L), result[11])
+        }
+
+    @Test
+    fun getMonthlyExpenseTotals_emptyData_returnsAllZeros() =
+        runTest(testDispatcher) {
+            fakeTransactionDao.monthlyTotalRows = emptyList()
+
+            val result = repository.getMonthlyExpenseTotals(0L, Long.MAX_VALUE, "VND")
+
+            assertEquals(12, result.size)
+            assertTrue(result.all { it.totalExpense == 0L })
+            assertEquals(1, result.first().month)
+            assertEquals(12, result.last().month)
+        }
+
     // Fake DAOs
 
     private class FakeTransactionDao : TransactionDao {
@@ -642,6 +678,14 @@ class TransactionRepositoryImplTest {
             query: String,
             type: Int?,
         ): Flow<List<TransactionEntity>> = transactionsFlow
+
+        var monthlyTotalRows: List<MonthlyTotalRow> = emptyList()
+
+        override suspend fun getMonthlyExpenseTotals(
+            from: Long,
+            to: Long,
+            currencyCode: String,
+        ): List<MonthlyTotalRow> = monthlyTotalRows
     }
 
     private class FakeCategoryDao : CategoryDao {

@@ -2,6 +2,7 @@ package dev.tuandoan.expensetracker.ui.screen.summary
 
 import dev.tuandoan.expensetracker.core.util.DateRangeCalculator
 import dev.tuandoan.expensetracker.domain.model.CurrencyMonthlySummary
+import dev.tuandoan.expensetracker.domain.model.MonthlyBarPoint
 import dev.tuandoan.expensetracker.domain.model.MonthlySummary
 import dev.tuandoan.expensetracker.domain.model.Transaction
 import dev.tuandoan.expensetracker.domain.model.TransactionType
@@ -430,6 +431,46 @@ class SummaryViewModelTest {
         assertEquals(SummaryMode.MONTH, state.mode)
     }
 
+    @Test
+    fun yearMode_monthlyBarData_populatedWith12Months() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            val barPoints =
+                (1..12).map { month ->
+                    MonthlyBarPoint(
+                        month = month,
+                        totalExpense = if (month == 3) 500000L else 0L,
+                    )
+                }
+            fakeRepository.monthlyBarPointsToEmit = mapOf("VND" to barPoints)
+            fakeRepository.summaryToEmit = TestData.sampleMonthlySummary
+
+            val viewModel = createViewModel()
+            advanceUntilIdle()
+
+            viewModel.setMode(SummaryMode.YEAR)
+            advanceUntilIdle()
+
+            val state = viewModel.uiState.value
+            assertTrue(state.monthlyBarData.containsKey("VND"))
+            val vndPoints = state.monthlyBarData["VND"]!!
+            assertEquals(12, vndPoints.size)
+            assertEquals(500000L, vndPoints[2].totalExpense)
+            assertEquals(0L, vndPoints[0].totalExpense)
+        }
+
+    @Test
+    fun monthMode_monthlyBarData_isEmpty() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            fakeRepository.summaryToEmit = TestData.sampleMonthlySummary
+
+            val viewModel = createViewModel()
+            advanceUntilIdle()
+
+            val state = viewModel.uiState.value
+            assertEquals(SummaryMode.MONTH, state.mode)
+            assertTrue(state.monthlyBarData.isEmpty())
+        }
+
     // --- Shared period consistency ---
 
     @Test
@@ -504,5 +545,15 @@ class SummaryViewModelTest {
             query: String,
             filterType: TransactionType?,
         ): Flow<List<Transaction>> = flow { emit(emptyList()) }
+
+        override suspend fun getMonthlyExpenseTotals(
+            from: Long,
+            to: Long,
+            currencyCode: String,
+        ): List<MonthlyBarPoint> =
+            monthlyBarPointsToEmit[currencyCode]
+                ?: (1..12).map { MonthlyBarPoint(month = it, totalExpense = 0L) }
+
+        var monthlyBarPointsToEmit: Map<String, List<MonthlyBarPoint>> = emptyMap()
     }
 }

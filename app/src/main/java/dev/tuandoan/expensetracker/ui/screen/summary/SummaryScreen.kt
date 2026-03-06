@@ -37,10 +37,12 @@ import dev.tuandoan.expensetracker.domain.model.SupportedCurrencies
 import dev.tuandoan.expensetracker.domain.model.TransactionType
 import dev.tuandoan.expensetracker.repository.TransactionRepositoryImpl
 import dev.tuandoan.expensetracker.ui.component.AmountText
+import dev.tuandoan.expensetracker.ui.component.DonutChart
 import dev.tuandoan.expensetracker.ui.component.EmptyStateMessage
 import dev.tuandoan.expensetracker.ui.component.ErrorStateMessage
 import dev.tuandoan.expensetracker.ui.component.MonthSelector
 import dev.tuandoan.expensetracker.ui.component.MonthYearPickerDialog
+import dev.tuandoan.expensetracker.ui.component.MonthlyBarChart
 import dev.tuandoan.expensetracker.ui.component.SectionTitle
 import dev.tuandoan.expensetracker.ui.theme.DesignSystemElevation
 import dev.tuandoan.expensetracker.ui.theme.DesignSystemSpacing
@@ -244,6 +246,30 @@ private fun SummaryContent(
                     currencySummary = currencySummary,
                 )
 
+                if (uiState.mode == SummaryMode.YEAR) {
+                    val barPoints = uiState.monthlyBarData[currencySummary.currencyCode]
+                    if (barPoints != null && barPoints.any { it.totalExpense > 0L }) {
+                        Card(
+                            modifier = Modifier.fillMaxWidth(),
+                            elevation = CardDefaults.cardElevation(defaultElevation = DesignSystemElevation.low),
+                        ) {
+                            Column(
+                                modifier = Modifier.padding(DesignSystemSpacing.large),
+                            ) {
+                                Text(
+                                    text = stringResource(R.string.monthly_expenses),
+                                    style = MaterialTheme.typography.titleSmall,
+                                    color = MaterialTheme.colorScheme.onSurface,
+                                    modifier = Modifier.padding(bottom = DesignSystemSpacing.small),
+                                )
+                                MonthlyBarChart(
+                                    points = barPoints,
+                                )
+                            }
+                        }
+                    }
+                }
+
                 if (currencySummary.topExpenseCategories.isNotEmpty()) {
                     SectionTitle(
                         title = "Top Expense Categories",
@@ -255,6 +281,30 @@ private fun SummaryContent(
                             categoryTotal = categoryTotal,
                             currencyCode = currencySummary.currencyCode,
                         )
+                    }
+
+                    if (uiState.mode == SummaryMode.MONTH) {
+                        Card(
+                            modifier =
+                                Modifier
+                                    .fillMaxWidth()
+                                    .padding(top = DesignSystemSpacing.small),
+                            elevation = CardDefaults.cardElevation(defaultElevation = DesignSystemElevation.low),
+                        ) {
+                            Column(
+                                modifier = Modifier.padding(DesignSystemSpacing.large),
+                            ) {
+                                Text(
+                                    text = stringResource(R.string.expense_distribution),
+                                    style = MaterialTheme.typography.titleSmall,
+                                    color = MaterialTheme.colorScheme.onSurface,
+                                    modifier = Modifier.padding(bottom = DesignSystemSpacing.small),
+                                )
+                                DonutChart(
+                                    categories = currencySummary.topExpenseCategories,
+                                )
+                            }
+                        }
                     }
                 }
             }

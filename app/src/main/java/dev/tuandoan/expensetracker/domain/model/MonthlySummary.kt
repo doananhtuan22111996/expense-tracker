@@ -18,3 +18,8 @@ data class CategoryTotal(
     val category: Category,
     val total: Long,
 )
+
+data class MonthlyBarPoint(
+    val month: Int,
+    val totalExpense: Long,
+)
