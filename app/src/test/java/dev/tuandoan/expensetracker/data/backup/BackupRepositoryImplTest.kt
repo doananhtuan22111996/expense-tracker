@@ -4,6 +4,7 @@ import dev.tuandoan.expensetracker.data.database.TransactionRunner
 import dev.tuandoan.expensetracker.data.database.dao.CategoryDao
 import dev.tuandoan.expensetracker.data.database.dao.TransactionDao
 import dev.tuandoan.expensetracker.data.database.entity.CategoryEntity
+import dev.tuandoan.expensetracker.data.database.entity.CategoryWithCountRow
 import dev.tuandoan.expensetracker.data.database.entity.CurrencyCategorySumRow
 import dev.tuandoan.expensetracker.data.database.entity.CurrencySumRow
 import dev.tuandoan.expensetracker.data.database.entity.TransactionEntity
@@ -524,6 +525,11 @@ class BackupRepositoryImplTest {
             to: Long,
             currencyCode: String,
         ): List<dev.tuandoan.expensetracker.data.database.entity.MonthlyTotalRow> = emptyList()
+
+        override suspend fun reassignCategory(
+            fromId: Long,
+            toId: Long,
+        ) {}
     }
 
     private inner class FakeCategoryDao : CategoryDao {
@@ -541,6 +547,14 @@ class BackupRepositoryImplTest {
         override suspend fun insertAll(list: List<CategoryEntity>) {
             allCategories.addAll(list)
         }
+
+        override suspend fun insert(entity: CategoryEntity): Long = entity.id
+
+        override suspend fun update(entity: CategoryEntity) {}
+
+        override suspend fun deleteNonDefault(id: Long): Int = 0
+
+        override fun getCategoriesWithCount(): Flow<List<CategoryWithCountRow>> = MutableStateFlow(emptyList())
 
         override suspend fun deleteAll() {
             deleteAllOrder = ++globalCallOrder

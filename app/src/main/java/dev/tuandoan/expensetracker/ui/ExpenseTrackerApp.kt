@@ -24,6 +24,7 @@ import dev.tuandoan.expensetracker.ui.navigation.ExpenseTrackerNavigation
 import dev.tuandoan.expensetracker.ui.navigation.ModalDestination
 import dev.tuandoan.expensetracker.ui.navigation.ModalNavRoutes
 import dev.tuandoan.expensetracker.ui.screen.addedit.AddEditTransactionScreen
+import dev.tuandoan.expensetracker.ui.screen.categories.CategoriesScreen
 
 /**
  * Main app composable with simplified, stable navigation architecture
@@ -47,6 +48,22 @@ fun ExpenseTrackerApp() {
                 onNavigateToEditTransaction = { transactionId ->
                     navController.navigate(ModalNavRoutes.editTransactionRoute(transactionId))
                 },
+                onNavigateToCategories = {
+                    navController.navigate(ModalDestination.Categories.route)
+                },
+            )
+        }
+
+        composable(ModalDestination.Categories.route) {
+            CategoriesScreen(
+                onNavigateBack = {
+                    if (!navController.popBackStack()) {
+                        navController.navigate("Home") {
+                            popUpTo(0) { inclusive = true }
+                        }
+                    }
+                },
+                viewModel = hiltViewModel(),
             )
         }
 
@@ -82,6 +99,7 @@ fun ExpenseTrackerApp() {
 private fun Home(
     onNavigateToAddTransaction: () -> Unit,
     onNavigateToEditTransaction: (transactionId: Long) -> Unit,
+    onNavigateToCategories: () -> Unit,
 ) {
     val navController = rememberNavController()
     val navBackStackEntry by navController.currentBackStackEntryAsState()
@@ -111,6 +129,7 @@ private fun Home(
                     .padding(innerPadding),
             onNavigateToAddTransaction = onNavigateToAddTransaction,
             onNavigateToEditTransaction = onNavigateToEditTransaction,
+            onNavigateToCategories = onNavigateToCategories,
         )
     }
 }

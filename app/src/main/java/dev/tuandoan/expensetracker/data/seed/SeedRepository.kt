@@ -58,6 +58,13 @@ class SeedRepository
                     CategoryEntity(name = "Health", type = CategoryEntity.TYPE_EXPENSE, isDefault = true),
                     CategoryEntity(name = "Entertainment", type = CategoryEntity.TYPE_EXPENSE, isDefault = true),
                     CategoryEntity(name = "Other", type = CategoryEntity.TYPE_EXPENSE, isDefault = true),
+                    CategoryEntity(
+                        name = "Uncategorized",
+                        type = CategoryEntity.TYPE_EXPENSE,
+                        iconKey = "help_outline",
+                        colorKey = "gray",
+                        isDefault = true,
+                    ),
                 )
 
             val incomeCategories =
@@ -66,6 +73,13 @@ class SeedRepository
                     CategoryEntity(name = "Bonus", type = CategoryEntity.TYPE_INCOME, isDefault = true),
                     CategoryEntity(name = "Gift", type = CategoryEntity.TYPE_INCOME, isDefault = true),
                     CategoryEntity(name = "Other", type = CategoryEntity.TYPE_INCOME, isDefault = true),
+                    CategoryEntity(
+                        name = "Uncategorized",
+                        type = CategoryEntity.TYPE_INCOME,
+                        iconKey = "help_outline",
+                        colorKey = "gray",
+                        isDefault = true,
+                    ),
                 )
 
             categoryDao.insertAll(expenseCategories + incomeCategories)

@@ -4,6 +4,7 @@ import androidx.lifecycle.SavedStateHandle
 import dev.tuandoan.expensetracker.core.formatter.AmountFormatter
 import dev.tuandoan.expensetracker.core.formatter.DefaultCurrencyFormatter
 import dev.tuandoan.expensetracker.domain.model.Category
+import dev.tuandoan.expensetracker.domain.model.CategoryWithCount
 import dev.tuandoan.expensetracker.domain.model.MonthlyBarPoint
 import dev.tuandoan.expensetracker.domain.model.MonthlySummary
 import dev.tuandoan.expensetracker.domain.model.Transaction
@@ -597,5 +598,23 @@ class AddEditTransactionViewModelTest {
         override fun observeCategories(type: TransactionType): Flow<List<Category>> = flow { emit(categoriesToEmit) }
 
         override suspend fun getCategory(id: Long): Category? = categoriesToEmit.find { it.id == id }
+
+        override suspend fun createCategory(
+            name: String,
+            type: TransactionType,
+            iconKey: String?,
+            colorKey: String?,
+        ): Long = 0L
+
+        override suspend fun updateCategory(
+            id: Long,
+            name: String,
+            iconKey: String?,
+            colorKey: String?,
+        ) {}
+
+        override suspend fun deleteCategory(id: Long) {}
+
+        override fun getCategoriesWithTransactionCount(): Flow<List<CategoryWithCount>> = flow { emit(emptyList()) }
     }
 }

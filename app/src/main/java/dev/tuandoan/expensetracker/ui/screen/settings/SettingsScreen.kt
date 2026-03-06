@@ -59,6 +59,7 @@ import java.util.Locale
 @Composable
 fun SettingsScreen(
     modifier: Modifier = Modifier,
+    onNavigateToCategories: () -> Unit = {},
     viewModel: SettingsViewModel = hiltViewModel(),
 ) {
     val uiState by viewModel.uiState.collectAsState()
@@ -165,6 +166,42 @@ fun SettingsScreen(
                             bottom = DesignSystemSpacing.large,
                         ),
                 )
+
+                HorizontalDivider()
+
+                val manageCategoriesLabel = stringResource(R.string.manage_categories)
+                Row(
+                    modifier =
+                        Modifier
+                            .fillMaxWidth()
+                            .clickable { onNavigateToCategories() }
+                            .padding(DesignSystemSpacing.large)
+                            .semantics {
+                                contentDescription = manageCategoriesLabel
+                            },
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = stringResource(R.string.manage_categories),
+                            style = MaterialTheme.typography.bodyLarge,
+                            fontWeight = FontWeight.Medium,
+                            color = MaterialTheme.colorScheme.onSurface,
+                        )
+                        Text(
+                            text = stringResource(R.string.manage_categories_subtitle),
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.padding(top = DesignSystemSpacing.xs),
+                        )
+                    }
+                    Icon(
+                        Icons.Default.KeyboardArrowRight,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
             }
 
             // Backup & Restore Section

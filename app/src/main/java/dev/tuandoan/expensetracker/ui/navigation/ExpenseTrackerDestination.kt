@@ -46,6 +46,8 @@ sealed class ModalDestination(
 ) {
     data object AddEditTransaction : ModalDestination("modal/add_edit_transaction")
 
+    data object Categories : ModalDestination("modal/categories")
+
     companion object {
         const val MODAL_GRAPH_ROUTE = "modal_graph"
     }
