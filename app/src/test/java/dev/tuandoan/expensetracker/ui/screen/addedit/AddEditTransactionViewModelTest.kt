@@ -4,6 +4,7 @@ import androidx.lifecycle.SavedStateHandle
 import dev.tuandoan.expensetracker.core.formatter.AmountFormatter
 import dev.tuandoan.expensetracker.core.formatter.DefaultCurrencyFormatter
 import dev.tuandoan.expensetracker.domain.model.Category
+import dev.tuandoan.expensetracker.domain.model.MonthlyBarPoint
 import dev.tuandoan.expensetracker.domain.model.MonthlySummary
 import dev.tuandoan.expensetracker.domain.model.Transaction
 import dev.tuandoan.expensetracker.domain.model.TransactionType
@@ -582,6 +583,12 @@ class AddEditTransactionViewModelTest {
             query: String,
             filterType: TransactionType?,
         ): Flow<List<Transaction>> = flow { emit(emptyList()) }
+
+        override suspend fun getMonthlyExpenseTotals(
+            from: Long,
+            to: Long,
+            currencyCode: String,
+        ): List<MonthlyBarPoint> = (1..12).map { MonthlyBarPoint(month = it, totalExpense = 0L) }
     }
 
     private class FakeCategoryRepository : CategoryRepository {

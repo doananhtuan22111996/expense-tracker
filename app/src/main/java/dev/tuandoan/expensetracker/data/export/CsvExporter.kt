@@ -1,0 +1,83 @@
+package dev.tuandoan.expensetracker.data.export
+
+import dev.tuandoan.expensetracker.data.database.entity.TransactionEntity
+import dev.tuandoan.expensetracker.domain.model.SupportedCurrencies
+import java.io.OutputStream
+import java.time.Instant
+import java.time.ZoneId
+import java.time.format.DateTimeFormatter
+import javax.inject.Inject
+
+data class TransactionWithCategory(
+    val transaction: TransactionEntity,
+    val categoryName: String,
+)
+
+class CsvExporter
+    @Inject
+    constructor(
+        private val zoneId: ZoneId,
+    ) {
+        fun export(
+            transactions: List<TransactionWithCategory>,
+            outputStream: OutputStream,
+        ) {
+            // UTF-8 BOM for Excel compatibility
+            outputStream.write(byteArrayOf(0xEF.toByte(), 0xBB.toByte(), 0xBF.toByte()))
+
+            val writer = outputStream.bufferedWriter(Charsets.UTF_8)
+            val dateFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd")
+
+            writer.write("Date,Type,Amount,Currency,Category,Note")
+            writer.newLine()
+
+            for (twc in transactions) {
+                val t = twc.transaction
+                val date =
+                    Instant
+                        .ofEpochMilli(t.timestamp)
+                        .atZone(zoneId)
+                        .format(dateFormatter)
+                val type = if (t.type == TransactionEntity.TYPE_INCOME) "Income" else "Expense"
+                val plainAmount = formatPlainAmount(t.amount, t.currencyCode)
+                val category = escapeCsvField(twc.categoryName)
+                val note = escapeCsvField(t.note ?: "")
+
+                writer.write("$date,$type,$plainAmount,${t.currencyCode},$category,$note")
+                writer.newLine()
+            }
+            writer.flush()
+        }
+
+        internal fun formatPlainAmount(
+            amount: Long,
+            currencyCode: String,
+        ): String {
+            val currency = SupportedCurrencies.byCode(currencyCode)
+            val minorDigits = currency?.minorUnitDigits ?: 0
+            return if (minorDigits > 0) {
+                val divisor = pow10(minorDigits)
+                val major = amount / divisor
+                val minor = amount % divisor
+                "$major.${minor.toString().padStart(minorDigits, '0')}"
+            } else {
+                amount.toString()
+            }
+        }
+
+        internal fun escapeCsvField(value: String): String =
+            if (value.contains(',') || value.contains('"') || value.contains('\n') || value.contains('\r')) {
+                "\"${value.replace("\"", "\"\"")}\""
+            } else {
+                value
+            }
+
+        private fun pow10(n: Int): Long =
+            when (n) {
+                0 -> 1L
+                1 -> 10L
+                2 -> 100L
+                3 -> 1000L
+                else -> error("Unsupported minor unit digits: $n")
+            }
+    }

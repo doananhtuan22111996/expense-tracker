@@ -6,6 +6,7 @@ import androidx.room.Query
 import androidx.room.Update
 import dev.tuandoan.expensetracker.data.database.entity.CurrencyCategorySumRow
 import dev.tuandoan.expensetracker.data.database.entity.CurrencySumRow
+import dev.tuandoan.expensetracker.data.database.entity.MonthlyTotalRow
 import dev.tuandoan.expensetracker.data.database.entity.TransactionEntity
 import kotlinx.coroutines.flow.Flow
 
@@ -56,6 +57,9 @@ interface TransactionDao {
     @Query("SELECT * FROM transactions ORDER BY timestamp DESC")
     suspend fun getAll(): List<TransactionEntity>
 
+    @Query("SELECT * FROM transactions ORDER BY timestamp ASC")
+    suspend fun getAllOrdered(): List<TransactionEntity>
+
     @Insert
     suspend fun insertAll(list: List<TransactionEntity>)
 
@@ -89,6 +93,25 @@ interface TransactionDao {
         from: Long,
         to: Long,
     ): Flow<List<CurrencySumRow>>
+
+    @Query(
+        """
+        SELECT
+            strftime('%m', datetime(timestamp / 1000, 'unixepoch', 'localtime')) AS month,
+            SUM(amount) AS total
+        FROM transactions
+        WHERE timestamp >= :from AND timestamp < :to
+        AND type = ${TransactionEntity.TYPE_EXPENSE}
+        AND currency_code = :currencyCode
+        GROUP BY month
+        ORDER BY month ASC
+    """,
+    )
+    suspend fun getMonthlyExpenseTotals(
+        from: Long,
+        to: Long,
+        currencyCode: String,
+    ): List<MonthlyTotalRow>
 
     @Query(
         """

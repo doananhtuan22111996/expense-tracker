@@ -1,6 +1,7 @@
 package dev.tuandoan.expensetracker.ui.screen.home
 
 import dev.tuandoan.expensetracker.core.util.DateRangeCalculator
+import dev.tuandoan.expensetracker.domain.model.MonthlyBarPoint
 import dev.tuandoan.expensetracker.domain.model.MonthlySummary
 import dev.tuandoan.expensetracker.domain.model.Transaction
 import dev.tuandoan.expensetracker.domain.model.TransactionType
@@ -488,5 +489,11 @@ class HomeViewModelTest {
             lastSearchQuery = query
             return flow { emit(searchResultsToEmit) }
         }
+
+        override suspend fun getMonthlyExpenseTotals(
+            from: Long,
+            to: Long,
+            currencyCode: String,
+        ): List<MonthlyBarPoint> = (1..12).map { MonthlyBarPoint(month = it, totalExpense = 0L) }
     }
 }

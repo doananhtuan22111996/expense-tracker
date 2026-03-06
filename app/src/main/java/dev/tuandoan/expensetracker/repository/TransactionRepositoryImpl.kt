@@ -11,6 +11,7 @@ import dev.tuandoan.expensetracker.di.IoDispatcher
 import dev.tuandoan.expensetracker.domain.model.Category
 import dev.tuandoan.expensetracker.domain.model.CategoryTotal
 import dev.tuandoan.expensetracker.domain.model.CurrencyMonthlySummary
+import dev.tuandoan.expensetracker.domain.model.MonthlyBarPoint
 import dev.tuandoan.expensetracker.domain.model.MonthlySummary
 import dev.tuandoan.expensetracker.domain.model.SupportedCurrencies
 import dev.tuandoan.expensetracker.domain.model.Transaction
@@ -118,6 +119,19 @@ class TransactionRepositoryImpl
                         }
                     }
                 }.flowOn(ioDispatcher)
+
+        override suspend fun getMonthlyExpenseTotals(
+            from: Long,
+            to: Long,
+            currencyCode: String,
+        ): List<MonthlyBarPoint> =
+            withContext(ioDispatcher) {
+                val rows = transactionDao.getMonthlyExpenseTotals(from, to, currencyCode)
+                val dataMap = rows.associate { it.month.toInt() to it.total }
+                (1..12).map { month ->
+                    MonthlyBarPoint(month = month, totalExpense = dataMap[month] ?: 0L)
+                }
+            }
 
         override fun observeMonthlySummary(
             from: Long,

@@ -39,10 +39,12 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.hilt.navigation.compose.hiltViewModel
+import dev.tuandoan.expensetracker.R
 import dev.tuandoan.expensetracker.core.util.AppInfo
 import dev.tuandoan.expensetracker.domain.model.CurrencyDefinition
 import dev.tuandoan.expensetracker.domain.model.SupportedCurrencies
@@ -75,6 +77,13 @@ fun SettingsScreen(
             contract = ActivityResultContracts.OpenDocument(),
         ) { uri ->
             uri?.let { viewModel.onRestoreFileSelected(it) }
+        }
+
+    val csvExportLauncher =
+        rememberLauncherForActivityResult(
+            contract = ActivityResultContracts.CreateDocument("text/csv"),
+        ) { uri ->
+            uri?.let { viewModel.exportCsv(it) }
         }
 
     LaunchedEffect(uiState.errorMessage) {
@@ -212,6 +221,46 @@ fun SettingsScreen(
 
                 if (isExporting) {
                     BackupProgressBar(progress = uiState.backupProgress)
+                }
+
+                HorizontalDivider()
+
+                val csvExportLabel = stringResource(R.string.export_csv)
+                val csvExportSubtitle = stringResource(R.string.export_csv_subtitle)
+                Row(
+                    modifier =
+                        Modifier
+                            .fillMaxWidth()
+                            .clickable(enabled = !isBusy) {
+                                val date =
+                                    SimpleDateFormat("yyyy-MM-dd", Locale.US).format(Date())
+                                csvExportLauncher.launch("expense-tracker-export-$date.csv")
+                            }.padding(DesignSystemSpacing.large)
+                            .semantics {
+                                contentDescription = csvExportLabel
+                            },
+                    horizontalArrangement = Arrangement.spacedBy(DesignSystemSpacing.medium),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Icon(
+                        Icons.Default.FileUpload,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.primary,
+                    )
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = csvExportLabel,
+                            style = MaterialTheme.typography.bodyLarge,
+                            fontWeight = FontWeight.Medium,
+                            color = MaterialTheme.colorScheme.onSurface,
+                        )
+                        Text(
+                            text = csvExportSubtitle,
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.padding(top = DesignSystemSpacing.xs),
+                        )
+                    }
                 }
 
                 HorizontalDivider()

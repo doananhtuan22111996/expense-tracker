@@ -7,6 +7,7 @@ import dev.tuandoan.expensetracker.data.database.entity.CategoryEntity
 import dev.tuandoan.expensetracker.data.database.entity.CurrencyCategorySumRow
 import dev.tuandoan.expensetracker.data.database.entity.CurrencySumRow
 import dev.tuandoan.expensetracker.data.database.entity.TransactionEntity
+import dev.tuandoan.expensetracker.data.export.CsvExporter
 import dev.tuandoan.expensetracker.domain.repository.BackupProgress
 import dev.tuandoan.expensetracker.testutil.FakeCurrencyPreferenceRepository
 import dev.tuandoan.expensetracker.testutil.FakeTimeProvider
@@ -20,6 +21,7 @@ import org.junit.Before
 import org.junit.Test
 import java.io.ByteArrayInputStream
 import java.io.ByteArrayOutputStream
+import java.time.ZoneId
 import java.util.zip.GZIPOutputStream
 import java.io.ByteArrayInputStream as BAIS
 
@@ -54,6 +56,7 @@ class BackupRepositoryImplTest {
                 timeProvider = fakeTimeProvider,
                 transactionRunner = FakeTransactionRunner(),
                 currencyPreferenceRepository = fakeCurrencyPreferenceRepo,
+                csvExporter = CsvExporter(ZoneId.of("UTC")),
             )
     }
 
@@ -482,6 +485,8 @@ class BackupRepositoryImplTest {
 
         override suspend fun getAll(): List<TransactionEntity> = allTransactions.toList()
 
+        override suspend fun getAllOrdered(): List<TransactionEntity> = allTransactions.sortedBy { it.timestamp }
+
         override suspend fun insertAll(list: List<TransactionEntity>) {
             allTransactions.addAll(list)
         }
@@ -513,6 +518,12 @@ class BackupRepositoryImplTest {
             query: String,
             type: Int?,
         ): Flow<List<TransactionEntity>> = MutableStateFlow(emptyList())
+
+        override suspend fun getMonthlyExpenseTotals(
+            from: Long,
+            to: Long,
+            currencyCode: String,
+        ): List<dev.tuandoan.expensetracker.data.database.entity.MonthlyTotalRow> = emptyList()
     }
 
     private inner class FakeCategoryDao : CategoryDao {

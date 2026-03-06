@@ -1,5 +1,6 @@
 package dev.tuandoan.expensetracker.domain.repository
 
+import dev.tuandoan.expensetracker.domain.model.MonthlyBarPoint
 import dev.tuandoan.expensetracker.domain.model.MonthlySummary
 import dev.tuandoan.expensetracker.domain.model.SupportedCurrencies
 import dev.tuandoan.expensetracker.domain.model.Transaction
@@ -39,4 +40,10 @@ interface TransactionRepository {
         query: String,
         filterType: TransactionType? = null,
     ): Flow<List<Transaction>>
+
+    suspend fun getMonthlyExpenseTotals(
+        from: Long,
+        to: Long,
+        currencyCode: String,
+    ): List<MonthlyBarPoint>
 }

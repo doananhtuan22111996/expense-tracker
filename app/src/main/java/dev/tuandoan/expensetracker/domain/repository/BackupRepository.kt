@@ -17,6 +17,8 @@ interface BackupRepository {
         inputStream: InputStream,
         onProgress: suspend (BackupProgress) -> Unit = {},
     ): BackupRestoreResult
+
+    suspend fun exportCsv(outputStream: OutputStream)
 }
 
 data class BackupRestoreResult(

@@ -101,6 +101,48 @@ class SettingsViewModel
                 }
         }
 
+        fun exportCsv(uri: Uri) {
+            backupJob =
+                viewModelScope.launch {
+                    _uiState.update {
+                        it.copy(
+                            backupOperation = BackupOperation.Exporting,
+                            backupProgress = null,
+                        )
+                    }
+                    try {
+                        withContext(ioDispatcher) {
+                            contentResolver.openOutputStream(uri)?.use { outputStream ->
+                                backupRepository.exportCsv(outputStream)
+                            } ?: throw IllegalStateException("Cannot open output stream")
+                        }
+                        _uiState.update {
+                            it.copy(
+                                backupOperation = BackupOperation.Idle,
+                                backupProgress = null,
+                                backupMessage = "CSV exported successfully",
+                            )
+                        }
+                    } catch (e: CancellationException) {
+                        _uiState.update {
+                            it.copy(
+                                backupOperation = BackupOperation.Idle,
+                                backupProgress = null,
+                            )
+                        }
+                        throw e
+                    } catch (e: Exception) {
+                        _uiState.update {
+                            it.copy(
+                                backupOperation = BackupOperation.Idle,
+                                backupProgress = null,
+                                errorMessage = "CSV export failed: ${e.message ?: "Unknown error"}",
+                            )
+                        }
+                    }
+                }
+        }
+
         fun clearError() {
             _uiState.update { it.copy(errorMessage = null) }
         }
