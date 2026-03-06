@@ -37,3 +37,38 @@ val MIGRATION_2_3 =
             )
         }
     }
+
+/**
+ * Migration from version 3 to version 4.
+ *
+ * Adds the recurring_transactions table for template-based recurring
+ * income and expense entries. No existing data is modified.
+ */
+val MIGRATION_3_4 =
+    object : Migration(3, 4) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            db.execSQL(
+                """
+                CREATE TABLE IF NOT EXISTS `recurring_transactions` (
+                    `id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                    `type` INTEGER NOT NULL,
+                    `amount` INTEGER NOT NULL,
+                    `currency_code` TEXT NOT NULL DEFAULT 'VND',
+                    `category_id` INTEGER NOT NULL,
+                    `note` TEXT,
+                    `frequency` INTEGER NOT NULL,
+                    `day_of_month` INTEGER,
+                    `day_of_week` INTEGER,
+                    `next_due_millis` INTEGER NOT NULL,
+                    `is_active` INTEGER NOT NULL DEFAULT 1,
+                    `created_at` INTEGER NOT NULL,
+                    `updated_at` INTEGER NOT NULL
+                )
+                """.trimIndent(),
+            )
+            db.execSQL(
+                "CREATE INDEX IF NOT EXISTS `index_recurring_transactions_next_due_millis` " +
+                    "ON `recurring_transactions` (`next_due_millis`)",
+            )
+        }
+    }

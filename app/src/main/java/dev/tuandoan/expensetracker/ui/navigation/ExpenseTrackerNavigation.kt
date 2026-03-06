@@ -21,6 +21,7 @@ fun ExpenseTrackerNavigation(
     onNavigateToAddTransaction: () -> Unit,
     onNavigateToEditTransaction: (transactionId: Long) -> Unit,
     onNavigateToCategories: () -> Unit = {},
+    onNavigateToRecurring: () -> Unit = {},
 ) {
     NavHost(
         navController = navController,
@@ -44,6 +45,7 @@ fun ExpenseTrackerNavigation(
         composable(BottomNavDestination.Settings.route) {
             SettingsScreen(
                 onNavigateToCategories = onNavigateToCategories,
+                onNavigateToRecurring = onNavigateToRecurring,
             )
         }
     }

@@ -60,6 +60,7 @@ import java.util.Locale
 fun SettingsScreen(
     modifier: Modifier = Modifier,
     onNavigateToCategories: () -> Unit = {},
+    onNavigateToRecurring: () -> Unit = {},
     viewModel: SettingsViewModel = hiltViewModel(),
 ) {
     val uiState by viewModel.uiState.collectAsState()
@@ -191,6 +192,42 @@ fun SettingsScreen(
                         )
                         Text(
                             text = stringResource(R.string.manage_categories_subtitle),
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.padding(top = DesignSystemSpacing.xs),
+                        )
+                    }
+                    Icon(
+                        Icons.Default.KeyboardArrowRight,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+
+                HorizontalDivider()
+
+                val recurringLabel = stringResource(R.string.recurring_transactions)
+                Row(
+                    modifier =
+                        Modifier
+                            .fillMaxWidth()
+                            .clickable { onNavigateToRecurring() }
+                            .padding(DesignSystemSpacing.large)
+                            .semantics {
+                                contentDescription = recurringLabel
+                            },
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = stringResource(R.string.recurring_transactions),
+                            style = MaterialTheme.typography.bodyLarge,
+                            fontWeight = FontWeight.Medium,
+                            color = MaterialTheme.colorScheme.onSurface,
+                        )
+                        Text(
+                            text = stringResource(R.string.recurring_transactions_subtitle),
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                             modifier = Modifier.padding(top = DesignSystemSpacing.xs),

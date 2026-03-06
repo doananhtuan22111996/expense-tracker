@@ -18,9 +18,11 @@ import dev.tuandoan.expensetracker.domain.repository.BackupRepository
 import dev.tuandoan.expensetracker.domain.repository.BudgetPreferences
 import dev.tuandoan.expensetracker.domain.repository.CategoryRepository
 import dev.tuandoan.expensetracker.domain.repository.CurrencyPreferenceRepository
+import dev.tuandoan.expensetracker.domain.repository.RecurringTransactionRepository
 import dev.tuandoan.expensetracker.domain.repository.SelectedMonthRepository
 import dev.tuandoan.expensetracker.domain.repository.TransactionRepository
 import dev.tuandoan.expensetracker.repository.CategoryRepositoryImpl
+import dev.tuandoan.expensetracker.repository.RecurringTransactionRepositoryImpl
 import dev.tuandoan.expensetracker.repository.TransactionRepositoryImpl
 
 @Module
@@ -56,4 +58,9 @@ abstract class RepositoryModule {
 
     @Binds
     abstract fun bindBudgetPreferences(budgetPreferencesImpl: BudgetPreferencesImpl): BudgetPreferences
+
+    @Binds
+    abstract fun bindRecurringTransactionRepository(
+        recurringTransactionRepositoryImpl: RecurringTransactionRepositoryImpl,
+    ): RecurringTransactionRepository
 }

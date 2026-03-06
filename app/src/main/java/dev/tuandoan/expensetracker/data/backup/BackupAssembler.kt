@@ -2,6 +2,7 @@ package dev.tuandoan.expensetracker.data.backup
 
 import dev.tuandoan.expensetracker.data.backup.model.BackupCategoryDto
 import dev.tuandoan.expensetracker.data.backup.model.BackupDocumentV1
+import dev.tuandoan.expensetracker.data.backup.model.BackupRecurringTransactionDto
 import dev.tuandoan.expensetracker.data.backup.model.BackupTransactionDto
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -13,6 +14,7 @@ class BackupAssembler
         fun assemble(
             categories: List<BackupCategoryDto>,
             transactions: List<BackupTransactionDto>,
+            recurringTransactions: List<BackupRecurringTransactionDto> = emptyList(),
             defaultCurrencyCode: String,
             appVersionName: String,
             createdAtEpochMs: Long,
@@ -25,5 +27,6 @@ class BackupAssembler
                 deviceLocale = deviceLocale,
                 categories = categories.sortedBy { it.id },
                 transactions = transactions.sortedBy { it.id },
+                recurringTransactions = recurringTransactions.sortedBy { it.id },
             )
     }
