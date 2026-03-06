@@ -56,6 +56,9 @@ interface TransactionDao {
     @Query("SELECT * FROM transactions ORDER BY timestamp DESC")
     suspend fun getAll(): List<TransactionEntity>
 
+    @Query("SELECT * FROM transactions ORDER BY timestamp ASC")
+    suspend fun getAllOrdered(): List<TransactionEntity>
+
     @Insert
     suspend fun insertAll(list: List<TransactionEntity>)
 

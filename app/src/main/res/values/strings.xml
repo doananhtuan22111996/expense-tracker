@@ -1,4 +1,8 @@
 <resources>
     <string name="app_name">Expense Tracker</string>
     <string name="summary_disclaimer">Totals are shown per currency. No currency conversion is applied.</string>
+    <string name="export_csv">Export as CSV</string>
+    <string name="export_csv_subtitle">Save all transactions as a CSV file</string>
+    <string name="csv_exported_successfully">CSV exported successfully</string>
+    <string name="csv_export_failed">CSV export failed: %1$s</string>
 </resources>

@@ -610,6 +610,8 @@ class TransactionRepositoryImplTest {
 
         override suspend fun getAll(): List<TransactionEntity> = allTransactions
 
+        override suspend fun getAllOrdered(): List<TransactionEntity> = allTransactions.sortedBy { it.timestamp }
+
         override suspend fun insertAll(list: List<TransactionEntity>) {
             allTransactions.addAll(list)
         }

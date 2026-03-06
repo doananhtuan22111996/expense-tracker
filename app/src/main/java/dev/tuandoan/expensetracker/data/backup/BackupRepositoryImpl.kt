@@ -8,6 +8,8 @@ import dev.tuandoan.expensetracker.data.backup.model.BackupDocumentV1
 import dev.tuandoan.expensetracker.data.database.TransactionRunner
 import dev.tuandoan.expensetracker.data.database.dao.CategoryDao
 import dev.tuandoan.expensetracker.data.database.dao.TransactionDao
+import dev.tuandoan.expensetracker.data.export.CsvExporter
+import dev.tuandoan.expensetracker.data.export.TransactionWithCategory
 import dev.tuandoan.expensetracker.domain.model.SupportedCurrencies
 import dev.tuandoan.expensetracker.domain.repository.BackupProgress
 import dev.tuandoan.expensetracker.domain.repository.BackupRepository
@@ -34,6 +36,7 @@ class BackupRepositoryImpl
         private val timeProvider: TimeProvider,
         private val transactionRunner: TransactionRunner,
         private val currencyPreferenceRepository: CurrencyPreferenceRepository,
+        private val csvExporter: CsvExporter,
     ) : BackupRepository {
         override suspend fun exportBackupJson(): String {
             val document = buildExportDocument()
@@ -67,6 +70,18 @@ class BackupRepositoryImpl
                 backupSerializer.decodeFromStream(decompressed)
                     ?: throw IllegalArgumentException("Invalid backup file format")
             return performImport(document, onProgress)
+        }
+
+        override suspend fun exportCsv(outputStream: OutputStream) {
+            val allTransactions = transactionDao.getAllOrdered()
+            val transactionsWithCategory =
+                allTransactions.map { entity ->
+                    TransactionWithCategory(
+                        transaction = entity,
+                        categoryName = categoryDao.getById(entity.categoryId)?.name ?: "Unknown",
+                    )
+                }
+            csvExporter.export(transactionsWithCategory, outputStream)
         }
 
         private suspend fun buildExportDocument(): BackupDocumentV1 {

@@ -448,5 +448,10 @@ class SettingsViewModelTest {
             )
             return importResult
         }
+
+        override suspend fun exportCsv(outputStream: java.io.OutputStream) {
+            exportException?.let { throw it }
+            outputStream.write("Date,Type,Amount,Currency,Category,Note\n".toByteArray(Charsets.UTF_8))
+        }
     }
 }
