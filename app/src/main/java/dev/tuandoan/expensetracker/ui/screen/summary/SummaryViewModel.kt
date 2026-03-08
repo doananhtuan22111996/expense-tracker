@@ -93,6 +93,16 @@ class SummaryViewModel
 
         fun currentSelectedYear(): Int = selectedYear
 
+        fun navigateToMonth(
+            year: Int,
+            month: Int,
+        ) {
+            val yearMonth = YearMonth.of(year, month)
+            selectedMonthRepository.setMonth(yearMonth)
+            _uiState.value = _uiState.value.copy(mode = SummaryMode.MONTH)
+            loadSummary()
+        }
+
         fun setBudget(
             currencyCode: String,
             amount: Long,

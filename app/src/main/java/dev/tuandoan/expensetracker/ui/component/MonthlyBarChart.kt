@@ -1,15 +1,19 @@
 package dev.tuandoan.expensetracker.ui.component
 
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.nativeCanvas
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
@@ -26,18 +30,40 @@ fun MonthlyBarChart(
     emptyLabel: String,
     modifier: Modifier = Modifier,
     onSurfaceVariantColor: Color = MaterialTheme.colorScheme.onSurfaceVariant,
+    onMonthTapped: ((month: Int) -> Unit)? = null,
 ) {
     val primaryColor = MaterialTheme.colorScheme.primary
     val onSurfaceVariant = onSurfaceVariantColor
     val labelSizeSp = 10.sp
     val labelSizePx = with(LocalDensity.current) { labelSizeSp.toPx() }
+    val barSpacingState = remember { mutableFloatStateOf(0f) }
+    val leftPaddingState = remember { mutableFloatStateOf(0f) }
+
+    val tapModifier =
+        if (onMonthTapped != null) {
+            Modifier.pointerInput(onMonthTapped) {
+                detectTapGestures { offset ->
+                    val barSpacing = barSpacingState.floatValue
+                    val leftPadding = leftPaddingState.floatValue
+                    if (barSpacing > 0f) {
+                        val barIndex = ((offset.x - leftPadding) / barSpacing).toInt()
+                        if (barIndex in 0..11) {
+                            onMonthTapped(barIndex + 1)
+                        }
+                    }
+                }
+            }
+        } else {
+            Modifier
+        }
 
     Canvas(
         modifier =
             modifier
                 .fillMaxWidth()
                 .height(200.dp)
-                .semantics { contentDescription = "Monthly expenses bar chart" },
+                .semantics { contentDescription = "Monthly expenses bar chart" }
+                .then(tapModifier),
     ) {
         val maxValue = points.maxOfOrNull { it.totalExpense } ?: 0L
         if (maxValue == 0L) {
@@ -63,6 +89,9 @@ fun MonthlyBarChart(
         val chartWidth = size.width - leftPadding - rightPadding
         val barWidth = chartWidth / 12f * 0.6f
         val barSpacing = chartWidth / 12f
+
+        barSpacingState.floatValue = barSpacing
+        leftPaddingState.floatValue = leftPadding
 
         // Draw max value label
         val maxLabel = compactFormat(maxValue)
