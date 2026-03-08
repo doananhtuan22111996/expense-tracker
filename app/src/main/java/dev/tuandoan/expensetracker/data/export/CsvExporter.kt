@@ -72,5 +72,8 @@ class CsvExporter
                 value
             }
 
-        private fun pow10(n: Int): Long = Math.pow(10.0, n.toDouble()).toLong()
+        private fun pow10(n: Int): Long {
+            require(n >= 0) { "Minor unit digits must not be negative" }
+            return Math.pow(10.0, n.toDouble()).toLong()
+        }
     }

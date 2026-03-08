@@ -75,6 +75,16 @@ sealed class BackupValidationError {
     data class BlankRecurringCurrencyCode(
         val recurringId: Long,
     ) : BackupValidationError()
+
+    data class UnsupportedRecurringCurrencyCode(
+        val recurringId: Long,
+        val currencyCode: String,
+    ) : BackupValidationError()
+
+    data class OrphanedRecurringTransaction(
+        val recurringId: Long,
+        val categoryId: Long,
+    ) : BackupValidationError()
 }
 
 @Singleton
@@ -141,7 +151,7 @@ class BackupValidator
             }
 
             // Validate recurring transactions
-            validateRecurring(document.recurringTransactions, errors)
+            validateRecurring(document.recurringTransactions, categoryIds, errors)
 
             return if (errors.isEmpty()) {
                 BackupValidationResult.Valid
@@ -152,6 +162,7 @@ class BackupValidator
 
         private fun validateRecurring(
             recurringTransactions: List<BackupRecurringTransactionDto>,
+            categoryIds: Set<Long>,
             errors: MutableList<BackupValidationError>,
         ) {
             val recurringIds = mutableSetOf<Long>()
@@ -174,6 +185,19 @@ class BackupValidator
                 }
                 if (recurring.currencyCode.isBlank()) {
                     errors.add(BackupValidationError.BlankRecurringCurrencyCode(recurring.id))
+                } else if (SupportedCurrencies.byCode(recurring.currencyCode) == null) {
+                    errors.add(
+                        BackupValidationError.UnsupportedRecurringCurrencyCode(
+                            recurring.id,
+                            recurring.currencyCode,
+                        ),
+                    )
+                }
+                val catId = recurring.categoryId
+                if (catId != null && catId !in categoryIds) {
+                    errors.add(
+                        BackupValidationError.OrphanedRecurringTransaction(recurring.id, catId),
+                    )
                 }
             }
         }

@@ -45,7 +45,7 @@ interface CategoryDao {
     )
     fun getCategoriesWithCount(): Flow<List<CategoryWithCountRow>>
 
-    @Query("SELECT * FROM categories WHERE name = :name AND type = :type LIMIT 1")
+    @Query("SELECT * FROM categories WHERE name = :name COLLATE NOCASE AND type = :type LIMIT 1")
     suspend fun getByNameAndType(
         name: String,
         type: Int,
