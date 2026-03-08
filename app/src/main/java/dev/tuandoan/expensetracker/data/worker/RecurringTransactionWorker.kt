@@ -7,6 +7,7 @@ import androidx.work.WorkerParameters
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedInject
 import dev.tuandoan.expensetracker.domain.repository.RecurringTransactionRepository
+import kotlin.coroutines.cancellation.CancellationException
 
 /**
  * WorkManager worker that processes due recurring transactions in the background.
@@ -25,6 +26,8 @@ class RecurringTransactionWorker
             try {
                 recurringTransactionRepository.processDueRecurring()
                 Result.success()
+            } catch (e: CancellationException) {
+                throw e
             } catch (_: Exception) {
                 Result.retry()
             }

@@ -29,12 +29,12 @@ class ExpenseTrackerApplication :
 
     private val applicationScope = CoroutineScope(SupervisorJob())
 
-    override val workManagerConfiguration: Configuration
-        get() =
-            Configuration
-                .Builder()
-                .setWorkerFactory(workerFactory)
-                .build()
+    override val workManagerConfiguration: Configuration by lazy {
+        Configuration
+            .Builder()
+            .setWorkerFactory(workerFactory)
+            .build()
+    }
 
     override fun onCreate() {
         super.onCreate()
