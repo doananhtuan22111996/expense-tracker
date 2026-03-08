@@ -91,6 +91,26 @@ class RecurringTransactionsViewModelTest {
             assertEquals(1L, fakeRepo.lastDeletedId)
         }
 
+    @Test
+    fun requestDelete_rapidSuccessive_autoConfirmsPrevious() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            fakeRepo.items.value =
+                listOf(
+                    sampleRecurring,
+                    sampleRecurring.copy(id = 2L, categoryName = "Transport"),
+                )
+
+            val viewModel = RecurringTransactionsViewModel(fakeRepo)
+            advanceUntilIdle()
+
+            viewModel.requestDelete(1L)
+            viewModel.requestDelete(2L)
+            advanceUntilIdle()
+
+            assertEquals(2L, viewModel.uiState.value.pendingDeleteId)
+            assertEquals(1L, fakeRepo.lastDeletedId)
+        }
+
     private class FakeRecurringTransactionRepository : RecurringTransactionRepository {
         val items = MutableStateFlow<List<RecurringTransaction>>(emptyList())
         var lastDeletedId: Long? = null

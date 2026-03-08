@@ -160,6 +160,20 @@ class CategoriesViewModelTest {
         }
 
     @Test
+    fun requestDelete_rapidSuccessive_autoConfirmsPrevious() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            val viewModel = CategoriesViewModel(fakeCategoryRepo)
+            advanceUntilIdle()
+
+            viewModel.requestDelete(1L)
+            viewModel.requestDelete(2L)
+            advanceUntilIdle()
+
+            assertEquals(2L, viewModel.uiState.value.pendingDeleteId)
+            assertEquals(1L, fakeCategoryRepo.lastDeletedId)
+        }
+
+    @Test
     fun createCategory_callsRepository() =
         runTest(mainDispatcherRule.testDispatcher) {
             val viewModel = CategoriesViewModel(fakeCategoryRepo)

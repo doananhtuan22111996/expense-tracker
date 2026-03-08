@@ -29,12 +29,24 @@ class RecurringTransactionsViewModel
         }
 
         fun requestDelete(id: Long) {
+            val previousPendingId = _uiState.value.pendingDeleteId
             _uiState.update { it.copy(pendingDeleteId = id) }
+            if (previousPendingId != null) {
+                performDelete(previousPendingId)
+            }
         }
 
         fun confirmDelete() {
             val id = _uiState.value.pendingDeleteId ?: return
             _uiState.update { it.copy(pendingDeleteId = null) }
+            performDelete(id)
+        }
+
+        fun undoDelete() {
+            _uiState.update { it.copy(pendingDeleteId = null) }
+        }
+
+        private fun performDelete(id: Long) {
             viewModelScope.launch {
                 try {
                     recurringTransactionRepository.delete(id)
@@ -44,10 +56,6 @@ class RecurringTransactionsViewModel
                     }
                 }
             }
-        }
-
-        fun undoDelete() {
-            _uiState.update { it.copy(pendingDeleteId = null) }
         }
 
         fun toggleActive(

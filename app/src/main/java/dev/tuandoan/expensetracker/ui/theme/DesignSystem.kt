@@ -57,11 +57,11 @@ object ChartColors {
         when (colorKey) {
             "red" -> colorScheme.error
             "blue" -> colorScheme.primary
-            "green" -> colorScheme.tertiary
+            "green" -> Color(0xFF43A047)
             "orange" -> colorScheme.secondary
             "purple" -> colorScheme.inversePrimary
-            "teal" -> colorScheme.tertiary.copy(alpha = 0.7f)
-            "pink" -> colorScheme.error.copy(alpha = 0.7f)
+            "teal" -> colorScheme.tertiary
+            "pink" -> Color(0xFFD81B60)
             "gray" -> colorScheme.outline
             else -> colorScheme.primary
         }
