@@ -1,6 +1,7 @@
 package dev.tuandoan.expensetracker.data.backup
 
 import dev.tuandoan.expensetracker.data.backup.model.BackupDocumentV1
+import dev.tuandoan.expensetracker.data.backup.model.BackupRecurringTransactionDto
 import dev.tuandoan.expensetracker.data.database.entity.CategoryEntity
 import dev.tuandoan.expensetracker.data.database.entity.TransactionEntity
 import dev.tuandoan.expensetracker.domain.model.SupportedCurrencies
@@ -55,6 +56,24 @@ sealed class BackupValidationError {
     data class OrphanedTransaction(
         val transactionId: Long,
         val categoryId: Long,
+    ) : BackupValidationError()
+
+    data class DuplicateRecurringId(
+        val id: Long,
+    ) : BackupValidationError()
+
+    data class InvalidRecurringAmount(
+        val recurringId: Long,
+        val amount: Long,
+    ) : BackupValidationError()
+
+    data class InvalidRecurringFrequency(
+        val recurringId: Long,
+        val frequency: Int,
+    ) : BackupValidationError()
+
+    data class BlankRecurringCurrencyCode(
+        val recurringId: Long,
     ) : BackupValidationError()
 }
 
@@ -121,10 +140,41 @@ class BackupValidator
                 }
             }
 
+            // Validate recurring transactions
+            validateRecurring(document.recurringTransactions, errors)
+
             return if (errors.isEmpty()) {
                 BackupValidationResult.Valid
             } else {
                 BackupValidationResult.Invalid(errors)
+            }
+        }
+
+        private fun validateRecurring(
+            recurringTransactions: List<BackupRecurringTransactionDto>,
+            errors: MutableList<BackupValidationError>,
+        ) {
+            val recurringIds = mutableSetOf<Long>()
+            for (recurring in recurringTransactions) {
+                if (!recurringIds.add(recurring.id)) {
+                    errors.add(BackupValidationError.DuplicateRecurringId(recurring.id))
+                }
+                if (recurring.amount <= 0) {
+                    errors.add(
+                        BackupValidationError.InvalidRecurringAmount(recurring.id, recurring.amount),
+                    )
+                }
+                if (recurring.frequency !in 0..3) {
+                    errors.add(
+                        BackupValidationError.InvalidRecurringFrequency(
+                            recurring.id,
+                            recurring.frequency,
+                        ),
+                    )
+                }
+                if (recurring.currencyCode.isBlank()) {
+                    errors.add(BackupValidationError.BlankRecurringCurrencyCode(recurring.id))
+                }
             }
         }
     }

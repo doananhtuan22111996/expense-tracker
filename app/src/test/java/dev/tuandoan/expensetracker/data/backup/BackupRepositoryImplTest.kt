@@ -561,6 +561,11 @@ class BackupRepositoryImplTest {
 
         override fun getCategoriesWithCount(): Flow<List<CategoryWithCountRow>> = MutableStateFlow(emptyList())
 
+        override suspend fun getByNameAndType(
+            name: String,
+            type: Int,
+        ): CategoryEntity? = allCategories.firstOrNull { it.name == name && it.type == type }
+
         override suspend fun deleteAll() {
             deleteAllOrder = ++globalCallOrder
             allCategories.clear()

@@ -17,7 +17,7 @@ data class RecurringTransactionEntity(
     @ColumnInfo(name = "currency_code", defaultValue = "VND")
     val currencyCode: String = "VND",
     @ColumnInfo(name = "category_id")
-    val categoryId: Long,
+    val categoryId: Long?,
     val note: String?,
     val frequency: Int, // 0=DAILY, 1=WEEKLY, 2=MONTHLY, 3=YEARLY
     @ColumnInfo(name = "day_of_month")

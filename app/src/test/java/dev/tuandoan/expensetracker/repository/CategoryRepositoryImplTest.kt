@@ -184,6 +184,11 @@ class CategoryRepositoryImplTest {
             categoriesById[entity.id] = entity
         }
 
+        override suspend fun getByNameAndType(
+            name: String,
+            type: Int,
+        ): CategoryEntity? = categoriesById.values.firstOrNull { it.name == name && it.type == type }
+
         override suspend fun deleteNonDefault(id: Long): Int {
             lastDeletedNonDefaultId = id
             val entity = categoriesById[id]

@@ -296,6 +296,7 @@ private fun SummaryContent(
                                 )
                                 MonthlyBarChart(
                                     points = barPoints,
+                                    emptyLabel = stringResource(R.string.no_expenses_this_year),
                                 )
                             }
                         }

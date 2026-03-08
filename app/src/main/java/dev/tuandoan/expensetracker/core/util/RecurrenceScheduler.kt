@@ -52,6 +52,7 @@ class RecurrenceScheduler
 
             transactionRunner.runInTransaction {
                 for (item in dueItems) {
+                    val categoryId = item.categoryId ?: continue
                     val frequency = RecurrenceFrequency.fromInt(item.frequency)
                     // Create the actual transaction
                     transactionDao.insert(
@@ -59,7 +60,7 @@ class RecurrenceScheduler
                             type = item.type,
                             amount = item.amount,
                             currencyCode = item.currencyCode,
-                            categoryId = item.categoryId,
+                            categoryId = categoryId,
                             note = item.note,
                             timestamp = item.nextDueMillis,
                             createdAt = now,

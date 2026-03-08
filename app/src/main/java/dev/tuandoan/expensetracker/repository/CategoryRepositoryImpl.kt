@@ -35,6 +35,10 @@ class CategoryRepositoryImpl
             iconKey: String?,
             colorKey: String?,
         ): Long {
+            val existing = categoryDao.getByNameAndType(name, type.toInt())
+            if (existing != null) {
+                throw IllegalArgumentException("A category with this name already exists")
+            }
             val entity =
                 CategoryEntity(
                     name = name,
@@ -55,6 +59,10 @@ class CategoryRepositoryImpl
             val existing =
                 categoryDao.getById(id)
                     ?: throw IllegalStateException("Category not found")
+            val duplicate = categoryDao.getByNameAndType(name, existing.type)
+            if (duplicate != null && duplicate.id != id) {
+                throw IllegalArgumentException("A category with this name already exists")
+            }
             val updated =
                 existing.copy(
                     name = name,

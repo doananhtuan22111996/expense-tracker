@@ -72,12 +72,5 @@ class CsvExporter
                 value
             }
 
-        private fun pow10(n: Int): Long =
-            when (n) {
-                0 -> 1L
-                1 -> 10L
-                2 -> 100L
-                3 -> 1000L
-                else -> error("Unsupported minor unit digits: $n")
-            }
+        private fun pow10(n: Int): Long = Math.pow(10.0, n.toDouble()).toLong()
     }

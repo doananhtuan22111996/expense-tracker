@@ -15,6 +15,7 @@ import dev.tuandoan.expensetracker.data.database.dao.TransactionDao
 import dev.tuandoan.expensetracker.data.database.migration.MIGRATION_1_2
 import dev.tuandoan.expensetracker.data.database.migration.MIGRATION_2_3
 import dev.tuandoan.expensetracker.data.database.migration.MIGRATION_3_4
+import dev.tuandoan.expensetracker.data.database.migration.MIGRATION_4_5
 import javax.inject.Singleton
 
 @Module
@@ -30,7 +31,7 @@ object DatabaseModule {
                 context = context,
                 klass = AppDatabase::class.java,
                 name = "expense_tracker_database",
-            ).addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4)
+            ).addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5)
             .build()
 
     @Provides

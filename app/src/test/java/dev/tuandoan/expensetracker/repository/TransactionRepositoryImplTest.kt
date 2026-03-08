@@ -724,6 +724,11 @@ class TransactionRepositoryImplTest {
 
         override suspend fun deleteNonDefault(id: Long): Int = 0
 
+        override suspend fun getByNameAndType(
+            name: String,
+            type: Int,
+        ): CategoryEntity? = categoriesById.values.firstOrNull { it.name == name && it.type == type }
+
         override fun getCategoriesWithCount(): Flow<List<CategoryWithCountRow>> = MutableStateFlow(emptyList())
 
         override suspend fun deleteAll() {
