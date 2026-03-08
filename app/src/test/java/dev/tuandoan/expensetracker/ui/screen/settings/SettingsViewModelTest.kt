@@ -4,12 +4,17 @@ import android.content.ContentResolver
 import android.net.Uri
 import dev.tuandoan.expensetracker.data.backup.BackupValidationError
 import dev.tuandoan.expensetracker.data.backup.BackupValidationException
+import dev.tuandoan.expensetracker.domain.model.RecurringTransaction
 import dev.tuandoan.expensetracker.domain.model.SupportedCurrencies
 import dev.tuandoan.expensetracker.domain.repository.BackupRepository
 import dev.tuandoan.expensetracker.domain.repository.BackupRestoreResult
+import dev.tuandoan.expensetracker.domain.repository.RecurringTransactionRepository
 import dev.tuandoan.expensetracker.testutil.FakeCurrencyPreferenceRepository
 import dev.tuandoan.expensetracker.testutil.MainDispatcherRule
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
@@ -29,6 +34,7 @@ class SettingsViewModelTest {
 
     private lateinit var fakeCurrencyPreferenceRepo: FakeCurrencyPreferenceRepository
     private lateinit var fakeBackupRepository: FakeBackupRepository
+    private lateinit var fakeRecurringRepo: FakeRecurringTransactionRepository
     private lateinit var mockContentResolver: ContentResolver
     private lateinit var mockUri: Uri
 
@@ -36,6 +42,7 @@ class SettingsViewModelTest {
     fun setup() {
         fakeCurrencyPreferenceRepo = FakeCurrencyPreferenceRepository()
         fakeBackupRepository = FakeBackupRepository()
+        fakeRecurringRepo = FakeRecurringTransactionRepository()
         mockContentResolver = Mockito.mock(ContentResolver::class.java)
         mockUri = Mockito.mock(Uri::class.java)
     }
@@ -45,6 +52,7 @@ class SettingsViewModelTest {
             fakeCurrencyPreferenceRepo,
             fakeBackupRepository,
             mockContentResolver,
+            fakeRecurringRepo,
             mainDispatcherRule.testDispatcher,
         )
 
@@ -396,6 +404,71 @@ class SettingsViewModelTest {
             assertEquals(BackupOperation.Idle, viewModel.uiState.value.backupOperation)
             assertNull(viewModel.uiState.value.backupProgress)
         }
+
+    // --- Active recurring count tests ---
+
+    @Test
+    fun activeRecurringCount_emitsZeroWhenNoRecurring() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            val viewModel = createViewModel()
+            advanceUntilIdle()
+
+            assertEquals(0, viewModel.activeRecurringCount.value)
+        }
+
+    @Test
+    fun activeRecurringCount_emitsCorrectCountFromRepository() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            val active1 =
+                RecurringTransaction(
+                    id = 1,
+                    type = dev.tuandoan.expensetracker.domain.model.TransactionType.EXPENSE,
+                    amount = 100,
+                    currencyCode = "USD",
+                    categoryId = 1,
+                    note = null,
+                    frequency = dev.tuandoan.expensetracker.domain.model.RecurrenceFrequency.MONTHLY,
+                    dayOfMonth = 1,
+                    dayOfWeek = null,
+                    nextDueMillis = System.currentTimeMillis(),
+                    isActive = true,
+                )
+            val active2 = active1.copy(id = 2)
+            val inactive = active1.copy(id = 3, isActive = false)
+
+            fakeRecurringRepo.recurringFlow.value = listOf(active1, active2, inactive)
+
+            val viewModel = createViewModel()
+
+            // Start collecting to activate WhileSubscribed
+            val collectJob =
+                backgroundScope.launch {
+                    viewModel.activeRecurringCount.collect {}
+                }
+            advanceUntilIdle()
+
+            assertEquals(2, viewModel.activeRecurringCount.value)
+            collectJob.cancel()
+        }
+
+    private class FakeRecurringTransactionRepository : RecurringTransactionRepository {
+        val recurringFlow = MutableStateFlow<List<RecurringTransaction>>(emptyList())
+
+        override fun observeAll(): Flow<List<RecurringTransaction>> = recurringFlow
+
+        override suspend fun create(recurring: RecurringTransaction): Long = 1L
+
+        override suspend fun update(recurring: RecurringTransaction) {}
+
+        override suspend fun delete(id: Long) {}
+
+        override suspend fun setActive(
+            id: Long,
+            active: Boolean,
+        ) {}
+
+        override suspend fun processDueRecurring() {}
+    }
 
     private class FakeBackupRepository : BackupRepository {
         var exportException: Exception? = null

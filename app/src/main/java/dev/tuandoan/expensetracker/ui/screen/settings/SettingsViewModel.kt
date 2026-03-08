@@ -10,13 +10,17 @@ import dev.tuandoan.expensetracker.domain.model.CurrencyDefinition
 import dev.tuandoan.expensetracker.domain.model.SupportedCurrencies
 import dev.tuandoan.expensetracker.domain.repository.BackupRepository
 import dev.tuandoan.expensetracker.domain.repository.CurrencyPreferenceRepository
+import dev.tuandoan.expensetracker.domain.repository.RecurringTransactionRepository
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.catch
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -29,11 +33,19 @@ class SettingsViewModel
         private val currencyPreferenceRepository: CurrencyPreferenceRepository,
         private val backupRepository: BackupRepository,
         private val contentResolver: ContentResolver,
+        private val recurringTransactionRepository: RecurringTransactionRepository,
         @IoDispatcher private val ioDispatcher: CoroutineDispatcher,
     ) : ViewModel() {
         private val _uiState = MutableStateFlow(SettingsUiState())
         val uiState: StateFlow<SettingsUiState> = _uiState.asStateFlow()
         private var backupJob: Job? = null
+
+        /** Number of currently active recurring transactions. */
+        val activeRecurringCount: StateFlow<Int> =
+            recurringTransactionRepository
+                .observeAll()
+                .map { items -> items.count { it.isActive } }
+                .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000L), 0)
 
         init {
             observeDefaultCurrency()
