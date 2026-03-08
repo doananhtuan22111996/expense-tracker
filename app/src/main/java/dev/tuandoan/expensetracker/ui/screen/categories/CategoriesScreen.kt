@@ -34,8 +34,10 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarDuration
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.SnackbarResult
 import androidx.compose.material3.Tab
 import androidx.compose.material3.TabRow
 import androidx.compose.material3.Text
@@ -76,6 +78,24 @@ fun CategoriesScreen(
     var showCreateDialog by remember { mutableStateOf(false) }
     var editingCategory by remember { mutableStateOf<CategoryWithCount?>(null) }
     var deletingCategory by remember { mutableStateOf<CategoryWithCount?>(null) }
+
+    val categoryDeletedLabel = stringResource(R.string.category_deleted)
+    val undoLabel = stringResource(R.string.undo)
+
+    LaunchedEffect(uiState.pendingDeleteId) {
+        if (uiState.pendingDeleteId != null) {
+            val result =
+                snackbarHostState.showSnackbar(
+                    message = categoryDeletedLabel,
+                    actionLabel = undoLabel,
+                    duration = SnackbarDuration.Short,
+                )
+            when (result) {
+                SnackbarResult.ActionPerformed -> viewModel.undoDelete()
+                SnackbarResult.Dismissed -> viewModel.confirmDelete()
+            }
+        }
+    }
 
     LaunchedEffect(uiState.error) {
         uiState.error?.let {
@@ -163,8 +183,8 @@ fun CategoriesScreen(
             } else {
                 val categories =
                     when (uiState.selectedTab) {
-                        TransactionType.EXPENSE -> uiState.expenseCategories
-                        TransactionType.INCOME -> uiState.incomeCategories
+                        TransactionType.EXPENSE -> uiState.visibleExpenseCategories
+                        TransactionType.INCOME -> uiState.visibleIncomeCategories
                     }
 
                 if (categories.isEmpty()) {
@@ -241,7 +261,7 @@ fun CategoriesScreen(
         DeleteCategoryDialog(
             categoryWithCount = catWithCount,
             onConfirm = {
-                viewModel.deleteCategory(catWithCount.category.id)
+                viewModel.requestDelete(catWithCount.category.id)
                 deletingCategory = null
             },
             onDismiss = { deletingCategory = null },

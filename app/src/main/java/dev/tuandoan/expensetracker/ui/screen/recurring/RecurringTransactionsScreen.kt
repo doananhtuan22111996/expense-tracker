@@ -23,8 +23,10 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarDuration
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.SnackbarResult
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -68,6 +70,24 @@ fun RecurringTransactionsScreen(
         uiState.errorMessage?.let {
             snackbarHostState.showSnackbar(it)
             viewModel.clearError()
+        }
+    }
+
+    val recurringDeletedLabel = stringResource(R.string.recurring_deleted)
+    val undoLabel = stringResource(R.string.undo)
+
+    LaunchedEffect(uiState.pendingDeleteId) {
+        if (uiState.pendingDeleteId != null) {
+            val result =
+                snackbarHostState.showSnackbar(
+                    message = recurringDeletedLabel,
+                    actionLabel = undoLabel,
+                    duration = SnackbarDuration.Short,
+                )
+            when (result) {
+                SnackbarResult.ActionPerformed -> viewModel.undoDelete()
+                SnackbarResult.Dismissed -> viewModel.confirmDelete()
+            }
         }
     }
 
@@ -127,7 +147,7 @@ fun RecurringTransactionsScreen(
                 }
             }
 
-            uiState.recurringTransactions.isEmpty() -> {
+            uiState.visibleRecurringTransactions.isEmpty() -> {
                 EmptyStateMessage(
                     title = stringResource(R.string.no_recurring),
                     subtitle = stringResource(R.string.no_recurring_subtitle),
@@ -145,7 +165,7 @@ fun RecurringTransactionsScreen(
                     verticalArrangement = Arrangement.spacedBy(DesignSystemSpacing.small),
                 ) {
                     items(
-                        items = uiState.recurringTransactions,
+                        items = uiState.visibleRecurringTransactions,
                         key = { it.id },
                     ) { item ->
                         RecurringTransactionRow(
@@ -169,7 +189,7 @@ fun RecurringTransactionsScreen(
             confirmButton = {
                 TextButton(
                     onClick = {
-                        viewModel.deleteRecurring(id)
+                        viewModel.requestDelete(id)
                         deleteConfirmId = null
                     },
                 ) {

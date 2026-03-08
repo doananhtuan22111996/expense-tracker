@@ -31,7 +31,13 @@ class CategoriesViewModel
             _uiState.update { it.copy(selectedTab = type) }
         }
 
-        fun deleteCategory(id: Long) {
+        fun requestDelete(id: Long) {
+            _uiState.update { it.copy(pendingDeleteId = id) }
+        }
+
+        fun confirmDelete() {
+            val id = _uiState.value.pendingDeleteId ?: return
+            _uiState.update { it.copy(pendingDeleteId = null) }
             viewModelScope.launch {
                 try {
                     categoryRepository.deleteCategory(id)
@@ -41,6 +47,10 @@ class CategoriesViewModel
                     }
                 }
             }
+        }
+
+        fun undoDelete() {
+            _uiState.update { it.copy(pendingDeleteId = null) }
         }
 
         fun createCategory(
@@ -114,4 +124,11 @@ data class CategoriesUiState(
     val isLoading: Boolean = true,
     val error: String? = null,
     val selectedTab: TransactionType = TransactionType.EXPENSE,
-)
+    val pendingDeleteId: Long? = null,
+) {
+    val visibleExpenseCategories: List<CategoryWithCount>
+        get() = expenseCategories.filter { it.category.id != pendingDeleteId }
+
+    val visibleIncomeCategories: List<CategoryWithCount>
+        get() = incomeCategories.filter { it.category.id != pendingDeleteId }
+}

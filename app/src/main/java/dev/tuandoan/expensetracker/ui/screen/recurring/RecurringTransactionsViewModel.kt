@@ -28,19 +28,26 @@ class RecurringTransactionsViewModel
             processDue()
         }
 
-        fun deleteRecurring(id: Long) {
+        fun requestDelete(id: Long) {
+            _uiState.update { it.copy(pendingDeleteId = id) }
+        }
+
+        fun confirmDelete() {
+            val id = _uiState.value.pendingDeleteId ?: return
+            _uiState.update { it.copy(pendingDeleteId = null) }
             viewModelScope.launch {
                 try {
                     recurringTransactionRepository.delete(id)
-                    _uiState.update {
-                        it.copy(message = "Recurring transaction deleted")
-                    }
                 } catch (e: Exception) {
                     _uiState.update {
                         it.copy(errorMessage = ErrorUtils.getErrorMessage(e))
                     }
                 }
             }
+        }
+
+        fun undoDelete() {
+            _uiState.update { it.copy(pendingDeleteId = null) }
         }
 
         fun toggleActive(
@@ -106,4 +113,8 @@ data class RecurringTransactionsUiState(
     val isLoading: Boolean = false,
     val errorMessage: String? = null,
     val message: String? = null,
-)
+    val pendingDeleteId: Long? = null,
+) {
+    val visibleRecurringTransactions: List<RecurringTransaction>
+        get() = recurringTransactions.filter { it.id != pendingDeleteId }
+}

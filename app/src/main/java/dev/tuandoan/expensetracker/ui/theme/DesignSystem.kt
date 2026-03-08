@@ -1,5 +1,6 @@
 package dev.tuandoan.expensetracker.ui.theme
 
+import androidx.compose.material3.ColorScheme
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Stable
@@ -32,6 +33,50 @@ object DesignSystemElevation {
     val low: Dp = 2.dp
     val medium: Dp = 4.dp
     val high: Dp = 8.dp
+}
+
+/**
+ * Chart colors that respond to the current theme (light/dark).
+ */
+@Stable
+object ChartColors {
+    private val fallbackChartColors =
+        listOf(
+            Color(0xFF4CAF50),
+            Color(0xFF2196F3),
+            Color(0xFFF44336),
+            Color(0xFFFF9800),
+            Color(0xFF9C27B0),
+            Color(0xFF607D8B),
+        )
+
+    fun categoryColor(
+        colorKey: String?,
+        colorScheme: ColorScheme,
+    ): Color =
+        when (colorKey) {
+            "red" -> colorScheme.error
+            "blue" -> colorScheme.primary
+            "green" -> colorScheme.tertiary
+            "orange" -> colorScheme.secondary
+            "purple" -> colorScheme.inversePrimary
+            "teal" -> colorScheme.tertiary.copy(alpha = 0.7f)
+            "pink" -> colorScheme.error.copy(alpha = 0.7f)
+            "gray" -> colorScheme.outline
+            else -> colorScheme.primary
+        }
+
+    @Composable
+    fun resolveChartColors(colorKeys: List<String?>): List<Color> {
+        val colorScheme = MaterialTheme.colorScheme
+        return colorKeys.mapIndexed { index, key ->
+            if (key != null) {
+                categoryColor(key, colorScheme)
+            } else {
+                fallbackChartColors[index % fallbackChartColors.size]
+            }
+        }
+    }
 }
 
 /**
