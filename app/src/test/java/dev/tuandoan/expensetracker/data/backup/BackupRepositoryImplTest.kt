@@ -2,10 +2,13 @@ package dev.tuandoan.expensetracker.data.backup
 
 import dev.tuandoan.expensetracker.data.database.TransactionRunner
 import dev.tuandoan.expensetracker.data.database.dao.CategoryDao
+import dev.tuandoan.expensetracker.data.database.dao.RecurringTransactionDao
 import dev.tuandoan.expensetracker.data.database.dao.TransactionDao
 import dev.tuandoan.expensetracker.data.database.entity.CategoryEntity
+import dev.tuandoan.expensetracker.data.database.entity.CategoryWithCountRow
 import dev.tuandoan.expensetracker.data.database.entity.CurrencyCategorySumRow
 import dev.tuandoan.expensetracker.data.database.entity.CurrencySumRow
+import dev.tuandoan.expensetracker.data.database.entity.RecurringTransactionEntity
 import dev.tuandoan.expensetracker.data.database.entity.TransactionEntity
 import dev.tuandoan.expensetracker.data.export.CsvExporter
 import dev.tuandoan.expensetracker.domain.repository.BackupProgress
@@ -28,6 +31,7 @@ import java.io.ByteArrayInputStream as BAIS
 class BackupRepositoryImplTest {
     private lateinit var fakeCategoryDao: FakeCategoryDao
     private lateinit var fakeTransactionDao: FakeTransactionDao
+    private lateinit var fakeRecurringDao: FakeRecurringTransactionDao
     private lateinit var fakeTimeProvider: FakeTimeProvider
     private lateinit var fakeCurrencyPreferenceRepo: FakeCurrencyPreferenceRepository
     private lateinit var validator: BackupValidator
@@ -40,6 +44,7 @@ class BackupRepositoryImplTest {
     fun setup() {
         fakeCategoryDao = FakeCategoryDao()
         fakeTransactionDao = FakeTransactionDao()
+        fakeRecurringDao = FakeRecurringTransactionDao()
         fakeTimeProvider = FakeTimeProvider()
         fakeCurrencyPreferenceRepo = FakeCurrencyPreferenceRepository()
         validator = BackupValidator()
@@ -50,6 +55,7 @@ class BackupRepositoryImplTest {
             BackupRepositoryImpl(
                 categoryDao = fakeCategoryDao,
                 transactionDao = fakeTransactionDao,
+                recurringTransactionDao = fakeRecurringDao,
                 backupValidator = validator,
                 backupSerializer = serializer,
                 backupAssembler = assembler,
@@ -524,6 +530,11 @@ class BackupRepositoryImplTest {
             to: Long,
             currencyCode: String,
         ): List<dev.tuandoan.expensetracker.data.database.entity.MonthlyTotalRow> = emptyList()
+
+        override suspend fun reassignCategory(
+            fromId: Long,
+            toId: Long,
+        ) {}
     }
 
     private inner class FakeCategoryDao : CategoryDao {
@@ -542,9 +553,53 @@ class BackupRepositoryImplTest {
             allCategories.addAll(list)
         }
 
+        override suspend fun insert(entity: CategoryEntity): Long = entity.id
+
+        override suspend fun update(entity: CategoryEntity) {}
+
+        override suspend fun deleteNonDefault(id: Long): Int = 0
+
+        override fun getCategoriesWithCount(): Flow<List<CategoryWithCountRow>> = MutableStateFlow(emptyList())
+
         override suspend fun deleteAll() {
             deleteAllOrder = ++globalCallOrder
             allCategories.clear()
+        }
+    }
+
+    private inner class FakeRecurringTransactionDao : RecurringTransactionDao {
+        val allRecurring = mutableListOf<RecurringTransactionEntity>()
+
+        override fun getAll(): Flow<List<RecurringTransactionEntity>> = MutableStateFlow(allRecurring.toList())
+
+        override suspend fun getDue(nowMillis: Long): List<RecurringTransactionEntity> = emptyList()
+
+        override suspend fun insert(entity: RecurringTransactionEntity): Long = entity.id
+
+        override suspend fun update(entity: RecurringTransactionEntity) {}
+
+        override suspend fun deleteById(id: Long) {}
+
+        override suspend fun updateNextDue(
+            id: Long,
+            nextDue: Long,
+            now: Long,
+        ) {}
+
+        override suspend fun setActive(
+            id: Long,
+            active: Boolean,
+            now: Long,
+        ) {}
+
+        override suspend fun getAllList(): List<RecurringTransactionEntity> = allRecurring.toList()
+
+        override suspend fun insertAll(list: List<RecurringTransactionEntity>) {
+            allRecurring.addAll(list)
+        }
+
+        override suspend fun deleteAll() {
+            allRecurring.clear()
         }
     }
 }

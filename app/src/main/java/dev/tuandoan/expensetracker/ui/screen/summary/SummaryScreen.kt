@@ -30,6 +30,7 @@ import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import dev.tuandoan.expensetracker.R
+import dev.tuandoan.expensetracker.core.formatter.DefaultCurrencyFormatter
 import dev.tuandoan.expensetracker.domain.model.CategoryTotal
 import dev.tuandoan.expensetracker.domain.model.CurrencyMonthlySummary
 import dev.tuandoan.expensetracker.domain.model.MonthlySummary
@@ -37,6 +38,7 @@ import dev.tuandoan.expensetracker.domain.model.SupportedCurrencies
 import dev.tuandoan.expensetracker.domain.model.TransactionType
 import dev.tuandoan.expensetracker.repository.TransactionRepositoryImpl
 import dev.tuandoan.expensetracker.ui.component.AmountText
+import dev.tuandoan.expensetracker.ui.component.BudgetProgressSection
 import dev.tuandoan.expensetracker.ui.component.DonutChart
 import dev.tuandoan.expensetracker.ui.component.EmptyStateMessage
 import dev.tuandoan.expensetracker.ui.component.ErrorStateMessage
@@ -44,6 +46,7 @@ import dev.tuandoan.expensetracker.ui.component.MonthSelector
 import dev.tuandoan.expensetracker.ui.component.MonthYearPickerDialog
 import dev.tuandoan.expensetracker.ui.component.MonthlyBarChart
 import dev.tuandoan.expensetracker.ui.component.SectionTitle
+import dev.tuandoan.expensetracker.ui.component.SetBudgetDialog
 import dev.tuandoan.expensetracker.ui.theme.DesignSystemElevation
 import dev.tuandoan.expensetracker.ui.theme.DesignSystemSpacing
 
@@ -54,12 +57,24 @@ fun SummaryScreen(
 ) {
     val uiState by viewModel.uiState.collectAsState()
     var showMonthPicker by remember { mutableStateOf(false) }
+    var showBudgetDialog by remember { mutableStateOf<String?>(null) }
 
     if (showMonthPicker) {
         MonthYearPickerDialog(
             currentSelection = viewModel.currentSelectedMonth(),
             onMonthSelected = { viewModel.setMonth(it) },
             onDismiss = { showMonthPicker = false },
+        )
+    }
+
+    showBudgetDialog?.let { currencyCode ->
+        val budgetStatus = uiState.budgetStatuses.find { it.currency.code == currencyCode }
+        SetBudgetDialog(
+            currencyCode = currencyCode,
+            currentBudget = budgetStatus?.budgetAmount,
+            onSave = { amount -> viewModel.setBudget(currencyCode, amount) },
+            onClear = { viewModel.clearBudget(currencyCode) },
+            onDismiss = { showBudgetDialog = null },
         )
     }
 
@@ -122,6 +137,7 @@ fun SummaryScreen(
                         onPreviousYear = viewModel::goToPreviousYear,
                         onNextYear = viewModel::goToNextYear,
                         onMonthLabelClick = { showMonthPicker = true },
+                        onBudgetTap = { currencyCode -> showBudgetDialog = currencyCode },
                         modifier = Modifier.fillMaxSize(),
                     )
                 }
@@ -202,8 +218,10 @@ private fun SummaryContent(
     onPreviousYear: () -> Unit,
     onNextYear: () -> Unit,
     onMonthLabelClick: () -> Unit,
+    onBudgetTap: (String) -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val currencyFormatter = remember { DefaultCurrencyFormatter() }
     LazyColumn(modifier = modifier.padding(DesignSystemSpacing.screenPadding)) {
         item(key = "mode_chips") {
             SummaryModeChips(
@@ -245,6 +263,20 @@ private fun SummaryContent(
                 SummaryCards(
                     currencySummary = currencySummary,
                 )
+
+                if (uiState.mode == SummaryMode.MONTH) {
+                    val budgetStatus =
+                        uiState.budgetStatuses.find {
+                            it.currency.code == currencySummary.currencyCode
+                        }
+                    if (budgetStatus != null) {
+                        BudgetProgressSection(
+                            budgetStatus = budgetStatus,
+                            currencyFormatter = currencyFormatter,
+                            onTap = { onBudgetTap(currencySummary.currencyCode) },
+                        )
+                    }
+                }
 
                 if (uiState.mode == SummaryMode.YEAR) {
                     val barPoints = uiState.monthlyBarData[currencySummary.currencyCode]

@@ -20,6 +20,8 @@ fun ExpenseTrackerNavigation(
     modifier: Modifier = Modifier,
     onNavigateToAddTransaction: () -> Unit,
     onNavigateToEditTransaction: (transactionId: Long) -> Unit,
+    onNavigateToCategories: () -> Unit = {},
+    onNavigateToRecurring: () -> Unit = {},
 ) {
     NavHost(
         navController = navController,
@@ -41,7 +43,10 @@ fun ExpenseTrackerNavigation(
         }
 
         composable(BottomNavDestination.Settings.route) {
-            SettingsScreen()
+            SettingsScreen(
+                onNavigateToCategories = onNavigateToCategories,
+                onNavigateToRecurring = onNavigateToRecurring,
+            )
         }
     }
 }

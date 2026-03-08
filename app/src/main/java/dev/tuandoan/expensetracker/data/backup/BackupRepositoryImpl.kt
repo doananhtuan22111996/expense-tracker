@@ -7,6 +7,7 @@ import dev.tuandoan.expensetracker.data.backup.mapper.toEntity
 import dev.tuandoan.expensetracker.data.backup.model.BackupDocumentV1
 import dev.tuandoan.expensetracker.data.database.TransactionRunner
 import dev.tuandoan.expensetracker.data.database.dao.CategoryDao
+import dev.tuandoan.expensetracker.data.database.dao.RecurringTransactionDao
 import dev.tuandoan.expensetracker.data.database.dao.TransactionDao
 import dev.tuandoan.expensetracker.data.export.CsvExporter
 import dev.tuandoan.expensetracker.data.export.TransactionWithCategory
@@ -30,6 +31,7 @@ class BackupRepositoryImpl
     constructor(
         private val categoryDao: CategoryDao,
         private val transactionDao: TransactionDao,
+        private val recurringTransactionDao: RecurringTransactionDao,
         private val backupValidator: BackupValidator,
         private val backupSerializer: BackupSerializer,
         private val backupAssembler: BackupAssembler,
@@ -85,18 +87,20 @@ class BackupRepositoryImpl
         }
 
         private suspend fun buildExportDocument(): BackupDocumentV1 {
-            val (categories, transactions) =
+            val result =
                 transactionRunner.runInTransaction {
                     val cats = categoryDao.getAll().map { it.toBackupDto() }
                     val txns = transactionDao.getAll().map { it.toBackupDto() }
-                    cats to txns
+                    val recurring = recurringTransactionDao.getAllList().map { it.toBackupDto() }
+                    Triple(cats, txns, recurring)
                 }
 
             val defaultCurrencyCode = currencyPreferenceRepository.getDefaultCurrency()
 
             return backupAssembler.assemble(
-                categories = categories,
-                transactions = transactions,
+                categories = result.first,
+                transactions = result.second,
+                recurringTransactions = result.third,
                 defaultCurrencyCode = defaultCurrencyCode,
                 appVersionName = AppInfo.getVersionName(),
                 createdAtEpochMs = timeProvider.currentTimeMillis(),
@@ -115,13 +119,15 @@ class BackupRepositoryImpl
 
             val categoryEntities = document.categories.map { it.toEntity() }
             val transactionEntities = document.transactions.map { it.toEntity() }
-            val total = categoryEntities.size + transactionEntities.size
+            val recurringEntities = document.recurringTransactions.map { it.toEntity() }
+            val total = categoryEntities.size + transactionEntities.size + recurringEntities.size
             onProgress(BackupProgress(current = 0, total = total))
 
             // Once the destructive deleteAll() begins, the transaction must run to
             // completion so we never leave the DB in a half-wiped state.
             withContext(NonCancellable) {
                 transactionRunner.runInTransaction {
+                    recurringTransactionDao.deleteAll()
                     transactionDao.deleteAll()
                     categoryDao.deleteAll()
                     categoryDao.insertAll(categoryEntities)
@@ -132,6 +138,12 @@ class BackupRepositoryImpl
                     for (batch in transactionEntities.chunked(BATCH_SIZE)) {
                         transactionDao.insertAll(batch)
                         inserted += batch.size
+                        onProgress(BackupProgress(current = inserted, total = total))
+                    }
+
+                    if (recurringEntities.isNotEmpty()) {
+                        recurringTransactionDao.insertAll(recurringEntities)
+                        inserted += recurringEntities.size
                         onProgress(BackupProgress(current = inserted, total = total))
                     }
                 }

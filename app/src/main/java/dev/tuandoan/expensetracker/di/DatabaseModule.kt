@@ -10,9 +10,11 @@ import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.components.SingletonComponent
 import dev.tuandoan.expensetracker.data.database.AppDatabase
 import dev.tuandoan.expensetracker.data.database.dao.CategoryDao
+import dev.tuandoan.expensetracker.data.database.dao.RecurringTransactionDao
 import dev.tuandoan.expensetracker.data.database.dao.TransactionDao
 import dev.tuandoan.expensetracker.data.database.migration.MIGRATION_1_2
 import dev.tuandoan.expensetracker.data.database.migration.MIGRATION_2_3
+import dev.tuandoan.expensetracker.data.database.migration.MIGRATION_3_4
 import javax.inject.Singleton
 
 @Module
@@ -28,7 +30,7 @@ object DatabaseModule {
                 context = context,
                 klass = AppDatabase::class.java,
                 name = "expense_tracker_database",
-            ).addMigrations(MIGRATION_1_2, MIGRATION_2_3)
+            ).addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4)
             .build()
 
     @Provides
@@ -36,6 +38,10 @@ object DatabaseModule {
 
     @Provides
     fun provideCategoryDao(database: AppDatabase): CategoryDao = database.categoryDao()
+
+    @Provides
+    fun provideRecurringTransactionDao(database: AppDatabase): RecurringTransactionDao =
+        database.recurringTransactionDao()
 
     @Provides
     fun provideContentResolver(

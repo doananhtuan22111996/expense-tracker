@@ -63,6 +63,12 @@ interface TransactionDao {
     @Insert
     suspend fun insertAll(list: List<TransactionEntity>)
 
+    @Query("UPDATE transactions SET category_id = :toId WHERE category_id = :fromId")
+    suspend fun reassignCategory(
+        fromId: Long,
+        toId: Long,
+    )
+
     @Query("DELETE FROM transactions")
     suspend fun deleteAll()
 
