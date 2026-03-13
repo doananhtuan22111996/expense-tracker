@@ -72,14 +72,70 @@ class CategoriesViewModelTest {
         }
 
     @Test
-    fun deleteCategory_error_surfacesInState() =
+    fun requestDelete_setsPendingDeleteId() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            val expenseCat =
+                CategoryWithCount(
+                    category = TestData.expenseCategory,
+                    transactionCount = 0,
+                )
+            fakeCategoryRepo.categoriesWithCount.value = listOf(expenseCat)
+
+            val viewModel = CategoriesViewModel(fakeCategoryRepo)
+            advanceUntilIdle()
+
+            viewModel.requestDelete(TestData.expenseCategory.id)
+
+            assertEquals(TestData.expenseCategory.id, viewModel.uiState.value.pendingDeleteId)
+            assertEquals(0, viewModel.uiState.value.visibleExpenseCategories.size)
+        }
+
+    @Test
+    fun undoDelete_clearsPendingAndRestoresItem() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            val expenseCat =
+                CategoryWithCount(
+                    category = TestData.expenseCategory,
+                    transactionCount = 0,
+                )
+            fakeCategoryRepo.categoriesWithCount.value = listOf(expenseCat)
+
+            val viewModel = CategoriesViewModel(fakeCategoryRepo)
+            advanceUntilIdle()
+
+            viewModel.requestDelete(TestData.expenseCategory.id)
+            assertEquals(0, viewModel.uiState.value.visibleExpenseCategories.size)
+
+            viewModel.undoDelete()
+
+            assertNull(viewModel.uiState.value.pendingDeleteId)
+            assertEquals(1, viewModel.uiState.value.visibleExpenseCategories.size)
+        }
+
+    @Test
+    fun confirmDelete_callsRepositoryAndClearsPending() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            val viewModel = CategoriesViewModel(fakeCategoryRepo)
+            advanceUntilIdle()
+
+            viewModel.requestDelete(1L)
+            viewModel.confirmDelete()
+            advanceUntilIdle()
+
+            assertNull(viewModel.uiState.value.pendingDeleteId)
+            assertEquals(1L, fakeCategoryRepo.lastDeletedId)
+        }
+
+    @Test
+    fun confirmDelete_error_surfacesInState() =
         runTest(mainDispatcherRule.testDispatcher) {
             fakeCategoryRepo.shouldThrowOnDelete = true
 
             val viewModel = CategoriesViewModel(fakeCategoryRepo)
             advanceUntilIdle()
 
-            viewModel.deleteCategory(1L)
+            viewModel.requestDelete(1L)
+            viewModel.confirmDelete()
             advanceUntilIdle()
 
             assertNotNull(viewModel.uiState.value.error)
@@ -93,13 +149,28 @@ class CategoriesViewModelTest {
             val viewModel = CategoriesViewModel(fakeCategoryRepo)
             advanceUntilIdle()
 
-            viewModel.deleteCategory(1L)
+            viewModel.requestDelete(1L)
+            viewModel.confirmDelete()
             advanceUntilIdle()
             assertNotNull(viewModel.uiState.value.error)
 
             viewModel.onErrorDismissed()
 
             assertNull(viewModel.uiState.value.error)
+        }
+
+    @Test
+    fun requestDelete_rapidSuccessive_autoConfirmsPrevious() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            val viewModel = CategoriesViewModel(fakeCategoryRepo)
+            advanceUntilIdle()
+
+            viewModel.requestDelete(1L)
+            viewModel.requestDelete(2L)
+            advanceUntilIdle()
+
+            assertEquals(2L, viewModel.uiState.value.pendingDeleteId)
+            assertEquals(1L, fakeCategoryRepo.lastDeletedId)
         }
 
     @Test
@@ -118,6 +189,7 @@ class CategoriesViewModelTest {
         val categoriesWithCount = MutableStateFlow<List<CategoryWithCount>>(emptyList())
         var shouldThrowOnDelete = false
         var lastCreatedName: String? = null
+        var lastDeletedId: Long? = null
 
         override fun observeCategories(type: TransactionType): Flow<List<Category>> = flow { emit(emptyList()) }
 
@@ -144,6 +216,7 @@ class CategoriesViewModelTest {
             if (shouldThrowOnDelete) {
                 throw RuntimeException("Cannot delete default category")
             }
+            lastDeletedId = id
         }
 
         override fun getCategoriesWithTransactionCount(): Flow<List<CategoryWithCount>> = categoriesWithCount

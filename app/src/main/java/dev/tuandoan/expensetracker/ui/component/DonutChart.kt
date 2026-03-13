@@ -26,17 +26,8 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import dev.tuandoan.expensetracker.R
 import dev.tuandoan.expensetracker.domain.model.CategoryTotal
+import dev.tuandoan.expensetracker.ui.theme.ChartColors
 import dev.tuandoan.expensetracker.ui.theme.DesignSystemSpacing
-
-private val chartColors =
-    listOf(
-        Color(0xFF4CAF50),
-        Color(0xFF2196F3),
-        Color(0xFFF44336),
-        Color(0xFFFF9800),
-        Color(0xFF9C27B0),
-        Color(0xFF607D8B),
-    )
 
 @Composable
 fun DonutChart(
@@ -59,6 +50,11 @@ fun DonutChart(
 
     val total = categories.sumOf { it.total }.toFloat()
     if (total == 0f) return
+
+    val sliceColors =
+        ChartColors.resolveChartColors(
+            categories.map { it.category.colorKey },
+        )
 
     Column(
         modifier =
@@ -85,9 +81,8 @@ fun DonutChart(
             var startAngle = -90f
             categories.forEachIndexed { index, categoryTotal ->
                 val sweepAngle = (categoryTotal.total / total) * 360f
-                val color = chartColors[index % chartColors.size]
                 drawArc(
-                    color = color,
+                    color = sliceColors[index],
                     startAngle = startAngle,
                     sweepAngle = sweepAngle,
                     useCenter = false,
@@ -108,9 +103,8 @@ fun DonutChart(
         ) {
             categories.forEachIndexed { index, categoryTotal ->
                 val percentage = (categoryTotal.total / total * 100f).toInt()
-                val color = chartColors[index % chartColors.size]
                 LegendItem(
-                    color = color,
+                    color = sliceColors[index],
                     label = categoryTotal.category.name,
                     percentage = percentage,
                 )
