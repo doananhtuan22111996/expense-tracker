@@ -166,6 +166,58 @@ class DateTimeUtilTest {
         assertTrue("Should contain 15", formattedTest.contains("15"))
     }
 
+    // --- formatNextDueLabel tests ---
+
+    @Test
+    fun formatNextDueLabel_overdue_returnsOverdueLabel() {
+        val now = System.currentTimeMillis()
+        val threeDaysAgo = now - 3 * 24 * 60 * 60 * 1000L
+        val result = DateTimeUtil.formatNextDueLabel(threeDaysAgo, now)
+        assertEquals("Overdue by 3 days", result)
+    }
+
+    @Test
+    fun formatNextDueLabel_overdueBySingleDay_returnsSingularForm() {
+        val now = System.currentTimeMillis()
+        val oneDayAgo = now - 1 * 24 * 60 * 60 * 1000L
+        val result = DateTimeUtil.formatNextDueLabel(oneDayAgo, now)
+        assertEquals("Overdue by 1 day", result)
+    }
+
+    @Test
+    fun formatNextDueLabel_today_returnsDueToday() {
+        val now = System.currentTimeMillis()
+        val result = DateTimeUtil.formatNextDueLabel(now, now)
+        assertEquals("Due today", result)
+    }
+
+    @Test
+    fun formatNextDueLabel_tomorrow_returnsDueTomorrow() {
+        val now = System.currentTimeMillis()
+        val tomorrow = now + 1 * 24 * 60 * 60 * 1000L
+        val result = DateTimeUtil.formatNextDueLabel(tomorrow, now)
+        assertEquals("Due tomorrow", result)
+    }
+
+    @Test
+    fun formatNextDueLabel_withinWeek_returnsDueInDays() {
+        val now = System.currentTimeMillis()
+        val fiveDays = now + 5 * 24 * 60 * 60 * 1000L
+        val result = DateTimeUtil.formatNextDueLabel(fiveDays, now)
+        assertEquals("Due in 5 days", result)
+    }
+
+    @Test
+    fun formatNextDueLabel_moreThanWeek_returnsShortDate() {
+        val now = System.currentTimeMillis()
+        val fifteenDays = now + 15 * 24 * 60 * 60 * 1000L
+        val result = DateTimeUtil.formatNextDueLabel(fifteenDays, now)
+        // Should return short date format like "Mar 15"
+        assertNotNull(result)
+        assertTrue("Should not contain 'Due'", !result.contains("Due"))
+        assertTrue("Should not contain 'Overdue'", !result.contains("Overdue"))
+    }
+
     @Test
     fun formatAndParse_roundTrip_maintainsDateConsistency() {
         // Test that formatting and extracting date components works consistently

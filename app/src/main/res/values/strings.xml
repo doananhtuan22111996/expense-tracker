@@ -59,4 +59,14 @@
     <string name="duplicate_category_name">A category with this name already exists</string>
     <string name="undo">Undo</string>
     <string name="recurring_deleted">Recurring transaction deleted</string>
+    <string name="overdue_by_days">Overdue by %1$d day(s)</string>
+    <string name="due_today">Due today</string>
+    <string name="due_tomorrow">Due tomorrow</string>
+    <string name="due_in_days">Due in %1$d days</string>
+    <string name="budget_setup_title">Set a monthly budget</string>
+    <string name="budget_setup_subtitle">Track your spending against a budget goal</string>
+    <string name="categories_section_default">Default</string>
+    <string name="categories_section_custom">Custom</string>
+    <string name="recurring_active_count">%1$d active</string>
+    <string name="recurring_none_set">None set</string>
 </resources>
