@@ -23,10 +23,12 @@ private val monthLabels =
 @Composable
 fun MonthlyBarChart(
     points: List<MonthlyBarPoint>,
+    emptyLabel: String,
     modifier: Modifier = Modifier,
+    onSurfaceVariantColor: Color = MaterialTheme.colorScheme.onSurfaceVariant,
 ) {
     val primaryColor = MaterialTheme.colorScheme.primary
-    val onSurfaceVariant = MaterialTheme.colorScheme.onSurfaceVariant
+    val onSurfaceVariant = onSurfaceVariantColor
     val labelSizeSp = 10.sp
     val labelSizePx = with(LocalDensity.current) { labelSizeSp.toPx() }
 
@@ -38,7 +40,20 @@ fun MonthlyBarChart(
                 .semantics { contentDescription = "Monthly expenses bar chart" },
     ) {
         val maxValue = points.maxOfOrNull { it.totalExpense } ?: 0L
-        if (maxValue == 0L) return@Canvas
+        if (maxValue == 0L) {
+            // Draw centered empty-state text when all data is zero
+            drawContext.canvas.nativeCanvas.apply {
+                val paint =
+                    android.graphics.Paint().apply {
+                        color = onSurfaceVariant.toArgb()
+                        textSize = labelSizePx * 1.2f
+                        textAlign = android.graphics.Paint.Align.CENTER
+                        isAntiAlias = true
+                    }
+                drawText(emptyLabel, size.width / 2f, size.height / 2f, paint)
+            }
+            return@Canvas
+        }
 
         val bottomPadding = labelSizePx * 2.5f
         val topPadding = labelSizePx * 2f

@@ -28,6 +28,7 @@ class BudgetPreferencesImpl
             currencyCode: String,
             amount: Long,
         ) {
+            require(amount > 0) { "Budget amount must be positive" }
             context.budgetDataStore.edit { it[budgetKey(currencyCode)] = amount }
         }
 

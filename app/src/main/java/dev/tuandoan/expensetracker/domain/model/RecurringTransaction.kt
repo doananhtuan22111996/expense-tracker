@@ -19,7 +19,7 @@ data class RecurringTransaction(
     val type: TransactionType,
     val amount: Long,
     val currencyCode: String,
-    val categoryId: Long,
+    val categoryId: Long?,
     val categoryName: String = "",
     val note: String?,
     val frequency: RecurrenceFrequency,

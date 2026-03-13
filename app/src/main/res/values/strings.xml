@@ -55,4 +55,6 @@
     <string name="no_recurring">No recurring transactions</string>
     <string name="no_recurring_subtitle">Tap + to add a recurring transaction</string>
     <string name="delete_recurring_confirm">Delete this recurring transaction?</string>
+    <string name="no_expenses_this_year">No expenses this year</string>
+    <string name="duplicate_category_name">A category with this name already exists</string>
 </resources>

@@ -53,20 +53,23 @@ class RecurrenceScheduler
             transactionRunner.runInTransaction {
                 for (item in dueItems) {
                     val frequency = RecurrenceFrequency.fromInt(item.frequency)
-                    // Create the actual transaction
-                    transactionDao.insert(
-                        TransactionEntity(
-                            type = item.type,
-                            amount = item.amount,
-                            currencyCode = item.currencyCode,
-                            categoryId = item.categoryId,
-                            note = item.note,
-                            timestamp = item.nextDueMillis,
-                            createdAt = now,
-                            updatedAt = now,
-                        ),
-                    )
-                    // Advance to next due date
+                    // Only create transaction if category exists; skip orphaned items
+                    val categoryId = item.categoryId
+                    if (categoryId != null) {
+                        transactionDao.insert(
+                            TransactionEntity(
+                                type = item.type,
+                                amount = item.amount,
+                                currencyCode = item.currencyCode,
+                                categoryId = categoryId,
+                                note = item.note,
+                                timestamp = item.nextDueMillis,
+                                createdAt = now,
+                                updatedAt = now,
+                            ),
+                        )
+                    }
+                    // Always advance next due date to prevent infinite re-processing
                     val nextDue = calculateNextDue(frequency, item.nextDueMillis, zoneId)
                     recurringDao.updateNextDue(item.id, nextDue, now)
                 }

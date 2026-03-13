@@ -32,7 +32,7 @@ data class BackupRecurringTransactionDto(
     @SerialName("type") val type: Int,
     @SerialName("amount") val amount: Long,
     @SerialName("currency_code") val currencyCode: String,
-    @SerialName("category_id") val categoryId: Long,
+    @SerialName("category_id") val categoryId: Long? = null,
     @SerialName("note") val note: String? = null,
     @SerialName("frequency") val frequency: Int,
     @SerialName("day_of_month") val dayOfMonth: Int? = null,

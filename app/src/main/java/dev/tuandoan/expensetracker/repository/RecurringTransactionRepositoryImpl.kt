@@ -97,7 +97,8 @@ class RecurringTransactionRepositoryImpl
         }
 
         private suspend fun RecurringTransactionEntity.toDomain(): RecurringTransaction {
-            val categoryName = categoryDao.getById(categoryId)?.name ?: "Unknown"
+            val categoryName =
+                categoryId?.let { categoryDao.getById(it)?.name } ?: "Unknown"
             return RecurringTransaction(
                 id = id,
                 type = TransactionType.fromInt(type),
