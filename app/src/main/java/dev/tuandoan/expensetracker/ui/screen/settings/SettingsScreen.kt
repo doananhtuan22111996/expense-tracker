@@ -64,6 +64,7 @@ fun SettingsScreen(
     viewModel: SettingsViewModel = hiltViewModel(),
 ) {
     val uiState by viewModel.uiState.collectAsState()
+    val activeRecurringCount by viewModel.activeRecurringCount.collectAsState()
     var showCurrencyDialog by remember { mutableStateOf(false) }
     val snackbarHostState = remember { SnackbarHostState() }
 
@@ -230,6 +231,25 @@ fun SettingsScreen(
                             text = stringResource(R.string.recurring_transactions_subtitle),
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.padding(top = DesignSystemSpacing.xs),
+                        )
+                        Text(
+                            text =
+                                if (activeRecurringCount > 0) {
+                                    stringResource(
+                                        R.string.recurring_active_count,
+                                        activeRecurringCount,
+                                    )
+                                } else {
+                                    stringResource(R.string.recurring_none_set)
+                                },
+                            style = MaterialTheme.typography.bodySmall,
+                            color =
+                                if (activeRecurringCount > 0) {
+                                    MaterialTheme.colorScheme.primary
+                                } else {
+                                    MaterialTheme.colorScheme.onSurfaceVariant
+                                },
                             modifier = Modifier.padding(top = DesignSystemSpacing.xs),
                         )
                     }

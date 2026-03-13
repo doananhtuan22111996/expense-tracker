@@ -230,7 +230,18 @@ private fun RecurringTransactionRow(
     val formattedAmount =
         AmountFormatter.formatAmountWithCurrency(item.amount, item.currencyCode)
 
-    val nextDueFormatted = DateTimeUtil.formatTimestamp(item.nextDueMillis)
+    val nowMillis = System.currentTimeMillis()
+    val nextDueLabel = DateTimeUtil.formatNextDueLabel(item.nextDueMillis, nowMillis)
+    val daysDiff =
+        java.util.concurrent.TimeUnit.MILLISECONDS
+            .toDays(item.nextDueMillis - nowMillis)
+            .toInt()
+    val nextDueColor =
+        when {
+            daysDiff < 0 -> MaterialTheme.colorScheme.error
+            daysDiff <= 1 -> MaterialTheme.colorScheme.primary
+            else -> MaterialTheme.colorScheme.onSurfaceVariant
+        }
 
     val statusLabel =
         if (item.isActive) {
@@ -283,9 +294,9 @@ private fun RecurringTransactionRow(
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                     Text(
-                        text = stringResource(R.string.next_due, nextDueFormatted),
+                        text = nextDueLabel,
                         style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        color = nextDueColor,
                     )
                 }
                 if (!item.note.isNullOrBlank()) {

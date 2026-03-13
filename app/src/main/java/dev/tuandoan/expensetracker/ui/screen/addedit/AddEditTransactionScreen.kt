@@ -55,12 +55,14 @@ import androidx.compose.ui.focus.FocusDirection
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
+import dev.tuandoan.expensetracker.R
 import dev.tuandoan.expensetracker.core.formatter.AmountFormatter
 import dev.tuandoan.expensetracker.core.util.DateTimeUtil
 import dev.tuandoan.expensetracker.domain.model.Category
@@ -565,24 +567,78 @@ private fun EnhancedCategoryDropdown(
             expanded = expanded,
             onDismissRequest = { expanded = false },
         ) {
-            categories.forEach { category ->
+            val defaultCategories = categories.filter { it.isDefault }
+            val customCategories = categories.filter { !it.isDefault }
+
+            if (defaultCategories.isNotEmpty()) {
                 DropdownMenuItem(
                     text = {
                         Text(
-                            category.name,
-                            style = MaterialTheme.typography.bodyLarge,
+                            stringResource(R.string.categories_section_default),
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
                     },
-                    onClick = {
-                        hapticFeedback.performHapticFeedback(HapticFeedbackType.LongPress)
-                        onCategorySelected(category)
-                        expanded = false
-                    },
-                    modifier =
-                        Modifier.semantics {
-                            contentDescription = "Select ${category.name} category"
-                        },
+                    onClick = {},
+                    enabled = false,
                 )
+                defaultCategories.forEach { category ->
+                    DropdownMenuItem(
+                        text = {
+                            Text(
+                                category.name,
+                                style = MaterialTheme.typography.bodyLarge,
+                            )
+                        },
+                        onClick = {
+                            hapticFeedback.performHapticFeedback(
+                                HapticFeedbackType.LongPress,
+                            )
+                            onCategorySelected(category)
+                            expanded = false
+                        },
+                        modifier =
+                            Modifier.semantics {
+                                contentDescription =
+                                    "Select ${category.name} category"
+                            },
+                    )
+                }
+            }
+            if (customCategories.isNotEmpty()) {
+                DropdownMenuItem(
+                    text = {
+                        Text(
+                            stringResource(R.string.categories_section_custom),
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    },
+                    onClick = {},
+                    enabled = false,
+                )
+                customCategories.forEach { category ->
+                    DropdownMenuItem(
+                        text = {
+                            Text(
+                                category.name,
+                                style = MaterialTheme.typography.bodyLarge,
+                            )
+                        },
+                        onClick = {
+                            hapticFeedback.performHapticFeedback(
+                                HapticFeedbackType.LongPress,
+                            )
+                            onCategorySelected(category)
+                            expanded = false
+                        },
+                        modifier =
+                            Modifier.semantics {
+                                contentDescription =
+                                    "Select ${category.name} category"
+                            },
+                    )
+                }
             }
         }
     }
