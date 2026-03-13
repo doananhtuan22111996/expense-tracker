@@ -539,6 +539,27 @@ class SummaryViewModelTest {
         }
 
     @Test
+    fun navigateToMonth_setsMonthAndSwitchesToMonthMode() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            fakeRepository.summaryToEmit = TestData.sampleMonthlySummary
+            val viewModel = createViewModel()
+            advanceUntilIdle()
+
+            // Switch to YEAR mode first
+            viewModel.setMode(SummaryMode.YEAR)
+            advanceUntilIdle()
+            assertEquals(SummaryMode.YEAR, viewModel.uiState.value.mode)
+
+            // Navigate to a specific month
+            viewModel.navigateToMonth(2025, 3)
+            advanceUntilIdle()
+
+            assertEquals(SummaryMode.MONTH, viewModel.uiState.value.mode)
+            assertEquals(YearMonth.of(2025, 3), viewModel.currentSelectedMonth())
+            assertEquals("Mar 2025", viewModel.uiState.value.monthLabel)
+        }
+
+    @Test
     fun yearMode_budgetStatuses_alwaysEmpty() =
         runTest(mainDispatcherRule.testDispatcher) {
             fakeRepository.summaryToEmit = TestData.sampleMonthlySummary

@@ -144,6 +144,12 @@ fun SummaryScreen(
                         onNextYear = viewModel::goToNextYear,
                         onMonthLabelClick = { showMonthPicker = true },
                         onBudgetTap = { currencyCode -> showBudgetDialog = currencyCode },
+                        onMonthTapped = { month ->
+                            viewModel.navigateToMonth(
+                                viewModel.currentSelectedYear(),
+                                month,
+                            )
+                        },
                         modifier = Modifier.fillMaxSize(),
                     )
                 }
@@ -225,6 +231,7 @@ private fun SummaryContent(
     onNextYear: () -> Unit,
     onMonthLabelClick: () -> Unit,
     onBudgetTap: (String) -> Unit,
+    onMonthTapped: ((Int) -> Unit)? = null,
     modifier: Modifier = Modifier,
 ) {
     val currencyFormatter = remember { DefaultCurrencyFormatter() }
@@ -353,6 +360,7 @@ private fun SummaryContent(
                                 MonthlyBarChart(
                                     points = barPoints,
                                     emptyLabel = stringResource(R.string.no_expenses_this_year),
+                                    onMonthTapped = onMonthTapped,
                                 )
                             }
                         }
