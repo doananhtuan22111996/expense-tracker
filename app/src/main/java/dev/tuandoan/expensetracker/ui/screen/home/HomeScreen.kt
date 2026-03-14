@@ -17,6 +17,8 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.rounded.ArrowDownward
+import androidx.compose.material.icons.rounded.ArrowUpward
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -40,6 +42,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.role
@@ -47,6 +50,7 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import dev.tuandoan.expensetracker.R
 import dev.tuandoan.expensetracker.core.formatter.AmountFormatter
 import dev.tuandoan.expensetracker.core.util.DateTimeUtil
 import dev.tuandoan.expensetracker.domain.model.Transaction
@@ -365,15 +369,35 @@ private fun TransactionItem(
                 horizontalAlignment = Alignment.End,
                 verticalArrangement = Arrangement.spacedBy(DesignSystemSpacing.small),
             ) {
-                // Amount - most prominent secondary element
-                AmountText(
-                    amount = transaction.amount,
-                    transactionType = transaction.type,
-                    showSign = true,
-                    currencyCode = transaction.currencyCode,
-                    fontWeight = FontWeight.Bold,
-                    textStyle = MaterialTheme.typography.bodyLarge,
-                )
+                // Amount with type indicator icon
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(DesignSystemSpacing.xs),
+                ) {
+                    if (transaction.type == TransactionType.EXPENSE) {
+                        Icon(
+                            imageVector = Icons.Rounded.ArrowDownward,
+                            contentDescription = stringResource(R.string.a11y_expense_indicator),
+                            tint = MaterialTheme.colorScheme.error,
+                            modifier = Modifier.size(16.dp),
+                        )
+                    } else {
+                        Icon(
+                            imageVector = Icons.Rounded.ArrowUpward,
+                            contentDescription = stringResource(R.string.a11y_income_indicator),
+                            tint = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.size(16.dp),
+                        )
+                    }
+                    AmountText(
+                        amount = transaction.amount,
+                        transactionType = transaction.type,
+                        showSign = true,
+                        currencyCode = transaction.currencyCode,
+                        fontWeight = FontWeight.Bold,
+                        textStyle = MaterialTheme.typography.bodyLarge,
+                    )
+                }
 
                 // Delete button with proper 48dp touch target
                 IconButton(

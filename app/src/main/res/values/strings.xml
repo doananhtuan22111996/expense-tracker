@@ -84,4 +84,23 @@
     <string name="onboarding_next">Next</string>
     <string name="onboarding_skip">Skip</string>
     <string name="onboarding_get_started">Get Started</string>
+
+    <!-- Accessibility -->
+    <string name="a11y_donut_chart_description">Expense breakdown: %1$s</string>
+    <string name="a11y_bar_chart_month">%1$s: %2$s</string>
+    <string name="a11y_select_month">View %1$s details</string>
+    <string name="a11y_expense_indicator">Expense</string>
+    <string name="a11y_income_indicator">Income</string>
+    <string name="a11y_delete_transaction">Delete transaction</string>
+    <string name="a11y_delete_category">Delete category</string>
+    <string name="a11y_edit_transaction">Edit transaction</string>
+    <string name="a11y_navigate_back">Navigate back</string>
+    <string name="color_red">Red</string>
+    <string name="color_blue">Blue</string>
+    <string name="color_green">Green</string>
+    <string name="color_orange">Orange</string>
+    <string name="color_pink">Pink</string>
+    <string name="color_purple">Purple</string>
+    <string name="color_yellow">Yellow</string>
+    <string name="color_teal">Teal</string>
 </resources>

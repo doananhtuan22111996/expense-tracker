@@ -43,6 +43,7 @@ import androidx.compose.material3.TabRow
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.minimumInteractiveComponentSize
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -422,9 +423,11 @@ private fun CreateEditCategoryDialog(
                 ) {
                     AVAILABLE_COLORS.forEachIndexed { index, (key, color) ->
                         val isSelected = index == selectedColorIndex
+                        val colorName = colorKeyToName(key)
                         Box(
                             modifier =
                                 Modifier
+                                    .minimumInteractiveComponentSize()
                                     .size(36.dp)
                                     .clip(CircleShape)
                                     .background(color)
@@ -442,9 +445,9 @@ private fun CreateEditCategoryDialog(
                                     .semantics {
                                         contentDescription =
                                             if (isSelected) {
-                                                "$key color, selected"
+                                                "$colorName color, selected"
                                             } else {
-                                                "Select $key color"
+                                                "Select $colorName color"
                                             }
                                     },
                         )
@@ -520,6 +523,23 @@ private fun DeleteCategoryDialog(
         },
     )
 }
+
+/**
+ * Maps a color key to its localized display name for accessibility.
+ */
+@Composable
+private fun colorKeyToName(key: String): String =
+    when (key) {
+        "red" -> stringResource(R.string.color_red)
+        "blue" -> stringResource(R.string.color_blue)
+        "green" -> stringResource(R.string.color_green)
+        "orange" -> stringResource(R.string.color_orange)
+        "purple" -> stringResource(R.string.color_purple)
+        "teal" -> stringResource(R.string.color_teal)
+        "pink" -> stringResource(R.string.color_pink)
+        "yellow" -> stringResource(R.string.color_yellow)
+        else -> key.replaceFirstChar { it.uppercase() }
+    }
 
 val AVAILABLE_ICONS =
     listOf(

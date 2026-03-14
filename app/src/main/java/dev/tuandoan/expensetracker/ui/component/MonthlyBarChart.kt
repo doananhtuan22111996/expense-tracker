@@ -62,8 +62,14 @@ fun MonthlyBarChart(
             modifier
                 .fillMaxWidth()
                 .height(200.dp)
-                .semantics { contentDescription = "Monthly expenses bar chart" }
-                .then(tapModifier),
+                .semantics {
+                    contentDescription =
+                        buildString {
+                            points.forEachIndexed { i, pt ->
+                                append("${monthLabels[i]}: ${compactFormat(pt.totalExpense)}. ")
+                            }
+                        }
+                }.then(tapModifier),
     ) {
         val maxValue = points.maxOfOrNull { it.totalExpense } ?: 0L
         if (maxValue == 0L) {
