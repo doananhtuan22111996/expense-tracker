@@ -2,6 +2,7 @@ package dev.tuandoan.expensetracker
 
 import android.os.Bundle
 import androidx.activity.ComponentActivity
+import androidx.lifecycle.lifecycleScope
 import dagger.hilt.android.AndroidEntryPoint
 import dev.tuandoan.expensetracker.domain.model.RecurrenceFrequency
 import dev.tuandoan.expensetracker.domain.model.RecurringTransaction
@@ -10,7 +11,7 @@ import dev.tuandoan.expensetracker.domain.repository.CategoryRepository
 import dev.tuandoan.expensetracker.domain.repository.RecurringTransactionRepository
 import dev.tuandoan.expensetracker.domain.repository.TransactionRepository
 import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 /**
@@ -36,10 +37,10 @@ class ScreenshotSeedActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        runBlocking {
+        lifecycleScope.launch {
             seedDemoData()
+            finish()
         }
-        finish()
     }
 
     /**
@@ -136,7 +137,7 @@ class ScreenshotSeedActivity : ComponentActivity() {
                     type = TransactionType.EXPENSE,
                     amount = 5_000_000L,
                     currencyCode = "VND",
-                    categoryId = usableExpenseCategories.getOrNull(3)?.id,
+                    categoryId = (usableExpenseCategories.getOrNull(3) ?: usableExpenseCategories.first()).id,
                     note = "Monthly rent",
                     frequency = RecurrenceFrequency.MONTHLY,
                     dayOfMonth = 1,
@@ -148,7 +149,7 @@ class ScreenshotSeedActivity : ComponentActivity() {
                     type = TransactionType.EXPENSE,
                     amount = 9_99L,
                     currencyCode = "USD",
-                    categoryId = usableExpenseCategories.getOrNull(5)?.id,
+                    categoryId = (usableExpenseCategories.getOrNull(5) ?: usableExpenseCategories.first()).id,
                     note = "Streaming subscription",
                     frequency = RecurrenceFrequency.MONTHLY,
                     dayOfMonth = 15,
@@ -160,7 +161,7 @@ class ScreenshotSeedActivity : ComponentActivity() {
                     type = TransactionType.EXPENSE,
                     amount = 200_000L,
                     currencyCode = "VND",
-                    categoryId = usableExpenseCategories.getOrNull(0)?.id,
+                    categoryId = usableExpenseCategories.first().id,
                     note = "Weekly groceries",
                     frequency = RecurrenceFrequency.WEEKLY,
                     dayOfMonth = null,

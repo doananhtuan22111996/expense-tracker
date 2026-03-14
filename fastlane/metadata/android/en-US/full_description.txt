@@ -5,11 +5,11 @@ daily expenses, monitor budgets, and manage money in multiple currencies.
 ✅ Beautiful charts — donut & bar summaries by month/year
 ✅ Recurring transactions — automate rent, subscriptions & bills
 ✅ Budget alerts — monthly limits per currency
-✅ Custom categories — organise spending your way
+✅ Custom categories — organize spending your way
 ✅ Dark mode — easy on the eyes, day or night
 ✅ Cloud backup — never lose your data
-✅ CSV export — analyse in Excel
+✅ CSV export — analyze in Excel
 
-Your data stays on your device. No account. No ads. Ever.
+Your financial data stays on your device. No account. No ads. Anonymous crash reports are opt-in only.
 
 Download free and start tracking today.
