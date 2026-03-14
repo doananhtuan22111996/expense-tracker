@@ -1,0 +1,7 @@
+Mới trong v3.2.5:
+- Chế độ tối: chuyển đổi giữa Sáng, Tối hoặc Hệ thống
+- Hướng dẫn: 4 bước giới thiệu cho người dùng mới
+- Trợ năng: WCAG AA với hỗ trợ TalkBack cho biểu đồ và nút
+- Phản hồi: đánh giá ứng dụng hoặc báo lỗi từ Cài đặt
+- Quyền riêng tư: báo cáo lỗi tùy chọn, không thu thập dữ liệu cá nhân
+- Tối ưu cửa hàng: mô tả bằng tiếng Anh và tiếng Việt
