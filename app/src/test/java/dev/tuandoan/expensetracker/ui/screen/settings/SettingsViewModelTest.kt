@@ -4,6 +4,7 @@ import android.content.ContentResolver
 import android.net.Uri
 import dev.tuandoan.expensetracker.data.backup.BackupValidationError
 import dev.tuandoan.expensetracker.data.backup.BackupValidationException
+import dev.tuandoan.expensetracker.data.preferences.AnalyticsPreferences
 import dev.tuandoan.expensetracker.data.preferences.FakeThemePreferencesRepository
 import dev.tuandoan.expensetracker.data.preferences.ThemePreference
 import dev.tuandoan.expensetracker.domain.model.RecurringTransaction
@@ -38,6 +39,7 @@ class SettingsViewModelTest {
     private lateinit var fakeBackupRepository: FakeBackupRepository
     private lateinit var fakeRecurringRepo: FakeRecurringTransactionRepository
     private lateinit var fakeThemeRepo: FakeThemePreferencesRepository
+    private lateinit var fakeAnalyticsPrefs: FakeAnalyticsPreferences
     private lateinit var mockContentResolver: ContentResolver
     private lateinit var mockUri: Uri
 
@@ -47,6 +49,7 @@ class SettingsViewModelTest {
         fakeBackupRepository = FakeBackupRepository()
         fakeRecurringRepo = FakeRecurringTransactionRepository()
         fakeThemeRepo = FakeThemePreferencesRepository()
+        fakeAnalyticsPrefs = FakeAnalyticsPreferences()
         mockContentResolver = Mockito.mock(ContentResolver::class.java)
         mockUri = Mockito.mock(Uri::class.java)
     }
@@ -58,6 +61,7 @@ class SettingsViewModelTest {
             mockContentResolver,
             fakeRecurringRepo,
             fakeThemeRepo,
+            fakeAnalyticsPrefs,
             mainDispatcherRule.testDispatcher,
         )
 
@@ -508,6 +512,70 @@ class SettingsViewModelTest {
             assertEquals(2, viewModel.activeRecurringCount.value)
             collectJob.cancel()
         }
+
+    // --- Analytics consent tests ---
+
+    @Test
+    fun analyticsConsent_defaultsToFalse() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            val viewModel = createViewModel()
+
+            val collectJob =
+                backgroundScope.launch {
+                    viewModel.analyticsConsent.collect {}
+                }
+            advanceUntilIdle()
+
+            assertEquals(false, viewModel.analyticsConsent.value)
+            collectJob.cancel()
+        }
+
+    @Test
+    fun setAnalyticsConsent_true_reflectsInStateFlow() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            val viewModel = createViewModel()
+
+            val collectJob =
+                backgroundScope.launch {
+                    viewModel.analyticsConsent.collect {}
+                }
+            advanceUntilIdle()
+
+            viewModel.setAnalyticsConsent(true)
+            advanceUntilIdle()
+
+            assertEquals(true, viewModel.analyticsConsent.value)
+            collectJob.cancel()
+        }
+
+    @Test
+    fun setAnalyticsConsent_false_reflectsInStateFlow() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            val viewModel = createViewModel()
+
+            val collectJob =
+                backgroundScope.launch {
+                    viewModel.analyticsConsent.collect {}
+                }
+            advanceUntilIdle()
+
+            viewModel.setAnalyticsConsent(true)
+            advanceUntilIdle()
+            viewModel.setAnalyticsConsent(false)
+            advanceUntilIdle()
+
+            assertEquals(false, viewModel.analyticsConsent.value)
+            collectJob.cancel()
+        }
+
+    private class FakeAnalyticsPreferences : AnalyticsPreferences {
+        private val consentState = MutableStateFlow(false)
+        override val analyticsConsent: Flow<Boolean> = consentState
+
+        override suspend fun setAnalyticsConsent(enabled: Boolean) {
+            consentState.value = enabled
+        }
+    }
 
     private class FakeRecurringTransactionRepository : RecurringTransactionRepository {
         val recurringFlow = MutableStateFlow<List<RecurringTransaction>>(emptyList())

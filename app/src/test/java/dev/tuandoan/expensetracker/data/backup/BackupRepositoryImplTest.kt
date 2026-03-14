@@ -11,6 +11,7 @@ import dev.tuandoan.expensetracker.data.database.entity.CurrencySumRow
 import dev.tuandoan.expensetracker.data.database.entity.RecurringTransactionEntity
 import dev.tuandoan.expensetracker.data.database.entity.TransactionEntity
 import dev.tuandoan.expensetracker.data.export.CsvExporter
+import dev.tuandoan.expensetracker.domain.crash.NoOpCrashReporter
 import dev.tuandoan.expensetracker.domain.repository.BackupProgress
 import dev.tuandoan.expensetracker.testutil.FakeCurrencyPreferenceRepository
 import dev.tuandoan.expensetracker.testutil.FakeTimeProvider
@@ -63,6 +64,7 @@ class BackupRepositoryImplTest {
                 transactionRunner = FakeTransactionRunner(),
                 currencyPreferenceRepository = fakeCurrencyPreferenceRepo,
                 csvExporter = CsvExporter(ZoneId.of("UTC")),
+                crashReporter = NoOpCrashReporter(),
             )
     }
 

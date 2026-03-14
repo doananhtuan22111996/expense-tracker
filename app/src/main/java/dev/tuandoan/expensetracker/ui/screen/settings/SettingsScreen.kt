@@ -32,8 +32,10 @@ import androidx.compose.material3.SegmentedButtonDefaults
 import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -72,7 +74,9 @@ fun SettingsScreen(
     val uiState by viewModel.uiState.collectAsState()
     val activeRecurringCount by viewModel.activeRecurringCount.collectAsState()
     val themePreference by viewModel.themePreference.collectAsState()
+    val analyticsConsent by viewModel.analyticsConsent.collectAsState()
     var showCurrencyDialog by remember { mutableStateOf(false) }
+    var showFeedbackSheet by remember { mutableStateOf(false) }
     val snackbarHostState = remember { SnackbarHostState() }
 
     val exportLauncher =
@@ -472,6 +476,37 @@ fun SettingsScreen(
                 )
             }
 
+            // Feedback Section
+            SettingsSection(title = stringResource(R.string.settings_send_feedback)) {
+                val feedbackLabel = stringResource(R.string.settings_send_feedback)
+                Row(
+                    modifier =
+                        Modifier
+                            .fillMaxWidth()
+                            .clickable { showFeedbackSheet = true }
+                            .padding(DesignSystemSpacing.large)
+                            .semantics {
+                                contentDescription = feedbackLabel
+                            },
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = stringResource(R.string.settings_send_feedback),
+                            style = MaterialTheme.typography.bodyLarge,
+                            fontWeight = FontWeight.Medium,
+                            color = MaterialTheme.colorScheme.onSurface,
+                        )
+                    }
+                    Icon(
+                        Icons.Default.KeyboardArrowRight,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+            }
+
             // App Information Section
             SettingsSection(title = "App Information") {
                 SettingsItem(
@@ -489,6 +524,37 @@ fun SettingsScreen(
 
             // Privacy Section
             SettingsSection(title = "Privacy") {
+                // Anonymous crash reporting toggle
+                Row(
+                    modifier =
+                        Modifier
+                            .fillMaxWidth()
+                            .padding(DesignSystemSpacing.large),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = stringResource(R.string.settings_analytics_title),
+                            style = MaterialTheme.typography.bodyLarge,
+                            fontWeight = FontWeight.Medium,
+                            color = MaterialTheme.colorScheme.onSurface,
+                        )
+                        Text(
+                            text = stringResource(R.string.settings_analytics_subtitle),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.padding(top = DesignSystemSpacing.xs),
+                        )
+                    }
+                    Switch(
+                        checked = analyticsConsent,
+                        onCheckedChange = { viewModel.setAnalyticsConsent(it) },
+                    )
+                }
+
+                HorizontalDivider()
+
                 Column(modifier = Modifier.padding(DesignSystemSpacing.large)) {
                     Text(
                         text = "Privacy Statement",
@@ -625,6 +691,17 @@ fun SettingsScreen(
                 TextButton(onClick = { viewModel.dismissRestoreConfirmation() }) {
                     Text("Cancel")
                 }
+            },
+        )
+    }
+
+    // Feedback Bottom Sheet
+    if (showFeedbackSheet) {
+        FeedbackBottomSheet(
+            sheetState = rememberModalBottomSheetState(),
+            onDismiss = { showFeedbackSheet = false },
+            onPositiveFeedback = {
+                // In-app review would be triggered here when Play Review is available
             },
         )
     }

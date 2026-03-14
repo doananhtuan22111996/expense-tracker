@@ -5,6 +5,7 @@ import android.net.Uri
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
+import dev.tuandoan.expensetracker.data.preferences.AnalyticsPreferences
 import dev.tuandoan.expensetracker.data.preferences.ThemePreference
 import dev.tuandoan.expensetracker.data.preferences.ThemePreferencesRepository
 import dev.tuandoan.expensetracker.di.IoDispatcher
@@ -37,6 +38,7 @@ class SettingsViewModel
         private val contentResolver: ContentResolver,
         private val recurringTransactionRepository: RecurringTransactionRepository,
         private val themePreferencesRepository: ThemePreferencesRepository,
+        private val analyticsPreferences: AnalyticsPreferences,
         @IoDispatcher private val ioDispatcher: CoroutineDispatcher,
     ) : ViewModel() {
         private val _uiState = MutableStateFlow(SettingsUiState())
@@ -46,6 +48,11 @@ class SettingsViewModel
         val themePreference: StateFlow<ThemePreference> =
             themePreferencesRepository.themePreference
                 .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000L), ThemePreference.SYSTEM)
+
+        /** Whether the user has opted in to anonymous crash reporting. */
+        val analyticsConsent: StateFlow<Boolean> =
+            analyticsPreferences.analyticsConsent
+                .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000L), false)
 
         /** Number of currently active recurring transactions. */
         val activeRecurringCount: StateFlow<Int> =
@@ -229,6 +236,12 @@ class SettingsViewModel
                         }
                     }
                 }
+        }
+
+        fun setAnalyticsConsent(enabled: Boolean) {
+            viewModelScope.launch {
+                analyticsPreferences.setAnalyticsConsent(enabled)
+            }
         }
 
         fun setTheme(pref: ThemePreference) {

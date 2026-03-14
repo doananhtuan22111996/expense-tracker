@@ -6,12 +6,14 @@ import androidx.work.CoroutineWorker
 import androidx.work.WorkerParameters
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedInject
+import dev.tuandoan.expensetracker.domain.crash.CrashReporter
 import dev.tuandoan.expensetracker.domain.repository.RecurringTransactionRepository
 import kotlin.coroutines.cancellation.CancellationException
 
 /**
  * WorkManager worker that processes due recurring transactions in the background.
  * Delegates to [RecurringTransactionRepository] to maintain MVVM layering.
+ * Non-fatal exceptions are reported via [CrashReporter] without leaking user data.
  */
 @HiltWorker
 class RecurringTransactionWorker
@@ -20,6 +22,7 @@ class RecurringTransactionWorker
         @Assisted appContext: Context,
         @Assisted workerParams: WorkerParameters,
         private val recurringTransactionRepository: RecurringTransactionRepository,
+        private val crashReporter: CrashReporter,
     ) : CoroutineWorker(appContext, workerParams) {
         override suspend fun doWork(): Result =
             @Suppress("TooGenericExceptionCaught")
@@ -28,7 +31,8 @@ class RecurringTransactionWorker
                 Result.success()
             } catch (e: CancellationException) {
                 throw e
-            } catch (_: Exception) {
+            } catch (e: Exception) {
+                crashReporter.recordException(e)
                 Result.retry()
             }
 
