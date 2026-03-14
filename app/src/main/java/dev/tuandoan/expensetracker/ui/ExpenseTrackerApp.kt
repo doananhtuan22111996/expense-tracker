@@ -25,6 +25,7 @@ import dev.tuandoan.expensetracker.ui.navigation.ModalDestination
 import dev.tuandoan.expensetracker.ui.navigation.ModalNavRoutes
 import dev.tuandoan.expensetracker.ui.screen.addedit.AddEditTransactionScreen
 import dev.tuandoan.expensetracker.ui.screen.categories.CategoriesScreen
+import dev.tuandoan.expensetracker.ui.screen.onboarding.OnboardingScreen
 import dev.tuandoan.expensetracker.ui.screen.recurring.AddEditRecurringTransactionScreen
 import dev.tuandoan.expensetracker.ui.screen.recurring.RecurringTransactionsScreen
 
@@ -33,15 +34,26 @@ import dev.tuandoan.expensetracker.ui.screen.recurring.RecurringTransactionsScre
  * Uses single NavHost with proper nested navigation for modal handling
  */
 @Composable
-fun ExpenseTrackerApp() {
+fun ExpenseTrackerApp(isOnboardingComplete: Boolean = true) {
     val navController = rememberNavController()
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentDestination = navBackStackEntry?.destination
+    val startDestination = if (isOnboardingComplete) "Home" else "Onboarding"
     NavHost(
         navController = navController,
-        startDestination = "Home",
+        startDestination = startDestination,
         modifier = Modifier.fillMaxSize(),
     ) {
+        composable("Onboarding") {
+            OnboardingScreen(
+                onComplete = {
+                    navController.navigate("Home") {
+                        popUpTo("Onboarding") { inclusive = true }
+                    }
+                },
+            )
+        }
+
         composable("Home") {
             Home(
                 onNavigateToAddTransaction = {
