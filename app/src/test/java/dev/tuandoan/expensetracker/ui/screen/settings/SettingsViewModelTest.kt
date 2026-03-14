@@ -4,6 +4,8 @@ import android.content.ContentResolver
 import android.net.Uri
 import dev.tuandoan.expensetracker.data.backup.BackupValidationError
 import dev.tuandoan.expensetracker.data.backup.BackupValidationException
+import dev.tuandoan.expensetracker.data.preferences.FakeThemePreferencesRepository
+import dev.tuandoan.expensetracker.data.preferences.ThemePreference
 import dev.tuandoan.expensetracker.domain.model.RecurringTransaction
 import dev.tuandoan.expensetracker.domain.model.SupportedCurrencies
 import dev.tuandoan.expensetracker.domain.repository.BackupRepository
@@ -35,6 +37,7 @@ class SettingsViewModelTest {
     private lateinit var fakeCurrencyPreferenceRepo: FakeCurrencyPreferenceRepository
     private lateinit var fakeBackupRepository: FakeBackupRepository
     private lateinit var fakeRecurringRepo: FakeRecurringTransactionRepository
+    private lateinit var fakeThemeRepo: FakeThemePreferencesRepository
     private lateinit var mockContentResolver: ContentResolver
     private lateinit var mockUri: Uri
 
@@ -43,6 +46,7 @@ class SettingsViewModelTest {
         fakeCurrencyPreferenceRepo = FakeCurrencyPreferenceRepository()
         fakeBackupRepository = FakeBackupRepository()
         fakeRecurringRepo = FakeRecurringTransactionRepository()
+        fakeThemeRepo = FakeThemePreferencesRepository()
         mockContentResolver = Mockito.mock(ContentResolver::class.java)
         mockUri = Mockito.mock(Uri::class.java)
     }
@@ -53,8 +57,62 @@ class SettingsViewModelTest {
             fakeBackupRepository,
             mockContentResolver,
             fakeRecurringRepo,
+            fakeThemeRepo,
             mainDispatcherRule.testDispatcher,
         )
+
+    // --- Theme tests ---
+
+    @Test
+    fun themePreference_defaultsToSystem() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            val viewModel = createViewModel()
+
+            val collectJob =
+                backgroundScope.launch {
+                    viewModel.themePreference.collect {}
+                }
+            advanceUntilIdle()
+
+            assertEquals(ThemePreference.SYSTEM, viewModel.themePreference.value)
+            collectJob.cancel()
+        }
+
+    @Test
+    fun setTheme_light_delegatesToRepository() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            val viewModel = createViewModel()
+
+            val collectJob =
+                backgroundScope.launch {
+                    viewModel.themePreference.collect {}
+                }
+            advanceUntilIdle()
+
+            viewModel.setTheme(ThemePreference.LIGHT)
+            advanceUntilIdle()
+
+            assertEquals(ThemePreference.LIGHT, viewModel.themePreference.value)
+            collectJob.cancel()
+        }
+
+    @Test
+    fun setTheme_dark_reflectsInStateFlow() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            val viewModel = createViewModel()
+
+            val collectJob =
+                backgroundScope.launch {
+                    viewModel.themePreference.collect {}
+                }
+            advanceUntilIdle()
+
+            viewModel.setTheme(ThemePreference.DARK)
+            advanceUntilIdle()
+
+            assertEquals(ThemePreference.DARK, viewModel.themePreference.value)
+            collectJob.cancel()
+        }
 
     // --- Currency tests ---
 

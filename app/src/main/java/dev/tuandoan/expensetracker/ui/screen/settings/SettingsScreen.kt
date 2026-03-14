@@ -22,10 +22,14 @@ import androidx.compose.material.icons.filled.KeyboardArrowRight
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.SegmentedButton
+import androidx.compose.material3.SegmentedButtonDefaults
+import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
@@ -46,6 +50,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.hilt.navigation.compose.hiltViewModel
 import dev.tuandoan.expensetracker.R
 import dev.tuandoan.expensetracker.core.util.AppInfo
+import dev.tuandoan.expensetracker.data.preferences.ThemePreference
 import dev.tuandoan.expensetracker.domain.model.CurrencyDefinition
 import dev.tuandoan.expensetracker.domain.model.SupportedCurrencies
 import dev.tuandoan.expensetracker.ui.component.SectionHeader
@@ -56,6 +61,7 @@ import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SettingsScreen(
     modifier: Modifier = Modifier,
@@ -65,6 +71,7 @@ fun SettingsScreen(
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val activeRecurringCount by viewModel.activeRecurringCount.collectAsState()
+    val themePreference by viewModel.themePreference.collectAsState()
     var showCurrencyDialog by remember { mutableStateOf(false) }
     val snackbarHostState = remember { SnackbarHostState() }
 
@@ -116,6 +123,47 @@ fun SettingsScreen(
 
             // Preferences Section
             SettingsSection(title = "Preferences") {
+                // Theme picker
+                Column(
+                    modifier =
+                        Modifier
+                            .fillMaxWidth()
+                            .padding(DesignSystemSpacing.large),
+                ) {
+                    Text(
+                        text = stringResource(R.string.settings_theme_title),
+                        style = MaterialTheme.typography.bodyLarge,
+                        fontWeight = FontWeight.Medium,
+                        color = MaterialTheme.colorScheme.onSurface,
+                        modifier = Modifier.padding(bottom = DesignSystemSpacing.small),
+                    )
+
+                    val themeOptions =
+                        listOf(
+                            ThemePreference.LIGHT to stringResource(R.string.settings_theme_light),
+                            ThemePreference.DARK to stringResource(R.string.settings_theme_dark),
+                            ThemePreference.SYSTEM to stringResource(R.string.settings_theme_system),
+                        )
+
+                    SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
+                        themeOptions.forEachIndexed { index, (pref, label) ->
+                            SegmentedButton(
+                                selected = themePreference == pref,
+                                onClick = { viewModel.setTheme(pref) },
+                                shape =
+                                    SegmentedButtonDefaults.itemShape(
+                                        index = index,
+                                        count = themeOptions.size,
+                                    ),
+                            ) {
+                                Text(text = label)
+                            }
+                        }
+                    }
+                }
+
+                HorizontalDivider()
+
                 val selectedCurrency = SupportedCurrencies.byCode(uiState.selectedCurrencyCode)
                 val displayText =
                     if (selectedCurrency != null) {
