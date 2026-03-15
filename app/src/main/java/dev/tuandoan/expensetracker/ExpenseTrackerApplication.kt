@@ -9,8 +9,10 @@ import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.WorkManager
 import dagger.hilt.android.HiltAndroidApp
+import dev.tuandoan.expensetracker.data.preferences.AnalyticsPreferences
 import dev.tuandoan.expensetracker.data.seed.SeedRepository
 import dev.tuandoan.expensetracker.data.worker.RecurringTransactionWorker
+import dev.tuandoan.expensetracker.domain.crash.CrashReporter
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
@@ -26,6 +28,12 @@ class ExpenseTrackerApplication :
 
     @Inject
     lateinit var workerFactory: HiltWorkerFactory
+
+    @Inject
+    lateinit var analyticsPreferences: AnalyticsPreferences
+
+    @Inject
+    lateinit var crashReporter: CrashReporter
 
     private val applicationScope = CoroutineScope(SupervisorJob())
 
@@ -44,6 +52,14 @@ class ExpenseTrackerApplication :
         applicationScope.launch {
             seedRepository.seedDatabaseIfNeeded()
             scheduleRecurringWork()
+        }
+
+        // Observe analytics consent and enable/disable crash reporting accordingly.
+        // Crash reporting is disabled by default until the user explicitly opts in.
+        applicationScope.launch {
+            analyticsPreferences.analyticsConsent.collect { consent ->
+                crashReporter.setCollectionEnabled(consent)
+            }
         }
     }
 

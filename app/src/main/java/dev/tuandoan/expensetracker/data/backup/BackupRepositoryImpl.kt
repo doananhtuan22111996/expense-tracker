@@ -11,6 +11,7 @@ import dev.tuandoan.expensetracker.data.database.dao.RecurringTransactionDao
 import dev.tuandoan.expensetracker.data.database.dao.TransactionDao
 import dev.tuandoan.expensetracker.data.export.CsvExporter
 import dev.tuandoan.expensetracker.data.export.TransactionWithCategory
+import dev.tuandoan.expensetracker.domain.crash.CrashReporter
 import dev.tuandoan.expensetracker.domain.model.SupportedCurrencies
 import dev.tuandoan.expensetracker.domain.repository.BackupProgress
 import dev.tuandoan.expensetracker.domain.repository.BackupRepository
@@ -39,6 +40,7 @@ class BackupRepositoryImpl
         private val transactionRunner: TransactionRunner,
         private val currencyPreferenceRepository: CurrencyPreferenceRepository,
         private val csvExporter: CsvExporter,
+        private val crashReporter: CrashReporter,
     ) : BackupRepository {
         override suspend fun exportBackupJson(): String {
             val document = buildExportDocument()
@@ -66,24 +68,39 @@ class BackupRepositoryImpl
         override suspend fun importBackup(
             inputStream: InputStream,
             onProgress: suspend (BackupProgress) -> Unit,
-        ): BackupRestoreResult {
-            val decompressed = decompressIfGzip(inputStream)
-            val document =
-                backupSerializer.decodeFromStream(decompressed)
-                    ?: throw IllegalArgumentException("Invalid backup file format")
-            return performImport(document, onProgress)
-        }
+        ): BackupRestoreResult =
+            @Suppress("TooGenericExceptionCaught")
+            try {
+                val decompressed = decompressIfGzip(inputStream)
+                val document =
+                    backupSerializer.decodeFromStream(decompressed)
+                        ?: throw IllegalArgumentException("Invalid backup file format")
+                performImport(document, onProgress)
+            } catch (e: kotlin.coroutines.cancellation.CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                crashReporter.recordException(e)
+                throw e
+            }
 
         override suspend fun exportCsv(outputStream: OutputStream) {
-            val allTransactions = transactionDao.getAllOrdered()
-            val transactionsWithCategory =
-                allTransactions.map { entity ->
-                    TransactionWithCategory(
-                        transaction = entity,
-                        categoryName = categoryDao.getById(entity.categoryId)?.name ?: "Unknown",
-                    )
-                }
-            csvExporter.export(transactionsWithCategory, outputStream)
+            @Suppress("TooGenericExceptionCaught")
+            try {
+                val allTransactions = transactionDao.getAllOrdered()
+                val transactionsWithCategory =
+                    allTransactions.map { entity ->
+                        TransactionWithCategory(
+                            transaction = entity,
+                            categoryName = categoryDao.getById(entity.categoryId)?.name ?: "Unknown",
+                        )
+                    }
+                csvExporter.export(transactionsWithCategory, outputStream)
+            } catch (e: kotlin.coroutines.cancellation.CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                crashReporter.recordException(e)
+                throw e
+            }
         }
 
         private suspend fun buildExportDocument(): BackupDocumentV1 {

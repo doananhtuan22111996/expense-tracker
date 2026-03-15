@@ -103,4 +103,19 @@
     <string name="color_purple">Purple</string>
     <string name="color_yellow">Yellow</string>
     <string name="color_teal">Teal</string>
+
+    <!-- Feedback -->
+    <string name="settings_send_feedback">Send Feedback</string>
+    <string name="feedback_loving_it">Loving it!</string>
+    <string name="feedback_found_issue">Found an issue</string>
+    <string name="feedback_describe_issue">Describe the issue</string>
+    <string name="feedback_send">Send</string>
+    <string name="feedback_cancel">Cancel</string>
+    <string name="feedback_thanks">Thanks for your feedback!</string>
+    <string name="feedback_email_subject">Expense Tracker Feedback</string>
+    <string name="feedback_email_body_prefix">App Version: %1$s\nDevice: %2$s\nAndroid: %3$s\n\n</string>
+
+    <!-- Analytics / Crash Reporting -->
+    <string name="settings_analytics_title">Share anonymous crash reports</string>
+    <string name="settings_analytics_subtitle">Help improve the app by sharing crash data. No personal information is collected.</string>
 </resources>
