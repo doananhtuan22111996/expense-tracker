@@ -180,7 +180,7 @@ private fun sendFeedbackEmail(
     val intent =
         Intent(Intent.ACTION_SENDTO).apply {
             data = Uri.parse("mailto:")
-            putExtra(Intent.EXTRA_EMAIL, arrayOf("support@tuandoan.dev"))
+            putExtra(Intent.EXTRA_EMAIL, arrayOf("doananhtuan22111996@gmail.com"))
             putExtra(Intent.EXTRA_SUBJECT, subject)
             putExtra(Intent.EXTRA_TEXT, fullBody)
         }
