@@ -23,6 +23,7 @@ class MainActivity : ComponentActivity() {
     @Inject
     lateinit var onboardingRepository: OnboardingRepository
 
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
@@ -32,6 +33,7 @@ class MainActivity : ComponentActivity() {
 
             val isOnboardingComplete by onboardingRepository.isOnboardingComplete
                 .collectAsStateWithLifecycle(initialValue = true)
+
 
             val darkTheme =
                 when (themePreference) {
