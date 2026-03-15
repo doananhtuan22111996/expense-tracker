@@ -23,7 +23,9 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -69,11 +71,25 @@ fun DonutChart(
             categories.map { it.category.colorKey },
         )
 
+    val chartDescription =
+        stringResource(
+            R.string.a11y_donut_chart_description,
+            buildString {
+                categories.forEachIndexed { _, ct ->
+                    val pct = (ct.total / total * 100f).toInt()
+                    append("${ct.category.name}: $pct%. ")
+                }
+            },
+        )
+
     Column(
         modifier =
             modifier
                 .fillMaxWidth()
-                .semantics { contentDescription = "Expense distribution chart" },
+                .semantics {
+                    contentDescription = chartDescription
+                    role = Role.Image
+                },
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         val strokeWidth = 32.dp
