@@ -73,4 +73,15 @@
     <string name="settings_theme_light">Light</string>
     <string name="settings_theme_dark">Dark</string>
     <string name="settings_theme_system">System</string>
+    <string name="onboarding_title_welcome">Welcome to Expense Tracker</string>
+    <string name="onboarding_subtitle_welcome">Take control of your finances with a simple, private expense tracker that lives on your device.</string>
+    <string name="onboarding_title_transactions">Track Every Transaction</string>
+    <string name="onboarding_subtitle_transactions">Log income and expenses in multiple currencies with custom categories and notes.</string>
+    <string name="onboarding_title_budget">Set Budgets</string>
+    <string name="onboarding_subtitle_budget">Define monthly spending limits and get visual progress indicators to stay on track.</string>
+    <string name="onboarding_title_backup">Backup Your Data</string>
+    <string name="onboarding_subtitle_backup">Export your data as JSON or CSV. Your data stays on your device — no account needed.</string>
+    <string name="onboarding_next">Next</string>
+    <string name="onboarding_skip">Skip</string>
+    <string name="onboarding_get_started">Get Started</string>
 </resources>
