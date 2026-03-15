@@ -1,0 +1,7 @@
+New in v3.2.5:
+- Dark Mode: switch between Light, Dark, or System theme
+- Onboarding: quick 4-step walkthrough for new users
+- Accessibility: WCAG AA with TalkBack support for charts, icons, and touch targets
+- Feedback: rate the app or report issues directly from Settings
+- Privacy: opt-in crash reporting with no personal data collected
+- Store listing: optimised descriptions in English and Vietnamese

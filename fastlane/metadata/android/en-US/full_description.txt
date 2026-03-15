@@ -1,0 +1,15 @@
+Take control of your finances with Expense Tracker — the simplest way to log
+daily expenses, monitor budgets, and manage money in multiple currencies.
+
+✅ Multi-currency: VND, USD, EUR, JPY, KRW, SGD
+✅ Beautiful charts — donut & bar summaries by month/year
+✅ Recurring transactions — automate rent, subscriptions & bills
+✅ Budget alerts — monthly limits per currency
+✅ Custom categories — organize spending your way
+✅ Dark mode — easy on the eyes, day or night
+✅ Cloud backup — never lose your data
+✅ CSV export — analyze in Excel
+
+Your financial data stays on your device. No account. No ads. Anonymous crash reports are opt-in only.
+
+Download free and start tracking today.

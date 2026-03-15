@@ -1,0 +1,15 @@
+Kiểm soát tài chính với Expense Tracker — cách đơn giản nhất để ghi chép
+chi tiêu hàng ngày, theo dõi ngân sách và quản lý tiền đa tiền tệ.
+
+✅ Đa tiền tệ: VND, USD, EUR, JPY, KRW, SGD
+✅ Biểu đồ đẹp — tổng hợp theo tháng/năm
+✅ Giao dịch định kỳ — tự động hóa tiền thuê, đăng ký & hóa đơn
+✅ Cảnh báo ngân sách — giới hạn chi tiêu hàng tháng
+✅ Danh mục tùy chỉnh — sắp xếp chi tiêu theo cách của bạn
+✅ Chế độ tối — dễ chịu cho mắt, ngày hay đêm
+✅ Sao lưu dữ liệu — không bao giờ mất dữ liệu
+✅ Xuất CSV — phân tích trong Excel
+
+Dữ liệu tài chính ở trên thiết bị. Không tài khoản. Không quảng cáo. Báo cáo lỗi ẩn danh chỉ khi bạn đồng ý.
+
+Tải miễn phí và bắt đầu theo dõi ngay hôm nay.
