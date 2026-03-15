@@ -69,4 +69,8 @@
     <string name="categories_section_custom">Custom</string>
     <string name="recurring_active_count">%1$d active</string>
     <string name="recurring_none_set">None set</string>
+    <string name="settings_theme_title">Theme</string>
+    <string name="settings_theme_light">Light</string>
+    <string name="settings_theme_dark">Dark</string>
+    <string name="settings_theme_system">System</string>
 </resources>

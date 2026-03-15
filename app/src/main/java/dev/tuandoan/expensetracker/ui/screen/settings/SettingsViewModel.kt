@@ -5,6 +5,8 @@ import android.net.Uri
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
+import dev.tuandoan.expensetracker.data.preferences.ThemePreference
+import dev.tuandoan.expensetracker.data.preferences.ThemePreferencesRepository
 import dev.tuandoan.expensetracker.di.IoDispatcher
 import dev.tuandoan.expensetracker.domain.model.CurrencyDefinition
 import dev.tuandoan.expensetracker.domain.model.SupportedCurrencies
@@ -34,11 +36,16 @@ class SettingsViewModel
         private val backupRepository: BackupRepository,
         private val contentResolver: ContentResolver,
         private val recurringTransactionRepository: RecurringTransactionRepository,
+        private val themePreferencesRepository: ThemePreferencesRepository,
         @IoDispatcher private val ioDispatcher: CoroutineDispatcher,
     ) : ViewModel() {
         private val _uiState = MutableStateFlow(SettingsUiState())
         val uiState: StateFlow<SettingsUiState> = _uiState.asStateFlow()
         private var backupJob: Job? = null
+
+        val themePreference: StateFlow<ThemePreference> =
+            themePreferencesRepository.themePreference
+                .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000L), ThemePreference.SYSTEM)
 
         /** Number of currently active recurring transactions. */
         val activeRecurringCount: StateFlow<Int> =
@@ -222,6 +229,12 @@ class SettingsViewModel
                         }
                     }
                 }
+        }
+
+        fun setTheme(pref: ThemePreference) {
+            viewModelScope.launch {
+                themePreferencesRepository.setTheme(pref)
+            }
         }
 
         fun cancelOperation() {
