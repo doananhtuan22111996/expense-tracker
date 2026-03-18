@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
@@ -77,7 +78,7 @@ fun OnboardingScreen(
     val coroutineScope = rememberCoroutineScope()
     val isLastPage = pagerState.currentPage == pages.size - 1
 
-    Box(modifier = modifier.fillMaxSize()) {
+    Box(modifier = modifier.fillMaxSize().safeDrawingPadding()) {
         // Skip button (top-right, hidden on last page)
         if (!isLastPage) {
             TextButton(

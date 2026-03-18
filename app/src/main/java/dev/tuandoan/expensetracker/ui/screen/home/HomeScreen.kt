@@ -3,8 +3,8 @@ package dev.tuandoan.expensetracker.ui.screen.home
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -22,15 +22,18 @@ import androidx.compose.material.icons.rounded.ArrowUpward
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
+import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -62,6 +65,7 @@ import dev.tuandoan.expensetracker.ui.component.MonthYearPickerDialog
 import dev.tuandoan.expensetracker.ui.theme.DesignSystemElevation
 import dev.tuandoan.expensetracker.ui.theme.DesignSystemSpacing
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HomeScreen(
     onNavigateToAddTransaction: () -> Unit,
@@ -88,12 +92,36 @@ fun HomeScreen(
         )
     }
 
-    Box(modifier = modifier.fillMaxSize()) {
+    val hapticFeedback = LocalHapticFeedback.current
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                title = { Text(stringResource(R.string.app_name)) },
+            )
+        },
+        floatingActionButton = {
+            FloatingActionButton(
+                onClick = {
+                    hapticFeedback.performHapticFeedback(HapticFeedbackType.LongPress)
+                    onNavigateToAddTransaction()
+                },
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Add,
+                    contentDescription = "Add new transaction",
+                )
+            }
+        },
+        snackbarHost = { SnackbarHost(snackbarHostState) },
+        contentWindowInsets = WindowInsets(0, 0, 0, 0),
+        modifier = modifier,
+    ) { innerPadding ->
         Column(
             modifier =
                 Modifier
                     .fillMaxSize()
-                    .padding(DesignSystemSpacing.screenPadding),
+                    .padding(innerPadding)
+                    .padding(horizontal = DesignSystemSpacing.screenPadding),
         ) {
             // Month selector
             MonthSelector(
@@ -158,30 +186,6 @@ fun HomeScreen(
                 }
             }
         }
-
-        // FAB
-        val hapticFeedback = LocalHapticFeedback.current
-        FloatingActionButton(
-            onClick = {
-                hapticFeedback.performHapticFeedback(HapticFeedbackType.LongPress)
-                onNavigateToAddTransaction()
-            },
-            modifier =
-                Modifier
-                    .align(Alignment.BottomEnd)
-                    .padding(DesignSystemSpacing.large),
-        ) {
-            Icon(
-                imageVector = Icons.Default.Add,
-                contentDescription = "Add new transaction",
-            )
-        }
-
-        // Snackbar
-        SnackbarHost(
-            hostState = snackbarHostState,
-            modifier = Modifier.align(Alignment.BottomCenter),
-        )
     }
 }
 
@@ -272,12 +276,6 @@ private fun TransactionsList(
 ) {
     LazyColumn(
         verticalArrangement = Arrangement.spacedBy(DesignSystemSpacing.listItemSpacing),
-        contentPadding =
-            PaddingValues(
-                bottom =
-                    DesignSystemSpacing.xxl + DesignSystemSpacing.xxl + DesignSystemSpacing.large,
-            ),
-        // Leave space for FAB
         modifier = modifier,
     ) {
         items(transactions, key = { it.id }) { transaction ->
