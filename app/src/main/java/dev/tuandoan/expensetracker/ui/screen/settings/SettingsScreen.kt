@@ -119,6 +119,7 @@ fun SettingsScreen(
         topBar = {
             TopAppBar(
                 title = { Text(stringResource(R.string.screen_title_settings)) },
+                windowInsets = WindowInsets(0, 0, 0, 0),
             )
         },
         snackbarHost = { SnackbarHost(snackbarHostState) },

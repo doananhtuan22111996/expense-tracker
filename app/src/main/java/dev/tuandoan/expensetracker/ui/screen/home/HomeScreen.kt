@@ -97,6 +97,7 @@ fun HomeScreen(
         topBar = {
             TopAppBar(
                 title = { Text(stringResource(R.string.app_name)) },
+                windowInsets = WindowInsets(0, 0, 0, 0),
             )
         },
         floatingActionButton = {

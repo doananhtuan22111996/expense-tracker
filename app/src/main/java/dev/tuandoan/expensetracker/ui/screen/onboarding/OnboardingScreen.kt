@@ -10,7 +10,6 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
@@ -22,6 +21,7 @@ import androidx.compose.material.icons.outlined.Savings
 import androidx.compose.material3.Button
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -78,77 +78,81 @@ fun OnboardingScreen(
     val coroutineScope = rememberCoroutineScope()
     val isLastPage = pagerState.currentPage == pages.size - 1
 
-    Box(modifier = modifier.fillMaxSize().safeDrawingPadding()) {
-        // Skip button (top-right, hidden on last page)
-        if (!isLastPage) {
-            TextButton(
-                onClick = {
-                    viewModel.completeOnboarding()
-                    onComplete()
-                },
-                modifier =
-                    Modifier
-                        .align(Alignment.TopEnd)
-                        .padding(DesignSystemSpacing.large),
-            ) {
-                Text(text = stringResource(R.string.onboarding_skip))
-            }
-        }
-
-        Column(
-            modifier = Modifier.fillMaxSize(),
-            horizontalAlignment = Alignment.CenterHorizontally,
-        ) {
-            HorizontalPager(
-                state = pagerState,
-                modifier = Modifier.weight(1f),
-            ) { page ->
-                OnboardingPageContent(pages[page])
-            }
-
-            // Page indicator dots
-            Row(
-                modifier = Modifier.padding(bottom = DesignSystemSpacing.large),
-                horizontalArrangement = Arrangement.spacedBy(DesignSystemSpacing.small),
-            ) {
-                repeat(pages.size) { index ->
-                    PageIndicatorDot(isSelected = pagerState.currentPage == index)
-                }
-            }
-
-            // Bottom button
-            if (isLastPage) {
-                Button(
+    Scaffold(
+        modifier = modifier,
+    ) { innerPadding ->
+        Box(modifier = Modifier.fillMaxSize().padding(innerPadding)) {
+            // Skip button (top-right, hidden on last page)
+            if (!isLastPage) {
+                TextButton(
                     onClick = {
                         viewModel.completeOnboarding()
                         onComplete()
                     },
                     modifier =
                         Modifier
-                            .fillMaxWidth()
-                            .padding(
-                                horizontal = DesignSystemSpacing.xl,
-                                vertical = DesignSystemSpacing.large,
-                            ),
+                            .align(Alignment.TopEnd)
+                            .padding(DesignSystemSpacing.large),
                 ) {
-                    Text(text = stringResource(R.string.onboarding_get_started))
+                    Text(text = stringResource(R.string.onboarding_skip))
                 }
-            } else {
-                Button(
-                    onClick = {
-                        coroutineScope.launch {
-                            pagerState.animateScrollToPage(pagerState.currentPage + 1)
-                        }
-                    },
-                    modifier =
-                        Modifier
-                            .fillMaxWidth()
-                            .padding(
-                                horizontal = DesignSystemSpacing.xl,
-                                vertical = DesignSystemSpacing.large,
-                            ),
+            }
+
+            Column(
+                modifier = Modifier.fillMaxSize(),
+                horizontalAlignment = Alignment.CenterHorizontally,
+            ) {
+                HorizontalPager(
+                    state = pagerState,
+                    modifier = Modifier.weight(1f),
+                ) { page ->
+                    OnboardingPageContent(pages[page])
+                }
+
+                // Page indicator dots
+                Row(
+                    modifier = Modifier.padding(bottom = DesignSystemSpacing.large),
+                    horizontalArrangement = Arrangement.spacedBy(DesignSystemSpacing.small),
                 ) {
-                    Text(text = stringResource(R.string.onboarding_next))
+                    repeat(pages.size) { index ->
+                        PageIndicatorDot(isSelected = pagerState.currentPage == index)
+                    }
+                }
+
+                // Bottom button
+                if (isLastPage) {
+                    Button(
+                        onClick = {
+                            viewModel.completeOnboarding()
+                            onComplete()
+                        },
+                        modifier =
+                            Modifier
+                                .fillMaxWidth()
+                                .padding(
+                                    horizontal = DesignSystemSpacing.xl,
+                                    vertical = DesignSystemSpacing.large,
+                                ),
+                    ) {
+                        Text(text = stringResource(R.string.onboarding_get_started))
+                    }
+                } else {
+                    Button(
+                        onClick = {
+                            coroutineScope.launch {
+                                pagerState.animateScrollToPage(pagerState.currentPage + 1)
+                            }
+                        },
+                        modifier =
+                            Modifier
+                                .fillMaxWidth()
+                                .padding(
+                                    horizontal = DesignSystemSpacing.xl,
+                                    vertical = DesignSystemSpacing.large,
+                                ),
+                    ) {
+                        Text(text = stringResource(R.string.onboarding_next))
+                    }
                 }
             }
         }

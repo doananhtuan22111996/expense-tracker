@@ -11,22 +11,31 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Development Workflow
 
-Every feature goes through these stages in order:
+Every feature goes through these stages in order. **I automatically detect the relevant stage(s) from your prompt and apply them — no slash command needed.** Slash commands are still available as shortcuts if you prefer explicit control.
 
-```
-STAGE 1  IDEATION       → raw idea, problem statement, goals
-STAGE 2  PRD            → requirements, user stories, acceptance criteria → Notion
-STAGE 3  BREAKDOWN      → epics → features → milestones → release plan → Notion
-STAGE 4  TASKS          → actionable tasks with estimates → Notion (tracked)
-STAGE 5  DESIGN         → UI/UX concepts, component design, screen flows → Notion
-STAGE 6  ARCHITECTURE   → approach decision, patterns, trade-offs, ADR → Notion
-STAGE 7  IMPLEMENTATION → Android code, production quality
-STAGE 8  CODE REVIEW    → self-review: logic, security, perf, edge cases
-STAGE 9  TESTING        → unit tests, manual plan, UI tests, automation
-STAGE 10 GIT & PR       → Conventional Commits, PR description, CI pass, merge
-STAGE 11 RELEASE        → release notes, version bump, Play Store
-STAGE 12 DOCUMENTATION  → document all learnings, decisions, changes → Notion
-```
+| Stage | Trigger (when your prompt is about...) | What I do | Slash shortcut |
+|---|---|---|---|
+| 1. IDEATION | A raw idea, problem, or "what if" | Evaluate feasibility, goals, risks | `/idea` |
+| 2. PRD | Requirements, user stories, acceptance criteria | Write a full PRD (Notion-ready) | `/prd` |
+| 3. BREAKDOWN | Splitting a feature into tasks, estimating work | Epics → features → milestones → release plan | `/breakdown` |
+| 4. TASKS | Actionable task lists with estimates | Produce task list for Notion | (part of `/breakdown`) |
+| 5. DESIGN | UI/UX, screens, flows, components | Design concept with flows and component specs | `/design` |
+| 6. ARCHITECTURE | Technical approach, patterns, trade-offs | Write an ADR | `/arch` |
+| 7. IMPLEMENTATION | Building a feature, writing code, fixing bugs | Explore → plan → implement production-quality code | `/impl` |
+| 8. CODE REVIEW | Reviewing changes, checking quality | Run self-review checklist (logic, security, perf, edge cases) | `/review` |
+| 9. TESTING | Writing tests, test plans, coverage | Produce test plan + write unit tests | `/test` |
+| 10. GIT & PR | Committing, branching, creating PRs | Conventional Commits, generate PR title + body | `/pr` |
+| 11. RELEASE | Releasing a version, changelogs | Release notes, version bump guidance | `/release` |
+| 12. DOCUMENTATION | Documenting decisions, learnings | Format into Notion-ready doc | `/doc` |
+
+**Multi-stage flows:** When a prompt spans multiple stages (e.g., "implement and test this feature"), I execute them in order and clearly label each stage in my response.
+
+**Stage detection rules:**
+- If you give a feature description without specifying a stage → I start at the earliest applicable stage and ask if you want to continue to the next
+- If you say "implement X" → Stage 7 (I explore first, then code)
+- If you say "review" or share code for feedback → Stage 8
+- If you push code or say "ready to commit/PR" → Stage 10
+- If ambiguous → I ask one clarifying question before proceeding
 
 ## Build & Development Commands
 
@@ -197,27 +206,13 @@ Every doc saved to Notion:
 - **Decisions**: explicitly call out decisions made and WHY
 - Tables and headers for structure
 
-## Available Slash Commands
+## Additional Slash Commands
 
-### Shared
+These commands don't map to a workflow stage but are available as shortcuts:
+
 ```
-/idea       → Capture and evaluate a raw idea
-/prd        → Write a Product Requirements Document
-/breakdown  → Break a feature/epic into tasks + estimates
 /roadmap    → Plan milestones and release timeline
-/design     → UI/UX design concept: flows, components, screens
-/arch       → Architecture Decision Record (ADR)
-/pr         → Generate PR title + body
-/release    → Generate release notes for a version
-/doc        → Format notes/decisions into Notion-ready documentation
 /standup    → Generate standup update from current context
-```
-
-### Android
-```
-/impl       → Android implementation plan (Kotlin/Compose/MVVM)
-/review     → Android self-code review checklist
-/test       → Android test plan (JUnit + MockK + Turbine + Compose)
 /debug      → Android debug session (ADB, Logcat, Coroutines)
 /perf       → Android performance audit (Compose, Room, memory)
 /deps       → Gradle dependency management (libs.versions.toml)
@@ -227,10 +222,11 @@ Every doc saved to Notion:
 
 When receiving any task I automatically:
 1. Read this `CLAUDE.md` first — understand conventions
-2. Explore relevant files before writing any code
-3. Think about edge cases, error states, and failure paths
-4. Follow existing patterns; introduce new ones only when clearly better
-5. Use English for all output
+2. **Detect the workflow stage(s)** from the prompt and apply them
+3. Explore relevant files before writing any code
+4. Think about edge cases, error states, and failure paths
+5. Follow existing patterns; introduce new ones only when clearly better
+6. Use English for all output
 
 ## When In Doubt
 

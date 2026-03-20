@@ -93,6 +93,7 @@ fun SummaryScreen(
         topBar = {
             TopAppBar(
                 title = { Text(stringResource(R.string.screen_title_summary)) },
+                windowInsets = WindowInsets(0, 0, 0, 0),
             )
         },
         contentWindowInsets = WindowInsets(0, 0, 0, 0),
