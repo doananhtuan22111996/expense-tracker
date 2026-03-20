@@ -5,6 +5,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -16,11 +17,14 @@ import androidx.compose.material.icons.outlined.AccountBalanceWallet
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -56,6 +60,7 @@ import dev.tuandoan.expensetracker.ui.component.SetBudgetDialog
 import dev.tuandoan.expensetracker.ui.theme.DesignSystemElevation
 import dev.tuandoan.expensetracker.ui.theme.DesignSystemSpacing
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SummaryScreen(
     viewModel: SummaryViewModel,
@@ -84,74 +89,95 @@ fun SummaryScreen(
         )
     }
 
-    Box(modifier = modifier.fillMaxSize()) {
-        when {
-            uiState.isLoading -> {
-                Box(
-                    modifier = Modifier.fillMaxSize(),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    CircularProgressIndicator()
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                title = { Text(stringResource(R.string.screen_title_summary)) },
+                windowInsets = WindowInsets(0, 0, 0, 0),
+            )
+        },
+        contentWindowInsets = WindowInsets(0, 0, 0, 0),
+        modifier = modifier,
+    ) { innerPadding ->
+        Box(
+            modifier =
+                Modifier
+                    .fillMaxSize()
+                    .padding(innerPadding),
+        ) {
+            when {
+                uiState.isLoading -> {
+                    Box(
+                        modifier = Modifier.fillMaxSize(),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        CircularProgressIndicator()
+                    }
                 }
-            }
-            uiState.isError -> {
-                ErrorStateMessage(
-                    title = "Unable to load summary",
-                    message = uiState.errorMessage ?: "Failed to load financial data. Please try again.",
-                    onRetry = viewModel::refresh,
-                    retryButtonText = "Retry",
-                    modifier = Modifier.fillMaxSize(),
-                )
-            }
-            uiState.summary == null || uiState.summary?.isEmpty != false -> {
-                Column(modifier = Modifier.fillMaxSize()) {
-                    Column(modifier = Modifier.padding(DesignSystemSpacing.screenPadding)) {
-                        SummaryModeChips(
-                            mode = uiState.mode,
-                            onModeChanged = viewModel::setMode,
+                uiState.isError -> {
+                    ErrorStateMessage(
+                        title = "Unable to load summary",
+                        message = uiState.errorMessage ?: "Failed to load financial data. Please try again.",
+                        onRetry = viewModel::refresh,
+                        retryButtonText = "Retry",
+                        modifier = Modifier.fillMaxSize(),
+                    )
+                }
+                uiState.summary == null || uiState.summary?.isEmpty != false -> {
+                    Column(modifier = Modifier.fillMaxSize()) {
+                        Column(
+                            modifier =
+                                Modifier.padding(
+                                    horizontal = DesignSystemSpacing.screenPadding,
+                                ),
+                        ) {
+                            SummaryModeChips(
+                                mode = uiState.mode,
+                                onModeChanged = viewModel::setMode,
+                            )
+                            PeriodSelector(
+                                uiState = uiState,
+                                onPreviousMonth = viewModel::goToPreviousMonth,
+                                onNextMonth = viewModel::goToNextMonth,
+                                onPreviousYear = viewModel::goToPreviousYear,
+                                onNextYear = viewModel::goToNextYear,
+                                onMonthLabelClick = { showMonthPicker = true },
+                            )
+                        }
+                        EmptyStateMessage(
+                            title =
+                                if (uiState.mode == SummaryMode.YEAR) {
+                                    "No data for this year"
+                                } else {
+                                    "No data for this month"
+                                },
+                            subtitle = "Start adding transactions to see your summary",
+                            modifier = Modifier.weight(1f),
                         )
-                        PeriodSelector(
+                    }
+                }
+                else -> {
+                    val summary = uiState.summary
+                    if (summary != null) {
+                        SummaryContent(
+                            summary = summary,
                             uiState = uiState,
+                            onModeChanged = viewModel::setMode,
                             onPreviousMonth = viewModel::goToPreviousMonth,
                             onNextMonth = viewModel::goToNextMonth,
                             onPreviousYear = viewModel::goToPreviousYear,
                             onNextYear = viewModel::goToNextYear,
                             onMonthLabelClick = { showMonthPicker = true },
+                            onBudgetTap = { currencyCode -> showBudgetDialog = currencyCode },
+                            onMonthTapped = { month ->
+                                viewModel.navigateToMonth(
+                                    viewModel.currentSelectedYear(),
+                                    month,
+                                )
+                            },
+                            modifier = Modifier.fillMaxSize(),
                         )
                     }
-                    EmptyStateMessage(
-                        title =
-                            if (uiState.mode == SummaryMode.YEAR) {
-                                "No data for this year"
-                            } else {
-                                "No data for this month"
-                            },
-                        subtitle = "Start adding transactions to see your summary",
-                        modifier = Modifier.weight(1f),
-                    )
-                }
-            }
-            else -> {
-                val summary = uiState.summary
-                if (summary != null) {
-                    SummaryContent(
-                        summary = summary,
-                        uiState = uiState,
-                        onModeChanged = viewModel::setMode,
-                        onPreviousMonth = viewModel::goToPreviousMonth,
-                        onNextMonth = viewModel::goToNextMonth,
-                        onPreviousYear = viewModel::goToPreviousYear,
-                        onNextYear = viewModel::goToNextYear,
-                        onMonthLabelClick = { showMonthPicker = true },
-                        onBudgetTap = { currencyCode -> showBudgetDialog = currencyCode },
-                        onMonthTapped = { month ->
-                            viewModel.navigateToMonth(
-                                viewModel.currentSelectedYear(),
-                                month,
-                            )
-                        },
-                        modifier = Modifier.fillMaxSize(),
-                    )
                 }
             }
         }
@@ -235,7 +261,7 @@ private fun SummaryContent(
     modifier: Modifier = Modifier,
 ) {
     val currencyFormatter = remember { DefaultCurrencyFormatter() }
-    LazyColumn(modifier = modifier.padding(DesignSystemSpacing.screenPadding)) {
+    LazyColumn(modifier = modifier.padding(horizontal = DesignSystemSpacing.screenPadding)) {
         item(key = "mode_chips") {
             SummaryModeChips(
                 mode = uiState.mode,
