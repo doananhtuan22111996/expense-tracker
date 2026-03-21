@@ -1,5 +1,8 @@
 package dev.tuandoan.expensetracker.ui.screen.settings
 
+import android.content.ActivityNotFoundException
+import android.content.Intent
+import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.clickable
@@ -15,6 +18,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.OpenInNew
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.FileDownload
 import androidx.compose.material.icons.filled.FileUpload
@@ -47,6 +51,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
@@ -516,6 +521,9 @@ fun SettingsScreen(
                 }
             }
 
+            // More Apps Section
+            MoreAppsSection()
+
             // App Information Section
             SettingsSection(title = "App Information") {
                 SettingsItem(
@@ -812,6 +820,75 @@ private fun SettingsItem(
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = Modifier.padding(top = DesignSystemSpacing.xs),
         )
+    }
+}
+
+@Composable
+private fun MoreAppsSection(modifier: Modifier = Modifier) {
+    val context = LocalContext.current
+    val taskTrackerPackage = "dev.tuandoan.tasktracker"
+
+    SettingsSection(
+        title = stringResource(R.string.settings_more_apps),
+        modifier = modifier,
+    ) {
+        val viewOnPlayStore = stringResource(R.string.cross_promo_view_on_play_store)
+        Row(
+            modifier =
+                Modifier
+                    .fillMaxWidth()
+                    .clickable {
+                        try {
+                            context.startActivity(
+                                Intent(
+                                    Intent.ACTION_VIEW,
+                                    Uri.parse("market://details?id=$taskTrackerPackage"),
+                                ),
+                            )
+                        } catch (e: ActivityNotFoundException) {
+                            context.startActivity(
+                                Intent(
+                                    Intent.ACTION_VIEW,
+                                    Uri.parse(
+                                        "https://play.google.com/store/apps/details?id=$taskTrackerPackage",
+                                    ),
+                                ),
+                            )
+                        }
+                    }.padding(DesignSystemSpacing.large)
+                    .semantics {
+                        contentDescription = viewOnPlayStore
+                    },
+            horizontalArrangement = Arrangement.spacedBy(DesignSystemSpacing.medium),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = stringResource(R.string.cross_promo_task_tracker_name),
+                    style = MaterialTheme.typography.bodyLarge,
+                    fontWeight = FontWeight.Medium,
+                    color = MaterialTheme.colorScheme.onSurface,
+                )
+                Text(
+                    text = stringResource(R.string.cross_promo_task_tracker_description),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(top = DesignSystemSpacing.xs),
+                )
+                Text(
+                    text = stringResource(R.string.cross_promo_view_on_play_store),
+                    style = MaterialTheme.typography.bodySmall,
+                    fontWeight = FontWeight.Medium,
+                    color = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.padding(top = DesignSystemSpacing.small),
+                )
+            }
+            Icon(
+                Icons.AutoMirrored.Filled.OpenInNew,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.primary,
+            )
+        }
     }
 }
 
