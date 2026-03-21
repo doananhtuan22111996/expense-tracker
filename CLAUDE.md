@@ -145,6 +145,8 @@ Onboarding route is a separate start destination guard in `ExpenseTrackerNavigat
 
 ## Git Conventions
 
+**IMPORTANT: Never commit code changes directly to `main`.** Always create a feature branch first, then open a PR to merge into `main`. Use the MCP GitHub tool (`mcp__github__create_pull_request`) for creating PRs — never `gh` CLI.
+
 ```
 Branch:
   feat/<short-description>
@@ -165,6 +167,7 @@ Commit (Conventional Commits):
 
 PR title  = same style as commit
 PR body   = what / why / how / test plan
+PR tool   = MCP GitHub (mcp__github__create_pull_request)
 ```
 
 ## Code Review Checklist
