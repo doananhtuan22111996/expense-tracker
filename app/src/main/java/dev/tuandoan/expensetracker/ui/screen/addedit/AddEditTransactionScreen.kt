@@ -65,6 +65,7 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import dev.tuandoan.expensetracker.R
 import dev.tuandoan.expensetracker.core.formatter.AmountFormatter
+import dev.tuandoan.expensetracker.core.formatter.CurrencyAmountVisualTransformation
 import dev.tuandoan.expensetracker.core.util.DateTimeUtil
 import dev.tuandoan.expensetracker.domain.model.Category
 import dev.tuandoan.expensetracker.domain.model.SupportedCurrencies
@@ -256,18 +257,8 @@ private fun TransactionForm(
             OutlinedTextField(
                 value = uiState.amountText,
                 onValueChange = { input ->
-                    // Format input with thousands separators as user types for better UX
                     val cleanInput = input.replace("[^0-9]".toRegex(), "")
-                    if (cleanInput.isNotEmpty()) {
-                        val formattedInput =
-                            AmountFormatter.formatAmount(
-                                cleanInput.toLongOrNull() ?: 0L,
-                                currency.code,
-                            )
-                        viewModel.onAmountChanged(formattedInput)
-                    } else {
-                        viewModel.onAmountChanged("")
-                    }
+                    viewModel.onAmountChanged(cleanInput)
                 },
                 label = { Text("Enter amount in ${currency.code}") },
                 placeholder = { Text(amountPlaceholder) },
@@ -278,6 +269,10 @@ private fun TransactionForm(
                         color = MaterialTheme.colorScheme.primary,
                     )
                 },
+                visualTransformation =
+                    remember(currency.code) {
+                        CurrencyAmountVisualTransformation(currency.code)
+                    },
                 keyboardOptions =
                     KeyboardOptions(
                         keyboardType = KeyboardType.Number,

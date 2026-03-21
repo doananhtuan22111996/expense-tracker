@@ -1,8 +1,6 @@
 package dev.tuandoan.expensetracker.ui.screen.addedit
 
 import androidx.lifecycle.SavedStateHandle
-import dev.tuandoan.expensetracker.core.formatter.AmountFormatter
-import dev.tuandoan.expensetracker.core.formatter.DefaultCurrencyFormatter
 import dev.tuandoan.expensetracker.domain.model.Category
 import dev.tuandoan.expensetracker.domain.model.CategoryWithCount
 import dev.tuandoan.expensetracker.domain.model.MonthlyBarPoint
@@ -53,7 +51,6 @@ class AddEditTransactionViewModelTest {
             fakeTransactionRepo,
             fakeCategoryRepo,
             fakeTimeProvider,
-            DefaultCurrencyFormatter(),
             fakeCurrencyPreferenceRepo,
             savedStateHandle,
         )
@@ -504,7 +501,7 @@ class AddEditTransactionViewModelTest {
         }
 
     @Test
-    fun onCurrencyChanged_withAmount_reformatsText() =
+    fun onCurrencyChanged_withAmount_keepsRawDigits() =
         runTest(mainDispatcherRule.testDispatcher) {
             fakeCategoryRepo.categoriesToEmit = listOf(TestData.expenseCategory)
             val viewModel = createViewModel()
@@ -513,8 +510,8 @@ class AddEditTransactionViewModelTest {
             viewModel.onAmountChanged("50000")
             viewModel.onCurrencyChanged("USD")
 
-            val expected = AmountFormatter.formatAmount(50000L, "USD")
-            assertEquals(expected, viewModel.uiState.value.amountText)
+            // amountText stays as raw digits — formatting is visual only
+            assertEquals("50000", viewModel.uiState.value.amountText)
         }
 
     @Test
