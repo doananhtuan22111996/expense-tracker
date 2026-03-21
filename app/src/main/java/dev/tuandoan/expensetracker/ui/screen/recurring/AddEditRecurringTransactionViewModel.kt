@@ -60,20 +60,8 @@ class AddEditRecurringTransactionViewModel
             if (currencyCode == state.currencyCode) return
             if (SupportedCurrencies.byCode(currencyCode) == null) return
 
-            val currentAmount = AmountFormatter.parseAmount(state.amountText)
-            val reformattedText =
-                if (currentAmount != null && currentAmount >= 0 && state.amountText.isNotEmpty()) {
-                    AmountFormatter.formatAmount(currentAmount, currencyCode)
-                } else {
-                    state.amountText
-                }
-
-            _uiState.update {
-                state.copy(
-                    currencyCode = currencyCode,
-                    amountText = reformattedText,
-                )
-            }
+            // amountText is raw digits — no reformatting needed on currency change
+            _uiState.update { state.copy(currencyCode = currencyCode) }
         }
 
         fun onCategorySelected(category: Category) {

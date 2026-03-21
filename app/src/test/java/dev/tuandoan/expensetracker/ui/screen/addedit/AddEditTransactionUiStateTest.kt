@@ -60,10 +60,10 @@ class AddEditTransactionUiStateTest {
     }
 
     @Test
-    fun isFormValid_formattedAmount_true() {
+    fun isFormValid_largeRawDigitAmount_true() {
         val state =
             AddEditTransactionUiState(
-                amountText = "50,000",
+                amountText = "1000000",
                 selectedCategory = TestData.expenseCategory,
             )
         assertTrue(state.isFormValid)
@@ -99,7 +99,7 @@ class AddEditTransactionUiStateTest {
             AddEditTransactionUiState(
                 originalTransaction = original,
                 type = original.type,
-                amountText = "50,000",
+                amountText = "50000",
                 selectedCategory = original.category,
                 timestamp = original.timestamp,
                 note = original.note ?: "",
@@ -114,7 +114,7 @@ class AddEditTransactionUiStateTest {
             AddEditTransactionUiState(
                 originalTransaction = original,
                 type = TransactionType.INCOME,
-                amountText = "50,000",
+                amountText = "50000",
                 selectedCategory = original.category,
                 timestamp = original.timestamp,
                 note = original.note ?: "",
@@ -144,7 +144,7 @@ class AddEditTransactionUiStateTest {
             AddEditTransactionUiState(
                 originalTransaction = original,
                 type = original.type,
-                amountText = "50,000",
+                amountText = "50000",
                 selectedCategory = TestData.transportCategory,
                 timestamp = original.timestamp,
                 note = original.note ?: "",
@@ -159,7 +159,7 @@ class AddEditTransactionUiStateTest {
             AddEditTransactionUiState(
                 originalTransaction = original,
                 type = original.type,
-                amountText = "50,000",
+                amountText = "50000",
                 selectedCategory = original.category,
                 timestamp = original.timestamp + 86400000L,
                 note = original.note ?: "",
@@ -174,7 +174,7 @@ class AddEditTransactionUiStateTest {
             AddEditTransactionUiState(
                 originalTransaction = original,
                 type = original.type,
-                amountText = "50,000",
+                amountText = "50000",
                 selectedCategory = original.category,
                 timestamp = original.timestamp,
                 note = "Changed note",
@@ -189,7 +189,7 @@ class AddEditTransactionUiStateTest {
             AddEditTransactionUiState(
                 originalTransaction = original,
                 type = original.type,
-                amountText = "50,000",
+                amountText = "50000",
                 selectedCategory = original.category,
                 timestamp = original.timestamp,
                 note = "",
@@ -227,7 +227,7 @@ class AddEditTransactionUiStateTest {
             AddEditTransactionUiState(
                 originalTransaction = original,
                 type = original.type,
-                amountText = "50,000",
+                amountText = "50000",
                 selectedCategory = original.category,
                 timestamp = original.timestamp,
                 note = original.note ?: "",
@@ -259,7 +259,7 @@ class AddEditTransactionUiStateTest {
             AddEditTransactionUiState(
                 originalTransaction = original,
                 type = original.type,
-                amountText = "50,000",
+                amountText = "50000",
                 selectedCategory = original.category,
                 timestamp = original.timestamp,
                 note = original.note ?: "",
@@ -275,7 +275,7 @@ class AddEditTransactionUiStateTest {
             AddEditTransactionUiState(
                 originalTransaction = original,
                 type = original.type,
-                amountText = "50,000",
+                amountText = "50000",
                 selectedCategory = original.category,
                 timestamp = original.timestamp,
                 note = original.note ?: "",

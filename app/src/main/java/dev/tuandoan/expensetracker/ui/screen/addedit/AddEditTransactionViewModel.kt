@@ -5,7 +5,6 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dev.tuandoan.expensetracker.core.formatter.AmountFormatter
-import dev.tuandoan.expensetracker.core.formatter.CurrencyFormatter
 import dev.tuandoan.expensetracker.core.util.ErrorUtils
 import dev.tuandoan.expensetracker.core.util.TimeProvider
 import dev.tuandoan.expensetracker.domain.model.Category
@@ -30,7 +29,6 @@ class AddEditTransactionViewModel
         private val transactionRepository: TransactionRepository,
         private val categoryRepository: CategoryRepository,
         private val timeProvider: TimeProvider,
-        private val currencyFormatter: CurrencyFormatter,
         private val currencyPreferenceRepository: CurrencyPreferenceRepository,
         savedStateHandle: SavedStateHandle,
     ) : ViewModel() {
@@ -77,19 +75,8 @@ class AddEditTransactionViewModel
             if (currencyCode == state.currencyCode) return
             if (SupportedCurrencies.byCode(currencyCode) == null) return
 
-            val currentAmount = AmountFormatter.parseAmount(state.amountText)
-            val reformattedText =
-                if (currentAmount != null && currentAmount >= 0 && state.amountText.isNotEmpty()) {
-                    AmountFormatter.formatAmount(currentAmount, currencyCode)
-                } else {
-                    state.amountText
-                }
-
-            _uiState.value =
-                state.copy(
-                    currencyCode = currencyCode,
-                    amountText = reformattedText,
-                )
+            // amountText is raw digits — no reformatting needed on currency change
+            _uiState.value = state.copy(currencyCode = currencyCode)
         }
 
         fun onBackPressed() {
@@ -183,11 +170,7 @@ class AddEditTransactionViewModel
                                 _uiState.value.copy(
                                     originalTransaction = transaction,
                                     type = transaction.type,
-                                    amountText =
-                                        currencyFormatter.formatBareAmount(
-                                            transaction.amount,
-                                            transaction.currencyCode,
-                                        ),
+                                    amountText = transaction.amount.toString(),
                                     selectedCategory = transaction.category,
                                     timestamp = transaction.timestamp,
                                     note = transaction.note ?: "",
