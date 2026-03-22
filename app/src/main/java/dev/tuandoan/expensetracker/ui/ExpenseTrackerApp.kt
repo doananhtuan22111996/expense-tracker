@@ -25,6 +25,7 @@ import dev.tuandoan.expensetracker.ui.navigation.ModalDestination
 import dev.tuandoan.expensetracker.ui.navigation.ModalNavRoutes
 import dev.tuandoan.expensetracker.ui.screen.addedit.AddEditTransactionScreen
 import dev.tuandoan.expensetracker.ui.screen.categories.CategoriesScreen
+import dev.tuandoan.expensetracker.ui.screen.gold.AddEditGoldHoldingScreen
 import dev.tuandoan.expensetracker.ui.screen.onboarding.OnboardingScreen
 import dev.tuandoan.expensetracker.ui.screen.recurring.AddEditRecurringTransactionScreen
 import dev.tuandoan.expensetracker.ui.screen.recurring.RecurringTransactionsScreen
@@ -69,7 +70,10 @@ fun ExpenseTrackerApp(isOnboardingComplete: Boolean = true) {
                     navController.navigate(ModalDestination.Recurring.route)
                 },
                 onNavigateToAddGoldHolding = {
-                    // TODO: Navigate to AddGoldHolding modal (Session 3)
+                    navController.navigate(ModalNavRoutes.addGoldHoldingRoute())
+                },
+                onNavigateToEditGoldHolding = { holdingId ->
+                    navController.navigate(ModalNavRoutes.editGoldHoldingRoute(holdingId))
                 },
             )
         }
@@ -117,6 +121,28 @@ fun ExpenseTrackerApp(isOnboardingComplete: Boolean = true) {
         }
 
         composable(
+            route = "${ModalDestination.AddEditGoldHolding.route}/{holdingId}",
+            arguments =
+                listOf(
+                    navArgument("holdingId") {
+                        type = NavType.LongType
+                        defaultValue = 0L
+                    },
+                ),
+        ) {
+            AddEditGoldHoldingScreen(
+                onNavigateBack = {
+                    if (!navController.popBackStack()) {
+                        navController.navigate("Home") {
+                            popUpTo(0) { inclusive = true }
+                        }
+                    }
+                },
+                viewModel = hiltViewModel(),
+            )
+        }
+
+        composable(
             route = "${ModalDestination.AddEditTransaction.route}/{transactionId}",
             arguments =
                 listOf(
@@ -151,6 +177,7 @@ private fun Home(
     onNavigateToCategories: () -> Unit,
     onNavigateToRecurring: () -> Unit = {},
     onNavigateToAddGoldHolding: () -> Unit = {},
+    onNavigateToEditGoldHolding: (holdingId: Long) -> Unit = {},
 ) {
     val navController = rememberNavController()
     val navBackStackEntry by navController.currentBackStackEntryAsState()
@@ -183,6 +210,7 @@ private fun Home(
             onNavigateToCategories = onNavigateToCategories,
             onNavigateToRecurring = onNavigateToRecurring,
             onNavigateToAddGoldHolding = onNavigateToAddGoldHolding,
+            onNavigateToEditGoldHolding = onNavigateToEditGoldHolding,
         )
     }
 }

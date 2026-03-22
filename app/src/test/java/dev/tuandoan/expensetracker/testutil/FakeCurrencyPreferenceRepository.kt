@@ -7,6 +7,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 
 class FakeCurrencyPreferenceRepository(
     initialCurrency: String = SupportedCurrencies.default().code,
+    private val shouldThrow: Boolean = false,
 ) : CurrencyPreferenceRepository {
     private val currencyState = MutableStateFlow(initialCurrency)
 
@@ -27,5 +28,8 @@ class FakeCurrencyPreferenceRepository(
         currencyState.value = currencyCode
     }
 
-    override suspend fun getDefaultCurrency(): String = currencyState.value
+    override suspend fun getDefaultCurrency(): String {
+        if (shouldThrow) throw RuntimeException("Fake currency error")
+        return currencyState.value
+    }
 }

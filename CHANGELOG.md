@@ -1,5 +1,15 @@
 # Changelog
 
+## [Unreleased]
+
+### Added
+- **Add/Edit Gold Holding Screen**: Full form with gold type selector, weight/unit inputs, buy price with currency formatting, date picker, and note field
+- **AddEditGoldHoldingViewModel**: SavedStateHandle-based ViewModel supporting add and edit modes with form validation
+- **Swipe-to-delete on gold holdings**: SwipeToDismissBox with undo snackbar on portfolio screen
+- **Tap to edit gold holdings**: HoldingCard now navigates to edit screen on tap
+- **Navigation wiring**: Modal route for AddEditGoldHolding with holdingId parameter
+- 14 unit tests for AddEditGoldHoldingViewModel covering add/edit/validation/error flows
+
 ## [3.2.5] - 2026-03-14
 
 ### Added

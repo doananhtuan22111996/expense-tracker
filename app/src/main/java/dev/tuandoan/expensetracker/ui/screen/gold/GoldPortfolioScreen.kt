@@ -1,5 +1,6 @@
 package dev.tuandoan.expensetracker.ui.screen.gold
 
+import androidx.compose.animation.animateColorAsState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -16,10 +17,12 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.outlined.Paid
 import androidx.compose.material.icons.outlined.Warning
 import androidx.compose.material3.Card
@@ -39,10 +42,13 @@ import androidx.compose.material3.SnackbarDuration
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.SnackbarResult
+import androidx.compose.material3.SwipeToDismissBox
+import androidx.compose.material3.SwipeToDismissBoxValue
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.rememberModalBottomSheetState
+import androidx.compose.material3.rememberSwipeToDismissBoxState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -62,6 +68,7 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import dev.tuandoan.expensetracker.R
 import dev.tuandoan.expensetracker.core.formatter.CurrencyAmountVisualTransformation
+import dev.tuandoan.expensetracker.domain.model.GoldHolding
 import dev.tuandoan.expensetracker.domain.model.GoldHoldingWithPnL
 import dev.tuandoan.expensetracker.domain.model.GoldPortfolioSummary
 import dev.tuandoan.expensetracker.domain.model.GoldPrice
@@ -80,6 +87,7 @@ fun GoldPortfolioScreen(
     viewModel: GoldPortfolioViewModel,
     modifier: Modifier = Modifier,
     onNavigateToAddHolding: () -> Unit = {},
+    onNavigateToEditHolding: (holdingId: Long) -> Unit = {},
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val snackbarHostState = remember { SnackbarHostState() }
@@ -177,6 +185,8 @@ fun GoldPortfolioScreen(
                 GoldPortfolioContent(
                     uiState = uiState,
                     onUpdatePrices = { showPriceSheet = true },
+                    onEditHolding = onNavigateToEditHolding,
+                    onDeleteHolding = viewModel::deleteHolding,
                     modifier =
                         Modifier
                             .fillMaxSize()
@@ -228,6 +238,8 @@ private fun GoldEmptyState(
 private fun GoldPortfolioContent(
     uiState: GoldPortfolioUiState,
     onUpdatePrices: () -> Unit,
+    onEditHolding: (holdingId: Long) -> Unit,
+    onDeleteHolding: (GoldHolding) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     LazyColumn(
@@ -368,9 +380,11 @@ private fun GoldPortfolioContent(
             items = uiState.holdings,
             key = { it.holding.id },
         ) { holdingWithPnL ->
-            HoldingCard(
+            SwipeToDismissHoldingCard(
                 holdingWithPnL = holdingWithPnL,
-                modifier = Modifier.fillMaxWidth(),
+                onEdit = { onEditHolding(holdingWithPnL.holding.id) },
+                onDelete = { onDeleteHolding(holdingWithPnL.holding) },
+                modifier = Modifier.fillMaxWidth().animateItem(),
             )
         }
 
@@ -482,9 +496,68 @@ private fun PortfolioSummaryCard(
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun SwipeToDismissHoldingCard(
+    holdingWithPnL: GoldHoldingWithPnL,
+    onEdit: () -> Unit,
+    onDelete: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val dismissState =
+        rememberSwipeToDismissBoxState(
+            confirmValueChange = { value ->
+                if (value == SwipeToDismissBoxValue.EndToStart) {
+                    onDelete()
+                    true
+                } else {
+                    false
+                }
+            },
+        )
+
+    SwipeToDismissBox(
+        state = dismissState,
+        modifier = modifier,
+        enableDismissFromStartToEnd = false,
+        backgroundContent = {
+            val color by animateColorAsState(
+                targetValue =
+                    if (dismissState.targetValue == SwipeToDismissBoxValue.EndToStart) {
+                        MaterialTheme.colorScheme.errorContainer
+                    } else {
+                        MaterialTheme.colorScheme.surface
+                    },
+                label = "swipe_bg",
+            )
+            Box(
+                modifier =
+                    Modifier
+                        .fillMaxSize()
+                        .background(color, RoundedCornerShape(12.dp))
+                        .padding(horizontal = DesignSystemSpacing.large),
+                contentAlignment = Alignment.CenterEnd,
+            ) {
+                Icon(
+                    Icons.Default.Delete,
+                    contentDescription = stringResource(R.string.delete),
+                    tint = MaterialTheme.colorScheme.onErrorContainer,
+                )
+            }
+        },
+    ) {
+        HoldingCard(
+            holdingWithPnL = holdingWithPnL,
+            onClick = onEdit,
+            modifier = Modifier.fillMaxWidth(),
+        )
+    }
+}
+
 @Composable
 private fun HoldingCard(
     holdingWithPnL: GoldHoldingWithPnL,
+    onClick: () -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
     val holding = holdingWithPnL.holding
@@ -492,6 +565,7 @@ private fun HoldingCard(
     val buyDate = dateFormat.format(Date(holding.buyDateMillis))
 
     Card(
+        onClick = onClick,
         modifier = modifier,
         colors =
             CardDefaults.cardColors(
@@ -677,7 +751,7 @@ private fun UpdatePricesBottomSheet(
 }
 
 @Composable
-private fun goldTypeLabel(type: GoldType): String =
+internal fun goldTypeLabel(type: GoldType): String =
     when (type) {
         GoldType.SJC -> stringResource(R.string.gold_type_sjc)
         GoldType.GOLD_24K -> stringResource(R.string.gold_type_24k)
@@ -686,7 +760,7 @@ private fun goldTypeLabel(type: GoldType): String =
     }
 
 @Composable
-private fun goldUnitLabel(unit: GoldWeightUnit): String =
+internal fun goldUnitLabel(unit: GoldWeightUnit): String =
     when (unit) {
         GoldWeightUnit.TAEL -> stringResource(R.string.gold_unit_tael)
         GoldWeightUnit.GRAM -> stringResource(R.string.gold_unit_gram)

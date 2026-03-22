@@ -52,7 +52,12 @@ class GoldPortfolioViewModel
                             errorMessage = ErrorUtils.getErrorMessage(e),
                         )
                 }.collect { state ->
-                    _uiState.value = state
+                    val current = _uiState.value
+                    _uiState.value =
+                        state.copy(
+                            lastDeletedHolding = current.lastDeletedHolding,
+                            showPricesUpdated = current.showPricesUpdated,
+                        )
                 }
             }
         }
