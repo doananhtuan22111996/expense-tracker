@@ -68,7 +68,6 @@ import dev.tuandoan.expensetracker.domain.model.GoldPrice
 import dev.tuandoan.expensetracker.domain.model.GoldType
 import dev.tuandoan.expensetracker.domain.model.GoldWeightUnit
 import dev.tuandoan.expensetracker.ui.component.AmountText
-import dev.tuandoan.expensetracker.ui.component.EmptyStateMessage
 import dev.tuandoan.expensetracker.ui.theme.DesignSystemSpacing
 import dev.tuandoan.expensetracker.ui.theme.FinancialColors
 import java.text.SimpleDateFormat
@@ -193,25 +192,34 @@ private fun GoldEmptyState(
     onAddHolding: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    Column(
+    Box(
         modifier = modifier,
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center,
+        contentAlignment = Alignment.Center,
     ) {
-        Icon(
-            imageVector = Icons.Outlined.Paid,
-            contentDescription = null,
-            modifier = Modifier.size(72.dp),
-            tint = MaterialTheme.colorScheme.primary,
-        )
-        Spacer(Modifier.height(DesignSystemSpacing.large))
-        EmptyStateMessage(
-            title = stringResource(R.string.gold_empty_title),
-            subtitle = stringResource(R.string.gold_empty_subtitle),
-        )
-        Spacer(Modifier.height(DesignSystemSpacing.xl))
-        FilledTonalButton(onClick = onAddHolding) {
-            Text(stringResource(R.string.gold_add_first))
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+        ) {
+            Icon(
+                imageVector = Icons.Outlined.Paid,
+                contentDescription = null,
+                modifier = Modifier.size(72.dp),
+                tint = MaterialTheme.colorScheme.primary,
+            )
+            Spacer(Modifier.height(DesignSystemSpacing.large))
+            Text(
+                text = stringResource(R.string.gold_empty_title),
+                style = MaterialTheme.typography.headlineSmall,
+            )
+            Spacer(Modifier.height(DesignSystemSpacing.small))
+            Text(
+                text = stringResource(R.string.gold_empty_subtitle),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            Spacer(Modifier.height(DesignSystemSpacing.xl))
+            FilledTonalButton(onClick = onAddHolding) {
+                Text(stringResource(R.string.gold_add_first))
+            }
         }
     }
 }
