@@ -18,6 +18,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.outlined.Paid
 import androidx.compose.material.icons.outlined.Warning
@@ -238,6 +239,7 @@ private fun GoldPortfolioContent(
         if (uiState.summary == null && uiState.holdings.isNotEmpty()) {
             item(key = "no_prices") {
                 Card(
+                    onClick = onUpdatePrices,
                     modifier = Modifier.fillMaxWidth(),
                     colors =
                         CardDefaults.cardColors(
@@ -257,6 +259,12 @@ private fun GoldPortfolioContent(
                         Text(
                             text = stringResource(R.string.gold_no_prices_set),
                             style = MaterialTheme.typography.bodyMedium,
+                            modifier = Modifier.weight(1f),
+                        )
+                        Icon(
+                            Icons.AutoMirrored.Filled.KeyboardArrowRight,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
                     }
                 }
