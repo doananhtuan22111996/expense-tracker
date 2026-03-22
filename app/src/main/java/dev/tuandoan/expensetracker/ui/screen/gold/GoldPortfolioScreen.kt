@@ -89,6 +89,13 @@ fun GoldPortfolioScreen(
     val undoMsg = stringResource(R.string.undo)
     val pricesUpdatedMsg = stringResource(R.string.gold_prices_updated)
 
+    LaunchedEffect(uiState.isError) {
+        if (uiState.isError && !uiState.errorMessage.isNullOrBlank()) {
+            snackbarHostState.showSnackbar(uiState.errorMessage!!)
+            viewModel.clearError()
+        }
+    }
+
     LaunchedEffect(uiState.lastDeletedHolding) {
         uiState.lastDeletedHolding?.let {
             val result =
@@ -134,11 +141,12 @@ fun GoldPortfolioScreen(
         },
         floatingActionButton = {
             if (uiState.holdings.isNotEmpty()) {
+                val addHoldingDesc = stringResource(R.string.gold_add_holding)
                 FloatingActionButton(
                     onClick = onNavigateToAddHolding,
                     modifier =
                         Modifier.semantics {
-                            contentDescription = "Add gold holding"
+                            contentDescription = addHoldingDesc
                         },
                 ) {
                     Icon(Icons.Default.Add, contentDescription = null)
@@ -268,11 +276,12 @@ private fun GoldPortfolioContent(
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.SemiBold,
                     )
+                    val updatePricesDesc = stringResource(R.string.a11y_update_gold_prices)
                     TextButton(
                         onClick = onUpdatePrices,
                         modifier =
                             Modifier.semantics {
-                                contentDescription = "Update current gold prices"
+                                contentDescription = updatePricesDesc
                             },
                     ) {
                         Text(stringResource(R.string.gold_update_prices))
@@ -418,6 +427,12 @@ private fun PortfolioSummaryCard(
                         style = MaterialTheme.typography.titleSmall,
                     )
                     Spacer(Modifier.width(DesignSystemSpacing.small))
+                    val pnlDesc =
+                        if (summary.totalPnL >= 0) {
+                            stringResource(R.string.a11y_gold_profit)
+                        } else {
+                            stringResource(R.string.a11y_gold_loss)
+                        }
                     Box(
                         modifier =
                             Modifier
@@ -425,8 +440,7 @@ private fun PortfolioSummaryCard(
                                 .clip(CircleShape)
                                 .background(pnlColor)
                                 .semantics {
-                                    contentDescription =
-                                        if (summary.totalPnL >= 0) "Profit" else "Loss"
+                                    contentDescription = pnlDesc
                                 },
                     )
                 }
@@ -662,12 +676,15 @@ private fun goldUnitLabel(unit: GoldWeightUnit): String =
         GoldWeightUnit.OUNCE -> stringResource(R.string.gold_unit_ounce)
     }
 
+@Composable
 private fun formatAmountShort(
     amount: Long,
     currencyCode: String,
 ): String {
     val formatter =
-        dev.tuandoan.expensetracker.core.formatter
-            .DefaultCurrencyFormatter()
+        remember {
+            dev.tuandoan.expensetracker.core.formatter
+                .DefaultCurrencyFormatter()
+        }
     return formatter.format(amount, currencyCode)
 }
