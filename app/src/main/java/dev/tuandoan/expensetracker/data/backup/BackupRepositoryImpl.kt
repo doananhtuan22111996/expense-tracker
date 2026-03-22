@@ -4,7 +4,12 @@ import dev.tuandoan.expensetracker.core.util.AppInfo
 import dev.tuandoan.expensetracker.core.util.TimeProvider
 import dev.tuandoan.expensetracker.data.backup.mapper.toBackupDto
 import dev.tuandoan.expensetracker.data.backup.mapper.toEntity
+import dev.tuandoan.expensetracker.data.backup.model.BackupCategoryDto
 import dev.tuandoan.expensetracker.data.backup.model.BackupDocumentV1
+import dev.tuandoan.expensetracker.data.backup.model.BackupGoldHoldingDto
+import dev.tuandoan.expensetracker.data.backup.model.BackupGoldPriceDto
+import dev.tuandoan.expensetracker.data.backup.model.BackupRecurringTransactionDto
+import dev.tuandoan.expensetracker.data.backup.model.BackupTransactionDto
 import dev.tuandoan.expensetracker.data.database.TransactionRunner
 import dev.tuandoan.expensetracker.data.database.dao.CategoryDao
 import dev.tuandoan.expensetracker.data.database.dao.GoldHoldingDao
@@ -98,11 +103,10 @@ class BackupRepositoryImpl
                             categoryName = categoryDao.getById(entity.categoryId)?.name ?: "Unknown",
                         )
                     }
-                csvExporter.export(transactionsWithCategory, outputStream)
+                val writer = csvExporter.export(transactionsWithCategory, outputStream)
 
                 val goldHoldings = goldHoldingDao.getAll()
                 if (goldHoldings.isNotEmpty()) {
-                    val writer = outputStream.bufferedWriter(Charsets.UTF_8)
                     csvExporter.exportGoldHoldings(goldHoldings, writer)
 
                     val goldPrices = goldPriceDao.getAll()
@@ -120,11 +124,11 @@ class BackupRepositoryImpl
 
         private suspend fun buildExportDocument(): BackupDocumentV1 {
             data class ExportData(
-                val categories: List<dev.tuandoan.expensetracker.data.backup.model.BackupCategoryDto>,
-                val transactions: List<dev.tuandoan.expensetracker.data.backup.model.BackupTransactionDto>,
-                val recurring: List<dev.tuandoan.expensetracker.data.backup.model.BackupRecurringTransactionDto>,
-                val goldHoldings: List<dev.tuandoan.expensetracker.data.backup.model.BackupGoldHoldingDto>,
-                val goldPrices: List<dev.tuandoan.expensetracker.data.backup.model.BackupGoldPriceDto>,
+                val categories: List<BackupCategoryDto>,
+                val transactions: List<BackupTransactionDto>,
+                val recurring: List<BackupRecurringTransactionDto>,
+                val goldHoldings: List<BackupGoldHoldingDto>,
+                val goldPrices: List<BackupGoldPriceDto>,
             )
 
             val result =

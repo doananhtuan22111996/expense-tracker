@@ -19,6 +19,9 @@
 - **Gold P&L summary CSV export**: New section in CSV with Type, Unit, Weight, Buy Price, Current Price, Currency, Cost, Value, P&L columns
 - 14 unit tests for AddEditGoldHoldingViewModel covering add/edit/validation/error flows
 
+### Fixed
+- **CsvExporter**: Reuse single `BufferedWriter` across transaction and gold CSV sections instead of creating multiple writers on the same `OutputStream`
+
 ### Changed
 - **BackupDocumentV1**: Added optional `gold_holdings` field with empty default (backward compatible, no version bump)
 - **BackupRepositoryImpl**: Export includes gold holdings; import conditionally replaces gold data only when backup contains holdings

@@ -24,7 +24,7 @@ class CsvExporter
         fun export(
             transactions: List<TransactionWithCategory>,
             outputStream: OutputStream,
-        ) {
+        ): BufferedWriter {
             // UTF-8 BOM for Excel compatibility
             outputStream.write(byteArrayOf(0xEF.toByte(), 0xBB.toByte(), 0xBF.toByte()))
 
@@ -50,6 +50,7 @@ class CsvExporter
                 writer.newLine()
             }
             writer.flush()
+            return writer
         }
 
         fun exportGoldHoldings(
