@@ -85,7 +85,7 @@ class AddEditGoldHoldingViewModel
             viewModelScope.launch {
                 try {
                     if (isEditMode) {
-                        val original = state.originalHolding!!
+                        val original = state.originalHolding ?: return@launch
                         goldRepository.updateHolding(
                             original.copy(
                                 type = state.type,

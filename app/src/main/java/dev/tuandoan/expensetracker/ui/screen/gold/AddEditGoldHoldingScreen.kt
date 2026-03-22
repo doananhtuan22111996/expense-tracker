@@ -389,7 +389,7 @@ private fun GoldTypeSelector(
                         hapticFeedback.performHapticFeedback(HapticFeedbackType.LongPress)
                         onTypeChanged(type)
                     },
-                    label = { Text(goldTypeChipLabel(type)) },
+                    label = { Text(goldTypeLabel(type)) },
                 )
             }
         }
@@ -513,12 +513,3 @@ private fun GoldDateSelector(
         }
     }
 }
-
-@Composable
-private fun goldTypeChipLabel(type: GoldType): String =
-    when (type) {
-        GoldType.SJC -> stringResource(R.string.gold_type_sjc)
-        GoldType.GOLD_24K -> stringResource(R.string.gold_type_24k)
-        GoldType.GOLD_18K -> stringResource(R.string.gold_type_18k)
-        GoldType.OTHER -> stringResource(R.string.gold_type_other)
-    }
