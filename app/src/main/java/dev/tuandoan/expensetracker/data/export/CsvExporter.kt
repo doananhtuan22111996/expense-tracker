@@ -3,6 +3,7 @@ package dev.tuandoan.expensetracker.data.export
 import dev.tuandoan.expensetracker.data.database.entity.GoldHoldingEntity
 import dev.tuandoan.expensetracker.data.database.entity.TransactionEntity
 import dev.tuandoan.expensetracker.domain.model.SupportedCurrencies
+import java.io.BufferedWriter
 import java.io.OutputStream
 import java.time.Instant
 import java.time.ZoneId
@@ -52,7 +53,7 @@ class CsvExporter
 
         fun exportGoldHoldings(
             holdings: List<GoldHoldingEntity>,
-            writer: java.io.BufferedWriter,
+            writer: BufferedWriter,
         ) {
             val dateFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd")
 
