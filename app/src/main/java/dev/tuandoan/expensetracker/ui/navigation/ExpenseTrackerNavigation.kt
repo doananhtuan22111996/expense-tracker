@@ -6,6 +6,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
+import dev.tuandoan.expensetracker.ui.screen.gold.GoldPortfolioScreen
 import dev.tuandoan.expensetracker.ui.screen.home.HomeScreen
 import dev.tuandoan.expensetracker.ui.screen.settings.SettingsScreen
 import dev.tuandoan.expensetracker.ui.screen.summary.SummaryScreen
@@ -22,6 +23,7 @@ fun ExpenseTrackerNavigation(
     onNavigateToEditTransaction: (transactionId: Long) -> Unit,
     onNavigateToCategories: () -> Unit = {},
     onNavigateToRecurring: () -> Unit = {},
+    onNavigateToAddGoldHolding: () -> Unit = {},
 ) {
     NavHost(
         navController = navController,
@@ -38,6 +40,13 @@ fun ExpenseTrackerNavigation(
 
         composable(BottomNavDestination.Summary.route) {
             SummaryScreen(
+                viewModel = hiltViewModel(),
+            )
+        }
+
+        composable(BottomNavDestination.Gold.route) {
+            GoldPortfolioScreen(
+                onNavigateToAddHolding = onNavigateToAddGoldHolding,
                 viewModel = hiltViewModel(),
             )
         }

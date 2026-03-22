@@ -2,8 +2,10 @@ package dev.tuandoan.expensetracker.ui.navigation
 
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Home
+import androidx.compose.material.icons.filled.Paid
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.outlined.BarChart
+import androidx.compose.material.icons.outlined.Paid
 import androidx.compose.ui.graphics.vector.ImageVector
 
 /**
@@ -26,6 +28,12 @@ sealed class BottomNavDestination(
         icon = Icons.Outlined.BarChart,
     )
 
+    data object Gold : BottomNavDestination(
+        route = "main/gold",
+        title = "Gold",
+        icon = Icons.Outlined.Paid,
+    )
+
     data object Settings : BottomNavDestination(
         route = "main/settings",
         title = "Settings",
@@ -33,7 +41,7 @@ sealed class BottomNavDestination(
     )
 
     companion object {
-        val allDestinations = listOf(Home, Summary, Settings)
+        val allDestinations = listOf(Home, Summary, Gold, Settings)
         const val MAIN_GRAPH_ROUTE = "main_graph"
     }
 }

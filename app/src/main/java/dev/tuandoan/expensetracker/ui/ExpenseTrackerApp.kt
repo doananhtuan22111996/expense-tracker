@@ -68,6 +68,9 @@ fun ExpenseTrackerApp(isOnboardingComplete: Boolean = true) {
                 onNavigateToRecurring = {
                     navController.navigate(ModalDestination.Recurring.route)
                 },
+                onNavigateToAddGoldHolding = {
+                    // TODO: Navigate to AddGoldHolding modal (Session 3)
+                },
             )
         }
 
@@ -147,6 +150,7 @@ private fun Home(
     onNavigateToEditTransaction: (transactionId: Long) -> Unit,
     onNavigateToCategories: () -> Unit,
     onNavigateToRecurring: () -> Unit = {},
+    onNavigateToAddGoldHolding: () -> Unit = {},
 ) {
     val navController = rememberNavController()
     val navBackStackEntry by navController.currentBackStackEntryAsState()
@@ -178,6 +182,7 @@ private fun Home(
             onNavigateToEditTransaction = onNavigateToEditTransaction,
             onNavigateToCategories = onNavigateToCategories,
             onNavigateToRecurring = onNavigateToRecurring,
+            onNavigateToAddGoldHolding = onNavigateToAddGoldHolding,
         )
     }
 }
