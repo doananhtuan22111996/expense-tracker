@@ -126,4 +126,39 @@
     <string name="cross_promo_task_tracker_name">Task Tracker</string>
     <string name="cross_promo_task_tracker_description">Simple, offline-first task manager. Organize your tasks and stay productive.</string>
     <string name="cross_promo_view_on_play_store">View on Play Store</string>
+
+    <!-- Gold Portfolio -->
+    <string name="gold_portfolio_title">Gold Portfolio</string>
+    <string name="gold_nav_label">Gold</string>
+    <string name="gold_portfolio_summary">Portfolio Summary</string>
+    <string name="gold_total_cost">Total Cost</string>
+    <string name="gold_current_value">Current Value</string>
+    <string name="gold_pnl">P&amp;L</string>
+    <string name="gold_current_prices">Current Prices</string>
+    <string name="gold_update_prices">Update</string>
+    <string name="gold_holdings_section">Holdings</string>
+    <string name="gold_holdings_count">Holdings (%1$d)</string>
+    <string name="gold_empty_title">No gold holdings yet</string>
+    <string name="gold_empty_subtitle">Track your gold purchases and see your P&amp;L</string>
+    <string name="gold_add_first">Add your first holding</string>
+    <string name="gold_add_holding">Add gold holding</string>
+    <string name="gold_set_price">Set price to see P&amp;L</string>
+    <string name="gold_buy_price_per_unit">Buy %1$s/%2$s</string>
+    <string name="gold_cost_to_value">%1$s → %2$s</string>
+    <string name="gold_update_prices_title">Update Current Prices</string>
+    <string name="gold_save_prices">Save Prices</string>
+    <string name="gold_price_per_unit">%1$s (per %2$s)</string>
+    <string name="gold_prices_updated">Prices updated</string>
+    <string name="gold_type_sjc">SJC</string>
+    <string name="gold_type_24k">24K</string>
+    <string name="gold_type_18k">18K</string>
+    <string name="gold_type_other">Other</string>
+    <string name="gold_unit_tael">tael</string>
+    <string name="gold_unit_gram">gram</string>
+    <string name="gold_unit_ounce">oz</string>
+    <string name="gold_no_prices_set">Set prices to see portfolio summary</string>
+    <string name="gold_holding_deleted">Holding deleted</string>
+    <string name="a11y_gold_profit">Profit</string>
+    <string name="a11y_gold_loss">Loss</string>
+    <string name="a11y_update_gold_prices">Update current gold prices</string>
 </resources>
