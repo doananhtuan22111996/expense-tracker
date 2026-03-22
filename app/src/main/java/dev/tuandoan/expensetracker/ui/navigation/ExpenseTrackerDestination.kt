@@ -60,6 +60,8 @@ sealed class ModalDestination(
 
     data object AddRecurring : ModalDestination("modal/add_recurring")
 
+    data object AddEditGoldHolding : ModalDestination("modal/add_edit_gold_holding")
+
     companion object {
         const val MODAL_GRAPH_ROUTE = "modal_graph"
     }

@@ -24,6 +24,7 @@ fun ExpenseTrackerNavigation(
     onNavigateToCategories: () -> Unit = {},
     onNavigateToRecurring: () -> Unit = {},
     onNavigateToAddGoldHolding: () -> Unit = {},
+    onNavigateToEditGoldHolding: (holdingId: Long) -> Unit = {},
 ) {
     NavHost(
         navController = navController,
@@ -47,6 +48,7 @@ fun ExpenseTrackerNavigation(
         composable(BottomNavDestination.Gold.route) {
             GoldPortfolioScreen(
                 onNavigateToAddHolding = onNavigateToAddGoldHolding,
+                onNavigateToEditHolding = onNavigateToEditGoldHolding,
                 viewModel = hiltViewModel(),
             )
         }
@@ -68,4 +70,8 @@ object ModalNavRoutes {
 
     fun editTransactionRoute(transactionId: Long): String =
         "${ModalDestination.AddEditTransaction.route}/$transactionId"
+
+    fun addGoldHoldingRoute(): String = "${ModalDestination.AddEditGoldHolding.route}/0"
+
+    fun editGoldHoldingRoute(holdingId: Long): String = "${ModalDestination.AddEditGoldHolding.route}/$holdingId"
 }

@@ -161,4 +161,23 @@
     <string name="a11y_gold_profit">Profit</string>
     <string name="a11y_gold_loss">Loss</string>
     <string name="a11y_update_gold_prices">Update current gold prices</string>
+
+    <!-- Gold Add/Edit -->
+    <string name="gold_add_title">Add Gold Holding</string>
+    <string name="gold_edit_title">Edit Gold Holding</string>
+    <string name="gold_type_label">Gold Type</string>
+    <string name="gold_weight_label">Weight</string>
+    <string name="gold_weight_unit_label">Unit</string>
+    <string name="gold_buy_price_label">Buy Price per Unit</string>
+    <string name="gold_buy_date_label">Buy Date</string>
+    <string name="gold_note_label">Note (optional)</string>
+    <string name="gold_note_placeholder">Add details about this purchase…</string>
+    <string name="gold_save_holding">Save Holding</string>
+    <string name="gold_update_holding">Update Holding</string>
+    <string name="gold_saving">Saving…</string>
+    <string name="gold_updating">Updating…</string>
+    <string name="gold_weight_placeholder">e.g. 1.0</string>
+    <string name="gold_discard_title">Discard changes?</string>
+    <string name="gold_discard_message">You have unsaved changes.</string>
+    <string name="gold_discard">Discard</string>
 </resources>
