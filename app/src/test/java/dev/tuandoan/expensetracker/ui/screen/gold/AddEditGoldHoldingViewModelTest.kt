@@ -279,6 +279,157 @@ class AddEditGoldHoldingViewModelTest {
             assertEquals("my note", viewModel.uiState.value.note)
         }
 
+    // --- Boundary / Edge cases ---
+
+    @Test
+    fun addMode_formValidation_zeroWeight_invalid() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            val viewModel = createViewModel()
+            advanceUntilIdle()
+
+            viewModel.onWeightChanged("0")
+            viewModel.onBuyPriceChanged("90000000")
+            assertFalse(viewModel.uiState.value.isFormValid)
+        }
+
+    @Test
+    fun addMode_formValidation_negativeWeight_invalid() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            val viewModel = createViewModel()
+            advanceUntilIdle()
+
+            viewModel.onWeightChanged("-1")
+            viewModel.onBuyPriceChanged("90000000")
+            assertFalse(viewModel.uiState.value.isFormValid)
+        }
+
+    @Test
+    fun addMode_formValidation_zeroBuyPrice_invalid() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            val viewModel = createViewModel()
+            advanceUntilIdle()
+
+            viewModel.onWeightChanged("1.0")
+            viewModel.onBuyPriceChanged("0")
+            assertFalse(viewModel.uiState.value.isFormValid)
+        }
+
+    @Test
+    fun addMode_saveHolding_blankNote_becomesNull() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            val viewModel = createViewModel()
+            advanceUntilIdle()
+
+            viewModel.onWeightChanged("1.0")
+            viewModel.onBuyPriceChanged("90000000")
+            viewModel.onNoteChanged("   ")
+
+            viewModel.saveHolding {}
+            advanceUntilIdle()
+
+            assertEquals(1, fakeGoldRepo.addedHoldings.size)
+            assertNull(fakeGoldRepo.addedHoldings[0].note)
+        }
+
+    @Test
+    fun addMode_saveHolding_repositoryThrows_showsError() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            fakeGoldRepo.addShouldThrow = true
+
+            val viewModel = createViewModel()
+            advanceUntilIdle()
+
+            viewModel.onWeightChanged("1.0")
+            viewModel.onBuyPriceChanged("90000000")
+
+            var successCalled = false
+            viewModel.saveHolding { successCalled = true }
+            advanceUntilIdle()
+
+            assertFalse(successCalled)
+            assertNotNull(viewModel.uiState.value.errorMessage)
+            assertFalse(viewModel.uiState.value.isSaving)
+        }
+
+    @Test
+    fun editMode_saveHolding_setsUpdatedAt() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            fakeGoldRepo.holdingsFlow.value = listOf(testHolding())
+            fakeTimeProvider.setCurrentMillis(9999999L)
+
+            val viewModel = createViewModel(holdingId = 1L)
+            advanceUntilIdle()
+
+            viewModel.onWeightChanged("3.0")
+            viewModel.saveHolding {}
+            advanceUntilIdle()
+
+            assertEquals(9999999L, fakeGoldRepo.updatedHoldings[0].updatedAt)
+        }
+
+    @Test
+    fun editMode_hasUnsavedChanges_detectsEachField() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            fakeGoldRepo.holdingsFlow.value = listOf(testHolding())
+
+            val viewModel = createViewModel(holdingId = 1L)
+            advanceUntilIdle()
+            assertFalse(viewModel.uiState.value.hasUnsavedChanges)
+
+            // Type change
+            viewModel.onTypeChanged(GoldType.GOLD_24K)
+            assertTrue(viewModel.uiState.value.hasUnsavedChanges)
+            viewModel.onTypeChanged(GoldType.SJC) // revert
+            assertFalse(viewModel.uiState.value.hasUnsavedChanges)
+
+            // Unit change
+            viewModel.onWeightUnitChanged(GoldWeightUnit.GRAM)
+            assertTrue(viewModel.uiState.value.hasUnsavedChanges)
+            viewModel.onWeightUnitChanged(GoldWeightUnit.TAEL) // revert
+            assertFalse(viewModel.uiState.value.hasUnsavedChanges)
+
+            // Price change
+            viewModel.onBuyPriceChanged("99000000")
+            assertTrue(viewModel.uiState.value.hasUnsavedChanges)
+            viewModel.onBuyPriceChanged("87000000") // revert
+            assertFalse(viewModel.uiState.value.hasUnsavedChanges)
+
+            // Date change
+            viewModel.onDateSelected(1234567890L)
+            assertTrue(viewModel.uiState.value.hasUnsavedChanges)
+            viewModel.onDateSelected(1710000000000L) // revert
+            assertFalse(viewModel.uiState.value.hasUnsavedChanges)
+
+            // Note change (original note is null → empty string in state)
+            viewModel.onNoteChanged("new note")
+            assertTrue(viewModel.uiState.value.hasUnsavedChanges)
+            viewModel.onNoteChanged("") // revert (blank → null matches original null)
+            assertFalse(viewModel.uiState.value.hasUnsavedChanges)
+        }
+
+    @Test
+    fun addMode_loadInitialData_exception_showsError() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            fakeGoldRepo.getHoldingShouldThrow = true
+
+            // In add mode, loadInitialData calls currencyPreferenceRepository
+            // Make currency repo throw instead
+            fakeCurrencyRepo = FakeCurrencyPreferenceRepository("VND", shouldThrow = true)
+
+            val viewModel =
+                AddEditGoldHoldingViewModel(
+                    fakeGoldRepo,
+                    fakeCurrencyRepo,
+                    fakeTimeProvider,
+                    SavedStateHandle(mapOf("holdingId" to 0L)),
+                )
+            advanceUntilIdle()
+
+            val state = viewModel.uiState.value
+            assertFalse(state.isLoading)
+            assertNotNull(state.errorMessage)
+        }
+
     // --- Helpers ---
 
     private fun testHolding(
@@ -306,11 +457,18 @@ class AddEditGoldHoldingViewModelTest {
         val deletedIds = mutableListOf<Long>()
         val upsertedPrices = mutableListOf<GoldPrice>()
 
+        var addShouldThrow = false
+        var getHoldingShouldThrow = false
+
         override fun observeAllHoldings(): Flow<List<GoldHolding>> = holdingsFlow
 
-        override suspend fun getHolding(id: Long): GoldHolding? = holdingsFlow.value.firstOrNull { it.id == id }
+        override suspend fun getHolding(id: Long): GoldHolding? {
+            if (getHoldingShouldThrow) throw RuntimeException("Fake getHolding error")
+            return holdingsFlow.value.firstOrNull { it.id == id }
+        }
 
         override suspend fun addHolding(holding: GoldHolding): Long {
+            if (addShouldThrow) throw RuntimeException("Fake addHolding error")
             addedHoldings.add(holding)
             return holding.id
         }
