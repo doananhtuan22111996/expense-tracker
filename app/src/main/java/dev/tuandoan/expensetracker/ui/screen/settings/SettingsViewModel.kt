@@ -12,6 +12,7 @@ import dev.tuandoan.expensetracker.di.IoDispatcher
 import dev.tuandoan.expensetracker.domain.model.CurrencyDefinition
 import dev.tuandoan.expensetracker.domain.model.SupportedCurrencies
 import dev.tuandoan.expensetracker.domain.repository.BackupRepository
+import dev.tuandoan.expensetracker.domain.repository.BackupRestoreResult
 import dev.tuandoan.expensetracker.domain.repository.CurrencyPreferenceRepository
 import dev.tuandoan.expensetracker.domain.repository.RecurringTransactionRepository
 import kotlinx.coroutines.CancellationException
@@ -215,7 +216,7 @@ class SettingsViewModel
                             it.copy(
                                 backupOperation = BackupOperation.Idle,
                                 backupProgress = null,
-                                backupMessage = "Imported ${result.transactionCount} transactions",
+                                backupMessage = buildImportMessage(result),
                             )
                         }
                     } catch (e: CancellationException) {
@@ -253,6 +254,18 @@ class SettingsViewModel
         fun cancelOperation() {
             backupJob?.cancel()
             backupJob = null
+        }
+
+        private fun buildImportMessage(result: BackupRestoreResult): String {
+            val parts = mutableListOf<String>()
+            parts.add("${result.transactionCount} transactions")
+            if (result.goldHoldingCount > 0) {
+                parts.add("${result.goldHoldingCount} gold holdings")
+            }
+            if (result.goldPriceCount > 0) {
+                parts.add("${result.goldPriceCount} gold prices")
+            }
+            return "Imported ${parts.joinToString(", ")}"
         }
 
         private fun observeDefaultCurrency() {

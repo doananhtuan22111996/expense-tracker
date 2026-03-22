@@ -383,6 +383,245 @@ class BackupValidatorTest {
         assertTrue(errors.any { it is BackupValidationError.NegativeAmount })
     }
 
+    // --- Gold holding validation tests ---
+
+    @Test
+    fun validate_validGoldHoldings_returnsValid() {
+        val document =
+            TestData.sampleBackupDocument.copy(
+                goldHoldings = listOf(TestData.sampleBackupGoldHoldingDto),
+            )
+
+        val result = validator.validate(document)
+
+        assertTrue(result is BackupValidationResult.Valid)
+    }
+
+    @Test
+    fun validate_duplicateGoldHoldingIds_returnsError() {
+        val holdings =
+            listOf(
+                TestData.sampleBackupGoldHoldingDto.copy(id = 1L),
+                TestData.sampleBackupGoldHoldingDto.copy(id = 1L, note = "dup"),
+            )
+        val document = TestData.sampleBackupDocument.copy(goldHoldings = holdings)
+
+        val result = validator.validate(document)
+
+        assertTrue(result is BackupValidationResult.Invalid)
+        val errors = (result as BackupValidationResult.Invalid).errors
+        assertTrue(errors.any { it is BackupValidationError.DuplicateGoldHoldingId })
+        assertEquals(
+            1L,
+            (
+                errors.first {
+                    it is BackupValidationError.DuplicateGoldHoldingId
+                } as BackupValidationError.DuplicateGoldHoldingId
+            ).id,
+        )
+    }
+
+    @Test
+    fun validate_invalidGoldType_returnsError() {
+        val holdings =
+            listOf(TestData.sampleBackupGoldHoldingDto.copy(id = 2L, type = "PLATINUM"))
+        val document = TestData.sampleBackupDocument.copy(goldHoldings = holdings)
+
+        val result = validator.validate(document)
+
+        assertTrue(result is BackupValidationResult.Invalid)
+        val errors = (result as BackupValidationResult.Invalid).errors
+        assertTrue(errors.any { it is BackupValidationError.InvalidGoldType })
+        val error = errors.filterIsInstance<BackupValidationError.InvalidGoldType>().first()
+        assertEquals(2L, error.goldHoldingId)
+        assertEquals("PLATINUM", error.type)
+    }
+
+    @Test
+    fun validate_invalidGoldWeightUnit_returnsError() {
+        val holdings =
+            listOf(TestData.sampleBackupGoldHoldingDto.copy(id = 3L, weightUnit = "POUND"))
+        val document = TestData.sampleBackupDocument.copy(goldHoldings = holdings)
+
+        val result = validator.validate(document)
+
+        assertTrue(result is BackupValidationResult.Invalid)
+        val errors = (result as BackupValidationResult.Invalid).errors
+        assertTrue(errors.any { it is BackupValidationError.InvalidGoldWeightUnit })
+        val error = errors.filterIsInstance<BackupValidationError.InvalidGoldWeightUnit>().first()
+        assertEquals(3L, error.goldHoldingId)
+        assertEquals("POUND", error.unit)
+    }
+
+    @Test
+    fun validate_nonPositiveGoldWeight_returnsError() {
+        val holdings =
+            listOf(TestData.sampleBackupGoldHoldingDto.copy(id = 4L, weightValue = 0.0))
+        val document = TestData.sampleBackupDocument.copy(goldHoldings = holdings)
+
+        val result = validator.validate(document)
+
+        assertTrue(result is BackupValidationResult.Invalid)
+        val errors = (result as BackupValidationResult.Invalid).errors
+        assertTrue(errors.any { it is BackupValidationError.NonPositiveGoldWeight })
+    }
+
+    @Test
+    fun validate_negativeGoldWeight_returnsError() {
+        val holdings =
+            listOf(TestData.sampleBackupGoldHoldingDto.copy(id = 5L, weightValue = -1.0))
+        val document = TestData.sampleBackupDocument.copy(goldHoldings = holdings)
+
+        val result = validator.validate(document)
+
+        assertTrue(result is BackupValidationResult.Invalid)
+        val errors = (result as BackupValidationResult.Invalid).errors
+        assertTrue(errors.any { it is BackupValidationError.NonPositiveGoldWeight })
+    }
+
+    @Test
+    fun validate_negativeGoldPrice_returnsError() {
+        val holdings =
+            listOf(TestData.sampleBackupGoldHoldingDto.copy(id = 6L, buyPricePerUnit = -1L))
+        val document = TestData.sampleBackupDocument.copy(goldHoldings = holdings)
+
+        val result = validator.validate(document)
+
+        assertTrue(result is BackupValidationResult.Invalid)
+        val errors = (result as BackupValidationResult.Invalid).errors
+        assertTrue(errors.any { it is BackupValidationError.NegativeGoldPrice })
+    }
+
+    @Test
+    fun validate_zeroGoldPrice_returnsValid() {
+        val holdings =
+            listOf(TestData.sampleBackupGoldHoldingDto.copy(id = 7L, buyPricePerUnit = 0L))
+        val document = TestData.sampleBackupDocument.copy(goldHoldings = holdings)
+
+        val result = validator.validate(document)
+
+        assertTrue(result is BackupValidationResult.Valid)
+    }
+
+    @Test
+    fun validate_unsupportedGoldCurrencyCode_returnsError() {
+        val holdings =
+            listOf(TestData.sampleBackupGoldHoldingDto.copy(id = 8L, currencyCode = "GBP"))
+        val document = TestData.sampleBackupDocument.copy(goldHoldings = holdings)
+
+        val result = validator.validate(document)
+
+        assertTrue(result is BackupValidationResult.Invalid)
+        val errors = (result as BackupValidationResult.Invalid).errors
+        assertTrue(errors.any { it is BackupValidationError.UnsupportedGoldCurrencyCode })
+        val error = errors.filterIsInstance<BackupValidationError.UnsupportedGoldCurrencyCode>().first()
+        assertEquals(8L, error.goldHoldingId)
+        assertEquals("GBP", error.currencyCode)
+    }
+
+    @Test
+    fun validate_emptyGoldHoldings_returnsValid() {
+        val document =
+            TestData.sampleBackupDocument.copy(goldHoldings = emptyList())
+
+        val result = validator.validate(document)
+
+        assertTrue(result is BackupValidationResult.Valid)
+    }
+
+    // --- Gold price validation tests ---
+
+    @Test
+    fun validate_validGoldPrices_returnsValid() {
+        val document =
+            TestData.sampleBackupDocument.copy(
+                goldPrices = listOf(TestData.sampleBackupGoldPriceDto),
+            )
+        val result = validator.validate(document)
+        assertTrue(result is BackupValidationResult.Valid)
+    }
+
+    @Test
+    fun validate_duplicateGoldPrice_returnsError() {
+        val prices =
+            listOf(
+                TestData.sampleBackupGoldPriceDto,
+                TestData.sampleBackupGoldPriceDto.copy(pricePerUnit = 99L),
+            )
+        val document = TestData.sampleBackupDocument.copy(goldPrices = prices)
+        val result = validator.validate(document)
+        assertTrue(result is BackupValidationResult.Invalid)
+        val errors = (result as BackupValidationResult.Invalid).errors
+        assertTrue(errors.any { it is BackupValidationError.DuplicateGoldPrice })
+    }
+
+    @Test
+    fun validate_invalidGoldPriceType_returnsError() {
+        val prices = listOf(TestData.sampleBackupGoldPriceDto.copy(type = "PLATINUM"))
+        val document = TestData.sampleBackupDocument.copy(goldPrices = prices)
+        val result = validator.validate(document)
+        assertTrue(result is BackupValidationResult.Invalid)
+        assertTrue(
+            (result as BackupValidationResult.Invalid).errors.any {
+                it is BackupValidationError.InvalidGoldPriceType
+            },
+        )
+    }
+
+    @Test
+    fun validate_invalidGoldPriceUnit_returnsError() {
+        val prices = listOf(TestData.sampleBackupGoldPriceDto.copy(unit = "POUND"))
+        val document = TestData.sampleBackupDocument.copy(goldPrices = prices)
+        val result = validator.validate(document)
+        assertTrue(result is BackupValidationResult.Invalid)
+        assertTrue(
+            (result as BackupValidationResult.Invalid).errors.any {
+                it is BackupValidationError.InvalidGoldPriceUnit
+            },
+        )
+    }
+
+    @Test
+    fun validate_negativeGoldPriceValue_returnsError() {
+        val prices = listOf(TestData.sampleBackupGoldPriceDto.copy(pricePerUnit = -1L))
+        val document = TestData.sampleBackupDocument.copy(goldPrices = prices)
+        val result = validator.validate(document)
+        assertTrue(result is BackupValidationResult.Invalid)
+        assertTrue(
+            (result as BackupValidationResult.Invalid).errors.any {
+                it is BackupValidationError.NegativeGoldPriceValue
+            },
+        )
+    }
+
+    @Test
+    fun validate_zeroGoldPriceValue_returnsValid() {
+        val prices = listOf(TestData.sampleBackupGoldPriceDto.copy(pricePerUnit = 0L))
+        val document = TestData.sampleBackupDocument.copy(goldPrices = prices)
+        val result = validator.validate(document)
+        assertTrue(result is BackupValidationResult.Valid)
+    }
+
+    @Test
+    fun validate_unsupportedGoldPriceCurrency_returnsError() {
+        val prices = listOf(TestData.sampleBackupGoldPriceDto.copy(currencyCode = "GBP"))
+        val document = TestData.sampleBackupDocument.copy(goldPrices = prices)
+        val result = validator.validate(document)
+        assertTrue(result is BackupValidationResult.Invalid)
+        assertTrue(
+            (result as BackupValidationResult.Invalid).errors.any {
+                it is BackupValidationError.UnsupportedGoldPriceCurrencyCode
+            },
+        )
+    }
+
+    @Test
+    fun validate_emptyGoldPrices_returnsValid() {
+        val document = TestData.sampleBackupDocument.copy(goldPrices = emptyList())
+        val result = validator.validate(document)
+        assertTrue(result is BackupValidationResult.Valid)
+    }
+
     @Test
     fun validate_transactionWithCategoryIdZero_noMatchingCategory_returnsOrphanedError() {
         val categories = listOf(TestData.sampleBackupCategoryDto.copy(id = 1L))

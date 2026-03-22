@@ -53,6 +53,8 @@ data class BackupDocumentV1(
     @SerialName("categories") val categories: List<BackupCategoryDto>,
     @SerialName("transactions") val transactions: List<BackupTransactionDto>,
     @SerialName("recurring_transactions") val recurringTransactions: List<BackupRecurringTransactionDto> = emptyList(),
+    @SerialName("gold_holdings") val goldHoldings: List<BackupGoldHoldingDto> = emptyList(),
+    @SerialName("gold_prices") val goldPrices: List<BackupGoldPriceDto> = emptyList(),
 ) {
     companion object {
         const val CURRENT_SCHEMA_VERSION = 1
