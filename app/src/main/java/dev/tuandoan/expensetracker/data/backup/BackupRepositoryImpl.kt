@@ -7,6 +7,7 @@ import dev.tuandoan.expensetracker.data.backup.mapper.toEntity
 import dev.tuandoan.expensetracker.data.backup.model.BackupDocumentV1
 import dev.tuandoan.expensetracker.data.database.TransactionRunner
 import dev.tuandoan.expensetracker.data.database.dao.CategoryDao
+import dev.tuandoan.expensetracker.data.database.dao.GoldHoldingDao
 import dev.tuandoan.expensetracker.data.database.dao.RecurringTransactionDao
 import dev.tuandoan.expensetracker.data.database.dao.TransactionDao
 import dev.tuandoan.expensetracker.data.export.CsvExporter
@@ -33,6 +34,7 @@ class BackupRepositoryImpl
         private val categoryDao: CategoryDao,
         private val transactionDao: TransactionDao,
         private val recurringTransactionDao: RecurringTransactionDao,
+        private val goldHoldingDao: GoldHoldingDao,
         private val backupValidator: BackupValidator,
         private val backupSerializer: BackupSerializer,
         private val backupAssembler: BackupAssembler,
@@ -95,6 +97,12 @@ class BackupRepositoryImpl
                         )
                     }
                 csvExporter.export(transactionsWithCategory, outputStream)
+
+                val goldHoldings = goldHoldingDao.getAll()
+                if (goldHoldings.isNotEmpty()) {
+                    val writer = outputStream.bufferedWriter(Charsets.UTF_8)
+                    csvExporter.exportGoldHoldings(goldHoldings, writer)
+                }
             } catch (e: kotlin.coroutines.cancellation.CancellationException) {
                 throw e
             } catch (e: Exception) {
@@ -104,20 +112,30 @@ class BackupRepositoryImpl
         }
 
         private suspend fun buildExportDocument(): BackupDocumentV1 {
+            data class ExportData(
+                val categories: List<dev.tuandoan.expensetracker.data.backup.model.BackupCategoryDto>,
+                val transactions: List<dev.tuandoan.expensetracker.data.backup.model.BackupTransactionDto>,
+                val recurring: List<dev.tuandoan.expensetracker.data.backup.model.BackupRecurringTransactionDto>,
+                val goldHoldings: List<dev.tuandoan.expensetracker.data.backup.model.BackupGoldHoldingDto>,
+            )
+
             val result =
                 transactionRunner.runInTransaction {
-                    val cats = categoryDao.getAll().map { it.toBackupDto() }
-                    val txns = transactionDao.getAll().map { it.toBackupDto() }
-                    val recurring = recurringTransactionDao.getAllList().map { it.toBackupDto() }
-                    Triple(cats, txns, recurring)
+                    ExportData(
+                        categories = categoryDao.getAll().map { it.toBackupDto() },
+                        transactions = transactionDao.getAll().map { it.toBackupDto() },
+                        recurring = recurringTransactionDao.getAllList().map { it.toBackupDto() },
+                        goldHoldings = goldHoldingDao.getAll().map { it.toBackupDto() },
+                    )
                 }
 
             val defaultCurrencyCode = currencyPreferenceRepository.getDefaultCurrency()
 
             return backupAssembler.assemble(
-                categories = result.first,
-                transactions = result.second,
-                recurringTransactions = result.third,
+                categories = result.categories,
+                transactions = result.transactions,
+                recurringTransactions = result.recurring,
+                goldHoldings = result.goldHoldings,
                 defaultCurrencyCode = defaultCurrencyCode,
                 appVersionName = AppInfo.getVersionName(),
                 createdAtEpochMs = timeProvider.currentTimeMillis(),
@@ -137,7 +155,10 @@ class BackupRepositoryImpl
             val categoryEntities = document.categories.map { it.toEntity() }
             val transactionEntities = document.transactions.map { it.toEntity() }
             val recurringEntities = document.recurringTransactions.map { it.toEntity() }
-            val total = categoryEntities.size + transactionEntities.size + recurringEntities.size
+            val goldHoldingEntities = document.goldHoldings.map { it.toEntity() }
+            val total =
+                categoryEntities.size + transactionEntities.size +
+                    recurringEntities.size + goldHoldingEntities.size
             onProgress(BackupProgress(current = 0, total = total))
 
             // Once the destructive deleteAll() begins, the transaction must run to
@@ -147,6 +168,9 @@ class BackupRepositoryImpl
                     recurringTransactionDao.deleteAll()
                     transactionDao.deleteAll()
                     categoryDao.deleteAll()
+                    if (goldHoldingEntities.isNotEmpty()) {
+                        goldHoldingDao.deleteAll()
+                    }
                     categoryDao.insertAll(categoryEntities)
 
                     var inserted = categoryEntities.size
@@ -163,6 +187,12 @@ class BackupRepositoryImpl
                         inserted += recurringEntities.size
                         onProgress(BackupProgress(current = inserted, total = total))
                     }
+
+                    if (goldHoldingEntities.isNotEmpty()) {
+                        goldHoldingDao.insertAll(goldHoldingEntities)
+                        inserted += goldHoldingEntities.size
+                        onProgress(BackupProgress(current = inserted, total = total))
+                    }
                 }
             }
 
@@ -171,6 +201,7 @@ class BackupRepositoryImpl
             return BackupRestoreResult(
                 categoryCount = document.categories.size,
                 transactionCount = document.transactions.size,
+                goldHoldingCount = document.goldHoldings.size,
             )
         }
 

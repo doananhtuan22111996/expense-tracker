@@ -8,7 +8,17 @@
 - **Swipe-to-delete on gold holdings**: SwipeToDismissBox with undo snackbar on portfolio screen
 - **Tap to edit gold holdings**: HoldingCard now navigates to edit screen on tap
 - **Navigation wiring**: Modal route for AddEditGoldHolding with holdingId parameter
+- **Gold holdings backup/restore**: Gold holdings included in JSON backup export and import with backward-compatible schema
+- **Gold holdings CSV export**: Gold holdings section appended to CSV export with Date, Type, Weight, Unit, Buy Price, Currency, Note columns
+- **BackupGoldHoldingDto**: Serializable DTO for gold holdings in backup documents
+- **BackupGoldHoldingMapper**: Entity-to-DTO and DTO-to-entity mapping extensions
+- **Backup validation for gold**: 6 new validation rules (duplicate ID, invalid type/unit, non-positive weight, negative price, unsupported currency)
 - 14 unit tests for AddEditGoldHoldingViewModel covering add/edit/validation/error flows
+
+### Changed
+- **BackupDocumentV1**: Added optional `gold_holdings` field with empty default (backward compatible, no version bump)
+- **BackupRepositoryImpl**: Export includes gold holdings; import conditionally replaces gold data only when backup contains holdings
+- **SettingsViewModel**: Import success message now includes gold holding count when applicable
 
 ## [3.2.5] - 2026-03-14
 

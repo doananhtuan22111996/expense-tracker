@@ -2,12 +2,14 @@ package dev.tuandoan.expensetracker.data.backup
 
 import dev.tuandoan.expensetracker.data.database.TransactionRunner
 import dev.tuandoan.expensetracker.data.database.dao.CategoryDao
+import dev.tuandoan.expensetracker.data.database.dao.GoldHoldingDao
 import dev.tuandoan.expensetracker.data.database.dao.RecurringTransactionDao
 import dev.tuandoan.expensetracker.data.database.dao.TransactionDao
 import dev.tuandoan.expensetracker.data.database.entity.CategoryEntity
 import dev.tuandoan.expensetracker.data.database.entity.CategoryWithCountRow
 import dev.tuandoan.expensetracker.data.database.entity.CurrencyCategorySumRow
 import dev.tuandoan.expensetracker.data.database.entity.CurrencySumRow
+import dev.tuandoan.expensetracker.data.database.entity.GoldHoldingEntity
 import dev.tuandoan.expensetracker.data.database.entity.RecurringTransactionEntity
 import dev.tuandoan.expensetracker.data.database.entity.TransactionEntity
 import dev.tuandoan.expensetracker.data.export.CsvExporter
@@ -33,6 +35,7 @@ class BackupRepositoryImplTest {
     private lateinit var fakeCategoryDao: FakeCategoryDao
     private lateinit var fakeTransactionDao: FakeTransactionDao
     private lateinit var fakeRecurringDao: FakeRecurringTransactionDao
+    private lateinit var fakeGoldHoldingDao: FakeGoldHoldingDao
     private lateinit var fakeTimeProvider: FakeTimeProvider
     private lateinit var fakeCurrencyPreferenceRepo: FakeCurrencyPreferenceRepository
     private lateinit var validator: BackupValidator
@@ -46,6 +49,7 @@ class BackupRepositoryImplTest {
         fakeCategoryDao = FakeCategoryDao()
         fakeTransactionDao = FakeTransactionDao()
         fakeRecurringDao = FakeRecurringTransactionDao()
+        fakeGoldHoldingDao = FakeGoldHoldingDao()
         fakeTimeProvider = FakeTimeProvider()
         fakeCurrencyPreferenceRepo = FakeCurrencyPreferenceRepository()
         validator = BackupValidator()
@@ -57,6 +61,7 @@ class BackupRepositoryImplTest {
                 categoryDao = fakeCategoryDao,
                 transactionDao = fakeTransactionDao,
                 recurringTransactionDao = fakeRecurringDao,
+                goldHoldingDao = fakeGoldHoldingDao,
                 backupValidator = validator,
                 backupSerializer = serializer,
                 backupAssembler = assembler,
@@ -457,6 +462,155 @@ class BackupRepositoryImplTest {
             repository.importBackup(inputStream)
         }
 
+    // --- Gold holding export/import tests ---
+
+    @Test
+    fun exportBackupJson_includesGoldHoldings() =
+        runTest {
+            fakeGoldHoldingDao.allHoldings.add(
+                GoldHoldingEntity(
+                    id = 1L,
+                    type = "SJC",
+                    weightValue = 2.5,
+                    weightUnit = "TAEL",
+                    buyPricePerUnit = 87_000_000L,
+                    currencyCode = "VND",
+                    buyDateMillis = TestData.FIXED_TIME,
+                    note = "test",
+                    createdAt = TestData.FIXED_TIME,
+                    updatedAt = TestData.FIXED_TIME,
+                ),
+            )
+
+            val json = repository.exportBackupJson()
+            val document = serializer.decode(json)!!
+
+            assertEquals(1, document.goldHoldings.size)
+            assertEquals("SJC", document.goldHoldings[0].type)
+            assertEquals(2.5, document.goldHoldings[0].weightValue, 0.001)
+            assertEquals(87_000_000L, document.goldHoldings[0].buyPricePerUnit)
+        }
+
+    @Test
+    fun exportBackupJson_goldHoldingsSortedById() =
+        runTest {
+            fakeGoldHoldingDao.allHoldings.addAll(
+                listOf(
+                    GoldHoldingEntity(
+                        id = 3L,
+                        type = "SJC",
+                        weightValue = 1.0,
+                        weightUnit = "TAEL",
+                        buyPricePerUnit = 1L,
+                        currencyCode = "VND",
+                        buyDateMillis = TestData.FIXED_TIME,
+                        note = null,
+                        createdAt = TestData.FIXED_TIME,
+                        updatedAt = TestData.FIXED_TIME,
+                    ),
+                    GoldHoldingEntity(
+                        id = 1L,
+                        type = "SJC",
+                        weightValue = 1.0,
+                        weightUnit = "TAEL",
+                        buyPricePerUnit = 1L,
+                        currencyCode = "VND",
+                        buyDateMillis = TestData.FIXED_TIME,
+                        note = null,
+                        createdAt = TestData.FIXED_TIME,
+                        updatedAt = TestData.FIXED_TIME,
+                    ),
+                ),
+            )
+
+            val json = repository.exportBackupJson()
+            val document = serializer.decode(json)!!
+
+            assertEquals(listOf(1L, 3L), document.goldHoldings.map { it.id })
+        }
+
+    @Test
+    fun importBackupJson_withGoldHoldings_insertsGoldData() =
+        runTest {
+            val document =
+                TestData.sampleBackupDocument.copy(
+                    goldHoldings = listOf(TestData.sampleBackupGoldHoldingDto),
+                )
+            val json = serializer.encode(document)
+
+            val result = repository.importBackupJson(json)
+
+            assertEquals(1, result.goldHoldingCount)
+            assertEquals(1, fakeGoldHoldingDao.allHoldings.size)
+            assertEquals("SJC", fakeGoldHoldingDao.allHoldings[0].type)
+        }
+
+    @Test
+    fun importBackupJson_withGoldHoldings_deletesExistingGold() =
+        runTest {
+            fakeGoldHoldingDao.allHoldings.add(
+                GoldHoldingEntity(
+                    id = 99L,
+                    type = "GOLD_24K",
+                    weightValue = 1.0,
+                    weightUnit = "GRAM",
+                    buyPricePerUnit = 1L,
+                    currencyCode = "VND",
+                    buyDateMillis = TestData.FIXED_TIME,
+                    note = null,
+                    createdAt = TestData.FIXED_TIME,
+                    updatedAt = TestData.FIXED_TIME,
+                ),
+            )
+            val document =
+                TestData.sampleBackupDocument.copy(
+                    goldHoldings = listOf(TestData.sampleBackupGoldHoldingDto),
+                )
+            val json = serializer.encode(document)
+
+            repository.importBackupJson(json)
+
+            assertEquals(1, fakeGoldHoldingDao.allHoldings.size)
+            assertEquals("SJC", fakeGoldHoldingDao.allHoldings[0].type)
+        }
+
+    @Test
+    fun importBackupJson_emptyGoldHoldings_preservesExistingGold() =
+        runTest {
+            fakeGoldHoldingDao.allHoldings.add(
+                GoldHoldingEntity(
+                    id = 99L,
+                    type = "GOLD_24K",
+                    weightValue = 1.0,
+                    weightUnit = "GRAM",
+                    buyPricePerUnit = 1L,
+                    currencyCode = "VND",
+                    buyDateMillis = TestData.FIXED_TIME,
+                    note = null,
+                    createdAt = TestData.FIXED_TIME,
+                    updatedAt = TestData.FIXED_TIME,
+                ),
+            )
+            val document =
+                TestData.sampleBackupDocument.copy(goldHoldings = emptyList())
+            val json = serializer.encode(document)
+
+            repository.importBackupJson(json)
+
+            // Existing gold preserved when backup has no gold holdings
+            assertEquals(1, fakeGoldHoldingDao.allHoldings.size)
+            assertEquals(99L, fakeGoldHoldingDao.allHoldings[0].id)
+        }
+
+    @Test
+    fun importBackupJson_goldHoldingCount_returnsZeroForNoGold() =
+        runTest {
+            val json = serializer.encode(TestData.sampleBackupDocument)
+            val result = repository.importBackupJson(json)
+
+            assertEquals(0, result.goldHoldingCount)
+        }
+
     @Test(expected = BackupValidationException::class)
     fun importBackup_invalidSchemaVersion_throwsValidationException() =
         runTest {
@@ -571,6 +725,35 @@ class BackupRepositoryImplTest {
         override suspend fun deleteAll() {
             deleteAllOrder = ++globalCallOrder
             allCategories.clear()
+        }
+    }
+
+    private inner class FakeGoldHoldingDao : GoldHoldingDao {
+        val allHoldings = mutableListOf<GoldHoldingEntity>()
+
+        override fun observeAll(): Flow<List<GoldHoldingEntity>> = MutableStateFlow(allHoldings.toList())
+
+        override suspend fun getAll(): List<GoldHoldingEntity> = allHoldings.toList()
+
+        override suspend fun getById(id: Long): GoldHoldingEntity? = allHoldings.firstOrNull { it.id == id }
+
+        override suspend fun insert(entity: GoldHoldingEntity): Long {
+            allHoldings.add(entity)
+            return entity.id
+        }
+
+        override suspend fun update(entity: GoldHoldingEntity) {}
+
+        override suspend fun deleteById(id: Long) {
+            allHoldings.removeAll { it.id == id }
+        }
+
+        override suspend fun insertAll(list: List<GoldHoldingEntity>) {
+            allHoldings.addAll(list)
+        }
+
+        override suspend fun deleteAll() {
+            allHoldings.clear()
         }
     }
 

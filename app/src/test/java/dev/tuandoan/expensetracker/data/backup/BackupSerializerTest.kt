@@ -269,6 +269,56 @@ class BackupSerializerTest {
     }
 
     @Test
+    fun roundTrip_goldHoldings_preserved() {
+        val document =
+            TestData.sampleBackupDocument.copy(
+                goldHoldings = listOf(TestData.sampleBackupGoldHoldingDto),
+            )
+
+        val json = serializer.encode(document)
+        val decoded = serializer.decode(json)
+
+        assertNotNull(decoded)
+        assertEquals(1, decoded!!.goldHoldings.size)
+        assertEquals(TestData.sampleBackupGoldHoldingDto, decoded.goldHoldings[0])
+    }
+
+    @Test
+    fun decode_missingGoldHoldings_usesEmptyDefault() {
+        val oldJson =
+            """
+            {
+                "schema_version": 1,
+                "app_version_name": "1.4.0",
+                "created_at_epoch_ms": 1700000000000,
+                "categories": [],
+                "transactions": []
+            }
+            """.trimIndent()
+
+        val decoded = serializer.decode(oldJson)
+
+        assertNotNull(decoded)
+        assertEquals(emptyList<Any>(), decoded!!.goldHoldings)
+    }
+
+    @Test
+    fun encode_goldHoldings_usesSnakeCaseKeys() {
+        val document =
+            TestData.sampleBackupDocument.copy(
+                goldHoldings = listOf(TestData.sampleBackupGoldHoldingDto),
+            )
+
+        val json = serializer.encode(document)
+
+        assertTrue(json.contains("\"gold_holdings\""))
+        assertTrue(json.contains("\"weight_value\""))
+        assertTrue(json.contains("\"weight_unit\""))
+        assertTrue(json.contains("\"buy_price_per_unit\""))
+        assertTrue(json.contains("\"buy_date_millis\""))
+    }
+
+    @Test
     fun decode_missingRequiredField_returnsNull() {
         val json =
             """{"schema_version": 1, "app_version_name": "1.0.0", "created_at_epoch_ms": 1700000000000}"""

@@ -1,11 +1,13 @@
 package dev.tuandoan.expensetracker.data.export
 
+import dev.tuandoan.expensetracker.data.database.entity.GoldHoldingEntity
 import dev.tuandoan.expensetracker.data.database.entity.TransactionEntity
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
 import java.io.ByteArrayOutputStream
+import java.io.StringWriter
 import java.time.ZoneId
 
 class CsvExporterTest {
@@ -171,6 +173,64 @@ class CsvExporterTest {
         val result = exportToString(listOf(twc))
         val dataLine = result.lines().filter { it.isNotBlank() }[1]
         assertTrue(dataLine.endsWith(",Food,"))
+    }
+
+    // --- Gold holding export tests ---
+
+    private fun createGoldHolding(
+        id: Long = 1L,
+        type: String = "SJC",
+        weightValue: Double = 2.5,
+        weightUnit: String = "TAEL",
+        buyPricePerUnit: Long = 87_000_000L,
+        currencyCode: String = "VND",
+        buyDateMillis: Long = 1700000000000L,
+        note: String? = "test gold",
+    ): GoldHoldingEntity =
+        GoldHoldingEntity(
+            id = id,
+            type = type,
+            weightValue = weightValue,
+            weightUnit = weightUnit,
+            buyPricePerUnit = buyPricePerUnit,
+            currencyCode = currencyCode,
+            buyDateMillis = buyDateMillis,
+            note = note,
+            createdAt = buyDateMillis,
+            updatedAt = buyDateMillis,
+        )
+
+    @Test
+    fun exportGoldHoldings_producesCorrectHeader() {
+        val writer = StringWriter()
+        exporter.exportGoldHoldings(listOf(createGoldHolding()), writer.buffered())
+        val lines = writer.toString().lines().filter { it.isNotBlank() }
+        assertEquals("Date,Type,Weight,Unit,Buy Price,Currency,Note", lines[0])
+    }
+
+    @Test
+    fun exportGoldHoldings_producesCorrectDataRow() {
+        val writer = StringWriter()
+        exporter.exportGoldHoldings(listOf(createGoldHolding()), writer.buffered())
+        val lines = writer.toString().lines().filter { it.isNotBlank() }
+        // 1700000000000L = 2023-11-14 in UTC
+        assertEquals("2023-11-14,SJC,2.5,TAEL,87000000,VND,test gold", lines[1])
+    }
+
+    @Test
+    fun exportGoldHoldings_nullNoteProducesEmptyField() {
+        val writer = StringWriter()
+        exporter.exportGoldHoldings(listOf(createGoldHolding(note = null)), writer.buffered())
+        val lines = writer.toString().lines().filter { it.isNotBlank() }
+        assertTrue(lines[1].endsWith(",VND,"))
+    }
+
+    @Test
+    fun exportGoldHoldings_noteWithCommaIsEscaped() {
+        val writer = StringWriter()
+        exporter.exportGoldHoldings(listOf(createGoldHolding(note = "bought, sold")), writer.buffered())
+        val lines = writer.toString().lines().filter { it.isNotBlank() }
+        assertTrue(lines[1].endsWith("\"bought, sold\""))
     }
 
     @Test

@@ -1,9 +1,12 @@
 package dev.tuandoan.expensetracker.data.backup
 
 import dev.tuandoan.expensetracker.data.backup.model.BackupDocumentV1
+import dev.tuandoan.expensetracker.data.backup.model.BackupGoldHoldingDto
 import dev.tuandoan.expensetracker.data.backup.model.BackupRecurringTransactionDto
 import dev.tuandoan.expensetracker.data.database.entity.CategoryEntity
 import dev.tuandoan.expensetracker.data.database.entity.TransactionEntity
+import dev.tuandoan.expensetracker.domain.model.GoldType
+import dev.tuandoan.expensetracker.domain.model.GoldWeightUnit
 import dev.tuandoan.expensetracker.domain.model.SupportedCurrencies
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -85,6 +88,35 @@ sealed class BackupValidationError {
         val recurringId: Long,
         val categoryId: Long,
     ) : BackupValidationError()
+
+    data class DuplicateGoldHoldingId(
+        val id: Long,
+    ) : BackupValidationError()
+
+    data class InvalidGoldType(
+        val goldHoldingId: Long,
+        val type: String,
+    ) : BackupValidationError()
+
+    data class InvalidGoldWeightUnit(
+        val goldHoldingId: Long,
+        val unit: String,
+    ) : BackupValidationError()
+
+    data class NonPositiveGoldWeight(
+        val goldHoldingId: Long,
+        val weight: Double,
+    ) : BackupValidationError()
+
+    data class NegativeGoldPrice(
+        val goldHoldingId: Long,
+        val price: Long,
+    ) : BackupValidationError()
+
+    data class UnsupportedGoldCurrencyCode(
+        val goldHoldingId: Long,
+        val currencyCode: String,
+    ) : BackupValidationError()
 }
 
 @Singleton
@@ -153,10 +185,45 @@ class BackupValidator
             // Validate recurring transactions
             validateRecurring(document.recurringTransactions, categoryIds, errors)
 
+            // Validate gold holdings
+            validateGoldHoldings(document.goldHoldings, errors)
+
             return if (errors.isEmpty()) {
                 BackupValidationResult.Valid
             } else {
                 BackupValidationResult.Invalid(errors)
+            }
+        }
+
+        private val validGoldTypes = GoldType.entries.map { it.name }.toSet()
+        private val validGoldWeightUnits = GoldWeightUnit.entries.map { it.name }.toSet()
+
+        private fun validateGoldHoldings(
+            goldHoldings: List<BackupGoldHoldingDto>,
+            errors: MutableList<BackupValidationError>,
+        ) {
+            val goldIds = mutableSetOf<Long>()
+            for (holding in goldHoldings) {
+                if (!goldIds.add(holding.id)) {
+                    errors.add(BackupValidationError.DuplicateGoldHoldingId(holding.id))
+                }
+                if (holding.type !in validGoldTypes) {
+                    errors.add(BackupValidationError.InvalidGoldType(holding.id, holding.type))
+                }
+                if (holding.weightUnit !in validGoldWeightUnits) {
+                    errors.add(BackupValidationError.InvalidGoldWeightUnit(holding.id, holding.weightUnit))
+                }
+                if (holding.weightValue <= 0) {
+                    errors.add(BackupValidationError.NonPositiveGoldWeight(holding.id, holding.weightValue))
+                }
+                if (holding.buyPricePerUnit < 0) {
+                    errors.add(BackupValidationError.NegativeGoldPrice(holding.id, holding.buyPricePerUnit))
+                }
+                if (SupportedCurrencies.byCode(holding.currencyCode) == null) {
+                    errors.add(
+                        BackupValidationError.UnsupportedGoldCurrencyCode(holding.id, holding.currencyCode),
+                    )
+                }
             }
         }
 

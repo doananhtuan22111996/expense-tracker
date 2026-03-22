@@ -1,5 +1,6 @@
 package dev.tuandoan.expensetracker.data.export
 
+import dev.tuandoan.expensetracker.data.database.entity.GoldHoldingEntity
 import dev.tuandoan.expensetracker.data.database.entity.TransactionEntity
 import dev.tuandoan.expensetracker.domain.model.SupportedCurrencies
 import java.io.OutputStream
@@ -44,6 +45,31 @@ class CsvExporter
                 val note = escapeCsvField(t.note ?: "")
 
                 writer.write("$date,$type,$plainAmount,${t.currencyCode},$category,$note")
+                writer.newLine()
+            }
+            writer.flush()
+        }
+
+        fun exportGoldHoldings(
+            holdings: List<GoldHoldingEntity>,
+            writer: java.io.BufferedWriter,
+        ) {
+            val dateFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd")
+
+            writer.newLine()
+            writer.write("Date,Type,Weight,Unit,Buy Price,Currency,Note")
+            writer.newLine()
+
+            for (h in holdings) {
+                val date =
+                    Instant
+                        .ofEpochMilli(h.buyDateMillis)
+                        .atZone(zoneId)
+                        .format(dateFormatter)
+                val plainPrice = formatPlainAmount(h.buyPricePerUnit, h.currencyCode)
+                val note = escapeCsvField(h.note ?: "")
+
+                writer.write("$date,${h.type},${h.weightValue},${h.weightUnit},$plainPrice,${h.currencyCode},$note")
                 writer.newLine()
             }
             writer.flush()
