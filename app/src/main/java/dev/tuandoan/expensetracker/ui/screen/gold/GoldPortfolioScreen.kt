@@ -133,10 +133,11 @@ fun GoldPortfolioScreen(
 
     Scaffold(
         modifier = modifier,
-        contentWindowInsets = WindowInsets(0.dp),
+        contentWindowInsets = WindowInsets(0, 0, 0, 0),
         topBar = {
             TopAppBar(
                 title = { Text(stringResource(R.string.gold_portfolio_title)) },
+                windowInsets = WindowInsets(0, 0, 0, 0),
             )
         },
         floatingActionButton = {
