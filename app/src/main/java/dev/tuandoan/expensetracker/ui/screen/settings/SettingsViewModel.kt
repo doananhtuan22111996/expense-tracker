@@ -262,6 +262,9 @@ class SettingsViewModel
             if (result.goldHoldingCount > 0) {
                 parts.add("${result.goldHoldingCount} gold holdings")
             }
+            if (result.goldPriceCount > 0) {
+                parts.add("${result.goldPriceCount} gold prices")
+            }
             return "Imported ${parts.joinToString(", ")}"
         }
 

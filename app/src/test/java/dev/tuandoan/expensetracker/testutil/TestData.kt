@@ -3,6 +3,7 @@ package dev.tuandoan.expensetracker.testutil
 import dev.tuandoan.expensetracker.data.backup.model.BackupCategoryDto
 import dev.tuandoan.expensetracker.data.backup.model.BackupDocumentV1
 import dev.tuandoan.expensetracker.data.backup.model.BackupGoldHoldingDto
+import dev.tuandoan.expensetracker.data.backup.model.BackupGoldPriceDto
 import dev.tuandoan.expensetracker.data.backup.model.BackupTransactionDto
 import dev.tuandoan.expensetracker.data.database.entity.CategoryEntity
 import dev.tuandoan.expensetracker.data.database.entity.TransactionEntity
@@ -162,6 +163,15 @@ object TestData {
             buyDateMillis = FIXED_TIME,
             note = "test gold",
             createdAt = FIXED_TIME,
+            updatedAt = FIXED_TIME,
+        )
+
+    val sampleBackupGoldPriceDto =
+        BackupGoldPriceDto(
+            type = "SJC",
+            unit = "TAEL",
+            pricePerUnit = 92_000_000L,
+            currencyCode = "VND",
             updatedAt = FIXED_TIME,
         )
 

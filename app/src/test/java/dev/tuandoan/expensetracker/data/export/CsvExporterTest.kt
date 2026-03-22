@@ -1,6 +1,7 @@
 package dev.tuandoan.expensetracker.data.export
 
 import dev.tuandoan.expensetracker.data.database.entity.GoldHoldingEntity
+import dev.tuandoan.expensetracker.data.database.entity.GoldPriceEntity
 import dev.tuandoan.expensetracker.data.database.entity.TransactionEntity
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
@@ -231,6 +232,63 @@ class CsvExporterTest {
         exporter.exportGoldHoldings(listOf(createGoldHolding(note = "bought, sold")), writer.buffered())
         val lines = writer.toString().lines().filter { it.isNotBlank() }
         assertTrue(lines[1].endsWith("\"bought, sold\""))
+    }
+
+    // --- Gold P&L summary tests ---
+
+    private fun createGoldPrice(
+        type: String = "SJC",
+        unit: String = "TAEL",
+        pricePerUnit: Long = 92_000_000L,
+        currencyCode: String = "VND",
+    ): GoldPriceEntity =
+        GoldPriceEntity(
+            type = type,
+            unit = unit,
+            pricePerUnit = pricePerUnit,
+            currencyCode = currencyCode,
+            updatedAt = 1700000000000L,
+        )
+
+    @Test
+    fun exportGoldSummary_producesCorrectHeader() {
+        val writer = StringWriter()
+        val holdings = listOf(createGoldHolding())
+        val prices = listOf(createGoldPrice())
+        exporter.exportGoldSummary(holdings, prices, writer.buffered())
+        val lines = writer.toString().lines().filter { it.isNotBlank() }
+        assertEquals("Type,Unit,Weight,Buy Price,Current Price,Currency,Cost,Value,P&L", lines[0])
+    }
+
+    @Test
+    fun exportGoldSummary_computesPnLCorrectly() {
+        val writer = StringWriter()
+        // buy at 87M, current at 92M, weight 2.5 tael
+        // cost = 87M * 2.5 = 217,500,000
+        // value = 92M * 2.5 = 230,000,000
+        // P&L = 12,500,000
+        val holdings = listOf(createGoldHolding(buyPricePerUnit = 87_000_000L, weightValue = 2.5))
+        val prices = listOf(createGoldPrice(pricePerUnit = 92_000_000L))
+        exporter.exportGoldSummary(holdings, prices, writer.buffered())
+        val lines = writer.toString().lines().filter { it.isNotBlank() }
+        assertEquals("SJC,TAEL,2.5,87000000,92000000,VND,217500000,230000000,12500000", lines[1])
+    }
+
+    @Test
+    fun exportGoldSummary_noPricesForHolding_skipsRow() {
+        val writer = StringWriter()
+        val holdings = listOf(createGoldHolding(type = "GOLD_24K", weightUnit = "GRAM"))
+        val prices = listOf(createGoldPrice(type = "SJC", unit = "TAEL"))
+        exporter.exportGoldSummary(holdings, prices, writer.buffered())
+        // No matching price, so no output at all
+        assertEquals("", writer.toString())
+    }
+
+    @Test
+    fun exportGoldSummary_emptyPrices_producesNoOutput() {
+        val writer = StringWriter()
+        exporter.exportGoldSummary(listOf(createGoldHolding()), emptyList(), writer.buffered())
+        assertEquals("", writer.toString())
     }
 
     @Test

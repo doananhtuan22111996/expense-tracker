@@ -319,6 +319,40 @@ class BackupSerializerTest {
     }
 
     @Test
+    fun roundTrip_goldPrices_preserved() {
+        val document =
+            TestData.sampleBackupDocument.copy(
+                goldPrices = listOf(TestData.sampleBackupGoldPriceDto),
+            )
+
+        val json = serializer.encode(document)
+        val decoded = serializer.decode(json)
+
+        assertNotNull(decoded)
+        assertEquals(1, decoded!!.goldPrices.size)
+        assertEquals(TestData.sampleBackupGoldPriceDto, decoded.goldPrices[0])
+    }
+
+    @Test
+    fun decode_missingGoldPrices_usesEmptyDefault() {
+        val oldJson =
+            """
+            {
+                "schema_version": 1,
+                "app_version_name": "1.4.0",
+                "created_at_epoch_ms": 1700000000000,
+                "categories": [],
+                "transactions": []
+            }
+            """.trimIndent()
+
+        val decoded = serializer.decode(oldJson)
+
+        assertNotNull(decoded)
+        assertEquals(emptyList<Any>(), decoded!!.goldPrices)
+    }
+
+    @Test
     fun decode_missingRequiredField_returnsNull() {
         val json =
             """{"schema_version": 1, "app_version_name": "1.0.0", "created_at_epoch_ms": 1700000000000}"""

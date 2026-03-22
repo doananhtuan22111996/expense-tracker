@@ -2,6 +2,7 @@ package dev.tuandoan.expensetracker.data.backup
 
 import dev.tuandoan.expensetracker.data.backup.model.BackupDocumentV1
 import dev.tuandoan.expensetracker.data.backup.model.BackupGoldHoldingDto
+import dev.tuandoan.expensetracker.data.backup.model.BackupGoldPriceDto
 import dev.tuandoan.expensetracker.data.backup.model.BackupRecurringTransactionDto
 import dev.tuandoan.expensetracker.data.database.entity.CategoryEntity
 import dev.tuandoan.expensetracker.data.database.entity.TransactionEntity
@@ -117,6 +118,31 @@ sealed class BackupValidationError {
         val goldHoldingId: Long,
         val currencyCode: String,
     ) : BackupValidationError()
+
+    data class DuplicateGoldPrice(
+        val type: String,
+        val unit: String,
+    ) : BackupValidationError()
+
+    data class InvalidGoldPriceType(
+        val type: String,
+    ) : BackupValidationError()
+
+    data class InvalidGoldPriceUnit(
+        val unit: String,
+    ) : BackupValidationError()
+
+    data class NegativeGoldPriceValue(
+        val type: String,
+        val unit: String,
+        val price: Long,
+    ) : BackupValidationError()
+
+    data class UnsupportedGoldPriceCurrencyCode(
+        val type: String,
+        val unit: String,
+        val currencyCode: String,
+    ) : BackupValidationError()
 }
 
 @Singleton
@@ -188,6 +214,9 @@ class BackupValidator
             // Validate gold holdings
             validateGoldHoldings(document.goldHoldings, errors)
 
+            // Validate gold prices
+            validateGoldPrices(document.goldPrices, errors)
+
             return if (errors.isEmpty()) {
                 BackupValidationResult.Valid
             } else {
@@ -222,6 +251,39 @@ class BackupValidator
                 if (SupportedCurrencies.byCode(holding.currencyCode) == null) {
                     errors.add(
                         BackupValidationError.UnsupportedGoldCurrencyCode(holding.id, holding.currencyCode),
+                    )
+                }
+            }
+        }
+
+        private fun validateGoldPrices(
+            goldPrices: List<BackupGoldPriceDto>,
+            errors: MutableList<BackupValidationError>,
+        ) {
+            val seen = mutableSetOf<Pair<String, String>>()
+            for (price in goldPrices) {
+                val key = price.type to price.unit
+                if (!seen.add(key)) {
+                    errors.add(BackupValidationError.DuplicateGoldPrice(price.type, price.unit))
+                }
+                if (price.type !in validGoldTypes) {
+                    errors.add(BackupValidationError.InvalidGoldPriceType(price.type))
+                }
+                if (price.unit !in validGoldWeightUnits) {
+                    errors.add(BackupValidationError.InvalidGoldPriceUnit(price.unit))
+                }
+                if (price.pricePerUnit < 0) {
+                    errors.add(
+                        BackupValidationError.NegativeGoldPriceValue(price.type, price.unit, price.pricePerUnit),
+                    )
+                }
+                if (SupportedCurrencies.byCode(price.currencyCode) == null) {
+                    errors.add(
+                        BackupValidationError.UnsupportedGoldPriceCurrencyCode(
+                            price.type,
+                            price.unit,
+                            price.currencyCode,
+                        ),
                     )
                 }
             }

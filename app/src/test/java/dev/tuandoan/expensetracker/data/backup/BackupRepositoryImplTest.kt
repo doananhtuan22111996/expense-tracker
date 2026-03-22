@@ -3,6 +3,7 @@ package dev.tuandoan.expensetracker.data.backup
 import dev.tuandoan.expensetracker.data.database.TransactionRunner
 import dev.tuandoan.expensetracker.data.database.dao.CategoryDao
 import dev.tuandoan.expensetracker.data.database.dao.GoldHoldingDao
+import dev.tuandoan.expensetracker.data.database.dao.GoldPriceDao
 import dev.tuandoan.expensetracker.data.database.dao.RecurringTransactionDao
 import dev.tuandoan.expensetracker.data.database.dao.TransactionDao
 import dev.tuandoan.expensetracker.data.database.entity.CategoryEntity
@@ -10,6 +11,7 @@ import dev.tuandoan.expensetracker.data.database.entity.CategoryWithCountRow
 import dev.tuandoan.expensetracker.data.database.entity.CurrencyCategorySumRow
 import dev.tuandoan.expensetracker.data.database.entity.CurrencySumRow
 import dev.tuandoan.expensetracker.data.database.entity.GoldHoldingEntity
+import dev.tuandoan.expensetracker.data.database.entity.GoldPriceEntity
 import dev.tuandoan.expensetracker.data.database.entity.RecurringTransactionEntity
 import dev.tuandoan.expensetracker.data.database.entity.TransactionEntity
 import dev.tuandoan.expensetracker.data.export.CsvExporter
@@ -36,6 +38,7 @@ class BackupRepositoryImplTest {
     private lateinit var fakeTransactionDao: FakeTransactionDao
     private lateinit var fakeRecurringDao: FakeRecurringTransactionDao
     private lateinit var fakeGoldHoldingDao: FakeGoldHoldingDao
+    private lateinit var fakeGoldPriceDao: FakeGoldPriceDao
     private lateinit var fakeTimeProvider: FakeTimeProvider
     private lateinit var fakeCurrencyPreferenceRepo: FakeCurrencyPreferenceRepository
     private lateinit var validator: BackupValidator
@@ -50,6 +53,7 @@ class BackupRepositoryImplTest {
         fakeTransactionDao = FakeTransactionDao()
         fakeRecurringDao = FakeRecurringTransactionDao()
         fakeGoldHoldingDao = FakeGoldHoldingDao()
+        fakeGoldPriceDao = FakeGoldPriceDao()
         fakeTimeProvider = FakeTimeProvider()
         fakeCurrencyPreferenceRepo = FakeCurrencyPreferenceRepository()
         validator = BackupValidator()
@@ -62,6 +66,7 @@ class BackupRepositoryImplTest {
                 transactionDao = fakeTransactionDao,
                 recurringTransactionDao = fakeRecurringDao,
                 goldHoldingDao = fakeGoldHoldingDao,
+                goldPriceDao = fakeGoldPriceDao,
                 backupValidator = validator,
                 backupSerializer = serializer,
                 backupAssembler = assembler,
@@ -602,6 +607,90 @@ class BackupRepositoryImplTest {
             assertEquals(99L, fakeGoldHoldingDao.allHoldings[0].id)
         }
 
+    // --- Gold price export/import tests ---
+
+    @Test
+    fun exportBackupJson_includesGoldPrices() =
+        runTest {
+            fakeGoldPriceDao.allPrices.add(
+                GoldPriceEntity(
+                    type = "SJC",
+                    unit = "TAEL",
+                    pricePerUnit = 92_000_000L,
+                    currencyCode = "VND",
+                    updatedAt = TestData.FIXED_TIME,
+                ),
+            )
+
+            val json = repository.exportBackupJson()
+            val document = serializer.decode(json)!!
+
+            assertEquals(1, document.goldPrices.size)
+            assertEquals("SJC", document.goldPrices[0].type)
+            assertEquals(92_000_000L, document.goldPrices[0].pricePerUnit)
+        }
+
+    @Test
+    fun importBackupJson_withGoldPrices_insertsPriceData() =
+        runTest {
+            val document =
+                TestData.sampleBackupDocument.copy(
+                    goldPrices = listOf(TestData.sampleBackupGoldPriceDto),
+                )
+            val json = serializer.encode(document)
+
+            val result = repository.importBackupJson(json)
+
+            assertEquals(1, result.goldPriceCount)
+            assertEquals(1, fakeGoldPriceDao.allPrices.size)
+            assertEquals("SJC", fakeGoldPriceDao.allPrices[0].type)
+        }
+
+    @Test
+    fun importBackupJson_emptyGoldPrices_preservesExistingPrices() =
+        runTest {
+            fakeGoldPriceDao.allPrices.add(
+                GoldPriceEntity(
+                    type = "GOLD_24K",
+                    unit = "GRAM",
+                    pricePerUnit = 2_000_000L,
+                    currencyCode = "VND",
+                    updatedAt = TestData.FIXED_TIME,
+                ),
+            )
+            val document = TestData.sampleBackupDocument.copy(goldPrices = emptyList())
+            val json = serializer.encode(document)
+
+            repository.importBackupJson(json)
+
+            assertEquals(1, fakeGoldPriceDao.allPrices.size)
+            assertEquals("GOLD_24K", fakeGoldPriceDao.allPrices[0].type)
+        }
+
+    @Test
+    fun importBackupJson_withGoldPrices_deletesExistingPrices() =
+        runTest {
+            fakeGoldPriceDao.allPrices.add(
+                GoldPriceEntity(
+                    type = "GOLD_24K",
+                    unit = "GRAM",
+                    pricePerUnit = 2_000_000L,
+                    currencyCode = "VND",
+                    updatedAt = TestData.FIXED_TIME,
+                ),
+            )
+            val document =
+                TestData.sampleBackupDocument.copy(
+                    goldPrices = listOf(TestData.sampleBackupGoldPriceDto),
+                )
+            val json = serializer.encode(document)
+
+            repository.importBackupJson(json)
+
+            assertEquals(1, fakeGoldPriceDao.allPrices.size)
+            assertEquals("SJC", fakeGoldPriceDao.allPrices[0].type)
+        }
+
     @Test
     fun importBackupJson_goldHoldingCount_returnsZeroForNoGold() =
         runTest {
@@ -725,6 +814,34 @@ class BackupRepositoryImplTest {
         override suspend fun deleteAll() {
             deleteAllOrder = ++globalCallOrder
             allCategories.clear()
+        }
+    }
+
+    private inner class FakeGoldPriceDao : GoldPriceDao {
+        val allPrices = mutableListOf<GoldPriceEntity>()
+
+        override fun observeAll(): Flow<List<GoldPriceEntity>> = MutableStateFlow(allPrices.toList())
+
+        override suspend fun getAll(): List<GoldPriceEntity> = allPrices.toList()
+
+        override suspend fun getByTypeAndUnit(
+            type: String,
+            unit: String,
+        ): GoldPriceEntity? = allPrices.firstOrNull { it.type == type && it.unit == unit }
+
+        override suspend fun upsert(entity: GoldPriceEntity) {
+            allPrices.removeAll { it.type == entity.type && it.unit == entity.unit }
+            allPrices.add(entity)
+        }
+
+        override suspend fun upsertAll(list: List<GoldPriceEntity>) {
+            for (entity in list) {
+                upsert(entity)
+            }
+        }
+
+        override suspend fun deleteAll() {
+            allPrices.clear()
         }
     }
 

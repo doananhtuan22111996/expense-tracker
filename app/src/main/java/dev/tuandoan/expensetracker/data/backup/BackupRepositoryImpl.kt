@@ -8,6 +8,7 @@ import dev.tuandoan.expensetracker.data.backup.model.BackupDocumentV1
 import dev.tuandoan.expensetracker.data.database.TransactionRunner
 import dev.tuandoan.expensetracker.data.database.dao.CategoryDao
 import dev.tuandoan.expensetracker.data.database.dao.GoldHoldingDao
+import dev.tuandoan.expensetracker.data.database.dao.GoldPriceDao
 import dev.tuandoan.expensetracker.data.database.dao.RecurringTransactionDao
 import dev.tuandoan.expensetracker.data.database.dao.TransactionDao
 import dev.tuandoan.expensetracker.data.export.CsvExporter
@@ -35,6 +36,7 @@ class BackupRepositoryImpl
         private val transactionDao: TransactionDao,
         private val recurringTransactionDao: RecurringTransactionDao,
         private val goldHoldingDao: GoldHoldingDao,
+        private val goldPriceDao: GoldPriceDao,
         private val backupValidator: BackupValidator,
         private val backupSerializer: BackupSerializer,
         private val backupAssembler: BackupAssembler,
@@ -102,6 +104,11 @@ class BackupRepositoryImpl
                 if (goldHoldings.isNotEmpty()) {
                     val writer = outputStream.bufferedWriter(Charsets.UTF_8)
                     csvExporter.exportGoldHoldings(goldHoldings, writer)
+
+                    val goldPrices = goldPriceDao.getAll()
+                    if (goldPrices.isNotEmpty()) {
+                        csvExporter.exportGoldSummary(goldHoldings, goldPrices, writer)
+                    }
                 }
             } catch (e: kotlin.coroutines.cancellation.CancellationException) {
                 throw e
@@ -117,6 +124,7 @@ class BackupRepositoryImpl
                 val transactions: List<dev.tuandoan.expensetracker.data.backup.model.BackupTransactionDto>,
                 val recurring: List<dev.tuandoan.expensetracker.data.backup.model.BackupRecurringTransactionDto>,
                 val goldHoldings: List<dev.tuandoan.expensetracker.data.backup.model.BackupGoldHoldingDto>,
+                val goldPrices: List<dev.tuandoan.expensetracker.data.backup.model.BackupGoldPriceDto>,
             )
 
             val result =
@@ -126,6 +134,7 @@ class BackupRepositoryImpl
                         transactions = transactionDao.getAll().map { it.toBackupDto() },
                         recurring = recurringTransactionDao.getAllList().map { it.toBackupDto() },
                         goldHoldings = goldHoldingDao.getAll().map { it.toBackupDto() },
+                        goldPrices = goldPriceDao.getAll().map { it.toBackupDto() },
                     )
                 }
 
@@ -136,6 +145,7 @@ class BackupRepositoryImpl
                 transactions = result.transactions,
                 recurringTransactions = result.recurring,
                 goldHoldings = result.goldHoldings,
+                goldPrices = result.goldPrices,
                 defaultCurrencyCode = defaultCurrencyCode,
                 appVersionName = AppInfo.getVersionName(),
                 createdAtEpochMs = timeProvider.currentTimeMillis(),
@@ -156,9 +166,10 @@ class BackupRepositoryImpl
             val transactionEntities = document.transactions.map { it.toEntity() }
             val recurringEntities = document.recurringTransactions.map { it.toEntity() }
             val goldHoldingEntities = document.goldHoldings.map { it.toEntity() }
+            val goldPriceEntities = document.goldPrices.map { it.toEntity() }
             val total =
                 categoryEntities.size + transactionEntities.size +
-                    recurringEntities.size + goldHoldingEntities.size
+                    recurringEntities.size + goldHoldingEntities.size + goldPriceEntities.size
             onProgress(BackupProgress(current = 0, total = total))
 
             // Once the destructive deleteAll() begins, the transaction must run to
@@ -193,6 +204,13 @@ class BackupRepositoryImpl
                         inserted += goldHoldingEntities.size
                         onProgress(BackupProgress(current = inserted, total = total))
                     }
+
+                    if (goldPriceEntities.isNotEmpty()) {
+                        goldPriceDao.deleteAll()
+                        goldPriceDao.upsertAll(goldPriceEntities)
+                        inserted += goldPriceEntities.size
+                        onProgress(BackupProgress(current = inserted, total = total))
+                    }
                 }
             }
 
@@ -202,6 +220,7 @@ class BackupRepositoryImpl
                 categoryCount = document.categories.size,
                 transactionCount = document.transactions.size,
                 goldHoldingCount = document.goldHoldings.size,
+                goldPriceCount = document.goldPrices.size,
             )
         }
 

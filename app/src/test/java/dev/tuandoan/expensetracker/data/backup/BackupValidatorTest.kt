@@ -529,6 +529,99 @@ class BackupValidatorTest {
         assertTrue(result is BackupValidationResult.Valid)
     }
 
+    // --- Gold price validation tests ---
+
+    @Test
+    fun validate_validGoldPrices_returnsValid() {
+        val document =
+            TestData.sampleBackupDocument.copy(
+                goldPrices = listOf(TestData.sampleBackupGoldPriceDto),
+            )
+        val result = validator.validate(document)
+        assertTrue(result is BackupValidationResult.Valid)
+    }
+
+    @Test
+    fun validate_duplicateGoldPrice_returnsError() {
+        val prices =
+            listOf(
+                TestData.sampleBackupGoldPriceDto,
+                TestData.sampleBackupGoldPriceDto.copy(pricePerUnit = 99L),
+            )
+        val document = TestData.sampleBackupDocument.copy(goldPrices = prices)
+        val result = validator.validate(document)
+        assertTrue(result is BackupValidationResult.Invalid)
+        val errors = (result as BackupValidationResult.Invalid).errors
+        assertTrue(errors.any { it is BackupValidationError.DuplicateGoldPrice })
+    }
+
+    @Test
+    fun validate_invalidGoldPriceType_returnsError() {
+        val prices = listOf(TestData.sampleBackupGoldPriceDto.copy(type = "PLATINUM"))
+        val document = TestData.sampleBackupDocument.copy(goldPrices = prices)
+        val result = validator.validate(document)
+        assertTrue(result is BackupValidationResult.Invalid)
+        assertTrue(
+            (result as BackupValidationResult.Invalid).errors.any {
+                it is BackupValidationError.InvalidGoldPriceType
+            },
+        )
+    }
+
+    @Test
+    fun validate_invalidGoldPriceUnit_returnsError() {
+        val prices = listOf(TestData.sampleBackupGoldPriceDto.copy(unit = "POUND"))
+        val document = TestData.sampleBackupDocument.copy(goldPrices = prices)
+        val result = validator.validate(document)
+        assertTrue(result is BackupValidationResult.Invalid)
+        assertTrue(
+            (result as BackupValidationResult.Invalid).errors.any {
+                it is BackupValidationError.InvalidGoldPriceUnit
+            },
+        )
+    }
+
+    @Test
+    fun validate_negativeGoldPriceValue_returnsError() {
+        val prices = listOf(TestData.sampleBackupGoldPriceDto.copy(pricePerUnit = -1L))
+        val document = TestData.sampleBackupDocument.copy(goldPrices = prices)
+        val result = validator.validate(document)
+        assertTrue(result is BackupValidationResult.Invalid)
+        assertTrue(
+            (result as BackupValidationResult.Invalid).errors.any {
+                it is BackupValidationError.NegativeGoldPriceValue
+            },
+        )
+    }
+
+    @Test
+    fun validate_zeroGoldPriceValue_returnsValid() {
+        val prices = listOf(TestData.sampleBackupGoldPriceDto.copy(pricePerUnit = 0L))
+        val document = TestData.sampleBackupDocument.copy(goldPrices = prices)
+        val result = validator.validate(document)
+        assertTrue(result is BackupValidationResult.Valid)
+    }
+
+    @Test
+    fun validate_unsupportedGoldPriceCurrency_returnsError() {
+        val prices = listOf(TestData.sampleBackupGoldPriceDto.copy(currencyCode = "GBP"))
+        val document = TestData.sampleBackupDocument.copy(goldPrices = prices)
+        val result = validator.validate(document)
+        assertTrue(result is BackupValidationResult.Invalid)
+        assertTrue(
+            (result as BackupValidationResult.Invalid).errors.any {
+                it is BackupValidationError.UnsupportedGoldPriceCurrencyCode
+            },
+        )
+    }
+
+    @Test
+    fun validate_emptyGoldPrices_returnsValid() {
+        val document = TestData.sampleBackupDocument.copy(goldPrices = emptyList())
+        val result = validator.validate(document)
+        assertTrue(result is BackupValidationResult.Valid)
+    }
+
     @Test
     fun validate_transactionWithCategoryIdZero_noMatchingCategory_returnsOrphanedError() {
         val categories = listOf(TestData.sampleBackupCategoryDto.copy(id = 1L))

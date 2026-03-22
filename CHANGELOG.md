@@ -13,6 +13,10 @@
 - **BackupGoldHoldingDto**: Serializable DTO for gold holdings in backup documents
 - **BackupGoldHoldingMapper**: Entity-to-DTO and DTO-to-entity mapping extensions
 - **Backup validation for gold**: 6 new validation rules (duplicate ID, invalid type/unit, non-positive weight, negative price, unsupported currency)
+- **Gold prices backup/restore**: Current gold prices included in JSON backup export and import with backward-compatible schema
+- **BackupGoldPriceDto**: Serializable DTO for gold prices in backup documents
+- **BackupGoldPriceMapper**: Entity-to-DTO and DTO-to-entity mapping extensions
+- **Gold P&L summary CSV export**: New section in CSV with Type, Unit, Weight, Buy Price, Current Price, Currency, Cost, Value, P&L columns
 - 14 unit tests for AddEditGoldHoldingViewModel covering add/edit/validation/error flows
 
 ### Changed

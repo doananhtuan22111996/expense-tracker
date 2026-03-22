@@ -1,6 +1,7 @@
 package dev.tuandoan.expensetracker.data.export
 
 import dev.tuandoan.expensetracker.data.database.entity.GoldHoldingEntity
+import dev.tuandoan.expensetracker.data.database.entity.GoldPriceEntity
 import dev.tuandoan.expensetracker.data.database.entity.TransactionEntity
 import dev.tuandoan.expensetracker.domain.model.SupportedCurrencies
 import java.io.BufferedWriter
@@ -76,6 +77,46 @@ class CsvExporter
             writer.flush()
         }
 
+        fun exportGoldSummary(
+            holdings: List<GoldHoldingEntity>,
+            prices: List<GoldPriceEntity>,
+            writer: BufferedWriter,
+        ) {
+            val priceMap = prices.associateBy { it.type to it.unit }
+            val rows =
+                holdings.mapNotNull { h ->
+                    val price = priceMap[h.type to h.weightUnit] ?: return@mapNotNull null
+                    GoldSummaryRow(
+                        type = h.type,
+                        unit = h.weightUnit,
+                        weight = h.weightValue,
+                        buyPrice = h.buyPricePerUnit,
+                        currentPrice = price.pricePerUnit,
+                        currencyCode = h.currencyCode,
+                        cost = (h.buyPricePerUnit * h.weightValue).toLong(),
+                        value = (price.pricePerUnit * h.weightValue).toLong(),
+                    )
+                }
+            if (rows.isEmpty()) return
+
+            writer.newLine()
+            writer.write("Type,Unit,Weight,Buy Price,Current Price,Currency,Cost,Value,P&L")
+            writer.newLine()
+
+            for (r in rows) {
+                val buyPrice = formatPlainAmount(r.buyPrice, r.currencyCode)
+                val currentPrice = formatPlainAmount(r.currentPrice, r.currencyCode)
+                val cost = formatPlainAmount(r.cost, r.currencyCode)
+                val value = formatPlainAmount(r.value, r.currencyCode)
+                val pnl = formatPlainAmount(r.value - r.cost, r.currencyCode)
+                writer.write(
+                    "${r.type},${r.unit},${r.weight},$buyPrice,$currentPrice,${r.currencyCode},$cost,$value,$pnl",
+                )
+                writer.newLine()
+            }
+            writer.flush()
+        }
+
         internal fun formatPlainAmount(
             amount: Long,
             currencyCode: String,
@@ -104,3 +145,14 @@ class CsvExporter
             return Math.pow(10.0, n.toDouble()).toLong()
         }
     }
+
+internal data class GoldSummaryRow(
+    val type: String,
+    val unit: String,
+    val weight: Double,
+    val buyPrice: Long,
+    val currentPrice: Long,
+    val currencyCode: String,
+    val cost: Long,
+    val value: Long,
+)
