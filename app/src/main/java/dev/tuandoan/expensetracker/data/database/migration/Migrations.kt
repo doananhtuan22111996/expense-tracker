@@ -132,3 +132,47 @@ val MIGRATION_4_5 =
             )
         }
     }
+
+/**
+ * Migration from version 5 to version 6.
+ *
+ * Adds gold_holdings and gold_prices tables for the Gold Portfolio
+ * feature. No existing data is modified.
+ */
+val MIGRATION_5_6 =
+    object : Migration(5, 6) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            db.execSQL(
+                """
+                CREATE TABLE IF NOT EXISTS `gold_holdings` (
+                    `id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                    `type` TEXT NOT NULL,
+                    `weight_value` REAL NOT NULL,
+                    `weight_unit` TEXT NOT NULL,
+                    `buy_price_per_unit` INTEGER NOT NULL,
+                    `currency_code` TEXT NOT NULL DEFAULT 'VND',
+                    `buy_date_millis` INTEGER NOT NULL,
+                    `note` TEXT,
+                    `created_at` INTEGER NOT NULL,
+                    `updated_at` INTEGER NOT NULL
+                )
+                """.trimIndent(),
+            )
+            db.execSQL(
+                "CREATE INDEX IF NOT EXISTS `index_gold_holdings_buy_date_millis` " +
+                    "ON `gold_holdings` (`buy_date_millis`)",
+            )
+            db.execSQL(
+                """
+                CREATE TABLE IF NOT EXISTS `gold_prices` (
+                    `type` TEXT NOT NULL,
+                    `unit` TEXT NOT NULL,
+                    `price_per_unit` INTEGER NOT NULL,
+                    `currency_code` TEXT NOT NULL DEFAULT 'VND',
+                    `updated_at` INTEGER NOT NULL,
+                    PRIMARY KEY (`type`, `unit`)
+                )
+                """.trimIndent(),
+            )
+        }
+    }
