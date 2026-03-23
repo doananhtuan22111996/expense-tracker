@@ -1,15 +1,36 @@
-Take control of your finances with Expense Tracker — the simplest way to log
-daily expenses, monitor budgets, and manage money in multiple currencies.
+Expense Tracker is your all-in-one money manager — track daily spending, set monthly budgets, manage a gold portfolio, and handle multiple currencies. All offline, all private, all free.
 
-✅ Multi-currency: VND, USD, EUR, JPY, KRW, SGD
-✅ Beautiful charts — donut & bar summaries by month/year
-✅ Recurring transactions — automate rent, subscriptions & bills
-✅ Budget alerts — monthly limits per currency
-✅ Custom categories — organize spending your way
-✅ Dark mode — easy on the eyes, day or night
-✅ Cloud backup — never lose your data
-✅ CSV export — analyze in Excel
+💰 TRACK EXPENSES & INCOME
+━━━━━━━━━━━━━━━━━━━━━━━━━
+Log every transaction with custom categories. See where your money goes with beautiful donut and bar charts by month or year. Swipe to delete, tap to edit — fast and intuitive.
 
-Your financial data stays on your device. No account. No ads. Anonymous crash reports are opt-in only.
+📊 BUDGET MANAGEMENT
+━━━━━━━━━━━━━━━━━━━━━━━━━
+Set monthly spending limits per currency. Get alerts before you overspend. Visual progress bars show exactly how much budget remains.
 
-Download free and start tracking today.
+🪙 GOLD PORTFOLIO TRACKING
+━━━━━━━━━━━━━━━━━━━━━━━━━
+Track your gold holdings — bars, coins, jewelry, and more. Monitor weight, purchase price, and current value across gold types and weight units. Export your gold P&L summary to CSV.
+
+🌍 MULTI-CURRENCY SUPPORT
+━━━━━━━━━━━━━━━━━━━━━━━━━
+Manage finances in VND, USD, EUR, JPY, KRW, and SGD. Each currency tracks independently with its own budget and transaction history.
+
+🔁 RECURRING TRANSACTIONS
+━━━━━━━━━━━━━━━━━━━━━━━━━
+Automate rent, subscriptions, salary, and bills. Set frequency — daily, weekly, monthly, or yearly — and never miss a recurring entry.
+
+☁️ BACKUP & EXPORT
+━━━━━━━━━━━━━━━━━━━━━━━━━
+Back up all data (expenses, categories, gold holdings) to JSON. Export transactions and gold P&L to CSV for Excel or Google Sheets analysis. Restore anytime.
+
+🔒 PRIVACY FIRST
+━━━━━━━━━━━━━━━━━━━━━━━━━
+Your financial data stays on your device. No account required. No ads. No tracking. Anonymous crash reports are opt-in only.
+
+🎨 BEAUTIFUL & ACCESSIBLE
+━━━━━━━━━━━━━━━━━━━━━━━━━
+Material 3 design with dark mode. WCAG AA accessibility. Guided onboarding to get started in seconds.
+
+─────────────────────────
+Download Expense Tracker free — the simple, private, offline expense tracker and budget planner.
