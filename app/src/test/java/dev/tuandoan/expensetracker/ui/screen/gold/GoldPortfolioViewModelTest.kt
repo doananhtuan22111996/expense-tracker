@@ -232,6 +232,43 @@ class GoldPortfolioViewModelTest {
             assertNull(viewModel.uiState.value.lastDeletedHolding)
         }
 
+    @Test
+    fun deleteHolding_error_setsErrorState() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            val holding = testHolding()
+            fakeGoldRepository.holdingsFlow.value = listOf(holding)
+
+            val viewModel = createViewModel()
+            advanceUntilIdle()
+
+            fakeGoldRepository.shouldThrowOnMutation = true
+            viewModel.deleteHolding(holding)
+            advanceUntilIdle()
+
+            assertTrue(viewModel.uiState.value.isError)
+            assertNull(viewModel.uiState.value.lastDeletedHolding)
+        }
+
+    @Test
+    fun undoDelete_error_setsErrorState() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            val holding = testHolding()
+            fakeGoldRepository.holdingsFlow.value = listOf(holding)
+
+            val viewModel = createViewModel()
+            advanceUntilIdle()
+
+            viewModel.deleteHolding(holding)
+            advanceUntilIdle()
+            assertNotNull(viewModel.uiState.value.lastDeletedHolding)
+
+            fakeGoldRepository.shouldThrowOnMutation = true
+            viewModel.undoDelete()
+            advanceUntilIdle()
+
+            assertTrue(viewModel.uiState.value.isError)
+        }
+
     // --- Save Prices ---
 
     @Test
@@ -253,6 +290,22 @@ class GoldPortfolioViewModelTest {
             assertEquals(1, fakeGoldRepository.upsertedPrices.size)
             assertEquals(92_000_000L, fakeGoldRepository.upsertedPrices[0].pricePerUnit)
             assertEquals("VND", fakeGoldRepository.upsertedPrices[0].currencyCode)
+        }
+
+    @Test
+    fun savePrices_error_setsErrorState() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            fakeGoldRepository.holdingsFlow.value = listOf(testHolding())
+
+            val viewModel = createViewModel()
+            advanceUntilIdle()
+
+            fakeGoldRepository.shouldThrowOnMutation = true
+            viewModel.savePrices(mapOf((GoldType.SJC to GoldWeightUnit.TAEL) to 90_000_000L))
+            advanceUntilIdle()
+
+            assertTrue(viewModel.uiState.value.isError)
+            assertFalse(viewModel.uiState.value.showPricesUpdated)
         }
 
     @Test
@@ -305,6 +358,7 @@ class GoldPortfolioViewModelTest {
         val holdingsFlow = MutableStateFlow<List<GoldHolding>>(emptyList())
         val pricesFlow = MutableStateFlow<List<GoldPrice>>(emptyList())
         var shouldThrow = false
+        var shouldThrowOnMutation = false
 
         val deletedIds = mutableListOf<Long>()
         val addedHoldings = mutableListOf<GoldHolding>()
@@ -316,13 +370,17 @@ class GoldPortfolioViewModelTest {
         override suspend fun getHolding(id: Long): GoldHolding? = holdingsFlow.value.firstOrNull { it.id == id }
 
         override suspend fun addHolding(holding: GoldHolding): Long {
+            if (shouldThrowOnMutation) throw RuntimeException("Mutation error")
             addedHoldings.add(holding)
             return holding.id
         }
 
-        override suspend fun updateHolding(holding: GoldHolding) {}
+        override suspend fun updateHolding(holding: GoldHolding) {
+            if (shouldThrowOnMutation) throw RuntimeException("Mutation error")
+        }
 
         override suspend fun deleteHolding(id: Long) {
+            if (shouldThrowOnMutation) throw RuntimeException("Mutation error")
             deletedIds.add(id)
         }
 
@@ -335,10 +393,12 @@ class GoldPortfolioViewModelTest {
         ): GoldPrice? = pricesFlow.value.firstOrNull { it.type == type && it.unit == unit }
 
         override suspend fun upsertPrice(price: GoldPrice) {
+            if (shouldThrowOnMutation) throw RuntimeException("Mutation error")
             upsertedPrices.add(price)
         }
 
         override suspend fun upsertPrices(prices: List<GoldPrice>) {
+            if (shouldThrowOnMutation) throw RuntimeException("Mutation error")
             upsertedPrices.addAll(prices)
         }
     }

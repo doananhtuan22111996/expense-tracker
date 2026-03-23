@@ -17,6 +17,7 @@ import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
@@ -123,16 +124,17 @@ class HomeViewModelTest {
         }
 
     @Test
-    fun deleteTransaction_success() =
+    fun deleteTransaction_success_setsLastDeleted() =
         runTest(mainDispatcherRule.testDispatcher) {
             fakeRepository.transactionsToEmit = listOf(TestData.sampleExpenseTransaction)
             val viewModel = createViewModel()
             advanceUntilIdle()
 
-            viewModel.deleteTransaction(1L)
+            viewModel.deleteTransaction(TestData.sampleExpenseTransaction)
             advanceUntilIdle()
 
-            assertEquals(1L, fakeRepository.lastDeletedId)
+            assertEquals(TestData.sampleExpenseTransaction.id, fakeRepository.lastDeletedId)
+            assertEquals(TestData.sampleExpenseTransaction, viewModel.uiState.value.lastDeletedTransaction)
             assertFalse(viewModel.uiState.value.isError)
         }
 
@@ -144,10 +146,58 @@ class HomeViewModelTest {
             advanceUntilIdle()
 
             fakeRepository.shouldThrowOnDelete = true
-            viewModel.deleteTransaction(1L)
+            viewModel.deleteTransaction(TestData.sampleExpenseTransaction)
             advanceUntilIdle()
 
             assertTrue(viewModel.uiState.value.isError)
+            assertNull(viewModel.uiState.value.lastDeletedTransaction)
+        }
+
+    @Test
+    fun undoDelete_restoresTransaction() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            fakeRepository.transactionsToEmit = listOf(TestData.sampleExpenseTransaction)
+            val viewModel = createViewModel()
+            advanceUntilIdle()
+
+            viewModel.deleteTransaction(TestData.sampleExpenseTransaction)
+            advanceUntilIdle()
+            assertNotNull(viewModel.uiState.value.lastDeletedTransaction)
+
+            viewModel.undoDelete()
+            advanceUntilIdle()
+
+            assertNull(viewModel.uiState.value.lastDeletedTransaction)
+            assertTrue(fakeRepository.addedTransactions.isNotEmpty())
+        }
+
+    @Test
+    fun undoDelete_noLastDeleted_doesNothing() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            val viewModel = createViewModel()
+            advanceUntilIdle()
+
+            viewModel.undoDelete()
+            advanceUntilIdle()
+
+            assertNull(viewModel.uiState.value.lastDeletedTransaction)
+            assertTrue(fakeRepository.addedTransactions.isEmpty())
+        }
+
+    @Test
+    fun clearLastDeleted_clearsState() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            fakeRepository.transactionsToEmit = listOf(TestData.sampleExpenseTransaction)
+            val viewModel = createViewModel()
+            advanceUntilIdle()
+
+            viewModel.deleteTransaction(TestData.sampleExpenseTransaction)
+            advanceUntilIdle()
+            assertNotNull(viewModel.uiState.value.lastDeletedTransaction)
+
+            viewModel.clearLastDeleted()
+
+            assertNull(viewModel.uiState.value.lastDeletedTransaction)
         }
 
     @Test
@@ -442,6 +492,7 @@ class HomeViewModelTest {
         var lastObservedFrom: Long? = null
         var lastObservedTo: Long? = null
         var lastSearchQuery: String? = null
+        val addedTransactions = mutableListOf<Map<String, Any?>>()
 
         override fun observeTransactions(
             from: Long,
@@ -464,7 +515,19 @@ class HomeViewModelTest {
             note: String?,
             timestamp: Long,
             currencyCode: String,
-        ): Long = 1L
+        ): Long {
+            addedTransactions.add(
+                mapOf(
+                    "type" to type,
+                    "amount" to amount,
+                    "categoryId" to categoryId,
+                    "note" to note,
+                    "timestamp" to timestamp,
+                    "currencyCode" to currencyCode,
+                ),
+            )
+            return 1L
+        }
 
         override suspend fun updateTransaction(transaction: Transaction) {}
 

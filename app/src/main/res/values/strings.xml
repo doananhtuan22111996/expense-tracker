@@ -60,6 +60,7 @@
     <string name="no_expenses_this_year">No expenses this year</string>
     <string name="duplicate_category_name">A category with this name already exists</string>
     <string name="undo">Undo</string>
+    <string name="transaction_deleted">Transaction deleted</string>
     <string name="recurring_deleted">Recurring transaction deleted</string>
     <string name="overdue_by_days">Overdue by %1$d day(s)</string>
     <string name="due_today">Due today</string>
