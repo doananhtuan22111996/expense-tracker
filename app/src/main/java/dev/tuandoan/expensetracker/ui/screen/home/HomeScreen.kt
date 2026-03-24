@@ -30,8 +30,10 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarDuration
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.SnackbarResult
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
@@ -77,10 +79,30 @@ fun HomeScreen(
     val snackbarHostState = remember { SnackbarHostState() }
     var showMonthPicker by remember { mutableStateOf(false) }
 
+    val transactionDeletedMsg = stringResource(R.string.transaction_deleted)
+    val undoMsg = stringResource(R.string.undo)
+
     LaunchedEffect(uiState.isError) {
-        if (uiState.isError && !uiState.errorMessage.isNullOrBlank()) {
-            snackbarHostState.showSnackbar(uiState.errorMessage!!)
+        val message = uiState.errorMessage
+        if (uiState.isError && !message.isNullOrBlank()) {
+            snackbarHostState.showSnackbar(message)
             viewModel.clearError()
+        }
+    }
+
+    LaunchedEffect(uiState.lastDeletedTransaction) {
+        uiState.lastDeletedTransaction?.let {
+            val result =
+                snackbarHostState.showSnackbar(
+                    message = transactionDeletedMsg,
+                    actionLabel = undoMsg,
+                    duration = SnackbarDuration.Short,
+                )
+            if (result == SnackbarResult.ActionPerformed) {
+                viewModel.undoDelete()
+            } else {
+                viewModel.clearLastDeleted()
+            }
         }
     }
 
@@ -181,7 +203,7 @@ fun HomeScreen(
                     TransactionsList(
                         transactions = uiState.transactions,
                         onTransactionClick = onNavigateToEditTransaction,
-                        onDeleteClick = viewModel::deleteTransaction,
+                        onDeleteTransaction = viewModel::deleteTransaction,
                         modifier = Modifier.weight(1f),
                     )
                 }
@@ -272,7 +294,7 @@ private fun FilterChips(
 private fun TransactionsList(
     transactions: List<Transaction>,
     onTransactionClick: (Long) -> Unit,
-    onDeleteClick: (Long) -> Unit,
+    onDeleteTransaction: (Transaction) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     LazyColumn(
@@ -283,7 +305,7 @@ private fun TransactionsList(
             TransactionItem(
                 transaction = transaction,
                 onClick = { onTransactionClick(transaction.id) },
-                onDeleteClick = { onDeleteClick(transaction.id) },
+                onDeleteClick = { onDeleteTransaction(transaction) },
             )
         }
     }

@@ -124,8 +124,17 @@ class AddEditTransactionViewModel
                 try {
                     if (isEditMode) {
                         // Update existing transaction
+                        val original = state.originalTransaction
+                        if (original == null) {
+                            _uiState.value =
+                                _uiState.value.copy(
+                                    isLoading = false,
+                                    errorMessage = "Original transaction not loaded yet",
+                                )
+                            return@launch
+                        }
                         val updatedTransaction =
-                            state.originalTransaction!!.copy(
+                            original.copy(
                                 type = state.type,
                                 amount = amount,
                                 currencyCode = state.currencyCode,

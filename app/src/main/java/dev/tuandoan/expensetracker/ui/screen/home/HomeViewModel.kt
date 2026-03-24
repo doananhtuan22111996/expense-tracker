@@ -116,10 +116,35 @@ class HomeViewModel
 
         fun currentSelectedMonth(): YearMonth = selectedMonthRepository.selectedMonth.value
 
-        fun deleteTransaction(transactionId: Long) {
+        fun deleteTransaction(transaction: Transaction) {
             viewModelScope.launch {
                 try {
-                    transactionRepository.deleteTransaction(transactionId)
+                    _uiState.value = _uiState.value.copy(lastDeletedTransaction = transaction)
+                    transactionRepository.deleteTransaction(transaction.id)
+                } catch (e: Exception) {
+                    _uiState.value =
+                        _uiState.value.copy(
+                            lastDeletedTransaction = null,
+                            isError = true,
+                            errorMessage = ErrorUtils.getErrorMessage(e),
+                        )
+                }
+            }
+        }
+
+        fun undoDelete() {
+            val transaction = _uiState.value.lastDeletedTransaction ?: return
+            viewModelScope.launch {
+                try {
+                    transactionRepository.addTransaction(
+                        type = transaction.type,
+                        amount = transaction.amount,
+                        categoryId = transaction.category.id,
+                        note = transaction.note,
+                        timestamp = transaction.timestamp,
+                        currencyCode = transaction.currencyCode,
+                    )
+                    _uiState.value = _uiState.value.copy(lastDeletedTransaction = null)
                 } catch (e: Exception) {
                     _uiState.value =
                         _uiState.value.copy(
@@ -128,6 +153,10 @@ class HomeViewModel
                         )
                 }
             }
+        }
+
+        fun clearLastDeleted() {
+            _uiState.value = _uiState.value.copy(lastDeletedTransaction = null)
         }
 
         fun clearError() {
@@ -147,4 +176,5 @@ data class HomeUiState(
     val isError: Boolean = false,
     val errorMessage: String? = null,
     val monthLabel: String = "",
+    val lastDeletedTransaction: Transaction? = null,
 )

@@ -98,8 +98,9 @@ fun GoldPortfolioScreen(
     val pricesUpdatedMsg = stringResource(R.string.gold_prices_updated)
 
     LaunchedEffect(uiState.isError) {
-        if (uiState.isError && !uiState.errorMessage.isNullOrBlank()) {
-            snackbarHostState.showSnackbar(uiState.errorMessage!!)
+        val message = uiState.errorMessage
+        if (uiState.isError && !message.isNullOrBlank()) {
+            snackbarHostState.showSnackbar(message)
             viewModel.clearError()
         }
     }
@@ -598,13 +599,17 @@ private fun HoldingCard(
             Spacer(Modifier.height(DesignSystemSpacing.small))
 
             if (holdingWithPnL.currentPricePerUnit != null) {
+                val currentValue = holdingWithPnL.currentValue ?: 0L
+                val pnl = holdingWithPnL.pnL ?: 0L
+                val pnlPercent = holdingWithPnL.pnLPercent ?: 0.0
+
                 // Row 3: Cost → Value
                 Text(
                     text =
                         stringResource(
                             R.string.gold_cost_to_value,
                             formatAmountShort(holdingWithPnL.totalCost, holding.currencyCode),
-                            formatAmountShort(holdingWithPnL.currentValue!!, holding.currencyCode),
+                            formatAmountShort(currentValue, holding.currencyCode),
                         ),
                     style = MaterialTheme.typography.bodyMedium,
                 )
@@ -612,8 +617,6 @@ private fun HoldingCard(
                 Spacer(Modifier.height(DesignSystemSpacing.xs))
 
                 // Row 4: P&L
-                val pnl = holdingWithPnL.pnL!!
-                val pnlPercent = holdingWithPnL.pnLPercent!!
                 val pnlColor = FinancialColors.balanceColor(pnl >= 0)
                 val sign = if (pnl >= 0) "+" else ""
 

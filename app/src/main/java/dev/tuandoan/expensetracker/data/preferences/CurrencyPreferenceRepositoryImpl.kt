@@ -45,10 +45,11 @@ class CurrencyPreferenceRepositoryImpl
             }
         }
 
-        override suspend fun getDefaultCurrency(): String {
-            val preferences = context.dataStore.data.first()
-            return resolveCode(preferences)
-        }
+        override suspend fun getDefaultCurrency(): String =
+            withContext(ioDispatcher) {
+                val preferences = context.dataStore.data.first()
+                resolveCode(preferences)
+            }
 
         private fun resolveCode(preferences: Preferences): String {
             val code = preferences[defaultCurrencyKey]

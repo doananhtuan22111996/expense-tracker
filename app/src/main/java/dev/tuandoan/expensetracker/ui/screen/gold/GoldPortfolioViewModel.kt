@@ -64,16 +64,33 @@ class GoldPortfolioViewModel
 
         fun deleteHolding(holding: GoldHolding) {
             viewModelScope.launch {
-                _uiState.value = _uiState.value.copy(lastDeletedHolding = holding)
-                goldRepository.deleteHolding(holding.id)
+                try {
+                    _uiState.value = _uiState.value.copy(lastDeletedHolding = holding)
+                    goldRepository.deleteHolding(holding.id)
+                } catch (e: Exception) {
+                    _uiState.value =
+                        _uiState.value.copy(
+                            lastDeletedHolding = null,
+                            isError = true,
+                            errorMessage = ErrorUtils.getErrorMessage(e),
+                        )
+                }
             }
         }
 
         fun undoDelete() {
             val holding = _uiState.value.lastDeletedHolding ?: return
             viewModelScope.launch {
-                goldRepository.addHolding(holding)
-                _uiState.value = _uiState.value.copy(lastDeletedHolding = null)
+                try {
+                    goldRepository.addHolding(holding)
+                    _uiState.value = _uiState.value.copy(lastDeletedHolding = null)
+                } catch (e: Exception) {
+                    _uiState.value =
+                        _uiState.value.copy(
+                            isError = true,
+                            errorMessage = ErrorUtils.getErrorMessage(e),
+                        )
+                }
             }
         }
 
@@ -83,18 +100,26 @@ class GoldPortfolioViewModel
 
         fun savePrices(priceInputs: Map<Pair<GoldType, GoldWeightUnit>, Long>) {
             viewModelScope.launch {
-                val currencyCode = currencyPreferenceRepository.getDefaultCurrency()
-                val prices =
-                    priceInputs.map { (key, amount) ->
-                        GoldPrice(
-                            type = key.first,
-                            unit = key.second,
-                            pricePerUnit = amount,
-                            currencyCode = currencyCode,
+                try {
+                    val currencyCode = currencyPreferenceRepository.getDefaultCurrency()
+                    val prices =
+                        priceInputs.map { (key, amount) ->
+                            GoldPrice(
+                                type = key.first,
+                                unit = key.second,
+                                pricePerUnit = amount,
+                                currencyCode = currencyCode,
+                            )
+                        }
+                    goldRepository.upsertPrices(prices)
+                    _uiState.value = _uiState.value.copy(showPricesUpdated = true)
+                } catch (e: Exception) {
+                    _uiState.value =
+                        _uiState.value.copy(
+                            isError = true,
+                            errorMessage = ErrorUtils.getErrorMessage(e),
                         )
-                    }
-                goldRepository.upsertPrices(prices)
-                _uiState.value = _uiState.value.copy(showPricesUpdated = true)
+                }
             }
         }
 
@@ -128,7 +153,7 @@ class GoldPortfolioViewModel
                 if (holdingsWithPrice.isNotEmpty()) {
                     GoldPortfolioSummary(
                         totalCost = holdingsWithPrice.sumOf { it.totalCost },
-                        totalCurrentValue = holdingsWithPrice.sumOf { it.currentValue!! },
+                        totalCurrentValue = holdingsWithPrice.sumOf { it.currentValue ?: 0L },
                         currencyCode = currencyCode,
                     )
                 } else {
