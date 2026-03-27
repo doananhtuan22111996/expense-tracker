@@ -31,7 +31,8 @@ class RecurringTransactionRepositoryImpl
     ) : RecurringTransactionRepository {
         override fun observeAll(): Flow<List<RecurringTransaction>> =
             recurringDao.getAll().map { entities ->
-                entities.map { entity -> entity.toDomain() }
+                val categoryMap = categoryDao.getAll().associate { it.id to it.name }
+                entities.map { entity -> entity.toDomain(categoryMap) }
             }
 
         override suspend fun create(recurring: RecurringTransaction): Long {
@@ -96,9 +97,9 @@ class RecurringTransactionRepositoryImpl
             )
         }
 
-        private suspend fun RecurringTransactionEntity.toDomain(): RecurringTransaction {
+        private fun RecurringTransactionEntity.toDomain(categoryMap: Map<Long, String>): RecurringTransaction {
             val categoryName =
-                categoryId?.let { categoryDao.getById(it)?.name } ?: "Unknown"
+                categoryId?.let { categoryMap[it] } ?: "Unknown"
             return RecurringTransaction(
                 id = id,
                 type = TransactionType.fromInt(type),

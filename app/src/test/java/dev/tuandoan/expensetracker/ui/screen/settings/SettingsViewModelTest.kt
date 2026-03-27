@@ -7,6 +7,7 @@ import dev.tuandoan.expensetracker.data.backup.BackupValidationException
 import dev.tuandoan.expensetracker.data.preferences.AnalyticsPreferences
 import dev.tuandoan.expensetracker.data.preferences.FakeThemePreferencesRepository
 import dev.tuandoan.expensetracker.data.preferences.ThemePreference
+import dev.tuandoan.expensetracker.domain.crash.NoOpCrashReporter
 import dev.tuandoan.expensetracker.domain.model.RecurringTransaction
 import dev.tuandoan.expensetracker.domain.model.SupportedCurrencies
 import dev.tuandoan.expensetracker.domain.repository.BackupRepository
@@ -62,6 +63,7 @@ class SettingsViewModelTest {
             fakeRecurringRepo,
             fakeThemeRepo,
             fakeAnalyticsPrefs,
+            NoOpCrashReporter(),
             mainDispatcherRule.testDispatcher,
         )
 
