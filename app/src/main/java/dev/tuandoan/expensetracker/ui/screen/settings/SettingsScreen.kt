@@ -44,7 +44,6 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -57,6 +56,7 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import dev.tuandoan.expensetracker.R
 import dev.tuandoan.expensetracker.core.util.AppInfo
 import dev.tuandoan.expensetracker.data.preferences.ThemePreference
@@ -77,10 +77,10 @@ fun SettingsScreen(
     onNavigateToRecurring: () -> Unit = {},
     viewModel: SettingsViewModel = hiltViewModel(),
 ) {
-    val uiState by viewModel.uiState.collectAsState()
-    val activeRecurringCount by viewModel.activeRecurringCount.collectAsState()
-    val themePreference by viewModel.themePreference.collectAsState()
-    val analyticsConsent by viewModel.analyticsConsent.collectAsState()
+    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val activeRecurringCount by viewModel.activeRecurringCount.collectAsStateWithLifecycle()
+    val themePreference by viewModel.themePreference.collectAsStateWithLifecycle()
+    val analyticsConsent by viewModel.analyticsConsent.collectAsStateWithLifecycle()
     var showCurrencyDialog by remember { mutableStateOf(false) }
     var showFeedbackSheet by remember { mutableStateOf(false) }
     val snackbarHostState = remember { SnackbarHostState() }
@@ -728,7 +728,7 @@ private fun CurrencySelectionDialog(
         title = { Text("Select Default Currency") },
         text = {
             LazyColumn {
-                items(availableCurrencies) { currency ->
+                items(availableCurrencies, key = { it.code }) { currency ->
                     val isSelected = currency.code == selectedCurrencyCode
                     Row(
                         modifier =

@@ -96,11 +96,13 @@ class BackupRepositoryImpl
             @Suppress("TooGenericExceptionCaught")
             try {
                 val allTransactions = transactionDao.getAllOrdered()
+                val allCategories = categoryDao.getAll()
+                val categoryMap = allCategories.associate { it.id to it.name }
                 val transactionsWithCategory =
                     allTransactions.map { entity ->
                         TransactionWithCategory(
                             transaction = entity,
-                            categoryName = categoryDao.getById(entity.categoryId)?.name ?: "Unknown",
+                            categoryName = categoryMap[entity.categoryId] ?: "Unknown",
                         )
                     }
                 val writer = csvExporter.export(transactionsWithCategory, outputStream)

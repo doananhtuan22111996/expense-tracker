@@ -9,6 +9,7 @@ import dev.tuandoan.expensetracker.data.preferences.AnalyticsPreferences
 import dev.tuandoan.expensetracker.data.preferences.ThemePreference
 import dev.tuandoan.expensetracker.data.preferences.ThemePreferencesRepository
 import dev.tuandoan.expensetracker.di.IoDispatcher
+import dev.tuandoan.expensetracker.domain.crash.CrashReporter
 import dev.tuandoan.expensetracker.domain.model.CurrencyDefinition
 import dev.tuandoan.expensetracker.domain.model.SupportedCurrencies
 import dev.tuandoan.expensetracker.domain.repository.BackupRepository
@@ -40,6 +41,7 @@ class SettingsViewModel
         private val recurringTransactionRepository: RecurringTransactionRepository,
         private val themePreferencesRepository: ThemePreferencesRepository,
         private val analyticsPreferences: AnalyticsPreferences,
+        private val crashReporter: CrashReporter,
         @IoDispatcher private val ioDispatcher: CoroutineDispatcher,
     ) : ViewModel() {
         private val _uiState = MutableStateFlow(SettingsUiState())
@@ -272,8 +274,8 @@ class SettingsViewModel
             viewModelScope.launch {
                 currencyPreferenceRepository
                     .observeDefaultCurrency()
-                    .catch {
-                        // On error, keep default state
+                    .catch { e ->
+                        if (e is Exception) crashReporter.recordException(e)
                     }.collect { currencyCode ->
                         _uiState.update { it.copy(selectedCurrencyCode = currencyCode) }
                     }
