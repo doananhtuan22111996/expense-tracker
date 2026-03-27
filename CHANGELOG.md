@@ -14,6 +14,7 @@
 ### Fixed
 - Budget error message uses string resource instead of hardcoded string
 - HomeViewModel retry() was a no-op due to MutableStateFlow same-value dedup; now uses counter-based retryTrigger
+- HomeViewModel catch moved inside flatMapLatest so errors don't kill the combine flow and retry works
 - AddEditRecurringTransactionViewModel loadExisting() could hang on infinite category flow; now uses first() for initial load
 - AddEditRecurringTransactionViewModel save() preserves isActive state instead of hardcoding true
 - Edit mode hasUnsavedChanges compares against original loaded state instead of just checking non-empty fields

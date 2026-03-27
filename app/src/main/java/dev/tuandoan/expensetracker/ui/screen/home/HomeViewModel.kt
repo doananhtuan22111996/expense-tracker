@@ -58,27 +58,29 @@ class HomeViewModel
 
                     val range = dateRangeCalculator.rangeOf(month)
 
-                    if (query.isEmpty()) {
-                        transactionRepository.observeTransactions(
-                            from = range.startMillis,
-                            to = range.endMillisExclusive,
-                            filterType = filter,
-                        )
-                    } else {
-                        transactionRepository.searchTransactions(
-                            from = range.startMillis,
-                            to = range.endMillisExclusive,
-                            query = query,
-                            filterType = filter,
-                        )
+                    val sourceFlow =
+                        if (query.isEmpty()) {
+                            transactionRepository.observeTransactions(
+                                from = range.startMillis,
+                                to = range.endMillisExclusive,
+                                filterType = filter,
+                            )
+                        } else {
+                            transactionRepository.searchTransactions(
+                                from = range.startMillis,
+                                to = range.endMillisExclusive,
+                                query = query,
+                                filterType = filter,
+                            )
+                        }
+                    sourceFlow.catch { e ->
+                        _uiState.value =
+                            _uiState.value.copy(
+                                isLoading = false,
+                                isError = true,
+                                errorMessage = ErrorUtils.getErrorMessage(e),
+                            )
                     }
-                }.catch { e ->
-                    _uiState.value =
-                        _uiState.value.copy(
-                            isLoading = false,
-                            isError = true,
-                            errorMessage = ErrorUtils.getErrorMessage(e),
-                        )
                 }.collectLatest { transactions ->
                     _uiState.value =
                         _uiState.value.copy(
