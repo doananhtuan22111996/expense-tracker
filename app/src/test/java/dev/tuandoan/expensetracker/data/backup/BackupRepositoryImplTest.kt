@@ -879,6 +879,8 @@ class BackupRepositoryImplTest {
 
         override fun getAll(): Flow<List<RecurringTransactionEntity>> = MutableStateFlow(allRecurring.toList())
 
+        override suspend fun getById(id: Long): RecurringTransactionEntity? = allRecurring.find { it.id == id }
+
         override suspend fun getDue(nowMillis: Long): List<RecurringTransactionEntity> = emptyList()
 
         override suspend fun insert(entity: RecurringTransactionEntity): Long = entity.id

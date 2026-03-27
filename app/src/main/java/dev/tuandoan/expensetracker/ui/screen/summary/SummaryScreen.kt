@@ -111,7 +111,13 @@ fun SummaryScreen(
                         modifier = Modifier.fillMaxSize(),
                         contentAlignment = Alignment.Center,
                     ) {
-                        CircularProgressIndicator()
+                        val loadingDesc = stringResource(R.string.a11y_loading_summary)
+                        CircularProgressIndicator(
+                            modifier =
+                                Modifier.semantics {
+                                    contentDescription = loadingDesc
+                                },
+                        )
                     }
                 }
                 uiState.isError -> {

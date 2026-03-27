@@ -75,6 +75,7 @@ import dev.tuandoan.expensetracker.domain.model.GoldPrice
 import dev.tuandoan.expensetracker.domain.model.GoldType
 import dev.tuandoan.expensetracker.domain.model.GoldWeightUnit
 import dev.tuandoan.expensetracker.ui.component.AmountText
+import dev.tuandoan.expensetracker.ui.component.ErrorStateMessage
 import dev.tuandoan.expensetracker.ui.theme.DesignSystemSpacing
 import dev.tuandoan.expensetracker.ui.theme.FinancialColors
 import java.text.SimpleDateFormat
@@ -171,8 +172,23 @@ fun GoldPortfolioScreen(
                     modifier = Modifier.fillMaxSize().padding(innerPadding),
                     contentAlignment = Alignment.Center,
                 ) {
-                    CircularProgressIndicator()
+                    val loadingDesc = stringResource(R.string.a11y_loading_gold_portfolio)
+                    CircularProgressIndicator(
+                        modifier =
+                            Modifier.semantics {
+                                contentDescription = loadingDesc
+                            },
+                    )
                 }
+            }
+
+            uiState.isError && uiState.holdings.isEmpty() -> {
+                ErrorStateMessage(
+                    title = "Unable to load portfolio",
+                    message = uiState.errorMessage ?: "An unexpected error occurred",
+                    onRetry = viewModel::retry,
+                    modifier = Modifier.fillMaxSize().padding(innerPadding),
+                )
             }
 
             uiState.holdings.isEmpty() -> {

@@ -64,6 +64,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import dev.tuandoan.expensetracker.R
 import dev.tuandoan.expensetracker.domain.model.CategoryWithCount
 import dev.tuandoan.expensetracker.domain.model.TransactionType
+import dev.tuandoan.expensetracker.ui.component.EmptyStateMessage
 import dev.tuandoan.expensetracker.ui.theme.DesignSystemElevation
 import dev.tuandoan.expensetracker.ui.theme.DesignSystemSpacing
 
@@ -189,16 +190,11 @@ fun CategoriesScreen(
                     }
 
                 if (categories.isEmpty()) {
-                    Box(
+                    EmptyStateMessage(
+                        title = stringResource(R.string.no_categories),
+                        subtitle = stringResource(R.string.no_categories_subtitle),
                         modifier = Modifier.fillMaxSize(),
-                        contentAlignment = Alignment.Center,
-                    ) {
-                        Text(
-                            text = stringResource(R.string.no_categories),
-                            style = MaterialTheme.typography.bodyLarge,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
-                    }
+                    )
                 } else {
                     LazyColumn(
                         contentPadding = PaddingValues(DesignSystemSpacing.large),
@@ -540,20 +536,6 @@ private fun colorKeyToName(key: String): String =
         "yellow" -> stringResource(R.string.color_yellow)
         else -> key.replaceFirstChar { it.uppercase() }
     }
-
-val AVAILABLE_ICONS =
-    listOf(
-        "restaurant" to "Restaurant",
-        "directions_car" to "Car",
-        "shopping_cart" to "Shopping",
-        "receipt" to "Bills",
-        "local_hospital" to "Health",
-        "movie" to "Entertainment",
-        "work" to "Work",
-        "school" to "School",
-        "home" to "Home",
-        "help_outline" to "Other",
-    )
 
 val AVAILABLE_COLORS =
     listOf(

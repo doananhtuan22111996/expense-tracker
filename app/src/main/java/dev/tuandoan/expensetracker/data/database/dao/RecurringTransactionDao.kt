@@ -13,6 +13,9 @@ interface RecurringTransactionDao {
     @Query("SELECT * FROM recurring_transactions ORDER BY next_due_millis ASC")
     fun getAll(): Flow<List<RecurringTransactionEntity>>
 
+    @Query("SELECT * FROM recurring_transactions WHERE id = :id")
+    suspend fun getById(id: Long): RecurringTransactionEntity?
+
     @Query("SELECT * FROM recurring_transactions WHERE next_due_millis <= :nowMillis AND is_active = 1")
     suspend fun getDue(nowMillis: Long): List<RecurringTransactionEntity>
 

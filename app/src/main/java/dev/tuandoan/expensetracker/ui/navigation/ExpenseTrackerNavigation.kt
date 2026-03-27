@@ -74,4 +74,8 @@ object ModalNavRoutes {
     fun addGoldHoldingRoute(): String = "${ModalDestination.AddEditGoldHolding.route}/0"
 
     fun editGoldHoldingRoute(holdingId: Long): String = "${ModalDestination.AddEditGoldHolding.route}/$holdingId"
+
+    fun addRecurringRoute(): String = "${ModalDestination.AddEditRecurring.route}/0"
+
+    fun editRecurringRoute(recurringId: Long): String = "${ModalDestination.AddEditRecurring.route}/$recurringId"
 }

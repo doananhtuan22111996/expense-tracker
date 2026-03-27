@@ -584,6 +584,8 @@ class SettingsViewModelTest {
 
         override fun observeAll(): Flow<List<RecurringTransaction>> = recurringFlow
 
+        override suspend fun getById(id: Long): RecurringTransaction? = null
+
         override suspend fun create(recurring: RecurringTransaction): Long = 1L
 
         override suspend fun update(recurring: RecurringTransaction) {}

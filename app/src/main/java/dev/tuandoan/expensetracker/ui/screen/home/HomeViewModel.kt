@@ -163,6 +163,12 @@ class HomeViewModel
             _uiState.value = _uiState.value.copy(isError = false, errorMessage = null)
         }
 
+        fun retry() {
+            clearError()
+            // Re-emit the current filter to trigger the combine flow
+            filterFlow.value = filterFlow.value
+        }
+
         companion object {
             const val SEARCH_DEBOUNCE_MS = 300L
         }

@@ -131,6 +131,11 @@ class GoldPortfolioViewModel
             _uiState.value = _uiState.value.copy(isError = false, errorMessage = null)
         }
 
+        fun retry() {
+            clearError()
+            loadPortfolio()
+        }
+
         private fun buildPortfolioState(
             holdings: List<GoldHolding>,
             prices: List<GoldPrice>,

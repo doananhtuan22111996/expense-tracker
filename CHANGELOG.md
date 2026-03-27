@@ -1,5 +1,23 @@
 # Changelog
 
+## [Unreleased]
+
+### Added
+- Edit mode for recurring transactions with tap-to-edit, DAO getById, and SavedStateHandle-based ViewModel
+- Full-screen ErrorStateMessage with retry on Home and Gold Portfolio screens
+- BackHandler + discard confirmation dialog on Add/Edit Recurring Transaction screen
+- Categories empty state uses EmptyStateMessage component
+- Loading spinner contentDescription for Summary, Gold Portfolio, and Add/Edit Gold Holding screens
+- Onboarding page indicator semantics ("Page X of Y")
+- Retry methods on HomeViewModel and GoldPortfolioViewModel
+
+### Fixed
+- Budget error message uses string resource instead of hardcoded string
+
+### Removed
+- Dead DateSelector composable from AddEditTransactionScreen
+- Unused AVAILABLE_ICONS list from CategoriesScreen
+
 ## [3.3.0] - 2026-03-22
 
 ### Added
