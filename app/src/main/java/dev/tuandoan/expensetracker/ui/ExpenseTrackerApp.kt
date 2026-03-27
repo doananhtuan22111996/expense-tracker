@@ -106,8 +106,7 @@ fun ExpenseTrackerApp(isOnboardingComplete: Boolean = true) {
                         defaultValue = 0L
                     },
                 ),
-        ) { backStackEntry ->
-            val recurringId = backStackEntry.arguments?.getLong("recurringId") ?: 0L
+        ) {
             AddEditRecurringTransactionScreen(
                 onNavigateBack = {
                     if (!navController.popBackStack()) {

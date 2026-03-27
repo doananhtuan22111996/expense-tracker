@@ -13,10 +13,16 @@
 
 ### Fixed
 - Budget error message uses string resource instead of hardcoded string
+- HomeViewModel retry() was a no-op due to MutableStateFlow same-value dedup; now uses counter-based retryTrigger
+- AddEditRecurringTransactionViewModel loadExisting() could hang on infinite category flow; now uses first() for initial load
+- AddEditRecurringTransactionViewModel save() preserves isActive state instead of hardcoding true
+- Edit mode hasUnsavedChanges compares against original loaded state instead of just checking non-empty fields
+- Error state messages on Home and Gold Portfolio screens use string resources instead of hardcoded strings
 
 ### Removed
 - Dead DateSelector composable from AddEditTransactionScreen
 - Unused AVAILABLE_ICONS list from CategoriesScreen
+- Unused recurringId variable extraction in ExpenseTrackerApp navigation
 
 ## [3.3.0] - 2026-03-22
 

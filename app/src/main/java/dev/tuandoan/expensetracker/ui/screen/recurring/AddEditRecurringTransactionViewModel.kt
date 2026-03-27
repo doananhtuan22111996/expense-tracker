@@ -19,6 +19,7 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
@@ -124,7 +125,7 @@ class AddEditRecurringTransactionViewModel
                             dayOfMonth = zdt.dayOfMonth,
                             dayOfWeek = zdt.dayOfWeek.value,
                             nextDueMillis = state.startDate,
-                            isActive = true,
+                            isActive = state.isActive,
                         )
                     if (isEditMode) {
                         recurringTransactionRepository.update(recurring)
@@ -159,6 +160,11 @@ class AddEditRecurringTransactionViewModel
 
                     val amountText = existing.amount.toString()
 
+                    // Fetch categories synchronously with first() instead of
+                    // starting an infinite collect that would block on join()
+                    val categories = categoryRepository.observeCategories(existing.type).first()
+                    val selectedCategory = categories.find { it.id == existing.categoryId }
+
                     _uiState.update {
                         it.copy(
                             type = existing.type,
@@ -167,21 +173,28 @@ class AddEditRecurringTransactionViewModel
                             frequency = existing.frequency,
                             startDate = existing.nextDueMillis,
                             note = existing.note ?: "",
-                        )
-                    }
-
-                    loadCategories(existing.type)
-
-                    // Wait for categories to load, then select the matching one
-                    categoryLoadingJob?.join()
-                    val categories = _uiState.value.categories
-                    val selectedCategory = categories.find { it.id == existing.categoryId }
-                    _uiState.update {
-                        it.copy(
+                            isActive = existing.isActive,
+                            categories = categories,
                             selectedCategory = selectedCategory,
                             isLoading = false,
                         )
                     }
+
+                    // Snapshot original state for hasUnsavedChanges comparison
+                    _uiState.update {
+                        it.copy(
+                            originalAmountText = amountText,
+                            originalNote = existing.note ?: "",
+                            originalCategoryId = existing.categoryId,
+                            originalFrequency = existing.frequency,
+                            originalStartDate = existing.nextDueMillis,
+                            originalCurrencyCode = existing.currencyCode,
+                            originalType = existing.type,
+                        )
+                    }
+
+                    // Start observing categories for live updates
+                    loadCategories(existing.type)
                 } catch (e: Exception) {
                     _uiState.update {
                         it.copy(
@@ -247,9 +260,18 @@ data class AddEditRecurringUiState(
     val frequency: RecurrenceFrequency = RecurrenceFrequency.MONTHLY,
     val startDate: Long = System.currentTimeMillis(),
     val note: String = "",
+    val isActive: Boolean = true,
     val isLoading: Boolean = true,
     val isSaving: Boolean = false,
     val errorMessage: String? = null,
+    // Original state for edit mode hasUnsavedChanges comparison
+    val originalAmountText: String? = null,
+    val originalNote: String? = null,
+    val originalCategoryId: Long? = null,
+    val originalFrequency: RecurrenceFrequency? = null,
+    val originalStartDate: Long? = null,
+    val originalCurrencyCode: String? = null,
+    val originalType: TransactionType? = null,
 ) {
     val isFormValid: Boolean
         get() =
@@ -257,6 +279,19 @@ data class AddEditRecurringUiState(
                 selectedCategory != null &&
                 AmountFormatter.parseAmount(amountText)?.let { it > 0 } == true
 
-    val hasChanges: Boolean
-        get() = amountText.isNotBlank() || note.isNotBlank() || selectedCategory != null
+    val hasUnsavedChanges: Boolean
+        get() {
+            // In edit mode: compare against original loaded state
+            if (originalAmountText != null) {
+                return amountText != originalAmountText ||
+                    (note.ifBlank { "" }) != (originalNote ?: "") ||
+                    selectedCategory?.id != originalCategoryId ||
+                    frequency != originalFrequency ||
+                    startDate != originalStartDate ||
+                    currencyCode != originalCurrencyCode ||
+                    type != originalType
+            }
+            // In add mode: any user input counts as changes
+            return amountText.isNotBlank() || note.isNotBlank() || selectedCategory != null
+        }
 }

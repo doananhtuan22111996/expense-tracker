@@ -187,8 +187,8 @@ fun HomeScreen(
                 }
                 uiState.isError && uiState.transactions.isEmpty() -> {
                     ErrorStateMessage(
-                        title = "Unable to load transactions",
-                        message = uiState.errorMessage ?: "An unexpected error occurred",
+                        title = stringResource(R.string.error_load_transactions),
+                        message = uiState.errorMessage ?: stringResource(R.string.error_unexpected),
                         onRetry = viewModel::retry,
                         modifier = Modifier.fillMaxSize(),
                     )
