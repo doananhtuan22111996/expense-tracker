@@ -194,5 +194,4 @@
     <string name="error_load_transactions">Unable to load transactions</string>
     <string name="error_unexpected">An unexpected error occurred</string>
     <string name="error_load_portfolio">Unable to load portfolio</string>
-    <string name="error_recurring_not_found">Recurring transaction not found</string>
 </resources>
