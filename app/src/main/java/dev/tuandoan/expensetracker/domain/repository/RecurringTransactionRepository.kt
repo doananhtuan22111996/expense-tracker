@@ -6,6 +6,8 @@ import kotlinx.coroutines.flow.Flow
 interface RecurringTransactionRepository {
     fun observeAll(): Flow<List<RecurringTransaction>>
 
+    suspend fun getById(id: Long): RecurringTransaction?
+
     suspend fun create(recurring: RecurringTransaction): Long
 
     suspend fun update(recurring: RecurringTransaction)

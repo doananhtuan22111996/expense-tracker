@@ -59,6 +59,7 @@ import dev.tuandoan.expensetracker.ui.theme.FinancialColors
 fun RecurringTransactionsScreen(
     onNavigateBack: () -> Unit,
     onNavigateToAdd: () -> Unit,
+    onNavigateToEdit: (Long) -> Unit,
     viewModel: RecurringTransactionsViewModel,
     modifier: Modifier = Modifier,
 ) {
@@ -170,6 +171,7 @@ fun RecurringTransactionsScreen(
                     ) { item ->
                         RecurringTransactionRow(
                             item = item,
+                            onClick = { onNavigateToEdit(item.id) },
                             onToggleActive = { active ->
                                 viewModel.toggleActive(item.id, active)
                             },
@@ -211,6 +213,7 @@ fun RecurringTransactionsScreen(
 @Composable
 private fun RecurringTransactionRow(
     item: RecurringTransaction,
+    onClick: () -> Unit,
     onToggleActive: (Boolean) -> Unit,
     onDelete: () -> Unit,
     modifier: Modifier = Modifier,
@@ -251,12 +254,13 @@ private fun RecurringTransactionRow(
         }
 
     Card(
+        onClick = onClick,
         modifier =
             modifier
                 .fillMaxWidth()
                 .semantics {
                     contentDescription =
-                        "${item.categoryName}, $formattedAmount, $frequencyLabel, $statusLabel"
+                        "${item.categoryName}, $formattedAmount, $frequencyLabel, $statusLabel, tap to edit"
                 },
         elevation = CardDefaults.cardElevation(defaultElevation = DesignSystemElevation.low),
     ) {

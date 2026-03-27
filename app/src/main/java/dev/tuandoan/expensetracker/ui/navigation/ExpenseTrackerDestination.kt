@@ -58,7 +58,7 @@ sealed class ModalDestination(
 
     data object Recurring : ModalDestination("modal/recurring")
 
-    data object AddRecurring : ModalDestination("modal/add_recurring")
+    data object AddEditRecurring : ModalDestination("modal/add_edit_recurring")
 
     data object AddEditGoldHolding : ModalDestination("modal/add_edit_gold_holding")
 

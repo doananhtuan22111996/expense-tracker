@@ -88,13 +88,26 @@ fun ExpenseTrackerApp(isOnboardingComplete: Boolean = true) {
                     }
                 },
                 onNavigateToAdd = {
-                    navController.navigate(ModalDestination.AddRecurring.route)
+                    navController.navigate(ModalNavRoutes.addRecurringRoute())
+                },
+                onNavigateToEdit = { recurringId ->
+                    navController.navigate(ModalNavRoutes.editRecurringRoute(recurringId))
                 },
                 viewModel = hiltViewModel(),
             )
         }
 
-        composable(ModalDestination.AddRecurring.route) {
+        composable(
+            route = "${ModalDestination.AddEditRecurring.route}/{recurringId}",
+            arguments =
+                listOf(
+                    navArgument("recurringId") {
+                        type = NavType.LongType
+                        defaultValue = 0L
+                    },
+                ),
+        ) { backStackEntry ->
+            val recurringId = backStackEntry.arguments?.getLong("recurringId") ?: 0L
             AddEditRecurringTransactionScreen(
                 onNavigateBack = {
                     if (!navController.popBackStack()) {

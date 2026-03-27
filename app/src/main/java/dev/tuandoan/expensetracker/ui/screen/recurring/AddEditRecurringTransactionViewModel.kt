@@ -1,5 +1,6 @@
 package dev.tuandoan.expensetracker.ui.screen.recurring
 
+import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -29,6 +30,7 @@ import javax.inject.Inject
 class AddEditRecurringTransactionViewModel
     @Inject
     constructor(
+        savedStateHandle: SavedStateHandle,
         private val recurringTransactionRepository: RecurringTransactionRepository,
         private val categoryRepository: CategoryRepository,
         private val currencyPreferenceRepository: CurrencyPreferenceRepository,
@@ -40,8 +42,15 @@ class AddEditRecurringTransactionViewModel
 
         private var categoryLoadingJob: Job? = null
 
+        private val recurringId: Long = savedStateHandle.get<Long>("recurringId") ?: 0L
+        val isEditMode: Boolean = recurringId != 0L
+
         init {
-            loadDefaults()
+            if (isEditMode) {
+                loadExisting(recurringId)
+            } else {
+                loadDefaults()
+            }
         }
 
         fun onTypeChanged(type: TransactionType) {
@@ -105,6 +114,7 @@ class AddEditRecurringTransactionViewModel
                 try {
                     val recurring =
                         RecurringTransaction(
+                            id = if (isEditMode) recurringId else 0L,
                             type = state.type,
                             amount = amount,
                             currencyCode = state.currencyCode,
@@ -116,12 +126,66 @@ class AddEditRecurringTransactionViewModel
                             nextDueMillis = state.startDate,
                             isActive = true,
                         )
-                    recurringTransactionRepository.create(recurring)
+                    if (isEditMode) {
+                        recurringTransactionRepository.update(recurring)
+                    } else {
+                        recurringTransactionRepository.create(recurring)
+                    }
                     onSuccess()
                 } catch (e: Exception) {
                     _uiState.update {
                         it.copy(
                             isSaving = false,
+                            errorMessage = ErrorUtils.getErrorMessage(e),
+                        )
+                    }
+                }
+            }
+        }
+
+        private fun loadExisting(id: Long) {
+            viewModelScope.launch {
+                try {
+                    val existing = recurringTransactionRepository.getById(id)
+                    if (existing == null) {
+                        _uiState.update {
+                            it.copy(
+                                isLoading = false,
+                                errorMessage = "Recurring transaction not found",
+                            )
+                        }
+                        return@launch
+                    }
+
+                    val amountText = existing.amount.toString()
+
+                    _uiState.update {
+                        it.copy(
+                            type = existing.type,
+                            amountText = amountText,
+                            currencyCode = existing.currencyCode,
+                            frequency = existing.frequency,
+                            startDate = existing.nextDueMillis,
+                            note = existing.note ?: "",
+                        )
+                    }
+
+                    loadCategories(existing.type)
+
+                    // Wait for categories to load, then select the matching one
+                    categoryLoadingJob?.join()
+                    val categories = _uiState.value.categories
+                    val selectedCategory = categories.find { it.id == existing.categoryId }
+                    _uiState.update {
+                        it.copy(
+                            selectedCategory = selectedCategory,
+                            isLoading = false,
+                        )
+                    }
+                } catch (e: Exception) {
+                    _uiState.update {
+                        it.copy(
+                            isLoading = false,
                             errorMessage = ErrorUtils.getErrorMessage(e),
                         )
                     }
@@ -192,4 +256,7 @@ data class AddEditRecurringUiState(
             amountText.isNotBlank() &&
                 selectedCategory != null &&
                 AmountFormatter.parseAmount(amountText)?.let { it > 0 } == true
+
+    val hasChanges: Boolean
+        get() = amountText.isNotBlank() || note.isNotBlank() || selectedCategory != null
 }

@@ -117,6 +117,8 @@ class RecurringTransactionsViewModelTest {
 
         override fun observeAll(): Flow<List<RecurringTransaction>> = items
 
+        override suspend fun getById(id: Long): RecurringTransaction? = items.value.find { it.id == id }
+
         override suspend fun create(recurring: RecurringTransaction): Long = 1L
 
         override suspend fun update(recurring: RecurringTransaction) {}

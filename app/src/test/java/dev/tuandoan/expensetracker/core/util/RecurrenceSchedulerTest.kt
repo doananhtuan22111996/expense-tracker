@@ -264,6 +264,8 @@ class RecurrenceSchedulerTest {
 
         override fun getAll(): Flow<List<RecurringTransactionEntity>> = MutableStateFlow(emptyList())
 
+        override suspend fun getById(id: Long): RecurringTransactionEntity? = dueItems.find { it.id == id }
+
         override suspend fun getDue(nowMillis: Long): List<RecurringTransactionEntity> = dueItems.toList()
 
         override suspend fun insert(entity: RecurringTransactionEntity): Long = entity.id

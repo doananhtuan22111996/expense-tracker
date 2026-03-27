@@ -62,6 +62,7 @@ import dev.tuandoan.expensetracker.domain.model.Transaction
 import dev.tuandoan.expensetracker.domain.model.TransactionType
 import dev.tuandoan.expensetracker.ui.component.AmountText
 import dev.tuandoan.expensetracker.ui.component.EmptyStateMessage
+import dev.tuandoan.expensetracker.ui.component.ErrorStateMessage
 import dev.tuandoan.expensetracker.ui.component.MonthSelector
 import dev.tuandoan.expensetracker.ui.component.MonthYearPickerDialog
 import dev.tuandoan.expensetracker.ui.theme.DesignSystemElevation
@@ -183,6 +184,14 @@ fun HomeScreen(
                                 },
                         )
                     }
+                }
+                uiState.isError && uiState.transactions.isEmpty() -> {
+                    ErrorStateMessage(
+                        title = "Unable to load transactions",
+                        message = uiState.errorMessage ?: "An unexpected error occurred",
+                        onRetry = viewModel::retry,
+                        modifier = Modifier.fillMaxSize(),
+                    )
                 }
                 uiState.transactions.isEmpty() -> {
                     if (uiState.searchQuery.isNotEmpty()) {

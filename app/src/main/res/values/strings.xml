@@ -94,6 +94,14 @@
     <string name="a11y_select_month">View %1$s details</string>
     <string name="a11y_expense_indicator">Expense</string>
     <string name="a11y_income_indicator">Income</string>
+    <string name="a11y_loading_summary">Loading summary</string>
+    <string name="a11y_loading_gold_portfolio">Loading gold portfolio</string>
+    <string name="a11y_loading_gold_holding">Loading gold holding</string>
+    <string name="a11y_page_indicator">Page %1$d of %2$d</string>
+    <string name="no_categories_subtitle">Add categories to organize your transactions</string>
+    <string name="recurring_discard_title">Discard changes?</string>
+    <string name="recurring_discard_message">You have unsaved changes that will be lost.</string>
+    <string name="recurring_discard">Discard</string>
     <string name="a11y_delete_transaction">Delete transaction</string>
     <string name="a11y_delete_category">Delete category</string>
     <string name="a11y_edit_transaction">Edit transaction</string>

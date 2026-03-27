@@ -1,5 +1,6 @@
 package dev.tuandoan.expensetracker.ui.screen.recurring
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -18,6 +19,7 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.CalendarToday
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.KeyboardArrowDown
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
@@ -81,6 +83,18 @@ fun AddEditRecurringTransactionScreen(
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
     val focusManager = LocalFocusManager.current
+    val isEditMode = viewModel.isEditMode
+    var showDiscardDialog by remember { mutableStateOf(false) }
+
+    val handleBack: () -> Unit = {
+        if (uiState.hasChanges) {
+            showDiscardDialog = true
+        } else {
+            onNavigateBack()
+        }
+    }
+
+    BackHandler { handleBack() }
 
     LaunchedEffect(uiState.errorMessage) {
         uiState.errorMessage?.let { message ->
@@ -92,10 +106,22 @@ fun AddEditRecurringTransactionScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text(stringResource(R.string.add_recurring)) },
+                title = {
+                    Text(
+                        if (isEditMode) {
+                            stringResource(R.string.edit_recurring)
+                        } else {
+                            stringResource(R.string.add_recurring)
+                        },
+                    )
+                },
                 navigationIcon = {
+                    val hapticBack = LocalHapticFeedback.current
                     IconButton(
-                        onClick = onNavigateBack,
+                        onClick = {
+                            hapticBack.performHapticFeedback(HapticFeedbackType.LongPress)
+                            handleBack()
+                        },
                         modifier =
                             Modifier.semantics {
                                 contentDescription = "Go back"
@@ -269,6 +295,36 @@ fun AddEditRecurringTransactionScreen(
                 }
             }
         }
+    }
+
+    if (showDiscardDialog) {
+        val hapticDiscard = LocalHapticFeedback.current
+        AlertDialog(
+            onDismissRequest = { showDiscardDialog = false },
+            title = { Text(stringResource(R.string.recurring_discard_title)) },
+            text = { Text(stringResource(R.string.recurring_discard_message)) },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        hapticDiscard.performHapticFeedback(HapticFeedbackType.LongPress)
+                        showDiscardDialog = false
+                        onNavigateBack()
+                    },
+                ) {
+                    Text(stringResource(R.string.recurring_discard))
+                }
+            },
+            dismissButton = {
+                TextButton(
+                    onClick = {
+                        hapticDiscard.performHapticFeedback(HapticFeedbackType.LongPress)
+                        showDiscardDialog = false
+                    },
+                ) {
+                    Text(stringResource(R.string.cancel))
+                }
+            },
+        )
     }
 }
 

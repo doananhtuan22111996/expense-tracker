@@ -123,6 +123,7 @@ fun SetBudgetDialog(
         mutableStateOf(currentBudget?.toString() ?: "")
     }
     var errorText by remember { mutableStateOf<String?>(null) }
+    val budgetErrorText = stringResource(R.string.budget_must_be_positive)
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -163,7 +164,7 @@ fun SetBudgetDialog(
                 onClick = {
                     val amount = amountText.toLongOrNull()
                     if (amount == null || amount <= 0L) {
-                        errorText = "Budget must be greater than 0"
+                        errorText = budgetErrorText
                     } else {
                         onSave(amount)
                         onDismiss()

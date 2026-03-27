@@ -35,6 +35,12 @@ class RecurringTransactionRepositoryImpl
                 entities.map { entity -> entity.toDomain(categoryMap) }
             }
 
+        override suspend fun getById(id: Long): RecurringTransaction? {
+            val entity = recurringDao.getById(id) ?: return null
+            val categoryMap = categoryDao.getAll().associate { it.id to it.name }
+            return entity.toDomain(categoryMap)
+        }
+
         override suspend fun create(recurring: RecurringTransaction): Long {
             val now = timeProvider.currentTimeMillis()
             val entity =
