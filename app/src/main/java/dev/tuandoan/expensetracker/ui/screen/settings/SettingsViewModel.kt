@@ -5,6 +5,8 @@ import android.net.Uri
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
+import dev.tuandoan.expensetracker.R
+import dev.tuandoan.expensetracker.core.util.UiText
 import dev.tuandoan.expensetracker.data.preferences.AnalyticsPreferences
 import dev.tuandoan.expensetracker.data.preferences.ThemePreference
 import dev.tuandoan.expensetracker.data.preferences.ThemePreferencesRepository
@@ -73,9 +75,13 @@ class SettingsViewModel
                 try {
                     currencyPreferenceRepository.setDefaultCurrency(code)
                 } catch (e: IllegalArgumentException) {
-                    _uiState.update { it.copy(errorMessage = "Unsupported currency code") }
+                    _uiState.update {
+                        it.copy(
+                            errorMessage = UiText.StringResource(R.string.error_unsupported_currency),
+                        )
+                    }
                 } catch (e: Exception) {
-                    _uiState.update { it.copy(errorMessage = "Failed to save currency preference") }
+                    _uiState.update { it.copy(errorMessage = UiText.StringResource(R.string.error_save_currency)) }
                 }
             }
         }
@@ -107,7 +113,7 @@ class SettingsViewModel
                             it.copy(
                                 backupOperation = BackupOperation.Idle,
                                 backupProgress = null,
-                                backupMessage = "Backup exported successfully",
+                                backupMessage = UiText.StringResource(R.string.backup_exported),
                             )
                         }
                     } catch (e: CancellationException) {
@@ -123,7 +129,13 @@ class SettingsViewModel
                             it.copy(
                                 backupOperation = BackupOperation.Idle,
                                 backupProgress = null,
-                                errorMessage = "Export failed: ${e.message ?: "Unknown error"}",
+                                errorMessage =
+                                    UiText.StringResource(
+                                        R.string.error_export_failed,
+                                        listOf(
+                                            e.message ?: "",
+                                        ),
+                                    ),
                             )
                         }
                     }
@@ -149,7 +161,7 @@ class SettingsViewModel
                             it.copy(
                                 backupOperation = BackupOperation.Idle,
                                 backupProgress = null,
-                                backupMessage = "CSV exported successfully",
+                                backupMessage = UiText.StringResource(R.string.csv_exported_successfully),
                             )
                         }
                     } catch (e: CancellationException) {
@@ -165,7 +177,11 @@ class SettingsViewModel
                             it.copy(
                                 backupOperation = BackupOperation.Idle,
                                 backupProgress = null,
-                                errorMessage = "CSV export failed: ${e.message ?: "Unknown error"}",
+                                errorMessage =
+                                    UiText.StringResource(
+                                        R.string.csv_export_failed,
+                                        listOf(e.message ?: ""),
+                                    ),
                             )
                         }
                     }
@@ -234,7 +250,13 @@ class SettingsViewModel
                             it.copy(
                                 backupOperation = BackupOperation.Idle,
                                 backupProgress = null,
-                                errorMessage = "Import failed: ${e.message ?: "Unknown error"}",
+                                errorMessage =
+                                    UiText.StringResource(
+                                        R.string.error_import_failed,
+                                        listOf(
+                                            e.message ?: "",
+                                        ),
+                                    ),
                             )
                         }
                     }
@@ -258,7 +280,7 @@ class SettingsViewModel
             backupJob = null
         }
 
-        private fun buildImportMessage(result: BackupRestoreResult): String {
+        private fun buildImportMessage(result: BackupRestoreResult): UiText {
             val parts = mutableListOf<String>()
             parts.add("${result.transactionCount} transactions")
             if (result.goldHoldingCount > 0) {
@@ -267,7 +289,7 @@ class SettingsViewModel
             if (result.goldPriceCount > 0) {
                 parts.add("${result.goldPriceCount} gold prices")
             }
-            return "Imported ${parts.joinToString(", ")}"
+            return UiText.StringResource(R.string.import_result, listOf(parts.joinToString(", ")))
         }
 
         private fun observeDefaultCurrency() {
@@ -292,9 +314,9 @@ enum class BackupOperation {
 data class SettingsUiState(
     val selectedCurrencyCode: String = SupportedCurrencies.default().code,
     val availableCurrencies: List<CurrencyDefinition> = SupportedCurrencies.all(),
-    val errorMessage: String? = null,
+    val errorMessage: UiText? = null,
     val backupOperation: BackupOperation = BackupOperation.Idle,
     val backupProgress: Float? = null,
-    val backupMessage: String? = null,
+    val backupMessage: UiText? = null,
     val pendingRestoreUri: Uri? = null,
 )

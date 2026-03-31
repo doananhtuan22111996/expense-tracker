@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dev.tuandoan.expensetracker.core.util.DateRangeCalculator
 import dev.tuandoan.expensetracker.core.util.ErrorUtils
+import dev.tuandoan.expensetracker.core.util.UiText
 import dev.tuandoan.expensetracker.domain.model.BudgetStatus
 import dev.tuandoan.expensetracker.domain.model.MonthlyBarPoint
 import dev.tuandoan.expensetracker.domain.model.MonthlySummary
@@ -218,7 +219,7 @@ data class SummaryUiState(
     val summary: MonthlySummary? = null,
     val isLoading: Boolean = false,
     val isError: Boolean = false,
-    val errorMessage: String? = null,
+    val errorMessage: UiText? = null,
     val monthLabel: String = "",
     val mode: SummaryMode = SummaryMode.MONTH,
     val monthlyBarData: Map<String, List<MonthlyBarPoint>> = emptyMap(),

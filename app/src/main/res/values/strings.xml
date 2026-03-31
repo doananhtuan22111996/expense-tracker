@@ -194,4 +194,244 @@
     <string name="error_load_transactions">Unable to load transactions</string>
     <string name="error_unexpected">An unexpected error occurred</string>
     <string name="error_load_portfolio">Unable to load portfolio</string>
+
+    <!-- Error Messages (ViewModel) -->
+    <string name="error_database">Database error occurred. Please try again.</string>
+    <string name="error_network">Network connection error. Please check your internet connection.</string>
+    <string name="error_invalid_data">Invalid data provided. Please check your input.</string>
+    <string name="error_app_state">App state error. Please restart the app if the problem persists.</string>
+    <string name="error_generic">An unexpected error occurred. Please try again.</string>
+    <string name="error_something_went_wrong">Something went wrong</string>
+    <string name="error_try_again">Try Again</string>
+    <string name="error_invalid_amount">Please enter a valid amount</string>
+    <string name="error_select_category">Please select a category</string>
+    <string name="error_transaction_not_found">Transaction not found</string>
+    <string name="error_original_not_loaded">Original transaction not loaded yet</string>
+    <string name="error_recurring_not_found">Recurring transaction not found</string>
+    <string name="error_holding_not_found">Holding not found</string>
+    <string name="error_invalid_weight">Please enter a valid weight</string>
+    <string name="error_invalid_buy_price">Please enter a valid buy price</string>
+    <string name="error_unsupported_currency">Unsupported currency code</string>
+    <string name="error_save_currency">Failed to save currency preference</string>
+    <string name="error_delete_category">Failed to delete category</string>
+    <string name="error_create_category">Failed to create category</string>
+    <string name="error_update_category">Failed to update category</string>
+    <string name="error_export_failed">Export failed: %1$s</string>
+    <string name="error_import_failed">Import failed: %1$s</string>
+    <string name="error_unknown">Unknown error</string>
+    <string name="error_load_summary">Unable to load summary</string>
+    <string name="error_load_summary_message">Failed to load financial data. Please try again.</string>
+
+    <!-- Success / Import Messages -->
+    <string name="backup_exported">Backup exported successfully</string>
+    <string name="import_result">Imported %1$s</string>
+    <string name="import_transactions_count">%1$d transactions</string>
+    <string name="import_gold_holdings_count">%1$d gold holdings</string>
+    <string name="import_gold_prices_count">%1$d gold prices</string>
+
+    <!-- Shared Actions -->
+    <string name="action_ok">OK</string>
+    <string name="discard">Discard</string>
+    <string name="saving">Saving…</string>
+    <string name="updating">Updating…</string>
+    <string name="retry">Retry</string>
+
+    <!-- Shared Labels -->
+    <string name="label_amount">Amount</string>
+    <string name="label_enter_amount">Enter amount in %1$s</string>
+    <string name="label_note_optional">Note (optional)</string>
+    <string name="label_transaction_type">Transaction Type</string>
+    <string name="label_category">Category</string>
+    <string name="label_currency">Currency</string>
+    <string name="label_date">Date</string>
+    <string name="type_expense">Expense</string>
+    <string name="type_income">Income</string>
+    <string name="select_category">Select Category</string>
+
+    <!-- Home Screen -->
+    <string name="home_no_results">No results found</string>
+    <string name="home_no_results_subtitle">Try a different search term</string>
+    <string name="home_no_transactions">No transactions yet</string>
+    <string name="home_no_transactions_subtitle">Tap the + button to add your first transaction</string>
+    <string name="home_search_placeholder">Search by note</string>
+    <string name="filter_all">All</string>
+    <string name="filter_expenses">Expenses</string>
+    <string name="filter_income">Income</string>
+
+    <!-- AddEditTransaction Screen -->
+    <string name="add_transaction_title">Add Transaction</string>
+    <string name="edit_transaction_title">Edit Transaction</string>
+    <string name="discard_changes_title">Discard changes?</string>
+    <string name="discard_changes_message">You have unsaved changes.</string>
+    <string name="hint_amount_no_decimals">Enter amount without decimals (%1$s doesn\'t use cents)</string>
+    <string name="hint_amount_minor_units">Enter amount in %1$s minor units (cents)</string>
+    <string name="hint_add_details">Add details about this transaction…</string>
+    <string name="hint_add_details_short">Add details…</string>
+    <string name="update_transaction">Update Transaction</string>
+    <string name="save_transaction">Save Transaction</string>
+    <string name="hint_valid_amount_and_category">Please enter a valid amount and select a category</string>
+    <string name="hint_select_category">Please select a category</string>
+    <string name="hint_choose_categories">Choose from your %1$d categories</string>
+    <string name="hint_choose_categories_generic">categories</string>
+    <string name="hint_tap_to_select_date">Tap to select date</string>
+    <string name="hint_tap_to_select_start_date">Tap to select start date</string>
+    <string name="select_date_title">Select Date</string>
+
+    <!-- Summary Screen -->
+    <string name="summary_month">Month</string>
+    <string name="summary_year">Year</string>
+    <string name="summary_no_data_year">No data for this year</string>
+    <string name="summary_no_data_month">No data for this month</string>
+    <string name="summary_no_data_subtitle">Start adding transactions to see your summary</string>
+    <string name="summary_top_expense_categories">Top Expense Categories</string>
+    <string name="summary_income">Income</string>
+    <string name="summary_expenses">Expenses</string>
+    <string name="summary_balance">Balance</string>
+
+    <!-- Settings Screen -->
+    <string name="settings_preferences">Preferences</string>
+    <string name="settings_default_currency">Default Currency</string>
+    <string name="settings_currency_hint">Used for new transactions only</string>
+    <string name="settings_backup_restore">Backup &amp; Restore</string>
+    <string name="settings_export_backup">Export Backup</string>
+    <string name="settings_export_backup_subtitle">Save all data as a JSON file</string>
+    <string name="settings_import_backup">Import Backup</string>
+    <string name="settings_import_backup_subtitle">Restore from a JSON backup file</string>
+    <string name="settings_backup_privacy_hint">Backups are stored where you choose. The app does not upload your data.</string>
+    <string name="settings_app_information">App Information</string>
+    <string name="settings_version">Version</string>
+    <string name="settings_contact_email">Contact Email</string>
+    <string name="settings_privacy">Privacy</string>
+    <string name="settings_privacy_statement">Privacy Statement</string>
+    <string name="settings_privacy_statement_body">All data is stored locally on your device. No data is collected or shared.</string>
+    <string name="settings_data_privacy">Data Privacy</string>
+    <string name="settings_data_privacy_body">• All transaction data is stored locally on your device\n• No personal information is transmitted to external servers\n• No analytics or tracking is performed\n• No advertisements are displayed\n• No account creation or login is required</string>
+    <string name="settings_data_storage">Data Storage</string>
+    <string name="settings_data_storage_body">Your expense data is stored in a local database on your device. Uninstalling the app will permanently delete all data. We recommend backing up your data if needed.</string>
+    <string name="settings_about">About</string>
+    <string name="settings_about_description">A simple, offline-first personal expense tracking app for managing your income and expenses locally on your device.</string>
+    <string name="settings_debug_info">Debug Information</string>
+    <string name="settings_restore_title">Replace all data?</string>
+    <string name="settings_restore_message">This will permanently delete all existing transactions and categories, then replace them with the data from the selected backup file.\n\nThis action cannot be undone.</string>
+    <string name="settings_replace_all">Replace All</string>
+    <string name="settings_select_currency">Select Default Currency</string>
+
+    <!-- Month Abbreviations -->
+    <string name="month_jan">Jan</string>
+    <string name="month_feb">Feb</string>
+    <string name="month_mar">Mar</string>
+    <string name="month_apr">Apr</string>
+    <string name="month_may">May</string>
+    <string name="month_jun">Jun</string>
+    <string name="month_jul">Jul</string>
+    <string name="month_aug">Aug</string>
+    <string name="month_sep">Sep</string>
+    <string name="month_oct">Oct</string>
+    <string name="month_nov">Nov</string>
+    <string name="month_dec">Dec</string>
+
+    <!-- Accessibility: Shared -->
+    <string name="a11y_selected">Selected</string>
+    <string name="a11y_not_selected">Not selected</string>
+    <string name="a11y_go_back">Go back</string>
+    <string name="a11y_go_back_prompt_save">Go back, will prompt to save changes</string>
+    <string name="a11y_go_back_to_home">Go back to home screen</string>
+    <string name="a11y_go_back_to_settings">Go back to settings</string>
+
+    <!-- Accessibility: Home -->
+    <string name="a11y_add_new_transaction">Add new transaction</string>
+    <string name="a11y_loading_transactions">Loading transactions</string>
+    <string name="a11y_filter_all_selected">All transactions filter selected</string>
+    <string name="a11y_filter_all">Filter by all transactions</string>
+    <string name="a11y_filter_expense_selected">Expense transactions filter selected</string>
+    <string name="a11y_filter_expense">Filter by expense transactions</string>
+    <string name="a11y_filter_income_selected">Income transactions filter selected</string>
+    <string name="a11y_filter_income">Filter by income transactions</string>
+    <string name="a11y_transaction_item">%1$s transaction, %2$s, %3$s, %4$s, double tap to edit</string>
+    <string name="a11y_transaction_item_with_note">%1$s transaction, %2$s, %3$s, note: %4$s, %5$s, double tap to edit</string>
+    <string name="a11y_delete_transaction_detail">Delete %1$s transaction of %2$s</string>
+    <string name="a11y_clear_search">Clear search</string>
+    <string name="a11y_search_transactions">Search transactions by note</string>
+
+    <!-- Accessibility: AddEditTransaction -->
+    <string name="a11y_loading_details">Loading transaction details</string>
+    <string name="a11y_loading_form">Loading form</string>
+    <string name="a11y_discard_and_go_back">Discard changes and go back</string>
+    <string name="a11y_cancel_continue_editing">Cancel and continue editing</string>
+    <string name="a11y_save_changes">Save changes to transaction</string>
+    <string name="a11y_save_new_transaction">Save new transaction</string>
+    <string name="a11y_saving_please_wait">Saving transaction, please wait</string>
+    <string name="a11y_complete_form_to_save">Complete form to enable save button</string>
+    <string name="a11y_expense_type_selected">Expense type selected</string>
+    <string name="a11y_select_expense_type">Select expense transaction type</string>
+    <string name="a11y_income_type_selected">Income type selected</string>
+    <string name="a11y_select_income_type">Select income transaction type</string>
+    <string name="a11y_category_selected">%1$s category selected, tap to change</string>
+    <string name="a11y_select_category_from">Select category from %1$d available options</string>
+    <string name="a11y_open_category_selection">Open category selection</string>
+    <string name="a11y_select_category_item">Select %1$s category</string>
+    <string name="a11y_currency_tap_to_change">Currency: %1$s, tap to change</string>
+    <string name="a11y_open_currency_selection">Open currency selection</string>
+    <string name="a11y_currency_currently_selected">%1$s %2$s, currently selected</string>
+    <string name="a11y_select_currency_item">Select %1$s %2$s</string>
+    <string name="a11y_selected_date">Selected date: %1$s, tap to change</string>
+    <string name="a11y_select_date">Select date</string>
+    <string name="a11y_confirm_date">Confirm date selection</string>
+    <string name="a11y_cancel_date">Cancel date selection</string>
+
+    <!-- Accessibility: Summary -->
+    <string name="a11y_monthly_summary_selected">Monthly summary selected</string>
+    <string name="a11y_switch_to_monthly">Switch to monthly summary</string>
+    <string name="a11y_yearly_summary_selected">Yearly summary selected</string>
+    <string name="a11y_switch_to_yearly">Switch to yearly summary</string>
+    <string name="a11y_currency_section">Currency section: %1$s</string>
+
+    <!-- Accessibility: Categories -->
+    <string name="a11y_add_new_category">Add new category</string>
+    <string name="a11y_show_expense_categories">Show expense categories</string>
+    <string name="a11y_show_income_categories">Show income categories</string>
+    <string name="a11y_loading_categories">Loading categories</string>
+    <string name="a11y_edit_category_name">Edit %1$s</string>
+    <string name="a11y_delete_category_name">Delete %1$s</string>
+
+    <!-- Accessibility: Recurring -->
+    <string name="a11y_add_recurring">Add recurring transaction</string>
+    <string name="a11y_loading_recurring">Loading recurring transactions</string>
+    <string name="a11y_recurring_item">%1$s, %2$s, %3$s, %4$s, tap to edit</string>
+    <string name="a11y_pause_recurring">Pause recurring</string>
+    <string name="a11y_resume_recurring">Resume recurring</string>
+    <string name="a11y_delete_recurring">Delete recurring transaction</string>
+    <string name="a11y_save_recurring">Save recurring transaction</string>
+    <string name="a11y_complete_form_recurring">Complete form to enable save</string>
+    <string name="a11y_selected_tap_to_change">%1$s selected, tap to change</string>
+    <string name="a11y_select_category_generic">Select category</string>
+    <string name="a11y_frequency_tap_to_change">Frequency: %1$s, tap to change</string>
+    <string name="a11y_open_frequency_selection">Open frequency selection</string>
+    <string name="a11y_start_date_tap_to_change">Start date: %1$s, tap to change</string>
+    <string name="a11y_select_start_date">Select start date</string>
+    <string name="a11y_select_expense_type_short">Select expense type</string>
+    <string name="a11y_select_income_type_short">Select income type</string>
+
+    <!-- Accessibility: Settings -->
+    <string name="a11y_default_currency">Default currency: %1$s, tap to change</string>
+    <string name="a11y_export_backup_busy">Export backup to JSON file, currently exporting</string>
+    <string name="a11y_export_backup">Export backup to JSON file</string>
+    <string name="a11y_import_backup_busy">Import backup from JSON file, currently importing</string>
+    <string name="a11y_import_backup">Import backup from JSON file</string>
+    <string name="a11y_backup_progress">%1$d%% complete</string>
+
+    <!-- Accessibility: MonthSelector -->
+    <string name="a11y_previous_period">Go to previous %1$s</string>
+    <string name="a11y_next_period">Go to next %1$s</string>
+    <string name="a11y_selected_period_tap">Selected %1$s: %2$s. Tap to pick %3$s</string>
+    <string name="a11y_selected_period">Selected %1$s: %2$s</string>
+
+    <!-- Accessibility: MonthYearPickerDialog -->
+    <string name="select_month_title">Select month</string>
+    <string name="a11y_select_month_dialog">Select month dialog</string>
+    <string name="a11y_previous_year">Previous year</string>
+    <string name="a11y_year">Year %1$d</string>
+    <string name="a11y_next_year">Next year</string>
+    <string name="a11y_month_selected">%1$s %2$d, selected</string>
+    <string name="a11y_month_unselected">%1$s %2$d</string>
 </resources>

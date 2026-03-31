@@ -32,6 +32,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
@@ -121,11 +122,15 @@ fun SummaryScreen(
                     }
                 }
                 uiState.isError -> {
+                    val context = LocalContext.current
+                    val errorMsg =
+                        uiState.errorMessage?.asString(context)
+                            ?: stringResource(R.string.error_load_summary_message)
                     ErrorStateMessage(
-                        title = "Unable to load summary",
-                        message = uiState.errorMessage ?: "Failed to load financial data. Please try again.",
+                        title = stringResource(R.string.error_load_summary),
+                        message = errorMsg,
                         onRetry = viewModel::refresh,
-                        retryButtonText = "Retry",
+                        retryButtonText = stringResource(R.string.retry),
                         modifier = Modifier.fillMaxSize(),
                     )
                 }
@@ -153,11 +158,11 @@ fun SummaryScreen(
                         EmptyStateMessage(
                             title =
                                 if (uiState.mode == SummaryMode.YEAR) {
-                                    "No data for this year"
+                                    stringResource(R.string.summary_no_data_year)
                                 } else {
-                                    "No data for this month"
+                                    stringResource(R.string.summary_no_data_month)
                                 },
-                            subtitle = "Start adding transactions to see your summary",
+                            subtitle = stringResource(R.string.summary_no_data_subtitle),
                             modifier = Modifier.weight(1f),
                         )
                     }
@@ -200,24 +205,34 @@ private fun SummaryModeChips(
         modifier = modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.spacedBy(DesignSystemSpacing.small),
     ) {
+        val monthDesc =
+            if (mode == SummaryMode.MONTH) {
+                stringResource(R.string.a11y_monthly_summary_selected)
+            } else {
+                stringResource(R.string.a11y_switch_to_monthly)
+            }
         FilterChip(
             selected = mode == SummaryMode.MONTH,
             onClick = { onModeChanged(SummaryMode.MONTH) },
-            label = { Text("Month") },
+            label = { Text(stringResource(R.string.summary_month)) },
             modifier =
                 Modifier.semantics {
-                    contentDescription =
-                        if (mode == SummaryMode.MONTH) "Monthly summary selected" else "Switch to monthly summary"
+                    contentDescription = monthDesc
                 },
         )
+        val yearDesc =
+            if (mode == SummaryMode.YEAR) {
+                stringResource(R.string.a11y_yearly_summary_selected)
+            } else {
+                stringResource(R.string.a11y_switch_to_yearly)
+            }
         FilterChip(
             selected = mode == SummaryMode.YEAR,
             onClick = { onModeChanged(SummaryMode.YEAR) },
-            label = { Text("Year") },
+            label = { Text(stringResource(R.string.summary_year)) },
             modifier =
                 Modifier.semantics {
-                    contentDescription =
-                        if (mode == SummaryMode.YEAR) "Yearly summary selected" else "Switch to yearly summary"
+                    contentDescription = yearDesc
                 },
         )
     }
@@ -401,7 +416,7 @@ private fun SummaryContent(
 
                 if (currencySummary.topExpenseCategories.isNotEmpty()) {
                     SectionTitle(
-                        title = "Top Expense Categories",
+                        title = stringResource(R.string.summary_top_expense_categories),
                         modifier = Modifier.padding(top = DesignSystemSpacing.small),
                     )
 
@@ -454,6 +469,7 @@ private fun CurrencySectionHeader(
             currencyCode
         }
 
+    val sectionDesc = stringResource(R.string.a11y_currency_section, label)
     Text(
         text = label,
         style = MaterialTheme.typography.titleLarge,
@@ -462,7 +478,7 @@ private fun CurrencySectionHeader(
         modifier =
             modifier.semantics {
                 heading()
-                contentDescription = "Currency section: $label"
+                contentDescription = sectionDesc
             },
     )
 }
@@ -487,19 +503,19 @@ private fun SummaryCards(
         verticalArrangement = Arrangement.spacedBy(DesignSystemSpacing.medium),
     ) {
         SummaryCard(
-            title = "Income",
+            title = stringResource(R.string.summary_income),
             amount = currencySummary.totalIncome,
             currencyCode = currencySummary.currencyCode,
             transactionType = TransactionType.INCOME,
         )
         SummaryCard(
-            title = "Expenses",
+            title = stringResource(R.string.summary_expenses),
             amount = currencySummary.totalExpense,
             currencyCode = currencySummary.currencyCode,
             transactionType = TransactionType.EXPENSE,
         )
         SummaryCard(
-            title = "Balance",
+            title = stringResource(R.string.summary_balance),
             amount = currencySummary.balance,
             currencyCode = currencySummary.currencyCode,
             transactionType =

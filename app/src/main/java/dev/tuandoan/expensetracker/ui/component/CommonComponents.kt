@@ -14,9 +14,11 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import dev.tuandoan.expensetracker.R
 import dev.tuandoan.expensetracker.core.formatter.AmountFormatter
 import dev.tuandoan.expensetracker.domain.model.TransactionType
 import dev.tuandoan.expensetracker.ui.theme.DesignSystemSpacing
@@ -124,11 +126,11 @@ fun EmptyStateMessage(
  */
 @Composable
 fun ErrorStateMessage(
-    title: String = "Something went wrong",
     message: String,
     onRetry: (() -> Unit)? = null,
-    retryButtonText: String = "Try Again",
     modifier: Modifier = Modifier,
+    title: String = stringResource(R.string.error_something_went_wrong),
+    retryButtonText: String = stringResource(R.string.error_try_again),
 ) {
     Box(
         modifier = modifier.fillMaxSize(),

@@ -1,6 +1,8 @@
 package dev.tuandoan.expensetracker.ui.screen.addedit
 
 import androidx.lifecycle.SavedStateHandle
+import dev.tuandoan.expensetracker.R
+import dev.tuandoan.expensetracker.core.util.UiText
 import dev.tuandoan.expensetracker.domain.model.Category
 import dev.tuandoan.expensetracker.domain.model.CategoryWithCount
 import dev.tuandoan.expensetracker.domain.model.MonthlyBarPoint
@@ -111,7 +113,11 @@ class AddEditTransactionViewModelTest {
             advanceUntilIdle()
 
             val state = viewModel.uiState.value
-            assertEquals("Transaction not found", state.errorMessage)
+            assertTrue(state.errorMessage is UiText.StringResource)
+            assertEquals(
+                R.string.error_transaction_not_found,
+                (state.errorMessage as UiText.StringResource).resId,
+            )
             assertFalse(state.isLoading)
         }
 
@@ -200,7 +206,11 @@ class AddEditTransactionViewModelTest {
             viewModel.saveTransaction { successCalled = true }
 
             assertFalse(successCalled)
-            assertEquals("Please enter a valid amount", viewModel.uiState.value.errorMessage)
+            assertTrue(viewModel.uiState.value.errorMessage is UiText.StringResource)
+            assertEquals(
+                R.string.error_invalid_amount,
+                (viewModel.uiState.value.errorMessage as UiText.StringResource).resId,
+            )
         }
 
     @Test
@@ -217,7 +227,11 @@ class AddEditTransactionViewModelTest {
             viewModel.saveTransaction { successCalled = true }
 
             assertFalse(successCalled)
-            assertEquals("Please select a category", viewModel.uiState.value.errorMessage)
+            assertTrue(viewModel.uiState.value.errorMessage is UiText.StringResource)
+            assertEquals(
+                R.string.error_select_category,
+                (viewModel.uiState.value.errorMessage as UiText.StringResource).resId,
+            )
         }
 
     @Test

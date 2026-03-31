@@ -3,6 +3,8 @@ package dev.tuandoan.expensetracker.ui.screen.categories
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
+import dev.tuandoan.expensetracker.R
+import dev.tuandoan.expensetracker.core.util.UiText
 import dev.tuandoan.expensetracker.domain.model.CategoryWithCount
 import dev.tuandoan.expensetracker.domain.model.TransactionType
 import dev.tuandoan.expensetracker.domain.repository.CategoryRepository
@@ -55,7 +57,11 @@ class CategoriesViewModel
                     categoryRepository.deleteCategory(id)
                 } catch (e: Exception) {
                     _uiState.update {
-                        it.copy(error = e.message ?: "Failed to delete category")
+                        it.copy(
+                            error =
+                                e.message?.let { msg -> UiText.DynamicString(msg) }
+                                    ?: UiText.StringResource(R.string.error_delete_category),
+                        )
                     }
                 }
             }
@@ -72,7 +78,11 @@ class CategoriesViewModel
                     categoryRepository.createCategory(name, type, iconKey, colorKey)
                 } catch (e: Exception) {
                     _uiState.update {
-                        it.copy(error = e.message ?: "Failed to create category")
+                        it.copy(
+                            error =
+                                e.message?.let { msg -> UiText.DynamicString(msg) }
+                                    ?: UiText.StringResource(R.string.error_create_category),
+                        )
                     }
                 }
             }
@@ -89,7 +99,11 @@ class CategoriesViewModel
                     categoryRepository.updateCategory(id, name, iconKey, colorKey)
                 } catch (e: Exception) {
                     _uiState.update {
-                        it.copy(error = e.message ?: "Failed to update category")
+                        it.copy(
+                            error =
+                                e.message?.let { msg -> UiText.DynamicString(msg) }
+                                    ?: UiText.StringResource(R.string.error_update_category),
+                        )
                     }
                 }
             }
@@ -104,7 +118,12 @@ class CategoriesViewModel
                 categoryRepository
                     .getCategoriesWithTransactionCount()
                     .catch { e ->
-                        _uiState.update { it.copy(error = e.message, isLoading = false) }
+                        _uiState.update {
+                            it.copy(
+                                error = e.message?.let { msg -> UiText.DynamicString(msg) },
+                                isLoading = false,
+                            )
+                        }
                     }.collect { categoriesWithCount ->
                         val expense =
                             categoriesWithCount.filter {
@@ -130,7 +149,7 @@ data class CategoriesUiState(
     val expenseCategories: List<CategoryWithCount> = emptyList(),
     val incomeCategories: List<CategoryWithCount> = emptyList(),
     val isLoading: Boolean = true,
-    val error: String? = null,
+    val error: UiText? = null,
     val selectedTab: TransactionType = TransactionType.EXPENSE,
     val pendingDeleteId: Long? = null,
 ) {

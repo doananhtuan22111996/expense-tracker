@@ -39,6 +39,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
@@ -66,10 +67,11 @@ fun RecurringTransactionsScreen(
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
     var deleteConfirmId by remember { mutableStateOf<Long?>(null) }
+    val context = LocalContext.current
 
     LaunchedEffect(uiState.errorMessage) {
         uiState.errorMessage?.let {
-            snackbarHostState.showSnackbar(it)
+            snackbarHostState.showSnackbar(it.asString(context))
             viewModel.clearError()
         }
     }
@@ -94,7 +96,7 @@ fun RecurringTransactionsScreen(
 
     LaunchedEffect(uiState.message) {
         uiState.message?.let {
-            snackbarHostState.showSnackbar(it)
+            snackbarHostState.showSnackbar(it.asString(context))
             viewModel.clearMessage()
         }
     }
@@ -104,11 +106,12 @@ fun RecurringTransactionsScreen(
             TopAppBar(
                 title = { Text(stringResource(R.string.recurring_transactions)) },
                 navigationIcon = {
+                    val goBackDesc = stringResource(R.string.a11y_go_back)
                     IconButton(
                         onClick = onNavigateBack,
                         modifier =
                             Modifier.semantics {
-                                contentDescription = "Go back"
+                                contentDescription = goBackDesc
                             },
                     ) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = null)
@@ -117,11 +120,12 @@ fun RecurringTransactionsScreen(
             )
         },
         floatingActionButton = {
+            val addRecurringDesc = stringResource(R.string.a11y_add_recurring)
             FloatingActionButton(
                 onClick = onNavigateToAdd,
                 modifier =
                     Modifier.semantics {
-                        contentDescription = "Add recurring transaction"
+                        contentDescription = addRecurringDesc
                     },
             ) {
                 Icon(Icons.Default.Add, contentDescription = null)
@@ -139,10 +143,11 @@ fun RecurringTransactionsScreen(
                             .padding(innerPadding),
                     contentAlignment = Alignment.Center,
                 ) {
+                    val loadingDesc = stringResource(R.string.a11y_loading_recurring)
                     CircularProgressIndicator(
                         modifier =
                             Modifier.semantics {
-                                contentDescription = "Loading recurring transactions"
+                                contentDescription = loadingDesc
                             },
                     )
                 }
@@ -253,14 +258,15 @@ private fun RecurringTransactionRow(
             stringResource(R.string.paused)
         }
 
+    val itemDesc =
+        stringResource(R.string.a11y_recurring_item, item.categoryName, formattedAmount, frequencyLabel, statusLabel)
     Card(
         onClick = onClick,
         modifier =
             modifier
                 .fillMaxWidth()
                 .semantics {
-                    contentDescription =
-                        "${item.categoryName}, $formattedAmount, $frequencyLabel, $statusLabel, tap to edit"
+                    contentDescription = itemDesc
                 },
         elevation = CardDefaults.cardElevation(defaultElevation = DesignSystemElevation.low),
     ) {
@@ -314,6 +320,12 @@ private fun RecurringTransactionRow(
                 }
             }
 
+            val toggleDesc =
+                if (item.isActive) {
+                    stringResource(R.string.a11y_pause_recurring)
+                } else {
+                    stringResource(R.string.a11y_resume_recurring)
+                }
             Switch(
                 checked = item.isActive,
                 onCheckedChange = onToggleActive,
@@ -321,16 +333,16 @@ private fun RecurringTransactionRow(
                     Modifier
                         .padding(horizontal = DesignSystemSpacing.small)
                         .semantics {
-                            contentDescription =
-                                if (item.isActive) "Pause recurring" else "Resume recurring"
+                            contentDescription = toggleDesc
                         },
             )
 
+            val deleteDesc = stringResource(R.string.a11y_delete_recurring)
             IconButton(
                 onClick = onDelete,
                 modifier =
                     Modifier.semantics {
-                        contentDescription = "Delete recurring transaction"
+                        contentDescription = deleteDesc
                     },
             ) {
                 Icon(

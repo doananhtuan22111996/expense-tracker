@@ -4,9 +4,11 @@ import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
+import dev.tuandoan.expensetracker.R
 import dev.tuandoan.expensetracker.core.formatter.AmountFormatter
 import dev.tuandoan.expensetracker.core.util.ErrorUtils
 import dev.tuandoan.expensetracker.core.util.TimeProvider
+import dev.tuandoan.expensetracker.core.util.UiText
 import dev.tuandoan.expensetracker.domain.model.Category
 import dev.tuandoan.expensetracker.domain.model.RecurrenceFrequency
 import dev.tuandoan.expensetracker.domain.model.RecurringTransaction
@@ -98,12 +100,12 @@ class AddEditRecurringTransactionViewModel
             val state = _uiState.value
             val amount = AmountFormatter.parseAmount(state.amountText)
             if (amount == null || amount <= 0) {
-                _uiState.update { it.copy(errorMessage = "Please enter a valid amount") }
+                _uiState.update { it.copy(errorMessage = UiText.StringResource(R.string.error_invalid_amount)) }
                 return
             }
             val category = state.selectedCategory
             if (category == null) {
-                _uiState.update { it.copy(errorMessage = "Please select a category") }
+                _uiState.update { it.copy(errorMessage = UiText.StringResource(R.string.error_select_category)) }
                 return
             }
 
@@ -152,7 +154,7 @@ class AddEditRecurringTransactionViewModel
                         _uiState.update {
                             it.copy(
                                 isLoading = false,
-                                errorMessage = "Recurring transaction not found",
+                                errorMessage = UiText.StringResource(R.string.error_recurring_not_found),
                             )
                         }
                         return@launch
@@ -263,7 +265,7 @@ data class AddEditRecurringUiState(
     val isActive: Boolean = true,
     val isLoading: Boolean = true,
     val isSaving: Boolean = false,
-    val errorMessage: String? = null,
+    val errorMessage: UiText? = null,
     // Original state for edit mode hasUnsavedChanges comparison
     val originalAmountText: String? = null,
     val originalNote: String? = null,

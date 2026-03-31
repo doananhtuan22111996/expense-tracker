@@ -45,6 +45,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
@@ -79,12 +80,13 @@ fun HomeScreen(
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
     var showMonthPicker by remember { mutableStateOf(false) }
+    val context = LocalContext.current
 
     val transactionDeletedMsg = stringResource(R.string.transaction_deleted)
     val undoMsg = stringResource(R.string.undo)
 
     LaunchedEffect(uiState.isError) {
-        val message = uiState.errorMessage
+        val message = uiState.errorMessage?.asString(context)
         if (uiState.isError && !message.isNullOrBlank()) {
             snackbarHostState.showSnackbar(message)
             viewModel.clearError()
@@ -132,7 +134,7 @@ fun HomeScreen(
             ) {
                 Icon(
                     imageVector = Icons.Default.Add,
-                    contentDescription = "Add new transaction",
+                    contentDescription = stringResource(R.string.a11y_add_new_transaction),
                 )
             }
         },
@@ -177,10 +179,11 @@ fun HomeScreen(
                         modifier = Modifier.fillMaxSize(),
                         contentAlignment = Alignment.Center,
                     ) {
+                        val loadingDesc = stringResource(R.string.a11y_loading_transactions)
                         CircularProgressIndicator(
                             modifier =
                                 Modifier.semantics {
-                                    contentDescription = "Loading transactions"
+                                    contentDescription = loadingDesc
                                 },
                         )
                     }
@@ -188,7 +191,7 @@ fun HomeScreen(
                 uiState.isError && uiState.transactions.isEmpty() -> {
                     ErrorStateMessage(
                         title = stringResource(R.string.error_load_transactions),
-                        message = uiState.errorMessage ?: stringResource(R.string.error_unexpected),
+                        message = uiState.errorMessage?.asString() ?: stringResource(R.string.error_unexpected),
                         onRetry = viewModel::retry,
                         modifier = Modifier.fillMaxSize(),
                     )
@@ -196,14 +199,14 @@ fun HomeScreen(
                 uiState.transactions.isEmpty() -> {
                     if (uiState.searchQuery.isNotEmpty()) {
                         EmptyStateMessage(
-                            title = "No results found",
-                            subtitle = "Try a different search term",
+                            title = stringResource(R.string.home_no_results),
+                            subtitle = stringResource(R.string.home_no_results_subtitle),
                             modifier = Modifier.fillMaxSize(),
                         )
                     } else {
                         EmptyStateMessage(
-                            title = "No transactions yet",
-                            subtitle = "Tap the + button to add your first transaction",
+                            title = stringResource(R.string.home_no_transactions),
+                            subtitle = stringResource(R.string.home_no_transactions_subtitle),
                             modifier = Modifier.fillMaxSize(),
                         )
                     }
@@ -234,65 +237,86 @@ private fun FilterChips(
         modifier = modifier,
     ) {
         item {
+            val allFilterDesc =
+                if (selectedFilter == null) {
+                    stringResource(R.string.a11y_filter_all_selected)
+                } else {
+                    stringResource(R.string.a11y_filter_all)
+                }
+            val allStateDesc =
+                if (selectedFilter == null) {
+                    stringResource(R.string.a11y_selected)
+                } else {
+                    stringResource(R.string.a11y_not_selected)
+                }
             FilterChip(
                 selected = selectedFilter == null,
                 onClick = {
                     hapticFeedback.performHapticFeedback(HapticFeedbackType.LongPress)
                     onFilterChanged(null)
                 },
-                label = { Text("All") },
+                label = { Text(stringResource(R.string.filter_all)) },
                 modifier =
                     Modifier.semantics {
-                        contentDescription =
-                            if (selectedFilter == null) {
-                                "All transactions filter selected"
-                            } else {
-                                "Filter by all transactions"
-                            }
+                        contentDescription = allFilterDesc
                         role = Role.Tab
-                        stateDescription = if (selectedFilter == null) "Selected" else "Not selected"
+                        stateDescription = allStateDesc
                     },
             )
         }
         item {
+            val expenseFilterDesc =
+                if (selectedFilter == TransactionType.EXPENSE) {
+                    stringResource(R.string.a11y_filter_expense_selected)
+                } else {
+                    stringResource(R.string.a11y_filter_expense)
+                }
+            val expenseStateDesc =
+                if (selectedFilter == TransactionType.EXPENSE) {
+                    stringResource(R.string.a11y_selected)
+                } else {
+                    stringResource(R.string.a11y_not_selected)
+                }
             FilterChip(
                 selected = selectedFilter == TransactionType.EXPENSE,
                 onClick = {
                     hapticFeedback.performHapticFeedback(HapticFeedbackType.LongPress)
                     onFilterChanged(TransactionType.EXPENSE)
                 },
-                label = { Text("Expenses") },
+                label = { Text(stringResource(R.string.filter_expenses)) },
                 modifier =
                     Modifier.semantics {
-                        contentDescription =
-                            if (selectedFilter == TransactionType.EXPENSE) {
-                                "Expense transactions filter selected"
-                            } else {
-                                "Filter by expense transactions"
-                            }
+                        contentDescription = expenseFilterDesc
                         role = Role.Tab
-                        stateDescription = if (selectedFilter == TransactionType.EXPENSE) "Selected" else "Not selected"
+                        stateDescription = expenseStateDesc
                     },
             )
         }
         item {
+            val incomeFilterDesc =
+                if (selectedFilter == TransactionType.INCOME) {
+                    stringResource(R.string.a11y_filter_income_selected)
+                } else {
+                    stringResource(R.string.a11y_filter_income)
+                }
+            val incomeStateDesc =
+                if (selectedFilter == TransactionType.INCOME) {
+                    stringResource(R.string.a11y_selected)
+                } else {
+                    stringResource(R.string.a11y_not_selected)
+                }
             FilterChip(
                 selected = selectedFilter == TransactionType.INCOME,
                 onClick = {
                     hapticFeedback.performHapticFeedback(HapticFeedbackType.LongPress)
                     onFilterChanged(TransactionType.INCOME)
                 },
-                label = { Text("Income") },
+                label = { Text(stringResource(R.string.filter_income)) },
                 modifier =
                     Modifier.semantics {
-                        contentDescription =
-                            if (selectedFilter == TransactionType.INCOME) {
-                                "Income transactions filter selected"
-                            } else {
-                                "Filter by income transactions"
-                            }
+                        contentDescription = incomeFilterDesc
                         role = Role.Tab
-                        stateDescription = if (selectedFilter == TransactionType.INCOME) "Selected" else "Not selected"
+                        stateDescription = incomeStateDesc
                     },
             )
         }
@@ -328,6 +352,38 @@ private fun TransactionItem(
     modifier: Modifier = Modifier,
 ) {
     val hapticFeedback = LocalHapticFeedback.current
+    val formattedAmount =
+        AmountFormatter.formatAmountWithCurrency(
+            transaction.amount,
+            transaction.currencyCode,
+        )
+    val formattedDate = DateTimeUtil.formatShortDate(transaction.timestamp)
+    val typeName = transaction.type.name.lowercase()
+    val itemDesc =
+        if (!transaction.note.isNullOrBlank()) {
+            stringResource(
+                R.string.a11y_transaction_item_with_note,
+                typeName,
+                transaction.category.name,
+                formattedAmount,
+                transaction.note,
+                formattedDate,
+            )
+        } else {
+            stringResource(
+                R.string.a11y_transaction_item,
+                typeName,
+                transaction.category.name,
+                formattedAmount,
+                formattedDate,
+            )
+        }
+    val deleteDesc =
+        stringResource(
+            R.string.a11y_delete_transaction_detail,
+            transaction.category.name,
+            formattedAmount,
+        )
 
     Card(
         onClick = {
@@ -338,22 +394,7 @@ private fun TransactionItem(
             modifier
                 .fillMaxWidth()
                 .semantics {
-                    contentDescription =
-                        buildString {
-                            append("${transaction.type.name.lowercase()} transaction")
-                            append(", ${transaction.category.name}")
-                            append(
-                                ", ${AmountFormatter.formatAmountWithCurrency(
-                                    transaction.amount,
-                                    transaction.currencyCode,
-                                )}",
-                            )
-                            if (!transaction.note.isNullOrBlank()) {
-                                append(", note: ${transaction.note}")
-                            }
-                            append(", ${DateTimeUtil.formatShortDate(transaction.timestamp)}")
-                            append(", double tap to edit")
-                        }
+                    contentDescription = itemDesc
                 },
         elevation = CardDefaults.cardElevation(defaultElevation = DesignSystemElevation.low),
     ) {
@@ -439,11 +480,7 @@ private fun TransactionItem(
                         Modifier
                             .size(48.dp)
                             .semantics {
-                                contentDescription = "Delete ${transaction.category.name} transaction of " +
-                                    AmountFormatter.formatAmountWithCurrency(
-                                        transaction.amount,
-                                        transaction.currencyCode,
-                                    )
+                                contentDescription = deleteDesc
                             },
                 ) {
                     Icon(
@@ -464,10 +501,11 @@ private fun SearchBar(
     onClear: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val searchDesc = stringResource(R.string.a11y_search_transactions)
     OutlinedTextField(
         value = query,
         onValueChange = onQueryChanged,
-        placeholder = { Text("Search by note") },
+        placeholder = { Text(stringResource(R.string.home_search_placeholder)) },
         leadingIcon = {
             Icon(
                 imageVector = Icons.Default.Search,
@@ -479,7 +517,7 @@ private fun SearchBar(
                 IconButton(onClick = onClear) {
                     Icon(
                         imageVector = Icons.Default.Clear,
-                        contentDescription = "Clear search",
+                        contentDescription = stringResource(R.string.a11y_clear_search),
                     )
                 }
             }
@@ -489,7 +527,7 @@ private fun SearchBar(
             modifier
                 .fillMaxWidth()
                 .semantics {
-                    contentDescription = "Search transactions by note"
+                    contentDescription = searchDesc
                 },
     )
 }

@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dev.tuandoan.expensetracker.core.util.ErrorUtils
+import dev.tuandoan.expensetracker.core.util.UiText
 import dev.tuandoan.expensetracker.domain.model.GoldHolding
 import dev.tuandoan.expensetracker.domain.model.GoldHoldingWithPnL
 import dev.tuandoan.expensetracker.domain.model.GoldPortfolioSummary
@@ -195,7 +196,7 @@ data class GoldPortfolioUiState(
     val currencyCode: String = "VND",
     val isLoading: Boolean = false,
     val isError: Boolean = false,
-    val errorMessage: String? = null,
+    val errorMessage: UiText? = null,
     val lastDeletedHolding: GoldHolding? = null,
     val showPricesUpdated: Boolean = false,
 )
