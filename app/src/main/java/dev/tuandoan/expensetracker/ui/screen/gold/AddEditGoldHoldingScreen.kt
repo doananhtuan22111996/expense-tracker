@@ -5,7 +5,6 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.imePadding
@@ -35,6 +34,7 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
@@ -127,6 +127,15 @@ fun AddEditGoldHoldingScreen(
                 },
             )
         },
+        bottomBar = {
+            if (!uiState.isLoading) {
+                GoldSaveBottomBar(
+                    uiState = uiState,
+                    isEditMode = isEditMode,
+                    onSave = { viewModel.saveHolding(onNavigateBack) },
+                )
+            }
+        },
         snackbarHost = { SnackbarHost(snackbarHostState) },
         modifier = modifier,
     ) { innerPadding ->
@@ -146,14 +155,11 @@ fun AddEditGoldHoldingScreen(
         } else {
             GoldHoldingForm(
                 uiState = uiState,
-                isEditMode = isEditMode,
                 viewModel = viewModel,
-                onNavigateBack = onNavigateBack,
                 modifier =
                     Modifier
-                        .fillMaxSize()
+                        .fillMaxWidth()
                         .padding(innerPadding)
-                        .imePadding()
                         .padding(
                             horizontal = DesignSystemSpacing.screenPadding,
                             vertical = DesignSystemSpacing.small,
@@ -197,13 +203,10 @@ fun AddEditGoldHoldingScreen(
 @Composable
 private fun GoldHoldingForm(
     uiState: AddEditGoldHoldingUiState,
-    isEditMode: Boolean,
     viewModel: AddEditGoldHoldingViewModel,
-    onNavigateBack: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val focusManager = LocalFocusManager.current
-    val hapticFeedback = LocalHapticFeedback.current
 
     Column(
         modifier = modifier,
@@ -323,53 +326,6 @@ private fun GoldHoldingForm(
                 modifier = Modifier.fillMaxWidth(),
                 maxLines = 3,
             )
-        }
-
-        Spacer(modifier = Modifier.padding(DesignSystemSpacing.medium))
-
-        // Save Button
-        Button(
-            onClick = {
-                hapticFeedback.performHapticFeedback(HapticFeedbackType.LongPress)
-                viewModel.saveHolding(onNavigateBack)
-            },
-            enabled = uiState.isSaveEnabled && !uiState.isSaving,
-            modifier = Modifier.fillMaxWidth(),
-        ) {
-            if (uiState.isSaving) {
-                Row(
-                    horizontalArrangement = Arrangement.Center,
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    CircularProgressIndicator(
-                        modifier = Modifier.size(16.dp),
-                        strokeWidth = 2.dp,
-                        color = ButtonDefaults.buttonColors().contentColor,
-                    )
-                    Text(
-                        text =
-                            if (isEditMode) {
-                                stringResource(R.string.gold_updating)
-                            } else {
-                                stringResource(R.string.gold_saving)
-                            },
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Medium,
-                        modifier = Modifier.padding(start = DesignSystemSpacing.small),
-                    )
-                }
-            } else {
-                Text(
-                    text =
-                        if (isEditMode) {
-                            stringResource(R.string.gold_update_holding)
-                        } else {
-                            stringResource(R.string.gold_save_holding)
-                        },
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Medium,
-                )
-            }
         }
     }
 }
@@ -520,6 +476,71 @@ private fun GoldDateSelector(
                     )
                 },
             )
+        }
+    }
+}
+
+@Composable
+private fun GoldSaveBottomBar(
+    uiState: AddEditGoldHoldingUiState,
+    isEditMode: Boolean,
+    onSave: () -> Unit,
+) {
+    val hapticFeedback = LocalHapticFeedback.current
+    Surface(tonalElevation = 3.dp) {
+        Column(
+            modifier =
+                Modifier
+                    .fillMaxWidth()
+                    .imePadding()
+                    .padding(
+                        horizontal = DesignSystemSpacing.screenPadding,
+                        vertical = DesignSystemSpacing.small,
+                    ),
+        ) {
+            Button(
+                onClick = {
+                    hapticFeedback.performHapticFeedback(HapticFeedbackType.LongPress)
+                    onSave()
+                },
+                enabled = uiState.isSaveEnabled && !uiState.isSaving,
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                if (uiState.isSaving) {
+                    Row(
+                        horizontalArrangement = Arrangement.Center,
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(16.dp),
+                            strokeWidth = 2.dp,
+                            color = ButtonDefaults.buttonColors().contentColor,
+                        )
+                        Text(
+                            text =
+                                if (isEditMode) {
+                                    stringResource(R.string.gold_updating)
+                                } else {
+                                    stringResource(R.string.gold_saving)
+                                },
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Medium,
+                            modifier = Modifier.padding(start = DesignSystemSpacing.small),
+                        )
+                    }
+                } else {
+                    Text(
+                        text =
+                            if (isEditMode) {
+                                stringResource(R.string.gold_update_holding)
+                            } else {
+                                stringResource(R.string.gold_save_holding)
+                            },
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Medium,
+                    )
+                }
+            }
         }
     }
 }

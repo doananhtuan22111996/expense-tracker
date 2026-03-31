@@ -4,8 +4,6 @@ import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
@@ -38,6 +36,7 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
@@ -135,15 +134,20 @@ fun AddEditRecurringTransactionScreen(
                 },
             )
         },
+        bottomBar = {
+            RecurringSaveBottomBar(
+                uiState = uiState,
+                onSave = { viewModel.save(onNavigateBack) },
+            )
+        },
         snackbarHost = { SnackbarHost(snackbarHostState) },
         modifier = modifier,
     ) { innerPadding ->
         Column(
             modifier =
                 Modifier
-                    .fillMaxSize()
+                    .fillMaxWidth()
                     .padding(innerPadding)
-                    .imePadding()
                     .padding(
                         horizontal = DesignSystemSpacing.screenPadding,
                         vertical = DesignSystemSpacing.small,
@@ -253,50 +257,6 @@ fun AddEditRecurringTransactionScreen(
                     modifier = Modifier.fillMaxWidth(),
                     maxLines = 3,
                 )
-            }
-
-            Spacer(modifier = Modifier.padding(DesignSystemSpacing.medium))
-
-            // Save Button
-            val hapticFeedback = LocalHapticFeedback.current
-            val saveDesc =
-                if (uiState.isFormValid && !uiState.isSaving) {
-                    stringResource(R.string.a11y_save_recurring)
-                } else {
-                    stringResource(R.string.a11y_complete_form_recurring)
-                }
-            Button(
-                onClick = {
-                    hapticFeedback.performHapticFeedback(HapticFeedbackType.LongPress)
-                    viewModel.save(onNavigateBack)
-                },
-                enabled = uiState.isFormValid && !uiState.isSaving,
-                modifier =
-                    Modifier
-                        .fillMaxWidth()
-                        .semantics {
-                            contentDescription = saveDesc
-                        },
-            ) {
-                if (uiState.isSaving) {
-                    CircularProgressIndicator(
-                        modifier = Modifier.size(16.dp),
-                        strokeWidth = 2.dp,
-                        color = ButtonDefaults.buttonColors().contentColor,
-                    )
-                    Text(
-                        text = stringResource(R.string.saving),
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Medium,
-                        modifier = Modifier.padding(start = DesignSystemSpacing.small),
-                    )
-                } else {
-                    Text(
-                        text = stringResource(R.string.save),
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Medium,
-                    )
-                }
             }
         }
     }
@@ -781,6 +741,71 @@ private fun StartDateSelector(
                     )
                 },
             )
+        }
+    }
+}
+
+@Composable
+private fun RecurringSaveBottomBar(
+    uiState: AddEditRecurringUiState,
+    onSave: () -> Unit,
+) {
+    val hapticFeedback = LocalHapticFeedback.current
+    val saveButtonDescription =
+        if (uiState.isFormValid && !uiState.isSaving) {
+            stringResource(R.string.a11y_save_recurring)
+        } else {
+            stringResource(R.string.a11y_complete_form_recurring)
+        }
+    Surface(tonalElevation = 3.dp) {
+        Column(
+            modifier =
+                Modifier
+                    .fillMaxWidth()
+                    .imePadding()
+                    .padding(
+                        horizontal = DesignSystemSpacing.screenPadding,
+                        vertical = DesignSystemSpacing.small,
+                    ),
+        ) {
+            Button(
+                onClick = {
+                    hapticFeedback.performHapticFeedback(HapticFeedbackType.LongPress)
+                    onSave()
+                },
+                enabled = uiState.isFormValid && !uiState.isSaving,
+                modifier =
+                    Modifier
+                        .fillMaxWidth()
+                        .semantics {
+                            contentDescription = saveButtonDescription
+                        },
+            ) {
+                if (uiState.isSaving) {
+                    Row(
+                        horizontalArrangement = Arrangement.Center,
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(16.dp),
+                            strokeWidth = 2.dp,
+                            color = ButtonDefaults.buttonColors().contentColor,
+                        )
+                        Text(
+                            text = stringResource(R.string.saving),
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Medium,
+                            modifier = Modifier.padding(start = DesignSystemSpacing.small),
+                        )
+                    }
+                } else {
+                    Text(
+                        text = stringResource(R.string.save),
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Medium,
+                    )
+                }
+            }
         }
     }
 }
