@@ -15,11 +15,13 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
+import dev.tuandoan.expensetracker.R
 import dev.tuandoan.expensetracker.ui.theme.DesignSystemSpacing
 
 @Composable
@@ -31,6 +33,15 @@ fun MonthSelector(
     onMonthLabelClick: (() -> Unit)? = null,
     periodType: String = "month",
 ) {
+    val previousPeriodDesc = stringResource(R.string.a11y_previous_period, periodType)
+    val nextPeriodDesc = stringResource(R.string.a11y_next_period, periodType)
+    val selectedPeriodDesc =
+        if (onMonthLabelClick != null) {
+            stringResource(R.string.a11y_selected_period_tap, periodType, monthLabel, periodType)
+        } else {
+            stringResource(R.string.a11y_selected_period, periodType, monthLabel)
+        }
+
     Row(
         modifier =
             modifier
@@ -43,7 +54,7 @@ fun MonthSelector(
             onClick = onPreviousMonth,
             modifier =
                 Modifier.semantics {
-                    contentDescription = "Go to previous $periodType"
+                    contentDescription = previousPeriodDesc
                 },
         ) {
             Icon(
@@ -66,12 +77,7 @@ fun MonthSelector(
                         }
                     }.semantics {
                         heading()
-                        contentDescription =
-                            if (onMonthLabelClick != null) {
-                                "Selected $periodType: $monthLabel. Tap to pick $periodType"
-                            } else {
-                                "Selected $periodType: $monthLabel"
-                            }
+                        contentDescription = selectedPeriodDesc
                     },
         )
 
@@ -79,7 +85,7 @@ fun MonthSelector(
             onClick = onNextMonth,
             modifier =
                 Modifier.semantics {
-                    contentDescription = "Go to next $periodType"
+                    contentDescription = nextPeriodDesc
                 },
         ) {
             Icon(

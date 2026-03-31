@@ -24,16 +24,32 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import dev.tuandoan.expensetracker.R
 import dev.tuandoan.expensetracker.ui.theme.DesignSystemSpacing
 import java.time.Month
 import java.time.YearMonth
 
-private val MONTH_LABELS =
-    listOf("Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec")
+@Composable
+private fun monthLabels(): List<String> =
+    listOf(
+        stringResource(R.string.month_jan),
+        stringResource(R.string.month_feb),
+        stringResource(R.string.month_mar),
+        stringResource(R.string.month_apr),
+        stringResource(R.string.month_may),
+        stringResource(R.string.month_jun),
+        stringResource(R.string.month_jul),
+        stringResource(R.string.month_aug),
+        stringResource(R.string.month_sep),
+        stringResource(R.string.month_oct),
+        stringResource(R.string.month_nov),
+        stringResource(R.string.month_dec),
+    )
 
 @Composable
 fun MonthYearPickerDialog(
@@ -43,16 +59,22 @@ fun MonthYearPickerDialog(
     modifier: Modifier = Modifier,
 ) {
     var pickerYear by remember { mutableIntStateOf(currentSelection.year) }
+    val labels = monthLabels()
+    val selectMonthTitle = stringResource(R.string.select_month_title)
+    val selectMonthDialogDesc = stringResource(R.string.a11y_select_month_dialog)
+    val previousYearDesc = stringResource(R.string.a11y_previous_year)
+    val yearDesc = stringResource(R.string.a11y_year, pickerYear)
+    val nextYearDesc = stringResource(R.string.a11y_next_year)
 
     AlertDialog(
         onDismissRequest = onDismiss,
         modifier = modifier,
         title = {
             Text(
-                text = "Select month",
+                text = selectMonthTitle,
                 modifier =
                     Modifier.semantics {
-                        contentDescription = "Select month dialog"
+                        contentDescription = selectMonthDialogDesc
                     },
             )
         },
@@ -68,7 +90,7 @@ fun MonthYearPickerDialog(
                         onClick = { pickerYear-- },
                         modifier =
                             Modifier.semantics {
-                                contentDescription = "Previous year"
+                                contentDescription = previousYearDesc
                             },
                     ) {
                         Icon(
@@ -84,7 +106,7 @@ fun MonthYearPickerDialog(
                         textAlign = TextAlign.Center,
                         modifier =
                             Modifier.semantics {
-                                contentDescription = "Year $pickerYear"
+                                contentDescription = yearDesc
                             },
                     )
 
@@ -92,7 +114,7 @@ fun MonthYearPickerDialog(
                         onClick = { pickerYear++ },
                         modifier =
                             Modifier.semantics {
-                                contentDescription = "Next year"
+                                contentDescription = nextYearDesc
                             },
                     ) {
                         Icon(
@@ -108,13 +130,15 @@ fun MonthYearPickerDialog(
                     horizontalArrangement = Arrangement.spacedBy(DesignSystemSpacing.small),
                     verticalArrangement = Arrangement.spacedBy(DesignSystemSpacing.small),
                 ) {
-                    items(MONTH_LABELS.size) { index ->
-                        val label = MONTH_LABELS[index]
+                    items(labels.size) { index ->
+                        val label = labels[index]
                         val month = Month.of(index + 1)
                         val ym = YearMonth.of(pickerYear, month)
                         val isSelected = ym == currentSelection
 
                         if (isSelected) {
+                            val selectedDesc =
+                                stringResource(R.string.a11y_month_selected, label, pickerYear)
                             FilledTonalButton(
                                 onClick = {
                                     onMonthSelected(ym)
@@ -122,7 +146,7 @@ fun MonthYearPickerDialog(
                                 },
                                 modifier =
                                     Modifier.semantics {
-                                        contentDescription = "$label $pickerYear, selected"
+                                        contentDescription = selectedDesc
                                     },
                             ) {
                                 Text(
@@ -132,6 +156,8 @@ fun MonthYearPickerDialog(
                                 )
                             }
                         } else {
+                            val unselectedDesc =
+                                stringResource(R.string.a11y_month_unselected, label, pickerYear)
                             OutlinedButton(
                                 onClick = {
                                     onMonthSelected(ym)
@@ -139,7 +165,7 @@ fun MonthYearPickerDialog(
                                 },
                                 modifier =
                                     Modifier.semantics {
-                                        contentDescription = "$label $pickerYear"
+                                        contentDescription = unselectedDesc
                                     },
                             ) {
                                 Text(
@@ -156,7 +182,7 @@ fun MonthYearPickerDialog(
         confirmButton = {},
         dismissButton = {
             TextButton(onClick = onDismiss) {
-                Text("Cancel")
+                Text(stringResource(R.string.cancel))
             }
         },
     )

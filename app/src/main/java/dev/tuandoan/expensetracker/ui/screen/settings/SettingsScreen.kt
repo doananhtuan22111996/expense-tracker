@@ -106,16 +106,17 @@ fun SettingsScreen(
             uri?.let { viewModel.exportCsv(it) }
         }
 
+    val context = LocalContext.current
     LaunchedEffect(uiState.errorMessage) {
         uiState.errorMessage?.let {
-            snackbarHostState.showSnackbar(it)
+            snackbarHostState.showSnackbar(it.asString(context))
             viewModel.clearError()
         }
     }
 
     LaunchedEffect(uiState.backupMessage) {
         uiState.backupMessage?.let {
-            snackbarHostState.showSnackbar(it)
+            snackbarHostState.showSnackbar(it.asString(context))
             viewModel.clearBackupMessage()
         }
     }
@@ -140,7 +141,7 @@ fun SettingsScreen(
                     .verticalScroll(rememberScrollState()),
         ) {
             // Preferences Section
-            SettingsSection(title = "Preferences") {
+            SettingsSection(title = stringResource(R.string.settings_preferences)) {
                 // Theme picker
                 Column(
                     modifier =
@@ -190,6 +191,7 @@ fun SettingsScreen(
                         uiState.selectedCurrencyCode
                     }
 
+                val currencyA11y = stringResource(R.string.a11y_default_currency, displayText)
                 Row(
                     modifier =
                         Modifier
@@ -197,14 +199,14 @@ fun SettingsScreen(
                             .clickable { showCurrencyDialog = true }
                             .padding(DesignSystemSpacing.large)
                             .semantics {
-                                contentDescription = "Default currency: $displayText, tap to change"
+                                contentDescription = currencyA11y
                             },
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     Column(modifier = Modifier.weight(1f)) {
                         Text(
-                            text = "Default Currency",
+                            text = stringResource(R.string.settings_default_currency),
                             style = MaterialTheme.typography.bodyLarge,
                             fontWeight = FontWeight.Medium,
                             color = MaterialTheme.colorScheme.onSurface,
@@ -224,7 +226,7 @@ fun SettingsScreen(
                 }
 
                 Text(
-                    text = "Used for new transactions only",
+                    text = stringResource(R.string.settings_currency_hint),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier =
@@ -328,11 +330,17 @@ fun SettingsScreen(
             }
 
             // Backup & Restore Section
-            SettingsSection(title = "Backup & Restore") {
+            SettingsSection(title = stringResource(R.string.settings_backup_restore)) {
                 val isBusy = uiState.backupOperation != BackupOperation.Idle
                 val isExporting = uiState.backupOperation == BackupOperation.Exporting
                 val isImporting = uiState.backupOperation == BackupOperation.Importing
 
+                val exportA11y =
+                    if (isExporting) {
+                        stringResource(R.string.a11y_export_backup_busy)
+                    } else {
+                        stringResource(R.string.a11y_export_backup)
+                    }
                 Row(
                     modifier =
                         Modifier
@@ -343,12 +351,7 @@ fun SettingsScreen(
                                 exportLauncher.launch("expense-tracker-backup_$date.json")
                             }.padding(DesignSystemSpacing.large)
                             .semantics {
-                                contentDescription =
-                                    if (isExporting) {
-                                        "Export backup to JSON file, currently exporting"
-                                    } else {
-                                        "Export backup to JSON file"
-                                    }
+                                contentDescription = exportA11y
                             },
                     horizontalArrangement = Arrangement.spacedBy(DesignSystemSpacing.medium),
                     verticalAlignment = Alignment.CenterVertically,
@@ -360,13 +363,13 @@ fun SettingsScreen(
                     )
                     Column(modifier = Modifier.weight(1f)) {
                         Text(
-                            text = "Export Backup",
+                            text = stringResource(R.string.settings_export_backup),
                             style = MaterialTheme.typography.bodyLarge,
                             fontWeight = FontWeight.Medium,
                             color = MaterialTheme.colorScheme.onSurface,
                         )
                         Text(
-                            text = "Save all data as a JSON file",
+                            text = stringResource(R.string.settings_export_backup_subtitle),
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                             modifier = Modifier.padding(top = DesignSystemSpacing.xs),
@@ -374,7 +377,7 @@ fun SettingsScreen(
                     }
                     if (isExporting) {
                         TextButton(onClick = { viewModel.cancelOperation() }) {
-                            Text("Cancel")
+                            Text(stringResource(R.string.cancel))
                         }
                     }
                 }
@@ -425,6 +428,12 @@ fun SettingsScreen(
 
                 HorizontalDivider()
 
+                val importA11y =
+                    if (isImporting) {
+                        stringResource(R.string.a11y_import_backup_busy)
+                    } else {
+                        stringResource(R.string.a11y_import_backup)
+                    }
                 Row(
                     modifier =
                         Modifier
@@ -435,12 +444,7 @@ fun SettingsScreen(
                                 )
                             }.padding(DesignSystemSpacing.large)
                             .semantics {
-                                contentDescription =
-                                    if (isImporting) {
-                                        "Import backup from JSON file, currently importing"
-                                    } else {
-                                        "Import backup from JSON file"
-                                    }
+                                contentDescription = importA11y
                             },
                     horizontalArrangement = Arrangement.spacedBy(DesignSystemSpacing.medium),
                     verticalAlignment = Alignment.CenterVertically,
@@ -452,13 +456,13 @@ fun SettingsScreen(
                     )
                     Column(modifier = Modifier.weight(1f)) {
                         Text(
-                            text = "Import Backup",
+                            text = stringResource(R.string.settings_import_backup),
                             style = MaterialTheme.typography.bodyLarge,
                             fontWeight = FontWeight.Medium,
                             color = MaterialTheme.colorScheme.onSurface,
                         )
                         Text(
-                            text = "Restore from a JSON backup file",
+                            text = stringResource(R.string.settings_import_backup_subtitle),
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                             modifier = Modifier.padding(top = DesignSystemSpacing.xs),
@@ -466,7 +470,7 @@ fun SettingsScreen(
                     }
                     if (isImporting) {
                         TextButton(onClick = { viewModel.cancelOperation() }) {
-                            Text("Cancel")
+                            Text(stringResource(R.string.cancel))
                         }
                     }
                 }
@@ -476,9 +480,7 @@ fun SettingsScreen(
                 }
 
                 Text(
-                    text =
-                        "Backups are stored where you choose. " +
-                            "The app does not upload your data.",
+                    text = stringResource(R.string.settings_backup_privacy_hint),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier =
@@ -525,22 +527,22 @@ fun SettingsScreen(
             MoreAppsSection()
 
             // App Information Section
-            SettingsSection(title = "App Information") {
+            SettingsSection(title = stringResource(R.string.settings_app_information)) {
                 SettingsItem(
-                    title = "Version",
+                    title = stringResource(R.string.settings_version),
                     subtitle = AppInfo.getFullVersionInfo(),
                 )
 
                 HorizontalDivider()
 
                 SettingsItem(
-                    title = "Contact Email",
+                    title = stringResource(R.string.settings_contact_email),
                     subtitle = "doananhtuan22111996@gmail.com",
                 )
             }
 
             // Privacy Section
-            SettingsSection(title = "Privacy") {
+            SettingsSection(title = stringResource(R.string.settings_privacy)) {
                 // Anonymous crash reporting toggle
                 Row(
                     modifier =
@@ -574,47 +576,39 @@ fun SettingsScreen(
 
                 Column(modifier = Modifier.padding(DesignSystemSpacing.large)) {
                     Text(
-                        text = "Privacy Statement",
+                        text = stringResource(R.string.settings_privacy_statement),
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Medium,
                         modifier = Modifier.padding(bottom = DesignSystemSpacing.small),
                     )
                     Text(
-                        text = "All data is stored locally on your device. No data is collected or shared.",
+                        text = stringResource(R.string.settings_privacy_statement_body),
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.padding(bottom = DesignSystemSpacing.large),
                     )
 
                     Text(
-                        text = "Data Privacy",
+                        text = stringResource(R.string.settings_data_privacy),
                         style = MaterialTheme.typography.titleSmall,
                         fontWeight = FontWeight.Medium,
                         modifier = Modifier.padding(bottom = DesignSystemSpacing.xs),
                     )
                     Text(
-                        text =
-                            "• All transaction data is stored locally on your device\n" +
-                                "• No personal information is transmitted to external servers\n" +
-                                "• No analytics or tracking is performed\n" +
-                                "• No advertisements are displayed\n" +
-                                "• No account creation or login is required",
+                        text = stringResource(R.string.settings_data_privacy_body),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.padding(bottom = DesignSystemSpacing.large),
                     )
 
                     Text(
-                        text = "Data Storage",
+                        text = stringResource(R.string.settings_data_storage),
                         style = MaterialTheme.typography.titleSmall,
                         fontWeight = FontWeight.Medium,
                         modifier = Modifier.padding(bottom = DesignSystemSpacing.xs),
                     )
                     Text(
-                        text =
-                            "Your expense data is stored in a local database on your device. " +
-                                "Uninstalling the app will permanently delete all data. " +
-                                "We recommend backing up your data if needed.",
+                        text = stringResource(R.string.settings_data_storage_body),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
@@ -622,18 +616,16 @@ fun SettingsScreen(
             }
 
             // About Section
-            SettingsSection(title = "About") {
+            SettingsSection(title = stringResource(R.string.settings_about)) {
                 Column(modifier = Modifier.padding(DesignSystemSpacing.large)) {
                     Text(
-                        text = "Expense Tracker",
+                        text = stringResource(R.string.app_name),
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Medium,
                         modifier = Modifier.padding(bottom = DesignSystemSpacing.small),
                     )
                     Text(
-                        text =
-                            "A simple, offline-first personal expense tracking app for managing your " +
-                                "income and expenses locally on your device.",
+                        text = stringResource(R.string.settings_about_description),
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.padding(bottom = DesignSystemSpacing.medium),
@@ -642,7 +634,7 @@ fun SettingsScreen(
                     // Application details for support/debugging
                     if (AppInfo.isDebugBuild()) {
                         Text(
-                            text = "Debug Information",
+                            text = stringResource(R.string.settings_debug_info),
                             style = MaterialTheme.typography.titleSmall,
                             fontWeight = FontWeight.Medium,
                             modifier = Modifier.padding(bottom = DesignSystemSpacing.xs),
@@ -678,27 +670,23 @@ fun SettingsScreen(
     if (uiState.pendingRestoreUri != null) {
         AlertDialog(
             onDismissRequest = { viewModel.dismissRestoreConfirmation() },
-            title = { Text("Replace all data?") },
+            title = { Text(stringResource(R.string.settings_restore_title)) },
             text = {
-                Text(
-                    "This will permanently delete all existing transactions " +
-                        "and categories, then replace them with the data from " +
-                        "the selected backup file.\n\nThis action cannot be undone.",
-                )
+                Text(stringResource(R.string.settings_restore_message))
             },
             confirmButton = {
                 TextButton(
                     onClick = { viewModel.confirmRestore() },
                 ) {
                     Text(
-                        "Replace All",
+                        stringResource(R.string.settings_replace_all),
                         color = MaterialTheme.colorScheme.error,
                     )
                 }
             },
             dismissButton = {
                 TextButton(onClick = { viewModel.dismissRestoreConfirmation() }) {
-                    Text("Cancel")
+                    Text(stringResource(R.string.cancel))
                 }
             },
         )
@@ -725,11 +713,21 @@ private fun CurrencySelectionDialog(
 ) {
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Select Default Currency") },
+        title = { Text(stringResource(R.string.settings_select_currency)) },
         text = {
             LazyColumn {
                 items(availableCurrencies, key = { it.code }) { currency ->
                     val isSelected = currency.code == selectedCurrencyCode
+                    val currencyItemA11y =
+                        if (isSelected) {
+                            stringResource(
+                                R.string.a11y_currency_currently_selected,
+                                currency.code,
+                                currency.displayName,
+                            )
+                        } else {
+                            stringResource(R.string.a11y_select_currency_item, currency.code, currency.displayName)
+                        }
                     Row(
                         modifier =
                             Modifier
@@ -737,12 +735,7 @@ private fun CurrencySelectionDialog(
                                 .clickable { onCurrencySelected(currency.code) }
                                 .padding(DesignSystemSpacing.medium)
                                 .semantics {
-                                    contentDescription =
-                                        if (isSelected) {
-                                            "${currency.code} ${currency.displayName}, currently selected"
-                                        } else {
-                                            "Select ${currency.code} ${currency.displayName}"
-                                        }
+                                    contentDescription = currencyItemA11y
                                 },
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically,
@@ -772,7 +765,7 @@ private fun CurrencySelectionDialog(
         confirmButton = {},
         dismissButton = {
             TextButton(onClick = onDismiss) {
-                Text("Cancel")
+                Text(stringResource(R.string.cancel))
             }
         },
     )
@@ -907,13 +900,14 @@ private fun BackupProgressBar(
                 ),
     ) {
         val displayProgress = progress ?: 0f
+        val progressA11y = stringResource(R.string.a11y_backup_progress, (displayProgress * 100).toInt())
         LinearProgressIndicator(
             progress = { displayProgress },
             modifier =
                 Modifier
                     .fillMaxWidth()
                     .semantics {
-                        contentDescription = "${(displayProgress * 100).toInt()}% complete"
+                        contentDescription = progressA11y
                     },
         )
         Text(

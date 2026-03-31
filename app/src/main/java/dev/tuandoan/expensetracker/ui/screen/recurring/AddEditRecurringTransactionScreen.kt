@@ -52,6 +52,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusDirection
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.stringResource
@@ -85,6 +86,7 @@ fun AddEditRecurringTransactionScreen(
     val focusManager = LocalFocusManager.current
     val isEditMode = viewModel.isEditMode
     var showDiscardDialog by remember { mutableStateOf(false) }
+    val context = LocalContext.current
 
     val handleBack: () -> Unit = {
         if (uiState.hasUnsavedChanges) {
@@ -98,7 +100,7 @@ fun AddEditRecurringTransactionScreen(
 
     LaunchedEffect(uiState.errorMessage) {
         uiState.errorMessage?.let { message ->
-            snackbarHostState.showSnackbar(message)
+            snackbarHostState.showSnackbar(message.asString(context))
             viewModel.clearError()
         }
     }
@@ -117,6 +119,7 @@ fun AddEditRecurringTransactionScreen(
                 },
                 navigationIcon = {
                     val hapticBack = LocalHapticFeedback.current
+                    val goBackDesc = stringResource(R.string.a11y_go_back)
                     IconButton(
                         onClick = {
                             hapticBack.performHapticFeedback(HapticFeedbackType.LongPress)
@@ -124,7 +127,7 @@ fun AddEditRecurringTransactionScreen(
                         },
                         modifier =
                             Modifier.semantics {
-                                contentDescription = "Go back"
+                                contentDescription = goBackDesc
                             },
                     ) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = null)
@@ -171,7 +174,7 @@ fun AddEditRecurringTransactionScreen(
 
             Column(verticalArrangement = Arrangement.spacedBy(DesignSystemSpacing.xs)) {
                 Text(
-                    text = "Amount",
+                    text = stringResource(R.string.label_amount),
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Medium,
                     color = MaterialTheme.colorScheme.onSurface,
@@ -182,7 +185,7 @@ fun AddEditRecurringTransactionScreen(
                         val cleanInput = input.replace("[^0-9]".toRegex(), "")
                         viewModel.onAmountChanged(cleanInput)
                     },
-                    label = { Text("Enter amount in ${currency.code}") },
+                    label = { Text(stringResource(R.string.label_enter_amount, currency.code)) },
                     placeholder = { Text(amountPlaceholder) },
                     suffix = {
                         Text(
@@ -231,14 +234,14 @@ fun AddEditRecurringTransactionScreen(
             // Note
             Column(verticalArrangement = Arrangement.spacedBy(DesignSystemSpacing.xs)) {
                 Text(
-                    text = "Note (optional)",
+                    text = stringResource(R.string.label_note_optional),
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
                 OutlinedTextField(
                     value = uiState.note,
                     onValueChange = viewModel::onNoteChanged,
-                    placeholder = { Text("Add details...") },
+                    placeholder = { Text(stringResource(R.string.hint_add_details_short)) },
                     keyboardOptions =
                         KeyboardOptions(
                             imeAction = ImeAction.Done,
@@ -256,6 +259,12 @@ fun AddEditRecurringTransactionScreen(
 
             // Save Button
             val hapticFeedback = LocalHapticFeedback.current
+            val saveDesc =
+                if (uiState.isFormValid && !uiState.isSaving) {
+                    stringResource(R.string.a11y_save_recurring)
+                } else {
+                    stringResource(R.string.a11y_complete_form_recurring)
+                }
             Button(
                 onClick = {
                     hapticFeedback.performHapticFeedback(HapticFeedbackType.LongPress)
@@ -266,12 +275,7 @@ fun AddEditRecurringTransactionScreen(
                     Modifier
                         .fillMaxWidth()
                         .semantics {
-                            contentDescription =
-                                if (uiState.isFormValid && !uiState.isSaving) {
-                                    "Save recurring transaction"
-                                } else {
-                                    "Complete form to enable save"
-                                }
+                            contentDescription = saveDesc
                         },
             ) {
                 if (uiState.isSaving) {
@@ -281,7 +285,7 @@ fun AddEditRecurringTransactionScreen(
                         color = ButtonDefaults.buttonColors().contentColor,
                     )
                     Text(
-                        text = "Saving...",
+                        text = stringResource(R.string.saving),
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Medium,
                         modifier = Modifier.padding(start = DesignSystemSpacing.small),
@@ -340,44 +344,46 @@ private fun TransactionTypeSelector(
         verticalArrangement = Arrangement.spacedBy(DesignSystemSpacing.xs),
     ) {
         Text(
-            text = "Transaction Type",
+            text = stringResource(R.string.label_transaction_type),
             style = MaterialTheme.typography.titleMedium,
             fontWeight = FontWeight.Medium,
             color = MaterialTheme.colorScheme.onSurface,
         )
         Row(horizontalArrangement = Arrangement.spacedBy(DesignSystemSpacing.small)) {
+            val expenseDesc =
+                if (selectedType == TransactionType.EXPENSE) {
+                    stringResource(R.string.a11y_expense_type_selected)
+                } else {
+                    stringResource(R.string.a11y_select_expense_type_short)
+                }
             FilterChip(
                 selected = selectedType == TransactionType.EXPENSE,
                 onClick = {
                     hapticFeedback.performHapticFeedback(HapticFeedbackType.LongPress)
                     onTypeChanged(TransactionType.EXPENSE)
                 },
-                label = { Text("Expense") },
+                label = { Text(stringResource(R.string.type_expense)) },
                 modifier =
                     Modifier.semantics {
-                        contentDescription =
-                            if (selectedType == TransactionType.EXPENSE) {
-                                "Expense type selected"
-                            } else {
-                                "Select expense type"
-                            }
+                        contentDescription = expenseDesc
                     },
             )
+            val incomeDesc =
+                if (selectedType == TransactionType.INCOME) {
+                    stringResource(R.string.a11y_income_type_selected)
+                } else {
+                    stringResource(R.string.a11y_select_income_type_short)
+                }
             FilterChip(
                 selected = selectedType == TransactionType.INCOME,
                 onClick = {
                     hapticFeedback.performHapticFeedback(HapticFeedbackType.LongPress)
                     onTypeChanged(TransactionType.INCOME)
                 },
-                label = { Text("Income") },
+                label = { Text(stringResource(R.string.type_income)) },
                 modifier =
                     Modifier.semantics {
-                        contentDescription =
-                            if (selectedType == TransactionType.INCOME) {
-                                "Income type selected"
-                            } else {
-                                "Select income type"
-                            }
+                        contentDescription = incomeDesc
                     },
             )
         }
@@ -404,12 +410,13 @@ private fun CurrencyDropdown(
         verticalArrangement = Arrangement.spacedBy(DesignSystemSpacing.xs),
     ) {
         Text(
-            text = "Currency",
+            text = stringResource(R.string.label_currency),
             style = MaterialTheme.typography.titleMedium,
             fontWeight = FontWeight.Medium,
             color = MaterialTheme.colorScheme.onSurface,
         )
         val hapticFeedback = LocalHapticFeedback.current
+        val currencyDesc = stringResource(R.string.a11y_currency_tap_to_change, displayText)
         Card(
             onClick = {
                 hapticFeedback.performHapticFeedback(HapticFeedbackType.LongPress)
@@ -419,7 +426,7 @@ private fun CurrencyDropdown(
                 Modifier
                     .fillMaxWidth()
                     .semantics {
-                        contentDescription = "Currency: $displayText, tap to change"
+                        contentDescription = currencyDesc
                     },
             elevation = CardDefaults.cardElevation(defaultElevation = DesignSystemElevation.low),
         ) {
@@ -439,7 +446,7 @@ private fun CurrencyDropdown(
                 )
                 Icon(
                     Icons.Default.KeyboardArrowDown,
-                    contentDescription = "Open currency selection",
+                    contentDescription = stringResource(R.string.a11y_open_currency_selection),
                     tint = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
@@ -496,12 +503,18 @@ private fun CategoryDropdown(
         verticalArrangement = Arrangement.spacedBy(DesignSystemSpacing.xs),
     ) {
         Text(
-            text = "Category",
+            text = stringResource(R.string.label_category),
             style = MaterialTheme.typography.titleMedium,
             fontWeight = FontWeight.Medium,
             color = MaterialTheme.colorScheme.onSurface,
         )
         val hapticFeedback = LocalHapticFeedback.current
+        val categoryDesc =
+            if (selectedCategory != null) {
+                stringResource(R.string.a11y_selected_tap_to_change, selectedCategory.name)
+            } else {
+                stringResource(R.string.a11y_select_category_generic)
+            }
         Card(
             onClick = {
                 hapticFeedback.performHapticFeedback(HapticFeedbackType.LongPress)
@@ -511,12 +524,7 @@ private fun CategoryDropdown(
                 Modifier
                     .fillMaxWidth()
                     .semantics {
-                        contentDescription =
-                            if (selectedCategory != null) {
-                                "${selectedCategory.name} selected, tap to change"
-                            } else {
-                                "Select category"
-                            }
+                        contentDescription = categoryDesc
                     },
             elevation = CardDefaults.cardElevation(defaultElevation = DesignSystemElevation.low),
         ) {
@@ -529,7 +537,7 @@ private fun CategoryDropdown(
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Text(
-                    text = selectedCategory?.name ?: "Select Category",
+                    text = selectedCategory?.name ?: stringResource(R.string.select_category),
                     style = MaterialTheme.typography.bodyLarge,
                     fontWeight =
                         if (selectedCategory != null) FontWeight.Medium else FontWeight.Normal,
@@ -542,7 +550,7 @@ private fun CategoryDropdown(
                 )
                 Icon(
                     Icons.Default.KeyboardArrowDown,
-                    contentDescription = "Open category selection",
+                    contentDescription = stringResource(R.string.a11y_open_category_selection),
                     tint = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
@@ -593,6 +601,11 @@ private fun FrequencyDropdown(
             color = MaterialTheme.colorScheme.onSurface,
         )
         val hapticFeedback = LocalHapticFeedback.current
+        val frequencyDesc =
+            stringResource(
+                R.string.a11y_frequency_tap_to_change,
+                frequencyLabels[selectedFrequency] ?: "",
+            )
         Card(
             onClick = {
                 hapticFeedback.performHapticFeedback(HapticFeedbackType.LongPress)
@@ -602,8 +615,7 @@ private fun FrequencyDropdown(
                 Modifier
                     .fillMaxWidth()
                     .semantics {
-                        contentDescription =
-                            "Frequency: ${frequencyLabels[selectedFrequency]}, tap to change"
+                        contentDescription = frequencyDesc
                     },
             elevation = CardDefaults.cardElevation(defaultElevation = DesignSystemElevation.low),
         ) {
@@ -623,7 +635,7 @@ private fun FrequencyDropdown(
                 )
                 Icon(
                     Icons.Default.KeyboardArrowDown,
-                    contentDescription = "Open frequency selection",
+                    contentDescription = stringResource(R.string.a11y_open_frequency_selection),
                     tint = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
@@ -686,6 +698,8 @@ private fun StartDateSelector(
             fontWeight = FontWeight.Medium,
             color = MaterialTheme.colorScheme.onSurface,
         )
+        val startDateDesc =
+            stringResource(R.string.a11y_start_date_tap_to_change, DateTimeUtil.formatTimestamp(timestamp))
         Card(
             onClick = {
                 hapticFeedback.performHapticFeedback(HapticFeedbackType.LongPress)
@@ -695,8 +709,7 @@ private fun StartDateSelector(
                 Modifier
                     .fillMaxWidth()
                     .semantics {
-                        contentDescription =
-                            "Start date: ${DateTimeUtil.formatTimestamp(timestamp)}, tap to change"
+                        contentDescription = startDateDesc
                     },
             elevation = CardDefaults.cardElevation(defaultElevation = DesignSystemElevation.low),
         ) {
@@ -716,14 +729,14 @@ private fun StartDateSelector(
                         color = MaterialTheme.colorScheme.onSurface,
                     )
                     Text(
-                        text = "Tap to select start date",
+                        text = stringResource(R.string.hint_tap_to_select_start_date),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 }
                 Icon(
                     Icons.Default.CalendarToday,
-                    contentDescription = "Select start date",
+                    contentDescription = stringResource(R.string.a11y_select_start_date),
                     tint = MaterialTheme.colorScheme.primary,
                 )
             }
@@ -745,7 +758,7 @@ private fun StartDateSelector(
                         showDatePicker = false
                     },
                 ) {
-                    Text("OK")
+                    Text(stringResource(R.string.action_ok))
                 }
             },
             dismissButton = {

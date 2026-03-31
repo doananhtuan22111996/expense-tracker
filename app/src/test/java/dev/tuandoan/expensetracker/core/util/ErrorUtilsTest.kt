@@ -1,6 +1,7 @@
 package dev.tuandoan.expensetracker.core.util
 
 import android.database.sqlite.SQLiteException
+import dev.tuandoan.expensetracker.R
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
@@ -13,49 +14,57 @@ class ErrorUtilsTest {
     @Test
     fun getErrorMessage_sqliteException_returnsDatabaseMessage() {
         val exception = SQLiteException("table not found")
-        assertEquals("Database error occurred. Please try again.", ErrorUtils.getErrorMessage(exception))
+        val result = ErrorUtils.getErrorMessage(exception)
+        assertTrue(result is UiText.StringResource)
+        assertEquals(R.string.error_database, (result as UiText.StringResource).resId)
     }
 
     @Test
     fun getErrorMessage_unknownHostException_returnsNetworkMessage() {
         val exception = UnknownHostException("host not found")
-        assertEquals(
-            "Network connection error. Please check your internet connection.",
-            ErrorUtils.getErrorMessage(exception),
-        )
+        val result = ErrorUtils.getErrorMessage(exception)
+        assertTrue(result is UiText.StringResource)
+        assertEquals(R.string.error_network, (result as UiText.StringResource).resId)
     }
 
     @Test
     fun getErrorMessage_illegalArgumentException_returnsValidationMessage() {
         val exception = IllegalArgumentException("bad input")
-        assertEquals("Invalid data provided. Please check your input.", ErrorUtils.getErrorMessage(exception))
+        val result = ErrorUtils.getErrorMessage(exception)
+        assertTrue(result is UiText.StringResource)
+        assertEquals(R.string.error_invalid_data, (result as UiText.StringResource).resId)
     }
 
     @Test
     fun getErrorMessage_illegalStateException_returnsStateMessage() {
         val exception = IllegalStateException("bad state")
-        assertEquals(
-            "App state error. Please restart the app if the problem persists.",
-            ErrorUtils.getErrorMessage(exception),
-        )
+        val result = ErrorUtils.getErrorMessage(exception)
+        assertTrue(result is UiText.StringResource)
+        assertEquals(R.string.error_app_state, (result as UiText.StringResource).resId)
     }
 
     @Test
     fun getErrorMessage_unknownExceptionWithMessage_returnsMessage() {
         val exception = RuntimeException("Something specific happened")
-        assertEquals("Something specific happened", ErrorUtils.getErrorMessage(exception))
+        val result = ErrorUtils.getErrorMessage(exception)
+        assertTrue(result is UiText.DynamicString)
+        assertEquals("Something specific happened", (result as UiText.DynamicString).value)
     }
 
     @Test
     fun getErrorMessage_unknownExceptionWithBlankMessage_returnsGeneric() {
         val exception = RuntimeException("   ")
-        assertEquals("An unexpected error occurred. Please try again.", ErrorUtils.getErrorMessage(exception))
+        val result = ErrorUtils.getErrorMessage(exception)
+        assertTrue(result is UiText.StringResource)
+        assertEquals(R.string.error_generic, (result as UiText.StringResource).resId)
     }
 
     @Test
     fun getErrorMessage_unknownExceptionWithNullMessage_returnsGeneric() {
         val exception = RuntimeException(null as String?)
-        assertEquals("An unexpected error occurred. Please try again.", ErrorUtils.getErrorMessage(exception))
+        val result = ErrorUtils.getErrorMessage(exception)
+        assertTrue(result is UiText.StringResource)
+        assertEquals(R.string.error_generic, (result as UiText.StringResource).resId)
     }
 
     // isRecoverable tests

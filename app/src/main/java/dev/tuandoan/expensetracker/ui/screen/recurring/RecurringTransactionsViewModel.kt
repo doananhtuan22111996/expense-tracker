@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dev.tuandoan.expensetracker.core.util.ErrorUtils
+import dev.tuandoan.expensetracker.core.util.UiText
 import dev.tuandoan.expensetracker.domain.model.RecurringTransaction
 import dev.tuandoan.expensetracker.domain.repository.RecurringTransactionRepository
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -119,8 +120,8 @@ class RecurringTransactionsViewModel
 data class RecurringTransactionsUiState(
     val recurringTransactions: List<RecurringTransaction> = emptyList(),
     val isLoading: Boolean = false,
-    val errorMessage: String? = null,
-    val message: String? = null,
+    val errorMessage: UiText? = null,
+    val message: UiText? = null,
     val pendingDeleteId: Long? = null,
 ) {
     val visibleRecurringTransactions: List<RecurringTransaction>

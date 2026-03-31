@@ -4,9 +4,11 @@ import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
+import dev.tuandoan.expensetracker.R
 import dev.tuandoan.expensetracker.core.formatter.AmountFormatter
 import dev.tuandoan.expensetracker.core.util.ErrorUtils
 import dev.tuandoan.expensetracker.core.util.TimeProvider
+import dev.tuandoan.expensetracker.core.util.UiText
 import dev.tuandoan.expensetracker.domain.model.Category
 import dev.tuandoan.expensetracker.domain.model.SupportedCurrencies
 import dev.tuandoan.expensetracker.domain.model.Transaction
@@ -108,13 +110,13 @@ class AddEditTransactionViewModel
             // Validate input
             val amount = AmountFormatter.parseAmount(state.amountText)
             if (amount == null || amount <= 0) {
-                _uiState.value = state.copy(errorMessage = "Please enter a valid amount")
+                _uiState.value = state.copy(errorMessage = UiText.StringResource(R.string.error_invalid_amount))
                 return
             }
 
             val category = state.selectedCategory
             if (category == null) {
-                _uiState.value = state.copy(errorMessage = "Please select a category")
+                _uiState.value = state.copy(errorMessage = UiText.StringResource(R.string.error_select_category))
                 return
             }
 
@@ -129,7 +131,7 @@ class AddEditTransactionViewModel
                             _uiState.value =
                                 _uiState.value.copy(
                                     isLoading = false,
-                                    errorMessage = "Original transaction not loaded yet",
+                                    errorMessage = UiText.StringResource(R.string.error_original_not_loaded),
                                 )
                             return@launch
                         }
@@ -190,7 +192,7 @@ class AddEditTransactionViewModel
                             _uiState.value =
                                 _uiState.value.copy(
                                     isLoading = false,
-                                    errorMessage = "Transaction not found",
+                                    errorMessage = UiText.StringResource(R.string.error_transaction_not_found),
                                 )
                             return@launch
                         }
@@ -260,7 +262,7 @@ data class AddEditTransactionUiState(
     val note: String = "",
     val currencyCode: String = SupportedCurrencies.default().code,
     val isLoading: Boolean = false,
-    val errorMessage: String? = null,
+    val errorMessage: UiText? = null,
     val showDiscardDialog: Boolean = false,
 ) {
     val isFormValid: Boolean

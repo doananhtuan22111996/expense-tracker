@@ -4,9 +4,11 @@ import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
+import dev.tuandoan.expensetracker.R
 import dev.tuandoan.expensetracker.core.formatter.AmountFormatter
 import dev.tuandoan.expensetracker.core.util.ErrorUtils
 import dev.tuandoan.expensetracker.core.util.TimeProvider
+import dev.tuandoan.expensetracker.core.util.UiText
 import dev.tuandoan.expensetracker.domain.model.GoldHolding
 import dev.tuandoan.expensetracker.domain.model.GoldType
 import dev.tuandoan.expensetracker.domain.model.GoldWeightUnit
@@ -70,13 +72,13 @@ class AddEditGoldHoldingViewModel
 
             val weight = state.weightText.toDoubleOrNull()
             if (weight == null || weight <= 0) {
-                _uiState.value = state.copy(errorMessage = "Please enter a valid weight")
+                _uiState.value = state.copy(errorMessage = UiText.StringResource(R.string.error_invalid_weight))
                 return
             }
 
             val buyPrice = AmountFormatter.parseAmount(state.buyPriceText)
             if (buyPrice == null || buyPrice <= 0) {
-                _uiState.value = state.copy(errorMessage = "Please enter a valid buy price")
+                _uiState.value = state.copy(errorMessage = UiText.StringResource(R.string.error_invalid_buy_price))
                 return
             }
 
@@ -145,7 +147,7 @@ class AddEditGoldHoldingViewModel
                             _uiState.value =
                                 _uiState.value.copy(
                                     isLoading = false,
-                                    errorMessage = "Holding not found",
+                                    errorMessage = UiText.StringResource(R.string.error_holding_not_found),
                                 )
                         }
                     } else {
@@ -179,7 +181,7 @@ data class AddEditGoldHoldingUiState(
     val currencyCode: String = "VND",
     val isLoading: Boolean = false,
     val isSaving: Boolean = false,
-    val errorMessage: String? = null,
+    val errorMessage: UiText? = null,
 ) {
     val isFormValid: Boolean
         get() {

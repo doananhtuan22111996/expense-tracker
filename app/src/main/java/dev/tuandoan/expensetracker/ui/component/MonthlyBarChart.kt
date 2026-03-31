@@ -15,14 +15,13 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.nativeCanvas
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import dev.tuandoan.expensetracker.R
 import dev.tuandoan.expensetracker.domain.model.MonthlyBarPoint
-
-private val monthLabels =
-    listOf("Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec")
 
 @Composable
 fun MonthlyBarChart(
@@ -32,6 +31,21 @@ fun MonthlyBarChart(
     onSurfaceVariantColor: Color = MaterialTheme.colorScheme.onSurfaceVariant,
     onMonthTapped: ((month: Int) -> Unit)? = null,
 ) {
+    val labels =
+        listOf(
+            stringResource(R.string.month_jan),
+            stringResource(R.string.month_feb),
+            stringResource(R.string.month_mar),
+            stringResource(R.string.month_apr),
+            stringResource(R.string.month_may),
+            stringResource(R.string.month_jun),
+            stringResource(R.string.month_jul),
+            stringResource(R.string.month_aug),
+            stringResource(R.string.month_sep),
+            stringResource(R.string.month_oct),
+            stringResource(R.string.month_nov),
+            stringResource(R.string.month_dec),
+        )
     val primaryColor = MaterialTheme.colorScheme.primary
     val onSurfaceVariant = onSurfaceVariantColor
     val labelSizeSp = 10.sp
@@ -66,7 +80,7 @@ fun MonthlyBarChart(
                     contentDescription =
                         buildString {
                             points.forEachIndexed { i, pt ->
-                                append("${monthLabels[i]}: ${compactFormat(pt.totalExpense)}. ")
+                                append("${labels[i]}: ${compactFormat(pt.totalExpense)}. ")
                             }
                         }
                 }.then(tapModifier),
@@ -141,7 +155,7 @@ fun MonthlyBarChart(
                         isAntiAlias = true
                     }
                 drawText(
-                    monthLabels[index],
+                    labels[index],
                     x + barWidth / 2f,
                     size.height - labelSizePx * 0.3f,
                     paint,

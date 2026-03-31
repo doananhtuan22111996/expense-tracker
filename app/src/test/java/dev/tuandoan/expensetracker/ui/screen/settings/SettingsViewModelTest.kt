@@ -2,6 +2,8 @@ package dev.tuandoan.expensetracker.ui.screen.settings
 
 import android.content.ContentResolver
 import android.net.Uri
+import dev.tuandoan.expensetracker.R
+import dev.tuandoan.expensetracker.core.util.UiText
 import dev.tuandoan.expensetracker.data.backup.BackupValidationError
 import dev.tuandoan.expensetracker.data.backup.BackupValidationException
 import dev.tuandoan.expensetracker.data.preferences.AnalyticsPreferences
@@ -187,7 +189,9 @@ class SettingsViewModelTest {
             viewModel.onCurrencySelected("INVALID")
             advanceUntilIdle()
 
-            assertEquals("Unsupported currency code", viewModel.uiState.value.errorMessage)
+            val error = viewModel.uiState.value.errorMessage
+            assertTrue(error is UiText.StringResource)
+            assertEquals(R.string.error_unsupported_currency, (error as UiText.StringResource).resId)
         }
 
     // --- Backup state tests ---
@@ -221,7 +225,9 @@ class SettingsViewModelTest {
             // Trigger an error first
             viewModel.onCurrencySelected("INVALID")
             advanceUntilIdle()
-            assertEquals("Unsupported currency code", viewModel.uiState.value.errorMessage)
+            val error = viewModel.uiState.value.errorMessage
+            assertTrue(error is UiText.StringResource)
+            assertEquals(R.string.error_unsupported_currency, (error as UiText.StringResource).resId)
 
             viewModel.clearError()
 
@@ -245,7 +251,9 @@ class SettingsViewModelTest {
             advanceUntilIdle()
 
             assertEquals(BackupOperation.Idle, viewModel.uiState.value.backupOperation)
-            assertEquals("Backup exported successfully", viewModel.uiState.value.backupMessage)
+            val msg = viewModel.uiState.value.backupMessage
+            assertTrue(msg is UiText.StringResource)
+            assertEquals(R.string.backup_exported, (msg as UiText.StringResource).resId)
             assertTrue(outputStream.toByteArray().isNotEmpty())
         }
 
@@ -265,7 +273,9 @@ class SettingsViewModelTest {
             advanceUntilIdle()
 
             assertEquals(BackupOperation.Idle, viewModel.uiState.value.backupOperation)
-            assertEquals("Export failed: DB error", viewModel.uiState.value.errorMessage)
+            val error = viewModel.uiState.value.errorMessage
+            assertTrue(error is UiText.StringResource)
+            assertEquals(R.string.error_export_failed, (error as UiText.StringResource).resId)
         }
 
     @Test
@@ -282,10 +292,9 @@ class SettingsViewModelTest {
             advanceUntilIdle()
 
             assertEquals(BackupOperation.Idle, viewModel.uiState.value.backupOperation)
-            assertEquals(
-                "Export failed: Cannot open output stream",
-                viewModel.uiState.value.errorMessage,
-            )
+            val error = viewModel.uiState.value.errorMessage
+            assertTrue(error is UiText.StringResource)
+            assertEquals(R.string.error_export_failed, (error as UiText.StringResource).resId)
         }
 
     // --- Import tests ---
@@ -330,7 +339,9 @@ class SettingsViewModelTest {
             advanceUntilIdle()
 
             assertEquals(BackupOperation.Idle, viewModel.uiState.value.backupOperation)
-            assertEquals("Imported 42 transactions", viewModel.uiState.value.backupMessage)
+            val msg = viewModel.uiState.value.backupMessage
+            assertTrue(msg is UiText.StringResource)
+            assertEquals(R.string.import_result, (msg as UiText.StringResource).resId)
             assertNull(viewModel.uiState.value.pendingRestoreUri)
         }
 
@@ -352,10 +363,9 @@ class SettingsViewModelTest {
             advanceUntilIdle()
 
             assertEquals(BackupOperation.Idle, viewModel.uiState.value.backupOperation)
-            assertEquals(
-                "Import failed: Invalid backup file format",
-                viewModel.uiState.value.errorMessage,
-            )
+            val error = viewModel.uiState.value.errorMessage
+            assertTrue(error is UiText.StringResource)
+            assertEquals(R.string.error_import_failed, (error as UiText.StringResource).resId)
         }
 
     @Test
@@ -378,10 +388,9 @@ class SettingsViewModelTest {
             advanceUntilIdle()
 
             assertEquals(BackupOperation.Idle, viewModel.uiState.value.backupOperation)
-            assertTrue(
-                viewModel.uiState.value.errorMessage!!
-                    .startsWith("Import failed:"),
-            )
+            val error = viewModel.uiState.value.errorMessage
+            assertTrue(error is UiText.StringResource)
+            assertEquals(R.string.error_import_failed, (error as UiText.StringResource).resId)
         }
 
     @Test
@@ -399,10 +408,9 @@ class SettingsViewModelTest {
             advanceUntilIdle()
 
             assertEquals(BackupOperation.Idle, viewModel.uiState.value.backupOperation)
-            assertEquals(
-                "Import failed: Cannot open file",
-                viewModel.uiState.value.errorMessage,
-            )
+            val error = viewModel.uiState.value.errorMessage
+            assertTrue(error is UiText.StringResource)
+            assertEquals(R.string.error_import_failed, (error as UiText.StringResource).resId)
         }
 
     @Test

@@ -1,6 +1,7 @@
 package dev.tuandoan.expensetracker.core.util
 
 import android.database.sqlite.SQLiteException
+import dev.tuandoan.expensetracker.R
 import java.net.UnknownHostException
 
 /**
@@ -8,25 +9,21 @@ import java.net.UnknownHostException
  */
 object ErrorUtils {
     /**
-     * Converts exceptions to user-friendly error messages
+     * Converts exceptions to user-friendly error messages as UiText
      */
-    fun getErrorMessage(exception: Throwable): String =
+    fun getErrorMessage(exception: Throwable): UiText =
         when (exception) {
-            is SQLiteException -> {
-                "Database error occurred. Please try again."
-            }
-            is UnknownHostException -> {
-                "Network connection error. Please check your internet connection."
-            }
-            is IllegalArgumentException -> {
-                "Invalid data provided. Please check your input."
-            }
-            is IllegalStateException -> {
-                "App state error. Please restart the app if the problem persists."
-            }
+            is SQLiteException -> UiText.StringResource(R.string.error_database)
+            is UnknownHostException -> UiText.StringResource(R.string.error_network)
+            is IllegalArgumentException -> UiText.StringResource(R.string.error_invalid_data)
+            is IllegalStateException -> UiText.StringResource(R.string.error_app_state)
             else -> {
-                // Generic message for unknown exceptions
-                exception.message?.takeIf { it.isNotBlank() } ?: "An unexpected error occurred. Please try again."
+                val message = exception.message?.takeIf { it.isNotBlank() }
+                if (message != null) {
+                    UiText.DynamicString(message)
+                } else {
+                    UiText.StringResource(R.string.error_generic)
+                }
             }
         }
 

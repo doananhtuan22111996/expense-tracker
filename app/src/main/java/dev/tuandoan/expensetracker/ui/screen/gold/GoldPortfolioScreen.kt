@@ -59,6 +59,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
@@ -94,14 +95,15 @@ fun GoldPortfolioScreen(
     val snackbarHostState = remember { SnackbarHostState() }
     var showPriceSheet by remember { mutableStateOf(false) }
 
+    val context = LocalContext.current
     val holdingDeletedMsg = stringResource(R.string.gold_holding_deleted)
     val undoMsg = stringResource(R.string.undo)
     val pricesUpdatedMsg = stringResource(R.string.gold_prices_updated)
 
     LaunchedEffect(uiState.isError) {
         val message = uiState.errorMessage
-        if (uiState.isError && !message.isNullOrBlank()) {
-            snackbarHostState.showSnackbar(message)
+        if (uiState.isError && message != null) {
+            snackbarHostState.showSnackbar(message.asString(context))
             viewModel.clearError()
         }
     }
@@ -185,7 +187,7 @@ fun GoldPortfolioScreen(
             uiState.isError && uiState.holdings.isEmpty() -> {
                 ErrorStateMessage(
                     title = stringResource(R.string.error_load_portfolio),
-                    message = uiState.errorMessage ?: stringResource(R.string.error_unexpected),
+                    message = uiState.errorMessage?.asString() ?: stringResource(R.string.error_unexpected),
                     onRetry = viewModel::retry,
                     modifier = Modifier.fillMaxSize().padding(innerPadding),
                 )

@@ -10,6 +10,14 @@
 - Loading spinner contentDescription for Summary, Gold Portfolio, and Add/Edit Gold Holding screens
 - Onboarding page indicator semantics ("Page X of Y")
 - Retry methods on HomeViewModel and GoldPortfolioViewModel
+- UiText sealed class for ViewModel string resource references without Android Context dependency
+- All user-facing strings extracted to strings.xml across all screens, ViewModels, and components (~150+ strings)
+
+### Changed
+- ErrorUtils.getErrorMessage() returns UiText instead of String for i18n support
+- All ViewModel errorMessage/backupMessage fields migrated from String? to UiText?
+- Month label constants in MonthYearPickerDialog and MonthlyBarChart converted to composable functions using stringResource()
+- Unit tests updated to assert UiText types instead of raw strings (ErrorUtilsTest, AddEditTransactionViewModelTest, SettingsViewModelTest)
 
 ### Fixed
 - Budget error message uses string resource instead of hardcoded string

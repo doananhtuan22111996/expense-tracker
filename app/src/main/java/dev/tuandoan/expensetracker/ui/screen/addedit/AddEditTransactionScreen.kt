@@ -53,6 +53,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusDirection
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.stringResource
@@ -98,9 +99,10 @@ fun AddEditTransactionScreen(
         // Dialog state is managed in the UI state
     }
 
+    val context = LocalContext.current
     LaunchedEffect(uiState.errorMessage) {
         uiState.errorMessage?.let { message ->
-            snackbarHostState.showSnackbar(message)
+            snackbarHostState.showSnackbar(message.asString(context))
             viewModel.clearError()
         }
     }
@@ -108,9 +110,25 @@ fun AddEditTransactionScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text(if (isEditMode) "Edit Transaction" else "Add Transaction") },
+                title = {
+                    Text(
+                        if (isEditMode) {
+                            stringResource(
+                                R.string.edit_transaction_title,
+                            )
+                        } else {
+                            stringResource(R.string.add_transaction_title)
+                        },
+                    )
+                },
                 navigationIcon = {
                     val hapticFeedback = LocalHapticFeedback.current
+                    val backDescription =
+                        if (isEditMode && uiState.hasUnsavedChanges) {
+                            stringResource(R.string.a11y_go_back_prompt_save)
+                        } else {
+                            stringResource(R.string.a11y_go_back_to_home)
+                        }
                     IconButton(
                         onClick = {
                             hapticFeedback.performHapticFeedback(HapticFeedbackType.LongPress)
@@ -121,12 +139,7 @@ fun AddEditTransactionScreen(
                         },
                         modifier =
                             Modifier.semantics {
-                                contentDescription =
-                                    if (isEditMode && uiState.hasUnsavedChanges) {
-                                        "Go back, will prompt to save changes"
-                                    } else {
-                                        "Go back to home screen"
-                                    }
+                                contentDescription = backDescription
                             },
                     ) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = null)
@@ -145,10 +158,18 @@ fun AddEditTransactionScreen(
                         .padding(innerPadding),
                 contentAlignment = Alignment.Center,
             ) {
+                val loadingDescription =
+                    if (isEditMode) {
+                        stringResource(
+                            R.string.a11y_loading_details,
+                        )
+                    } else {
+                        stringResource(R.string.a11y_loading_form)
+                    }
                 CircularProgressIndicator(
                     modifier =
                         Modifier.semantics {
-                            contentDescription = if (isEditMode) "Loading transaction details" else "Loading form"
+                            contentDescription = loadingDescription
                         },
                 )
             }
@@ -174,10 +195,12 @@ fun AddEditTransactionScreen(
     // Discard Changes Confirmation Dialog
     if (uiState.showDiscardDialog) {
         val hapticFeedback = LocalHapticFeedback.current
+        val discardDescription = stringResource(R.string.a11y_discard_and_go_back)
+        val cancelEditingDescription = stringResource(R.string.a11y_cancel_continue_editing)
         AlertDialog(
             onDismissRequest = { viewModel.onCancelDiscard() },
-            title = { Text("Discard changes?") },
-            text = { Text("You have unsaved changes.") },
+            title = { Text(stringResource(R.string.discard_changes_title)) },
+            text = { Text(stringResource(R.string.discard_changes_message)) },
             confirmButton = {
                 TextButton(
                     onClick = {
@@ -187,10 +210,10 @@ fun AddEditTransactionScreen(
                     },
                     modifier =
                         Modifier.semantics {
-                            contentDescription = "Discard changes and go back"
+                            contentDescription = discardDescription
                         },
                 ) {
-                    Text("Discard")
+                    Text(stringResource(R.string.discard))
                 }
             },
             dismissButton = {
@@ -201,10 +224,10 @@ fun AddEditTransactionScreen(
                     },
                     modifier =
                         Modifier.semantics {
-                            contentDescription = "Cancel and continue editing"
+                            contentDescription = cancelEditingDescription
                         },
                 ) {
-                    Text("Cancel")
+                    Text(stringResource(R.string.cancel))
                 }
             },
         )
@@ -248,7 +271,7 @@ private fun TransactionForm(
 
         Column(verticalArrangement = Arrangement.spacedBy(DesignSystemSpacing.xs)) {
             Text(
-                text = "Amount",
+                text = stringResource(R.string.label_amount),
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.Medium,
                 color = MaterialTheme.colorScheme.onSurface,
@@ -260,7 +283,7 @@ private fun TransactionForm(
                     val cleanInput = input.replace("[^0-9]".toRegex(), "")
                     viewModel.onAmountChanged(cleanInput)
                 },
-                label = { Text("Enter amount in ${currency.code}") },
+                label = { Text(stringResource(R.string.label_enter_amount, currency.code)) },
                 placeholder = { Text(amountPlaceholder) },
                 suffix = {
                     Text(
@@ -287,18 +310,18 @@ private fun TransactionForm(
                 supportingText = {
                     if (uiState.amountText.isNotBlank() && !uiState.isFormValid) {
                         Text(
-                            "Please enter a valid amount",
+                            stringResource(R.string.error_invalid_amount),
                             color = MaterialTheme.colorScheme.error,
                         )
                     } else if (uiState.amountText.isEmpty()) {
                         if (currency.minorUnitDigits == 0) {
                             Text(
-                                "Enter amount without decimals (${currency.code} doesn't use cents)",
+                                stringResource(R.string.hint_amount_no_decimals, currency.code),
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                             )
                         } else {
                             Text(
-                                "Enter amount in ${currency.code} minor units (cents)",
+                                stringResource(R.string.hint_amount_minor_units, currency.code),
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                             )
                         }
@@ -324,7 +347,7 @@ private fun TransactionForm(
         // Note - Optional field with lower visual priority
         Column(verticalArrangement = Arrangement.spacedBy(DesignSystemSpacing.xs)) {
             Text(
-                text = "Note (optional)",
+                text = stringResource(R.string.label_note_optional),
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
@@ -332,7 +355,7 @@ private fun TransactionForm(
             OutlinedTextField(
                 value = uiState.note,
                 onValueChange = viewModel::onNoteChanged,
-                placeholder = { Text("Add details about this transaction...") },
+                placeholder = { Text(stringResource(R.string.hint_add_details)) },
                 keyboardOptions =
                     KeyboardOptions(
                         imeAction = ImeAction.Done,
@@ -350,6 +373,20 @@ private fun TransactionForm(
 
         // Save Button - Enhanced visual weight when enabled
         val hapticFeedback = LocalHapticFeedback.current
+        val saveButtonDescription =
+            if (uiState.isSaveEnabled && !uiState.isLoading) {
+                if (isEditMode) {
+                    stringResource(
+                        R.string.a11y_save_changes,
+                    )
+                } else {
+                    stringResource(R.string.a11y_save_new_transaction)
+                }
+            } else if (uiState.isLoading) {
+                stringResource(R.string.a11y_saving_please_wait)
+            } else {
+                stringResource(R.string.a11y_complete_form_to_save)
+            }
         Button(
             onClick = {
                 hapticFeedback.performHapticFeedback(HapticFeedbackType.LongPress)
@@ -360,14 +397,7 @@ private fun TransactionForm(
                 Modifier
                     .fillMaxWidth()
                     .semantics {
-                        contentDescription =
-                            if (uiState.isSaveEnabled && !uiState.isLoading) {
-                                if (isEditMode) "Save changes to transaction" else "Save new transaction"
-                            } else if (uiState.isLoading) {
-                                "Saving transaction, please wait"
-                            } else {
-                                "Complete form to enable save button"
-                            }
+                        contentDescription = saveButtonDescription
                     },
         ) {
             if (uiState.isLoading) {
@@ -381,7 +411,7 @@ private fun TransactionForm(
                         color = ButtonDefaults.buttonColors().contentColor,
                     )
                     Text(
-                        text = if (isEditMode) "Updating..." else "Saving...",
+                        text = if (isEditMode) stringResource(R.string.updating) else stringResource(R.string.saving),
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Medium,
                         modifier = Modifier.padding(start = DesignSystemSpacing.small),
@@ -389,7 +419,14 @@ private fun TransactionForm(
                 }
             } else {
                 Text(
-                    text = if (isEditMode) "Update Transaction" else "Save Transaction",
+                    text =
+                        if (isEditMode) {
+                            stringResource(
+                                R.string.update_transaction,
+                            )
+                        } else {
+                            stringResource(R.string.save_transaction)
+                        },
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Medium,
                 )
@@ -399,14 +436,14 @@ private fun TransactionForm(
         // Form status hint
         if (!uiState.isFormValid && uiState.amountText.isNotBlank()) {
             Text(
-                text = "Please enter a valid amount and select a category",
+                text = stringResource(R.string.hint_valid_amount_and_category),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.padding(top = DesignSystemSpacing.small),
             )
         } else if (uiState.selectedCategory == null && uiState.amountText.isNotBlank()) {
             Text(
-                text = "Please select a category",
+                text = stringResource(R.string.hint_select_category),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.padding(top = DesignSystemSpacing.small),
@@ -423,12 +460,25 @@ private fun TransactionTypeSelector(
 ) {
     val hapticFeedback = LocalHapticFeedback.current
 
+    val expenseDescription =
+        if (selectedType == TransactionType.EXPENSE) {
+            stringResource(R.string.a11y_expense_type_selected)
+        } else {
+            stringResource(R.string.a11y_select_expense_type)
+        }
+    val incomeDescription =
+        if (selectedType == TransactionType.INCOME) {
+            stringResource(R.string.a11y_income_type_selected)
+        } else {
+            stringResource(R.string.a11y_select_income_type)
+        }
+
     Column(
         modifier = modifier,
         verticalArrangement = Arrangement.spacedBy(DesignSystemSpacing.xs),
     ) {
         Text(
-            text = "Transaction Type",
+            text = stringResource(R.string.label_transaction_type),
             style = MaterialTheme.typography.titleMedium,
             fontWeight = FontWeight.Medium,
             color = MaterialTheme.colorScheme.onSurface,
@@ -440,15 +490,10 @@ private fun TransactionTypeSelector(
                     hapticFeedback.performHapticFeedback(HapticFeedbackType.LongPress)
                     onTypeChanged(TransactionType.EXPENSE)
                 },
-                label = { Text("Expense") },
+                label = { Text(stringResource(R.string.type_expense)) },
                 modifier =
                     Modifier.semantics {
-                        contentDescription =
-                            if (selectedType == TransactionType.EXPENSE) {
-                                "Expense type selected"
-                            } else {
-                                "Select expense transaction type"
-                            }
+                        contentDescription = expenseDescription
                     },
             )
             FilterChip(
@@ -457,15 +502,10 @@ private fun TransactionTypeSelector(
                     hapticFeedback.performHapticFeedback(HapticFeedbackType.LongPress)
                     onTypeChanged(TransactionType.INCOME)
                 },
-                label = { Text("Income") },
+                label = { Text(stringResource(R.string.type_income)) },
                 modifier =
                     Modifier.semantics {
-                        contentDescription =
-                            if (selectedType == TransactionType.INCOME) {
-                                "Income type selected"
-                            } else {
-                                "Select income transaction type"
-                            }
+                        contentDescription = incomeDescription
                     },
             )
         }
@@ -480,13 +520,19 @@ private fun EnhancedCategoryDropdown(
     modifier: Modifier = Modifier,
 ) {
     var expanded by remember { mutableStateOf(false) }
+    val categoryCardDescription =
+        if (selectedCategory != null) {
+            stringResource(R.string.a11y_category_selected, selectedCategory.name)
+        } else {
+            stringResource(R.string.a11y_select_category_from, categories.size)
+        }
 
     Column(
         modifier = modifier,
         verticalArrangement = Arrangement.spacedBy(DesignSystemSpacing.xs),
     ) {
         Text(
-            text = "Category",
+            text = stringResource(R.string.label_category),
             style = MaterialTheme.typography.titleMedium,
             fontWeight = FontWeight.Medium,
             color = MaterialTheme.colorScheme.onSurface,
@@ -502,12 +548,7 @@ private fun EnhancedCategoryDropdown(
                 Modifier
                     .fillMaxWidth()
                     .semantics {
-                        contentDescription =
-                            if (selectedCategory != null) {
-                                "${selectedCategory.name} category selected, tap to change"
-                            } else {
-                                "Select category from ${categories.size} available options"
-                            }
+                        contentDescription = categoryCardDescription
                     },
             elevation = CardDefaults.cardElevation(defaultElevation = DesignSystemElevation.low),
             colors =
@@ -530,7 +571,7 @@ private fun EnhancedCategoryDropdown(
             ) {
                 Column {
                     Text(
-                        text = selectedCategory?.name ?: "Select Category",
+                        text = selectedCategory?.name ?: stringResource(R.string.select_category),
                         style = MaterialTheme.typography.bodyLarge,
                         fontWeight = if (selectedCategory != null) FontWeight.Medium else FontWeight.Normal,
                         color =
@@ -542,11 +583,12 @@ private fun EnhancedCategoryDropdown(
                     )
                     if (selectedCategory == null) {
                         Text(
-                            text = "Choose from your ${if (categories.isNotEmpty()) {
-                                "${categories.size} categories"
-                            } else {
-                                "categories"
-                            }}",
+                            text =
+                                if (categories.isNotEmpty()) {
+                                    stringResource(R.string.hint_choose_categories, categories.size)
+                                } else {
+                                    stringResource(R.string.hint_choose_categories_generic)
+                                },
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
@@ -554,7 +596,7 @@ private fun EnhancedCategoryDropdown(
                 }
                 Icon(
                     Icons.Default.KeyboardArrowDown,
-                    contentDescription = "Open category selection",
+                    contentDescription = stringResource(R.string.a11y_open_category_selection),
                     tint = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
@@ -580,6 +622,7 @@ private fun EnhancedCategoryDropdown(
                     enabled = false,
                 )
                 defaultCategories.forEach { category ->
+                    val selectCategoryDescription = stringResource(R.string.a11y_select_category_item, category.name)
                     DropdownMenuItem(
                         text = {
                             Text(
@@ -596,8 +639,7 @@ private fun EnhancedCategoryDropdown(
                         },
                         modifier =
                             Modifier.semantics {
-                                contentDescription =
-                                    "Select ${category.name} category"
+                                contentDescription = selectCategoryDescription
                             },
                     )
                 }
@@ -615,6 +657,7 @@ private fun EnhancedCategoryDropdown(
                     enabled = false,
                 )
                 customCategories.forEach { category ->
+                    val selectCategoryDescription = stringResource(R.string.a11y_select_category_item, category.name)
                     DropdownMenuItem(
                         text = {
                             Text(
@@ -631,8 +674,7 @@ private fun EnhancedCategoryDropdown(
                         },
                         modifier =
                             Modifier.semantics {
-                                contentDescription =
-                                    "Select ${category.name} category"
+                                contentDescription = selectCategoryDescription
                             },
                     )
                 }
@@ -654,13 +696,14 @@ private fun CurrencyDropdown(
             SupportedCurrencies.byCode(selectedCurrencyCode) ?: SupportedCurrencies.default()
         }
     val displayText = "${selectedCurrency.code} - ${selectedCurrency.displayName} ${selectedCurrency.symbol}"
+    val currencyCardDescription = stringResource(R.string.a11y_currency_tap_to_change, displayText)
 
     Column(
         modifier = modifier,
         verticalArrangement = Arrangement.spacedBy(DesignSystemSpacing.xs),
     ) {
         Text(
-            text = "Currency",
+            text = stringResource(R.string.label_currency),
             style = MaterialTheme.typography.titleMedium,
             fontWeight = FontWeight.Medium,
             color = MaterialTheme.colorScheme.onSurface,
@@ -676,7 +719,7 @@ private fun CurrencyDropdown(
                 Modifier
                     .fillMaxWidth()
                     .semantics {
-                        contentDescription = "Currency: $displayText, tap to change"
+                        contentDescription = currencyCardDescription
                     },
             elevation = CardDefaults.cardElevation(defaultElevation = DesignSystemElevation.low),
         ) {
@@ -696,7 +739,7 @@ private fun CurrencyDropdown(
                 )
                 Icon(
                     Icons.Default.KeyboardArrowDown,
-                    contentDescription = "Open currency selection",
+                    contentDescription = stringResource(R.string.a11y_open_currency_selection),
                     tint = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
@@ -708,6 +751,12 @@ private fun CurrencyDropdown(
         ) {
             allCurrencies.forEach { currency ->
                 val isSelected = currency.code == selectedCurrencyCode
+                val currencyItemDescription =
+                    if (isSelected) {
+                        stringResource(R.string.a11y_currency_currently_selected, currency.code, currency.displayName)
+                    } else {
+                        stringResource(R.string.a11y_select_currency_item, currency.code, currency.displayName)
+                    }
                 DropdownMenuItem(
                     text = {
                         Text(
@@ -737,12 +786,7 @@ private fun CurrencyDropdown(
                     },
                     modifier =
                         Modifier.semantics {
-                            contentDescription =
-                                if (isSelected) {
-                                    "${currency.code} ${currency.displayName}, currently selected"
-                                } else {
-                                    "Select ${currency.code} ${currency.displayName}"
-                                }
+                            contentDescription = currencyItemDescription
                         },
                 )
             }
@@ -759,13 +803,14 @@ private fun EnhancedDateSelector(
 ) {
     var showDatePicker by remember { mutableStateOf(false) }
     val hapticFeedback = LocalHapticFeedback.current
+    val dateCardDescription = stringResource(R.string.a11y_selected_date, DateTimeUtil.formatTimestamp(timestamp))
 
     Column(
         modifier = modifier,
         verticalArrangement = Arrangement.spacedBy(DesignSystemSpacing.xs),
     ) {
         Text(
-            text = "Date",
+            text = stringResource(R.string.label_date),
             style = MaterialTheme.typography.titleMedium,
             fontWeight = FontWeight.Medium,
             color = MaterialTheme.colorScheme.onSurface,
@@ -780,7 +825,7 @@ private fun EnhancedDateSelector(
                 Modifier
                     .fillMaxWidth()
                     .semantics {
-                        contentDescription = "Selected date: ${DateTimeUtil.formatTimestamp(timestamp)}, tap to change"
+                        contentDescription = dateCardDescription
                     },
             elevation = CardDefaults.cardElevation(defaultElevation = DesignSystemElevation.low),
         ) {
@@ -800,14 +845,14 @@ private fun EnhancedDateSelector(
                         color = MaterialTheme.colorScheme.onSurface,
                     )
                     Text(
-                        text = "Tap to select date",
+                        text = stringResource(R.string.hint_tap_to_select_date),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 }
                 Icon(
                     Icons.Default.CalendarToday,
-                    contentDescription = "Select date",
+                    contentDescription = stringResource(R.string.a11y_select_date),
                     tint = MaterialTheme.colorScheme.primary,
                 )
             }
@@ -821,6 +866,8 @@ private fun EnhancedDateSelector(
                 initialSelectedDateMillis = timestamp,
             )
 
+        val confirmDateDescription = stringResource(R.string.a11y_confirm_date)
+        val cancelDateDescription = stringResource(R.string.a11y_cancel_date)
         DatePickerDialog(
             onDismissRequest = {
                 showDatePicker = false
@@ -837,10 +884,10 @@ private fun EnhancedDateSelector(
                     },
                     modifier =
                         Modifier.semantics {
-                            contentDescription = "Confirm date selection"
+                            contentDescription = confirmDateDescription
                         },
                 ) {
-                    Text("OK")
+                    Text(stringResource(R.string.action_ok))
                 }
             },
             dismissButton = {
@@ -851,10 +898,10 @@ private fun EnhancedDateSelector(
                     },
                     modifier =
                         Modifier.semantics {
-                            contentDescription = "Cancel date selection"
+                            contentDescription = cancelDateDescription
                         },
                 ) {
-                    Text("Cancel")
+                    Text(stringResource(R.string.cancel))
                 }
             },
         ) {
@@ -862,7 +909,7 @@ private fun EnhancedDateSelector(
                 state = datePickerState,
                 title = {
                     Text(
-                        text = "Select Date",
+                        text = stringResource(R.string.select_date_title),
                         modifier = Modifier.padding(16.dp),
                     )
                 },

@@ -55,6 +55,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
@@ -99,9 +100,10 @@ fun CategoriesScreen(
         }
     }
 
+    val context = LocalContext.current
     LaunchedEffect(uiState.error) {
         uiState.error?.let {
-            snackbarHostState.showSnackbar(it)
+            snackbarHostState.showSnackbar(it.asString(context))
             viewModel.onErrorDismissed()
         }
     }
@@ -111,11 +113,12 @@ fun CategoriesScreen(
             TopAppBar(
                 title = { Text(stringResource(R.string.categories)) },
                 navigationIcon = {
+                    val goBackA11y = stringResource(R.string.a11y_go_back_to_settings)
                     IconButton(
                         onClick = onNavigateBack,
                         modifier =
                             Modifier.semantics {
-                                contentDescription = "Go back to settings"
+                                contentDescription = goBackA11y
                             },
                     ) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = null)
@@ -124,11 +127,12 @@ fun CategoriesScreen(
             )
         },
         floatingActionButton = {
+            val addCategoryA11y = stringResource(R.string.a11y_add_new_category)
             FloatingActionButton(
                 onClick = { showCreateDialog = true },
                 modifier =
                     Modifier.semantics {
-                        contentDescription = "Add new category"
+                        contentDescription = addCategoryA11y
                     },
             ) {
                 Icon(Icons.Default.Add, contentDescription = null)
@@ -149,6 +153,8 @@ fun CategoriesScreen(
                     TransactionType.INCOME -> 1
                 }
 
+            val showExpenseA11y = stringResource(R.string.a11y_show_expense_categories)
+            val showIncomeA11y = stringResource(R.string.a11y_show_income_categories)
             TabRow(selectedTabIndex = selectedTabIndex) {
                 Tab(
                     selected = selectedTabIndex == 0,
@@ -156,7 +162,7 @@ fun CategoriesScreen(
                     text = { Text(stringResource(R.string.expenses_tab)) },
                     modifier =
                         Modifier.semantics {
-                            contentDescription = "Show expense categories"
+                            contentDescription = showExpenseA11y
                         },
                 )
                 Tab(
@@ -165,7 +171,7 @@ fun CategoriesScreen(
                     text = { Text(stringResource(R.string.income_tab)) },
                     modifier =
                         Modifier.semantics {
-                            contentDescription = "Show income categories"
+                            contentDescription = showIncomeA11y
                         },
                 )
             }
@@ -175,10 +181,11 @@ fun CategoriesScreen(
                     modifier = Modifier.fillMaxSize(),
                     contentAlignment = Alignment.Center,
                 ) {
+                    val loadingA11y = stringResource(R.string.a11y_loading_categories)
                     CircularProgressIndicator(
                         modifier =
                             Modifier.semantics {
-                                contentDescription = "Loading categories"
+                                contentDescription = loadingA11y
                             },
                     )
                 }
@@ -332,11 +339,13 @@ private fun CategoryRow(
                     modifier = Modifier.size(20.dp),
                 )
             } else {
+                val editA11y = stringResource(R.string.a11y_edit_category_name, category.name)
+                val deleteA11y = stringResource(R.string.a11y_delete_category_name, category.name)
                 IconButton(
                     onClick = onEdit,
                     modifier =
                         Modifier.semantics {
-                            contentDescription = "Edit ${category.name}"
+                            contentDescription = editA11y
                         },
                 ) {
                     Icon(
@@ -349,7 +358,7 @@ private fun CategoryRow(
                     onClick = onDelete,
                     modifier =
                         Modifier.semantics {
-                            contentDescription = "Delete ${category.name}"
+                            contentDescription = deleteA11y
                         },
                 ) {
                     Icon(
