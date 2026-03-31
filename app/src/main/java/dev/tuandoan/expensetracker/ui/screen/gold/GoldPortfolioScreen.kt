@@ -184,8 +184,8 @@ fun GoldPortfolioScreen(
 
             uiState.isError && uiState.holdings.isEmpty() -> {
                 ErrorStateMessage(
-                    title = "Unable to load portfolio",
-                    message = uiState.errorMessage ?: "An unexpected error occurred",
+                    title = stringResource(R.string.error_load_portfolio),
+                    message = uiState.errorMessage ?: stringResource(R.string.error_unexpected),
                     onRetry = viewModel::retry,
                     modifier = Modifier.fillMaxSize().padding(innerPadding),
                 )

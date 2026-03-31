@@ -36,6 +36,7 @@ class HomeViewModel
         val uiState: StateFlow<HomeUiState> = _uiState.asStateFlow()
         private val searchQueryFlow = MutableStateFlow("")
         private val filterFlow = MutableStateFlow<TransactionType?>(null)
+        private val retryTrigger = MutableStateFlow(0)
 
         init {
             @OptIn(FlowPreview::class, ExperimentalCoroutinesApi::class)
@@ -44,7 +45,8 @@ class HomeViewModel
                     selectedMonthRepository.selectedMonth,
                     searchQueryFlow.debounce(SEARCH_DEBOUNCE_MS).distinctUntilChanged(),
                     filterFlow,
-                ) { month, query, filter ->
+                    retryTrigger,
+                ) { month, query, filter, _ ->
                     Triple(month, query.trim(), filter)
                 }.flatMapLatest { (month, query, filter) ->
                     _uiState.value =
@@ -56,27 +58,29 @@ class HomeViewModel
 
                     val range = dateRangeCalculator.rangeOf(month)
 
-                    if (query.isEmpty()) {
-                        transactionRepository.observeTransactions(
-                            from = range.startMillis,
-                            to = range.endMillisExclusive,
-                            filterType = filter,
-                        )
-                    } else {
-                        transactionRepository.searchTransactions(
-                            from = range.startMillis,
-                            to = range.endMillisExclusive,
-                            query = query,
-                            filterType = filter,
-                        )
+                    val sourceFlow =
+                        if (query.isEmpty()) {
+                            transactionRepository.observeTransactions(
+                                from = range.startMillis,
+                                to = range.endMillisExclusive,
+                                filterType = filter,
+                            )
+                        } else {
+                            transactionRepository.searchTransactions(
+                                from = range.startMillis,
+                                to = range.endMillisExclusive,
+                                query = query,
+                                filterType = filter,
+                            )
+                        }
+                    sourceFlow.catch { e ->
+                        _uiState.value =
+                            _uiState.value.copy(
+                                isLoading = false,
+                                isError = true,
+                                errorMessage = ErrorUtils.getErrorMessage(e),
+                            )
                     }
-                }.catch { e ->
-                    _uiState.value =
-                        _uiState.value.copy(
-                            isLoading = false,
-                            isError = true,
-                            errorMessage = ErrorUtils.getErrorMessage(e),
-                        )
                 }.collectLatest { transactions ->
                     _uiState.value =
                         _uiState.value.copy(
@@ -165,8 +169,7 @@ class HomeViewModel
 
         fun retry() {
             clearError()
-            // Re-emit the current filter to trigger the combine flow
-            filterFlow.value = filterFlow.value
+            retryTrigger.value++
         }
 
         companion object {

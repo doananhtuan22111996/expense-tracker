@@ -87,7 +87,7 @@ fun AddEditRecurringTransactionScreen(
     var showDiscardDialog by remember { mutableStateOf(false) }
 
     val handleBack: () -> Unit = {
-        if (uiState.hasChanges) {
+        if (uiState.hasUnsavedChanges) {
             showDiscardDialog = true
         } else {
             onNavigateBack()

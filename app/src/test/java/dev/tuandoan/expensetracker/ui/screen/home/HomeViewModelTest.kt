@@ -468,6 +468,25 @@ class HomeViewModelTest {
         }
 
     @Test
+    fun retry_reloadsTransactionsAfterError() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            fakeRepository.shouldThrowOnObserve = true
+            val viewModel = createViewModel()
+            advanceUntilIdle()
+
+            assertTrue(viewModel.uiState.value.isError)
+
+            // Fix the error and retry
+            fakeRepository.shouldThrowOnObserve = false
+            fakeRepository.transactionsToEmit = listOf(TestData.sampleExpenseTransaction)
+            viewModel.retry()
+            advanceUntilIdle()
+
+            assertFalse(viewModel.uiState.value.isError)
+            assertEquals(1, viewModel.uiState.value.transactions.size)
+        }
+
+    @Test
     fun externalMonthChange_triggersReload() =
         runTest(mainDispatcherRule.testDispatcher) {
             fakeRepository.transactionsToEmit = emptyList()
