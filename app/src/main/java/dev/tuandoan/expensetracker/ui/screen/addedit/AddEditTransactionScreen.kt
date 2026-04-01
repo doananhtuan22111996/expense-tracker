@@ -5,7 +5,6 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.imePadding
@@ -39,6 +38,7 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
@@ -147,6 +147,15 @@ fun AddEditTransactionScreen(
                 },
             )
         },
+        bottomBar = {
+            if (!uiState.isLoading) {
+                SaveBottomBar(
+                    uiState = uiState,
+                    isEditMode = isEditMode,
+                    onSave = { viewModel.saveTransaction(onNavigateBack) },
+                )
+            }
+        },
         snackbarHost = { SnackbarHost(snackbarHostState) },
         modifier = modifier,
     ) { innerPadding ->
@@ -176,14 +185,11 @@ fun AddEditTransactionScreen(
         } else {
             TransactionForm(
                 uiState = uiState,
-                isEditMode = isEditMode,
                 viewModel = viewModel,
-                onNavigateBack = onNavigateBack,
                 modifier =
                     Modifier
-                        .fillMaxSize()
+                        .fillMaxWidth()
                         .padding(innerPadding)
-                        .imePadding()
                         .padding(
                             horizontal = DesignSystemSpacing.screenPadding,
                             vertical = DesignSystemSpacing.small,
@@ -237,9 +243,7 @@ fun AddEditTransactionScreen(
 @Composable
 private fun TransactionForm(
     uiState: AddEditTransactionUiState,
-    isEditMode: Boolean,
     viewModel: AddEditTransactionViewModel,
-    onNavigateBack: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val focusManager = LocalFocusManager.current
@@ -368,86 +372,102 @@ private fun TransactionForm(
                 maxLines = 3,
             )
         }
+    }
+}
 
-        Spacer(modifier = Modifier.padding(DesignSystemSpacing.medium))
-
-        // Save Button - Enhanced visual weight when enabled
-        val hapticFeedback = LocalHapticFeedback.current
-        val saveButtonDescription =
-            if (uiState.isSaveEnabled && !uiState.isLoading) {
-                if (isEditMode) {
-                    stringResource(
-                        R.string.a11y_save_changes,
-                    )
-                } else {
-                    stringResource(R.string.a11y_save_new_transaction)
-                }
-            } else if (uiState.isLoading) {
-                stringResource(R.string.a11y_saving_please_wait)
+@Composable
+private fun SaveBottomBar(
+    uiState: AddEditTransactionUiState,
+    isEditMode: Boolean,
+    onSave: () -> Unit,
+) {
+    val hapticFeedback = LocalHapticFeedback.current
+    val saveButtonDescription =
+        if (uiState.isSaveEnabled && !uiState.isLoading) {
+            if (isEditMode) {
+                stringResource(R.string.a11y_save_changes)
             } else {
-                stringResource(R.string.a11y_complete_form_to_save)
+                stringResource(R.string.a11y_save_new_transaction)
             }
-        Button(
-            onClick = {
-                hapticFeedback.performHapticFeedback(HapticFeedbackType.LongPress)
-                viewModel.saveTransaction(onNavigateBack)
-            },
-            enabled = uiState.isSaveEnabled && !uiState.isLoading,
+        } else if (uiState.isLoading) {
+            stringResource(R.string.a11y_saving_please_wait)
+        } else {
+            stringResource(R.string.a11y_complete_form_to_save)
+        }
+    Surface(
+        tonalElevation = 3.dp,
+    ) {
+        Column(
             modifier =
                 Modifier
                     .fillMaxWidth()
-                    .semantics {
-                        contentDescription = saveButtonDescription
-                    },
+                    .imePadding()
+                    .padding(
+                        horizontal = DesignSystemSpacing.screenPadding,
+                        vertical = DesignSystemSpacing.small,
+                    ),
         ) {
-            if (uiState.isLoading) {
-                Row(
-                    horizontalArrangement = Arrangement.Center,
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    CircularProgressIndicator(
-                        modifier = Modifier.size(16.dp),
-                        strokeWidth = 2.dp,
-                        color = ButtonDefaults.buttonColors().contentColor,
-                    )
+            Button(
+                onClick = {
+                    hapticFeedback.performHapticFeedback(HapticFeedbackType.LongPress)
+                    onSave()
+                },
+                enabled = uiState.isSaveEnabled && !uiState.isLoading,
+                modifier =
+                    Modifier
+                        .fillMaxWidth()
+                        .semantics {
+                            contentDescription = saveButtonDescription
+                        },
+            ) {
+                if (uiState.isLoading) {
+                    Row(
+                        horizontalArrangement = Arrangement.Center,
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(16.dp),
+                            strokeWidth = 2.dp,
+                            color = ButtonDefaults.buttonColors().contentColor,
+                        )
+                        Text(
+                            text =
+                                if (isEditMode) stringResource(R.string.updating) else stringResource(R.string.saving),
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Medium,
+                            modifier = Modifier.padding(start = DesignSystemSpacing.small),
+                        )
+                    }
+                } else {
                     Text(
-                        text = if (isEditMode) stringResource(R.string.updating) else stringResource(R.string.saving),
+                        text =
+                            if (isEditMode) {
+                                stringResource(R.string.update_transaction)
+                            } else {
+                                stringResource(R.string.save_transaction)
+                            },
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Medium,
-                        modifier = Modifier.padding(start = DesignSystemSpacing.small),
                     )
                 }
-            } else {
+            }
+
+            // Form status hint
+            if (!uiState.isFormValid && uiState.amountText.isNotBlank()) {
                 Text(
-                    text =
-                        if (isEditMode) {
-                            stringResource(
-                                R.string.update_transaction,
-                            )
-                        } else {
-                            stringResource(R.string.save_transaction)
-                        },
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Medium,
+                    text = stringResource(R.string.hint_valid_amount_and_category),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(top = DesignSystemSpacing.small),
+                )
+            } else if (uiState.selectedCategory == null && uiState.amountText.isNotBlank()) {
+                Text(
+                    text = stringResource(R.string.hint_select_category),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(top = DesignSystemSpacing.small),
                 )
             }
-        }
-
-        // Form status hint
-        if (!uiState.isFormValid && uiState.amountText.isNotBlank()) {
-            Text(
-                text = stringResource(R.string.hint_valid_amount_and_category),
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(top = DesignSystemSpacing.small),
-            )
-        } else if (uiState.selectedCategory == null && uiState.amountText.isNotBlank()) {
-            Text(
-                text = stringResource(R.string.hint_select_category),
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(top = DesignSystemSpacing.small),
-            )
         }
     }
 }
