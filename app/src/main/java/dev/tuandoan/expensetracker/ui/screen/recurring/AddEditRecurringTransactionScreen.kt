@@ -37,7 +37,6 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
@@ -809,53 +808,51 @@ private fun RecurringSaveBottomBar(
         } else {
             stringResource(R.string.a11y_complete_form_recurring)
         }
-    Surface(tonalElevation = 3.dp) {
-        Column(
+    Column(
+        modifier =
+            Modifier
+                .fillMaxWidth()
+                .padding(
+                    horizontal = DesignSystemSpacing.screenPadding,
+                    vertical = DesignSystemSpacing.small,
+                ),
+    ) {
+        Button(
+            onClick = {
+                hapticFeedback.performHapticFeedback(HapticFeedbackType.LongPress)
+                onSave()
+            },
+            enabled = uiState.isFormValid && !uiState.isSaving,
             modifier =
                 Modifier
                     .fillMaxWidth()
-                    .padding(
-                        horizontal = DesignSystemSpacing.screenPadding,
-                        vertical = DesignSystemSpacing.small,
-                    ),
+                    .semantics {
+                        contentDescription = saveButtonDescription
+                    },
         ) {
-            Button(
-                onClick = {
-                    hapticFeedback.performHapticFeedback(HapticFeedbackType.LongPress)
-                    onSave()
-                },
-                enabled = uiState.isFormValid && !uiState.isSaving,
-                modifier =
-                    Modifier
-                        .fillMaxWidth()
-                        .semantics {
-                            contentDescription = saveButtonDescription
-                        },
-            ) {
-                if (uiState.isSaving) {
-                    Row(
-                        horizontalArrangement = Arrangement.Center,
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        CircularProgressIndicator(
-                            modifier = Modifier.size(16.dp),
-                            strokeWidth = 2.dp,
-                            color = ButtonDefaults.buttonColors().contentColor,
-                        )
-                        Text(
-                            text = stringResource(R.string.saving),
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.Medium,
-                            modifier = Modifier.padding(start = DesignSystemSpacing.small),
-                        )
-                    }
-                } else {
+            if (uiState.isSaving) {
+                Row(
+                    horizontalArrangement = Arrangement.Center,
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(16.dp),
+                        strokeWidth = 2.dp,
+                        color = ButtonDefaults.buttonColors().contentColor,
+                    )
                     Text(
-                        text = stringResource(R.string.save),
+                        text = stringResource(R.string.saving),
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Medium,
+                        modifier = Modifier.padding(start = DesignSystemSpacing.small),
                     )
                 }
+            } else {
+                Text(
+                    text = stringResource(R.string.save),
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Medium,
+                )
             }
         }
     }

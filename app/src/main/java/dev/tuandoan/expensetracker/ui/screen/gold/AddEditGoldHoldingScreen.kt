@@ -33,7 +33,6 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
@@ -531,58 +530,56 @@ private fun GoldSaveBottomBar(
     onSave: () -> Unit,
 ) {
     val hapticFeedback = LocalHapticFeedback.current
-    Surface(tonalElevation = 3.dp) {
-        Column(
-            modifier =
-                Modifier
-                    .fillMaxWidth()
-                    .padding(
-                        horizontal = DesignSystemSpacing.screenPadding,
-                        vertical = DesignSystemSpacing.small,
-                    ),
+    Column(
+        modifier =
+            Modifier
+                .fillMaxWidth()
+                .padding(
+                    horizontal = DesignSystemSpacing.screenPadding,
+                    vertical = DesignSystemSpacing.small,
+                ),
+    ) {
+        Button(
+            onClick = {
+                hapticFeedback.performHapticFeedback(HapticFeedbackType.LongPress)
+                onSave()
+            },
+            enabled = uiState.isSaveEnabled && !uiState.isSaving,
+            modifier = Modifier.fillMaxWidth(),
         ) {
-            Button(
-                onClick = {
-                    hapticFeedback.performHapticFeedback(HapticFeedbackType.LongPress)
-                    onSave()
-                },
-                enabled = uiState.isSaveEnabled && !uiState.isSaving,
-                modifier = Modifier.fillMaxWidth(),
-            ) {
-                if (uiState.isSaving) {
-                    Row(
-                        horizontalArrangement = Arrangement.Center,
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        CircularProgressIndicator(
-                            modifier = Modifier.size(16.dp),
-                            strokeWidth = 2.dp,
-                            color = ButtonDefaults.buttonColors().contentColor,
-                        )
-                        Text(
-                            text =
-                                if (isEditMode) {
-                                    stringResource(R.string.gold_updating)
-                                } else {
-                                    stringResource(R.string.gold_saving)
-                                },
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.Medium,
-                            modifier = Modifier.padding(start = DesignSystemSpacing.small),
-                        )
-                    }
-                } else {
+            if (uiState.isSaving) {
+                Row(
+                    horizontalArrangement = Arrangement.Center,
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(16.dp),
+                        strokeWidth = 2.dp,
+                        color = ButtonDefaults.buttonColors().contentColor,
+                    )
                     Text(
                         text =
                             if (isEditMode) {
-                                stringResource(R.string.gold_update_holding)
+                                stringResource(R.string.gold_updating)
                             } else {
-                                stringResource(R.string.gold_save_holding)
+                                stringResource(R.string.gold_saving)
                             },
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Medium,
+                        modifier = Modifier.padding(start = DesignSystemSpacing.small),
                     )
                 }
+            } else {
+                Text(
+                    text =
+                        if (isEditMode) {
+                            stringResource(R.string.gold_update_holding)
+                        } else {
+                            stringResource(R.string.gold_save_holding)
+                        },
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Medium,
+                )
             }
         }
     }

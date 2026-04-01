@@ -37,7 +37,6 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
@@ -410,79 +409,75 @@ private fun SaveBottomBar(
         } else {
             stringResource(R.string.a11y_complete_form_to_save)
         }
-    Surface(
-        tonalElevation = 3.dp,
+    Column(
+        modifier =
+            Modifier
+                .fillMaxWidth()
+                .padding(
+                    horizontal = DesignSystemSpacing.screenPadding,
+                    vertical = DesignSystemSpacing.small,
+                ),
     ) {
-        Column(
+        Button(
+            onClick = {
+                hapticFeedback.performHapticFeedback(HapticFeedbackType.LongPress)
+                onSave()
+            },
+            enabled = uiState.isSaveEnabled && !uiState.isLoading,
             modifier =
                 Modifier
                     .fillMaxWidth()
-                    .padding(
-                        horizontal = DesignSystemSpacing.screenPadding,
-                        vertical = DesignSystemSpacing.small,
-                    ),
+                    .semantics {
+                        contentDescription = saveButtonDescription
+                    },
         ) {
-            Button(
-                onClick = {
-                    hapticFeedback.performHapticFeedback(HapticFeedbackType.LongPress)
-                    onSave()
-                },
-                enabled = uiState.isSaveEnabled && !uiState.isLoading,
-                modifier =
-                    Modifier
-                        .fillMaxWidth()
-                        .semantics {
-                            contentDescription = saveButtonDescription
-                        },
-            ) {
-                if (uiState.isLoading) {
-                    Row(
-                        horizontalArrangement = Arrangement.Center,
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        CircularProgressIndicator(
-                            modifier = Modifier.size(16.dp),
-                            strokeWidth = 2.dp,
-                            color = ButtonDefaults.buttonColors().contentColor,
-                        )
-                        Text(
-                            text =
-                                if (isEditMode) stringResource(R.string.updating) else stringResource(R.string.saving),
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.Medium,
-                            modifier = Modifier.padding(start = DesignSystemSpacing.small),
-                        )
-                    }
-                } else {
+            if (uiState.isLoading) {
+                Row(
+                    horizontalArrangement = Arrangement.Center,
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(16.dp),
+                        strokeWidth = 2.dp,
+                        color = ButtonDefaults.buttonColors().contentColor,
+                    )
                     Text(
                         text =
-                            if (isEditMode) {
-                                stringResource(R.string.update_transaction)
-                            } else {
-                                stringResource(R.string.save_transaction)
-                            },
+                            if (isEditMode) stringResource(R.string.updating) else stringResource(R.string.saving),
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Medium,
+                        modifier = Modifier.padding(start = DesignSystemSpacing.small),
                     )
                 }
+            } else {
+                Text(
+                    text =
+                        if (isEditMode) {
+                            stringResource(R.string.update_transaction)
+                        } else {
+                            stringResource(R.string.save_transaction)
+                        },
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Medium,
+                )
             }
+        }
 
-            // Form status hint
-            if (!uiState.isFormValid && uiState.amountText.isNotBlank()) {
-                Text(
-                    text = stringResource(R.string.hint_valid_amount_and_category),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.padding(top = DesignSystemSpacing.small),
-                )
-            } else if (uiState.selectedCategory == null && uiState.amountText.isNotBlank()) {
-                Text(
-                    text = stringResource(R.string.hint_select_category),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.padding(top = DesignSystemSpacing.small),
-                )
-            }
+        // Form status hint
+        if (!uiState.isFormValid && uiState.amountText.isNotBlank()) {
+            Text(
+                text = stringResource(R.string.hint_valid_amount_and_category),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(top = DesignSystemSpacing.small),
+            )
+        } else if (uiState.selectedCategory == null && uiState.amountText.isNotBlank()) {
+            Text(
+                text = stringResource(R.string.hint_select_category),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(top = DesignSystemSpacing.small),
+            )
         }
     }
 }
