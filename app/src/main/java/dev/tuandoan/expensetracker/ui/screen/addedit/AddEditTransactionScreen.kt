@@ -52,6 +52,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusDirection
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
@@ -88,8 +90,9 @@ fun AddEditTransactionScreen(
 
     // Handle system back button
     BackHandler {
-        viewModel.onBackPressed()
-        if (!isEditMode || !uiState.hasUnsavedChanges) {
+        if (uiState.hasUnsavedChanges) {
+            viewModel.onBackPressed()
+        } else {
             onNavigateBack()
         }
     }
@@ -124,7 +127,7 @@ fun AddEditTransactionScreen(
                 navigationIcon = {
                     val hapticFeedback = LocalHapticFeedback.current
                     val backDescription =
-                        if (isEditMode && uiState.hasUnsavedChanges) {
+                        if (uiState.hasUnsavedChanges) {
                             stringResource(R.string.a11y_go_back_prompt_save)
                         } else {
                             stringResource(R.string.a11y_go_back_to_home)
@@ -132,8 +135,9 @@ fun AddEditTransactionScreen(
                     IconButton(
                         onClick = {
                             hapticFeedback.performHapticFeedback(HapticFeedbackType.LongPress)
-                            viewModel.onBackPressed()
-                            if (!isEditMode || !uiState.hasUnsavedChanges) {
+                            if (uiState.hasUnsavedChanges) {
+                                viewModel.onBackPressed()
+                            } else {
                                 onNavigateBack()
                             }
                         },
@@ -185,6 +189,7 @@ fun AddEditTransactionScreen(
         } else {
             TransactionForm(
                 uiState = uiState,
+                isEditMode = isEditMode,
                 viewModel = viewModel,
                 modifier =
                     Modifier
@@ -243,28 +248,25 @@ fun AddEditTransactionScreen(
 @Composable
 private fun TransactionForm(
     uiState: AddEditTransactionUiState,
+    isEditMode: Boolean,
     viewModel: AddEditTransactionViewModel,
     modifier: Modifier = Modifier,
 ) {
     val focusManager = LocalFocusManager.current
+    val amountFocusRequester = remember { FocusRequester() }
+
+    // Auto-focus amount field in add mode
+    LaunchedEffect(Unit) {
+        if (!isEditMode) {
+            amountFocusRequester.requestFocus()
+        }
+    }
 
     Column(
         modifier = modifier,
         verticalArrangement = Arrangement.spacedBy(DesignSystemSpacing.large),
     ) {
-        // Transaction Type
-        TransactionTypeSelector(
-            selectedType = uiState.type,
-            onTypeChanged = viewModel::onTypeChanged,
-        )
-
-        // Currency Selection
-        CurrencyDropdown(
-            selectedCurrencyCode = uiState.currencyCode,
-            onCurrencySelected = viewModel::onCurrencyChanged,
-        )
-
-        // Primary section: Amount (most important field)
+        // Amount (primary field — first for fastest input)
         val currency = SupportedCurrencies.byCode(uiState.currencyCode) ?: SupportedCurrencies.default()
         val amountPlaceholder =
             if (currency.minorUnitDigits == 0) {
@@ -309,7 +311,10 @@ private fun TransactionForm(
                     KeyboardActions(
                         onNext = { focusManager.moveFocus(FocusDirection.Down) },
                     ),
-                modifier = Modifier.fillMaxWidth(),
+                modifier =
+                    Modifier
+                        .fillMaxWidth()
+                        .focusRequester(amountFocusRequester),
                 isError = uiState.amountText.isNotBlank() && !uiState.isFormValid,
                 supportingText = {
                     if (uiState.amountText.isNotBlank() && !uiState.isFormValid) {
@@ -335,14 +340,26 @@ private fun TransactionForm(
             )
         }
 
-        // Category Selection - Enhanced dropdown
+        // Transaction Type
+        TransactionTypeSelector(
+            selectedType = uiState.type,
+            onTypeChanged = viewModel::onTypeChanged,
+        )
+
+        // Currency Selection
+        CurrencyDropdown(
+            selectedCurrencyCode = uiState.currencyCode,
+            onCurrencySelected = viewModel::onCurrencyChanged,
+        )
+
+        // Category Selection
         EnhancedCategoryDropdown(
             categories = uiState.categories,
             selectedCategory = uiState.selectedCategory,
             onCategorySelected = viewModel::onCategorySelected,
         )
 
-        // Date Selection - Enhanced selector
+        // Date Selection
         EnhancedDateSelector(
             timestamp = uiState.timestamp,
             onDateSelected = viewModel::onDateSelected,

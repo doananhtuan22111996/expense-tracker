@@ -3,6 +3,9 @@
 ## [Unreleased]
 
 ### Added
+- Auto-focus amount/weight field on form open in add mode for faster input
+- Inline validation with error states on Amount field (Recurring) and Weight/Buy Price fields (Gold)
+- Loading state with spinner on Add/Edit Recurring Transaction screen
 - Edit mode for recurring transactions with tap-to-edit, DAO getById, and SavedStateHandle-based ViewModel
 - Full-screen ErrorStateMessage with retry on Home and Gold Portfolio screens
 - BackHandler + discard confirmation dialog on Add/Edit Recurring Transaction screen
@@ -14,6 +17,8 @@
 - All user-facing strings extracted to strings.xml across all screens, ViewModels, and components (~150+ strings)
 
 ### Changed
+- Form field order: Amount/Weight now first on all form screens for faster data entry
+- Discard dialog now shows in add mode (all 3 forms) when user has entered data, preventing accidental data loss
 - ErrorUtils.getErrorMessage() returns UiText instead of String for i18n support
 - All ViewModel errorMessage/backupMessage fields migrated from String? to UiText?
 - Month label constants in MonthYearPickerDialog and MonthlyBarChart converted to composable functions using stringResource()
