@@ -2,12 +2,11 @@ package dev.tuandoan.expensetracker.ui.screen.recurring
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
@@ -51,6 +50,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusDirection
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
@@ -135,166 +136,176 @@ fun AddEditRecurringTransactionScreen(
                 },
             )
         },
+        bottomBar = {
+            if (!uiState.isLoading) {
+                RecurringSaveBottomBar(
+                    uiState = uiState,
+                    onSave = { viewModel.save(onNavigateBack) },
+                )
+            }
+        },
         snackbarHost = { SnackbarHost(snackbarHostState) },
         modifier = modifier,
     ) { innerPadding ->
-        Column(
-            modifier =
-                Modifier
-                    .fillMaxSize()
-                    .padding(innerPadding)
-                    .imePadding()
-                    .padding(
-                        horizontal = DesignSystemSpacing.screenPadding,
-                        vertical = DesignSystemSpacing.small,
-                    ).verticalScroll(rememberScrollState()),
-            verticalArrangement = Arrangement.spacedBy(DesignSystemSpacing.large),
-        ) {
-            // Transaction Type
-            TransactionTypeSelector(
-                selectedType = uiState.type,
-                onTypeChanged = viewModel::onTypeChanged,
-            )
+        if (uiState.isLoading) {
+            Box(
+                modifier =
+                    Modifier
+                        .fillMaxSize()
+                        .padding(innerPadding),
+                contentAlignment = Alignment.Center,
+            ) {
+                CircularProgressIndicator()
+            }
+        } else {
+            val amountFocusRequester = remember { FocusRequester() }
 
-            // Currency Selection
-            CurrencyDropdown(
-                selectedCurrencyCode = uiState.currencyCode,
-                onCurrencySelected = viewModel::onCurrencyChanged,
-            )
-
-            // Amount
-            val currency =
-                SupportedCurrencies.byCode(uiState.currencyCode) ?: SupportedCurrencies.default()
-            val amountPlaceholder =
-                if (currency.minorUnitDigits == 0) {
-                    AmountFormatter.formatAmount(1000000L, currency.code)
-                } else {
-                    AmountFormatter.formatAmount(100000L, currency.code)
+            // Auto-focus amount field in add mode
+            LaunchedEffect(Unit) {
+                if (!isEditMode) {
+                    amountFocusRequester.requestFocus()
                 }
-
-            Column(verticalArrangement = Arrangement.spacedBy(DesignSystemSpacing.xs)) {
-                Text(
-                    text = stringResource(R.string.label_amount),
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Medium,
-                    color = MaterialTheme.colorScheme.onSurface,
-                )
-                OutlinedTextField(
-                    value = uiState.amountText,
-                    onValueChange = { input ->
-                        val cleanInput = input.replace("[^0-9]".toRegex(), "")
-                        viewModel.onAmountChanged(cleanInput)
-                    },
-                    label = { Text(stringResource(R.string.label_enter_amount, currency.code)) },
-                    placeholder = { Text(amountPlaceholder) },
-                    suffix = {
-                        Text(
-                            currency.symbol,
-                            style = MaterialTheme.typography.titleMedium,
-                            color = MaterialTheme.colorScheme.primary,
-                        )
-                    },
-                    visualTransformation =
-                        remember(currency.code) {
-                            CurrencyAmountVisualTransformation(currency.code)
-                        },
-                    keyboardOptions =
-                        KeyboardOptions(
-                            keyboardType = KeyboardType.Number,
-                            imeAction = ImeAction.Next,
-                        ),
-                    keyboardActions =
-                        KeyboardActions(
-                            onNext = { focusManager.moveFocus(FocusDirection.Down) },
-                        ),
-                    modifier = Modifier.fillMaxWidth(),
-                    textStyle = MaterialTheme.typography.headlineSmall,
-                )
             }
 
-            // Category Selection
-            CategoryDropdown(
-                categories = uiState.categories,
-                selectedCategory = uiState.selectedCategory,
-                onCategorySelected = viewModel::onCategorySelected,
-            )
-
-            // Frequency Selection
-            FrequencyDropdown(
-                selectedFrequency = uiState.frequency,
-                onFrequencySelected = viewModel::onFrequencyChanged,
-            )
-
-            // Start Date
-            StartDateSelector(
-                timestamp = uiState.startDate,
-                onDateSelected = viewModel::onStartDateSelected,
-            )
-
-            // Note
-            Column(verticalArrangement = Arrangement.spacedBy(DesignSystemSpacing.xs)) {
-                Text(
-                    text = stringResource(R.string.label_note_optional),
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-                OutlinedTextField(
-                    value = uiState.note,
-                    onValueChange = viewModel::onNoteChanged,
-                    placeholder = { Text(stringResource(R.string.hint_add_details_short)) },
-                    keyboardOptions =
-                        KeyboardOptions(
-                            imeAction = ImeAction.Done,
-                        ),
-                    keyboardActions =
-                        KeyboardActions(
-                            onDone = { focusManager.clearFocus() },
-                        ),
-                    modifier = Modifier.fillMaxWidth(),
-                    maxLines = 3,
-                )
-            }
-
-            Spacer(modifier = Modifier.padding(DesignSystemSpacing.medium))
-
-            // Save Button
-            val hapticFeedback = LocalHapticFeedback.current
-            val saveDesc =
-                if (uiState.isFormValid && !uiState.isSaving) {
-                    stringResource(R.string.a11y_save_recurring)
-                } else {
-                    stringResource(R.string.a11y_complete_form_recurring)
-                }
-            Button(
-                onClick = {
-                    hapticFeedback.performHapticFeedback(HapticFeedbackType.LongPress)
-                    viewModel.save(onNavigateBack)
-                },
-                enabled = uiState.isFormValid && !uiState.isSaving,
+            Column(
                 modifier =
                     Modifier
                         .fillMaxWidth()
-                        .semantics {
-                            contentDescription = saveDesc
-                        },
+                        .padding(innerPadding)
+                        .padding(
+                            horizontal = DesignSystemSpacing.screenPadding,
+                            vertical = DesignSystemSpacing.small,
+                        ).verticalScroll(rememberScrollState()),
+                verticalArrangement = Arrangement.spacedBy(DesignSystemSpacing.large),
             ) {
-                if (uiState.isSaving) {
-                    CircularProgressIndicator(
-                        modifier = Modifier.size(16.dp),
-                        strokeWidth = 2.dp,
-                        color = ButtonDefaults.buttonColors().contentColor,
-                    )
+                // Amount (primary field — first for fastest input)
+                val currency =
+                    SupportedCurrencies.byCode(uiState.currencyCode) ?: SupportedCurrencies.default()
+                val amountPlaceholder =
+                    if (currency.minorUnitDigits == 0) {
+                        AmountFormatter.formatAmount(1000000L, currency.code)
+                    } else {
+                        AmountFormatter.formatAmount(100000L, currency.code)
+                    }
+                val parsedAmount = AmountFormatter.parseAmount(uiState.amountText)
+                val isAmountInvalid = uiState.amountText.isNotBlank() && (parsedAmount == null || parsedAmount <= 0)
+
+                Column(verticalArrangement = Arrangement.spacedBy(DesignSystemSpacing.xs)) {
                     Text(
-                        text = stringResource(R.string.saving),
+                        text = stringResource(R.string.label_amount),
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Medium,
-                        modifier = Modifier.padding(start = DesignSystemSpacing.small),
+                        color = MaterialTheme.colorScheme.onSurface,
                     )
-                } else {
+                    OutlinedTextField(
+                        value = uiState.amountText,
+                        onValueChange = { input ->
+                            val cleanInput = input.replace("[^0-9]".toRegex(), "")
+                            viewModel.onAmountChanged(cleanInput)
+                        },
+                        label = { Text(stringResource(R.string.label_enter_amount, currency.code)) },
+                        placeholder = { Text(amountPlaceholder) },
+                        suffix = {
+                            Text(
+                                currency.symbol,
+                                style = MaterialTheme.typography.titleMedium,
+                                color = MaterialTheme.colorScheme.primary,
+                            )
+                        },
+                        visualTransformation =
+                            remember(currency.code) {
+                                CurrencyAmountVisualTransformation(currency.code)
+                            },
+                        keyboardOptions =
+                            KeyboardOptions(
+                                keyboardType = KeyboardType.Number,
+                                imeAction = ImeAction.Next,
+                            ),
+                        keyboardActions =
+                            KeyboardActions(
+                                onNext = { focusManager.moveFocus(FocusDirection.Down) },
+                            ),
+                        modifier =
+                            Modifier
+                                .fillMaxWidth()
+                                .focusRequester(amountFocusRequester),
+                        isError = isAmountInvalid,
+                        supportingText = {
+                            if (isAmountInvalid) {
+                                Text(
+                                    stringResource(R.string.error_invalid_amount),
+                                    color = MaterialTheme.colorScheme.error,
+                                )
+                            } else if (uiState.amountText.isEmpty()) {
+                                if (currency.minorUnitDigits == 0) {
+                                    Text(
+                                        stringResource(R.string.hint_amount_no_decimals, currency.code),
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    )
+                                } else {
+                                    Text(
+                                        stringResource(R.string.hint_amount_minor_units, currency.code),
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    )
+                                }
+                            }
+                        },
+                        textStyle = MaterialTheme.typography.headlineSmall,
+                    )
+                }
+
+                // Transaction Type
+                TransactionTypeSelector(
+                    selectedType = uiState.type,
+                    onTypeChanged = viewModel::onTypeChanged,
+                )
+
+                // Currency Selection
+                CurrencyDropdown(
+                    selectedCurrencyCode = uiState.currencyCode,
+                    onCurrencySelected = viewModel::onCurrencyChanged,
+                )
+
+                // Category Selection
+                CategoryDropdown(
+                    categories = uiState.categories,
+                    selectedCategory = uiState.selectedCategory,
+                    onCategorySelected = viewModel::onCategorySelected,
+                )
+
+                // Frequency Selection
+                FrequencyDropdown(
+                    selectedFrequency = uiState.frequency,
+                    onFrequencySelected = viewModel::onFrequencyChanged,
+                )
+
+                // Start Date
+                StartDateSelector(
+                    timestamp = uiState.startDate,
+                    onDateSelected = viewModel::onStartDateSelected,
+                )
+
+                // Note
+                Column(verticalArrangement = Arrangement.spacedBy(DesignSystemSpacing.xs)) {
                     Text(
-                        text = stringResource(R.string.save),
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Medium,
+                        text = stringResource(R.string.label_note_optional),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    OutlinedTextField(
+                        value = uiState.note,
+                        onValueChange = viewModel::onNoteChanged,
+                        placeholder = { Text(stringResource(R.string.hint_add_details_short)) },
+                        keyboardOptions =
+                            KeyboardOptions(
+                                imeAction = ImeAction.Done,
+                            ),
+                        keyboardActions =
+                            KeyboardActions(
+                                onDone = { focusManager.clearFocus() },
+                            ),
+                        modifier = Modifier.fillMaxWidth(),
+                        maxLines = 3,
                     )
                 }
             }
@@ -781,6 +792,68 @@ private fun StartDateSelector(
                     )
                 },
             )
+        }
+    }
+}
+
+@Composable
+private fun RecurringSaveBottomBar(
+    uiState: AddEditRecurringUiState,
+    onSave: () -> Unit,
+) {
+    val hapticFeedback = LocalHapticFeedback.current
+    val saveButtonDescription =
+        if (uiState.isFormValid && !uiState.isSaving) {
+            stringResource(R.string.a11y_save_recurring)
+        } else {
+            stringResource(R.string.a11y_complete_form_recurring)
+        }
+    Column(
+        modifier =
+            Modifier
+                .fillMaxWidth()
+                .padding(
+                    horizontal = DesignSystemSpacing.screenPadding,
+                    vertical = DesignSystemSpacing.small,
+                ),
+    ) {
+        Button(
+            onClick = {
+                hapticFeedback.performHapticFeedback(HapticFeedbackType.LongPress)
+                onSave()
+            },
+            enabled = uiState.isFormValid && !uiState.isSaving,
+            modifier =
+                Modifier
+                    .fillMaxWidth()
+                    .semantics {
+                        contentDescription = saveButtonDescription
+                    },
+        ) {
+            if (uiState.isSaving) {
+                Row(
+                    horizontalArrangement = Arrangement.Center,
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(16.dp),
+                        strokeWidth = 2.dp,
+                        color = ButtonDefaults.buttonColors().contentColor,
+                    )
+                    Text(
+                        text = stringResource(R.string.saving),
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Medium,
+                        modifier = Modifier.padding(start = DesignSystemSpacing.small),
+                    )
+                }
+            } else {
+                Text(
+                    text = stringResource(R.string.save),
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Medium,
+                )
+            }
         }
     }
 }

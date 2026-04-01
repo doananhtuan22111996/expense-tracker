@@ -192,17 +192,22 @@ data class AddEditGoldHoldingUiState(
 
     val hasUnsavedChanges: Boolean
         get() {
-            val original = originalHolding ?: return false
-            val currentWeight = weightText.toDoubleOrNull() ?: 0.0
-            val currentPrice = AmountFormatter.parseAmount(buyPriceText) ?: 0L
-            val currentNote = note.ifBlank { null }
+            val original = originalHolding
+            if (original != null) {
+                // Edit mode: compare against original holding
+                val currentWeight = weightText.toDoubleOrNull() ?: 0.0
+                val currentPrice = AmountFormatter.parseAmount(buyPriceText) ?: 0L
+                val currentNote = note.ifBlank { null }
 
-            return type != original.type ||
-                currentWeight != original.weightValue ||
-                weightUnit != original.weightUnit ||
-                currentPrice != original.buyPricePerUnit ||
-                buyDateMillis != original.buyDateMillis ||
-                currentNote != original.note
+                return type != original.type ||
+                    currentWeight != original.weightValue ||
+                    weightUnit != original.weightUnit ||
+                    currentPrice != original.buyPricePerUnit ||
+                    buyDateMillis != original.buyDateMillis ||
+                    currentNote != original.note
+            }
+            // Add mode: any user input counts as dirty
+            return weightText.isNotBlank() || buyPriceText.isNotBlank() || note.isNotBlank()
         }
 
     val isSaveEnabled: Boolean

@@ -5,10 +5,8 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
@@ -52,6 +50,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusDirection
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
@@ -88,8 +88,9 @@ fun AddEditTransactionScreen(
 
     // Handle system back button
     BackHandler {
-        viewModel.onBackPressed()
-        if (!isEditMode || !uiState.hasUnsavedChanges) {
+        if (uiState.hasUnsavedChanges) {
+            viewModel.onBackPressed()
+        } else {
             onNavigateBack()
         }
     }
@@ -124,7 +125,7 @@ fun AddEditTransactionScreen(
                 navigationIcon = {
                     val hapticFeedback = LocalHapticFeedback.current
                     val backDescription =
-                        if (isEditMode && uiState.hasUnsavedChanges) {
+                        if (uiState.hasUnsavedChanges) {
                             stringResource(R.string.a11y_go_back_prompt_save)
                         } else {
                             stringResource(R.string.a11y_go_back_to_home)
@@ -132,8 +133,9 @@ fun AddEditTransactionScreen(
                     IconButton(
                         onClick = {
                             hapticFeedback.performHapticFeedback(HapticFeedbackType.LongPress)
-                            viewModel.onBackPressed()
-                            if (!isEditMode || !uiState.hasUnsavedChanges) {
+                            if (uiState.hasUnsavedChanges) {
+                                viewModel.onBackPressed()
+                            } else {
                                 onNavigateBack()
                             }
                         },
@@ -146,6 +148,15 @@ fun AddEditTransactionScreen(
                     }
                 },
             )
+        },
+        bottomBar = {
+            if (!uiState.isLoading) {
+                SaveBottomBar(
+                    uiState = uiState,
+                    isEditMode = isEditMode,
+                    onSave = { viewModel.saveTransaction(onNavigateBack) },
+                )
+            }
         },
         snackbarHost = { SnackbarHost(snackbarHostState) },
         modifier = modifier,
@@ -178,12 +189,10 @@ fun AddEditTransactionScreen(
                 uiState = uiState,
                 isEditMode = isEditMode,
                 viewModel = viewModel,
-                onNavigateBack = onNavigateBack,
                 modifier =
                     Modifier
-                        .fillMaxSize()
+                        .fillMaxWidth()
                         .padding(innerPadding)
-                        .imePadding()
                         .padding(
                             horizontal = DesignSystemSpacing.screenPadding,
                             vertical = DesignSystemSpacing.small,
@@ -239,28 +248,23 @@ private fun TransactionForm(
     uiState: AddEditTransactionUiState,
     isEditMode: Boolean,
     viewModel: AddEditTransactionViewModel,
-    onNavigateBack: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val focusManager = LocalFocusManager.current
+    val amountFocusRequester = remember { FocusRequester() }
+
+    // Auto-focus amount field in add mode
+    LaunchedEffect(Unit) {
+        if (!isEditMode) {
+            amountFocusRequester.requestFocus()
+        }
+    }
 
     Column(
         modifier = modifier,
         verticalArrangement = Arrangement.spacedBy(DesignSystemSpacing.large),
     ) {
-        // Transaction Type
-        TransactionTypeSelector(
-            selectedType = uiState.type,
-            onTypeChanged = viewModel::onTypeChanged,
-        )
-
-        // Currency Selection
-        CurrencyDropdown(
-            selectedCurrencyCode = uiState.currencyCode,
-            onCurrencySelected = viewModel::onCurrencyChanged,
-        )
-
-        // Primary section: Amount (most important field)
+        // Amount (primary field — first for fastest input)
         val currency = SupportedCurrencies.byCode(uiState.currencyCode) ?: SupportedCurrencies.default()
         val amountPlaceholder =
             if (currency.minorUnitDigits == 0) {
@@ -305,7 +309,10 @@ private fun TransactionForm(
                     KeyboardActions(
                         onNext = { focusManager.moveFocus(FocusDirection.Down) },
                     ),
-                modifier = Modifier.fillMaxWidth(),
+                modifier =
+                    Modifier
+                        .fillMaxWidth()
+                        .focusRequester(amountFocusRequester),
                 isError = uiState.amountText.isNotBlank() && !uiState.isFormValid,
                 supportingText = {
                     if (uiState.amountText.isNotBlank() && !uiState.isFormValid) {
@@ -331,14 +338,26 @@ private fun TransactionForm(
             )
         }
 
-        // Category Selection - Enhanced dropdown
+        // Transaction Type
+        TransactionTypeSelector(
+            selectedType = uiState.type,
+            onTypeChanged = viewModel::onTypeChanged,
+        )
+
+        // Currency Selection
+        CurrencyDropdown(
+            selectedCurrencyCode = uiState.currencyCode,
+            onCurrencySelected = viewModel::onCurrencyChanged,
+        )
+
+        // Category Selection
         EnhancedCategoryDropdown(
             categories = uiState.categories,
             selectedCategory = uiState.selectedCategory,
             onCategorySelected = viewModel::onCategorySelected,
         )
 
-        // Date Selection - Enhanced selector
+        // Date Selection
         EnhancedDateSelector(
             timestamp = uiState.timestamp,
             onDateSelected = viewModel::onDateSelected,
@@ -368,29 +387,41 @@ private fun TransactionForm(
                 maxLines = 3,
             )
         }
+    }
+}
 
-        Spacer(modifier = Modifier.padding(DesignSystemSpacing.medium))
-
-        // Save Button - Enhanced visual weight when enabled
-        val hapticFeedback = LocalHapticFeedback.current
-        val saveButtonDescription =
-            if (uiState.isSaveEnabled && !uiState.isLoading) {
-                if (isEditMode) {
-                    stringResource(
-                        R.string.a11y_save_changes,
-                    )
-                } else {
-                    stringResource(R.string.a11y_save_new_transaction)
-                }
-            } else if (uiState.isLoading) {
-                stringResource(R.string.a11y_saving_please_wait)
+@Composable
+private fun SaveBottomBar(
+    uiState: AddEditTransactionUiState,
+    isEditMode: Boolean,
+    onSave: () -> Unit,
+) {
+    val hapticFeedback = LocalHapticFeedback.current
+    val saveButtonDescription =
+        if (uiState.isSaveEnabled && !uiState.isLoading) {
+            if (isEditMode) {
+                stringResource(R.string.a11y_save_changes)
             } else {
-                stringResource(R.string.a11y_complete_form_to_save)
+                stringResource(R.string.a11y_save_new_transaction)
             }
+        } else if (uiState.isLoading) {
+            stringResource(R.string.a11y_saving_please_wait)
+        } else {
+            stringResource(R.string.a11y_complete_form_to_save)
+        }
+    Column(
+        modifier =
+            Modifier
+                .fillMaxWidth()
+                .padding(
+                    horizontal = DesignSystemSpacing.screenPadding,
+                    vertical = DesignSystemSpacing.small,
+                ),
+    ) {
         Button(
             onClick = {
                 hapticFeedback.performHapticFeedback(HapticFeedbackType.LongPress)
-                viewModel.saveTransaction(onNavigateBack)
+                onSave()
             },
             enabled = uiState.isSaveEnabled && !uiState.isLoading,
             modifier =
@@ -411,7 +442,8 @@ private fun TransactionForm(
                         color = ButtonDefaults.buttonColors().contentColor,
                     )
                     Text(
-                        text = if (isEditMode) stringResource(R.string.updating) else stringResource(R.string.saving),
+                        text =
+                            if (isEditMode) stringResource(R.string.updating) else stringResource(R.string.saving),
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Medium,
                         modifier = Modifier.padding(start = DesignSystemSpacing.small),
@@ -421,9 +453,7 @@ private fun TransactionForm(
                 Text(
                     text =
                         if (isEditMode) {
-                            stringResource(
-                                R.string.update_transaction,
-                            )
+                            stringResource(R.string.update_transaction)
                         } else {
                             stringResource(R.string.save_transaction)
                         },

@@ -5,10 +5,8 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
@@ -48,6 +46,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusDirection
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
@@ -61,6 +61,7 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import dev.tuandoan.expensetracker.R
+import dev.tuandoan.expensetracker.core.formatter.AmountFormatter
 import dev.tuandoan.expensetracker.core.formatter.CurrencyAmountVisualTransformation
 import dev.tuandoan.expensetracker.core.util.DateTimeUtil
 import dev.tuandoan.expensetracker.domain.model.GoldType
@@ -81,7 +82,7 @@ fun AddEditGoldHoldingScreen(
     var showDiscardDialog by remember { mutableStateOf(false) }
 
     val handleBack: () -> Unit = {
-        if (isEditMode && uiState.hasUnsavedChanges) {
+        if (uiState.hasUnsavedChanges) {
             showDiscardDialog = true
         } else {
             onNavigateBack()
@@ -127,6 +128,15 @@ fun AddEditGoldHoldingScreen(
                 },
             )
         },
+        bottomBar = {
+            if (!uiState.isLoading) {
+                GoldSaveBottomBar(
+                    uiState = uiState,
+                    isEditMode = isEditMode,
+                    onSave = { viewModel.saveHolding(onNavigateBack) },
+                )
+            }
+        },
         snackbarHost = { SnackbarHost(snackbarHostState) },
         modifier = modifier,
     ) { innerPadding ->
@@ -148,12 +158,10 @@ fun AddEditGoldHoldingScreen(
                 uiState = uiState,
                 isEditMode = isEditMode,
                 viewModel = viewModel,
-                onNavigateBack = onNavigateBack,
                 modifier =
                     Modifier
-                        .fillMaxSize()
+                        .fillMaxWidth()
                         .padding(innerPadding)
-                        .imePadding()
                         .padding(
                             horizontal = DesignSystemSpacing.screenPadding,
                             vertical = DesignSystemSpacing.small,
@@ -199,23 +207,28 @@ private fun GoldHoldingForm(
     uiState: AddEditGoldHoldingUiState,
     isEditMode: Boolean,
     viewModel: AddEditGoldHoldingViewModel,
-    onNavigateBack: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val focusManager = LocalFocusManager.current
-    val hapticFeedback = LocalHapticFeedback.current
+    val weightFocusRequester = remember { FocusRequester() }
+
+    // Auto-focus weight field in add mode
+    LaunchedEffect(Unit) {
+        if (!isEditMode) {
+            weightFocusRequester.requestFocus()
+        }
+    }
+
+    val weight = uiState.weightText.toDoubleOrNull()
+    val isWeightInvalid = uiState.weightText.isNotBlank() && (weight == null || weight <= 0)
+    val buyPrice = AmountFormatter.parseAmount(uiState.buyPriceText)
+    val isPriceInvalid = uiState.buyPriceText.isNotBlank() && (buyPrice == null || buyPrice <= 0)
 
     Column(
         modifier = modifier,
         verticalArrangement = Arrangement.spacedBy(DesignSystemSpacing.large),
     ) {
-        // Gold Type
-        GoldTypeSelector(
-            selectedType = uiState.type,
-            onTypeChanged = viewModel::onTypeChanged,
-        )
-
-        // Weight + Unit
+        // Weight + Unit (primary field — first for fastest input)
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(DesignSystemSpacing.medium),
@@ -243,7 +256,22 @@ private fun GoldHoldingForm(
                             onNext = { focusManager.moveFocus(FocusDirection.Down) },
                         ),
                     singleLine = true,
-                    modifier = Modifier.fillMaxWidth(),
+                    isError = isWeightInvalid,
+                    supportingText =
+                        if (isWeightInvalid) {
+                            {
+                                Text(
+                                    stringResource(R.string.error_invalid_weight),
+                                    color = MaterialTheme.colorScheme.error,
+                                )
+                            }
+                        } else {
+                            null
+                        },
+                    modifier =
+                        Modifier
+                            .fillMaxWidth()
+                            .focusRequester(weightFocusRequester),
                 )
             }
 
@@ -290,10 +318,28 @@ private fun GoldHoldingForm(
                         onNext = { focusManager.moveFocus(FocusDirection.Down) },
                     ),
                 singleLine = true,
+                isError = isPriceInvalid,
+                supportingText =
+                    if (isPriceInvalid) {
+                        {
+                            Text(
+                                stringResource(R.string.error_invalid_buy_price),
+                                color = MaterialTheme.colorScheme.error,
+                            )
+                        }
+                    } else {
+                        null
+                    },
                 modifier = Modifier.fillMaxWidth(),
                 textStyle = MaterialTheme.typography.headlineSmall,
             )
         }
+
+        // Gold Type
+        GoldTypeSelector(
+            selectedType = uiState.type,
+            onTypeChanged = viewModel::onTypeChanged,
+        )
 
         // Buy Date
         GoldDateSelector(
@@ -323,53 +369,6 @@ private fun GoldHoldingForm(
                 modifier = Modifier.fillMaxWidth(),
                 maxLines = 3,
             )
-        }
-
-        Spacer(modifier = Modifier.padding(DesignSystemSpacing.medium))
-
-        // Save Button
-        Button(
-            onClick = {
-                hapticFeedback.performHapticFeedback(HapticFeedbackType.LongPress)
-                viewModel.saveHolding(onNavigateBack)
-            },
-            enabled = uiState.isSaveEnabled && !uiState.isSaving,
-            modifier = Modifier.fillMaxWidth(),
-        ) {
-            if (uiState.isSaving) {
-                Row(
-                    horizontalArrangement = Arrangement.Center,
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    CircularProgressIndicator(
-                        modifier = Modifier.size(16.dp),
-                        strokeWidth = 2.dp,
-                        color = ButtonDefaults.buttonColors().contentColor,
-                    )
-                    Text(
-                        text =
-                            if (isEditMode) {
-                                stringResource(R.string.gold_updating)
-                            } else {
-                                stringResource(R.string.gold_saving)
-                            },
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Medium,
-                        modifier = Modifier.padding(start = DesignSystemSpacing.small),
-                    )
-                }
-            } else {
-                Text(
-                    text =
-                        if (isEditMode) {
-                            stringResource(R.string.gold_update_holding)
-                        } else {
-                            stringResource(R.string.gold_save_holding)
-                        },
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Medium,
-                )
-            }
         }
     }
 }
@@ -520,6 +519,68 @@ private fun GoldDateSelector(
                     )
                 },
             )
+        }
+    }
+}
+
+@Composable
+private fun GoldSaveBottomBar(
+    uiState: AddEditGoldHoldingUiState,
+    isEditMode: Boolean,
+    onSave: () -> Unit,
+) {
+    val hapticFeedback = LocalHapticFeedback.current
+    Column(
+        modifier =
+            Modifier
+                .fillMaxWidth()
+                .padding(
+                    horizontal = DesignSystemSpacing.screenPadding,
+                    vertical = DesignSystemSpacing.small,
+                ),
+    ) {
+        Button(
+            onClick = {
+                hapticFeedback.performHapticFeedback(HapticFeedbackType.LongPress)
+                onSave()
+            },
+            enabled = uiState.isSaveEnabled && !uiState.isSaving,
+            modifier = Modifier.fillMaxWidth(),
+        ) {
+            if (uiState.isSaving) {
+                Row(
+                    horizontalArrangement = Arrangement.Center,
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(16.dp),
+                        strokeWidth = 2.dp,
+                        color = ButtonDefaults.buttonColors().contentColor,
+                    )
+                    Text(
+                        text =
+                            if (isEditMode) {
+                                stringResource(R.string.gold_updating)
+                            } else {
+                                stringResource(R.string.gold_saving)
+                            },
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Medium,
+                        modifier = Modifier.padding(start = DesignSystemSpacing.small),
+                    )
+                }
+            } else {
+                Text(
+                    text =
+                        if (isEditMode) {
+                            stringResource(R.string.gold_update_holding)
+                        } else {
+                            stringResource(R.string.gold_save_holding)
+                        },
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Medium,
+                )
+            }
         }
     }
 }

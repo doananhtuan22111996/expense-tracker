@@ -82,12 +82,24 @@ class AddEditTransactionUiStateTest {
     // hasUnsavedChanges tests
 
     @Test
-    fun hasUnsavedChanges_noOriginalTransaction_false() {
+    fun hasUnsavedChanges_addModeWithInput_true() {
         val state =
             AddEditTransactionUiState(
                 originalTransaction = null,
                 amountText = "50000",
                 selectedCategory = TestData.expenseCategory,
+            )
+        assertTrue(state.hasUnsavedChanges)
+    }
+
+    @Test
+    fun hasUnsavedChanges_addModeEmptyForm_false() {
+        val state =
+            AddEditTransactionUiState(
+                originalTransaction = null,
+                amountText = "",
+                selectedCategory = null,
+                note = "",
             )
         assertFalse(state.hasUnsavedChanges)
     }

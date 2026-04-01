@@ -83,11 +83,8 @@ class AddEditTransactionViewModel
 
         fun onBackPressed() {
             val state = _uiState.value
-            if (isEditMode && state.hasUnsavedChanges) {
+            if (state.hasUnsavedChanges) {
                 _uiState.value = state.copy(showDiscardDialog = true)
-            } else {
-                // No changes or not in edit mode - navigate back immediately
-                // This will be handled by the UI
             }
         }
 
@@ -273,18 +270,21 @@ data class AddEditTransactionUiState(
 
     val hasUnsavedChanges: Boolean
         get() {
-            val original = originalTransaction ?: return false
+            val original = originalTransaction
+            if (original != null) {
+                // Edit mode: compare against original transaction
+                val currentAmount = AmountFormatter.parseAmount(amountText) ?: 0L
+                val currentNote = note.ifBlank { null }
 
-            // Compare current state with original transaction
-            val currentAmount = AmountFormatter.parseAmount(amountText) ?: 0L
-            val currentNote = note.ifBlank { null }
-
-            return type != original.type ||
-                currentAmount != original.amount ||
-                selectedCategory?.id != original.category.id ||
-                timestamp != original.timestamp ||
-                currentNote != original.note ||
-                currencyCode != original.currencyCode
+                return type != original.type ||
+                    currentAmount != original.amount ||
+                    selectedCategory?.id != original.category.id ||
+                    timestamp != original.timestamp ||
+                    currentNote != original.note ||
+                    currencyCode != original.currencyCode
+            }
+            // Add mode: any user input counts as dirty
+            return amountText.isNotBlank() || note.isNotBlank() || selectedCategory != null
         }
 
     val isSaveEnabled: Boolean
