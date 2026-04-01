@@ -25,7 +25,7 @@
 - Unit tests updated to assert UiText types instead of raw strings (ErrorUtilsTest, AddEditTransactionViewModelTest, SettingsViewModelTest)
 
 ### Fixed
-- Large gap between Note field and keyboard on form screens caused by fillMaxSize forcing minimum viewport height
+- Large gap between Note field and keyboard on form screens — removed imePadding from bottomBar so keyboard naturally covers the save button
 - Budget error message uses string resource instead of hardcoded string
 - HomeViewModel retry() was a no-op due to MutableStateFlow same-value dedup; now uses counter-based retryTrigger
 - HomeViewModel catch moved inside flatMapLatest so errors don't kill the combine flow and retry works
