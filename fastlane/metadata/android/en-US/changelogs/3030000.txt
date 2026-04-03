@@ -1,0 +1,7 @@
+What's new in v3.3:
+
+• Gold Portfolio: track your gold holdings — SJC, 24K, 18K and more
+• View total weight, value, and profit/loss at a glance
+• Add, edit, or swipe-to-delete gold holdings
+• Gold data included in backup/restore and CSV export
+• Fixed cursor position in amount input

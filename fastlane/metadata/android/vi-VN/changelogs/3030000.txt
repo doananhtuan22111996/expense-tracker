@@ -1,0 +1,7 @@
+Mới trong v3.3:
+
+• Danh mục vàng: theo dõi vàng SJC, 24K, 18K và nhiều loại khác
+• Xem tổng trọng lượng, giá trị và lãi/lỗ trong một cái nhìn
+• Thêm, sửa hoặc vuốt để xóa vàng
+• Dữ liệu vàng được bao gồm trong sao lưu/khôi phục và xuất CSV
+• Sửa vị trí con trỏ trong trường nhập số tiền
