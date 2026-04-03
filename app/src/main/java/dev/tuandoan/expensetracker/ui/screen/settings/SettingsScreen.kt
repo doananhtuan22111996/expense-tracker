@@ -1,8 +1,11 @@
 package dev.tuandoan.expensetracker.ui.screen.settings
 
+import android.Manifest
 import android.content.ActivityNotFoundException
 import android.content.Intent
 import android.net.Uri
+import android.os.Build
+import android.provider.Settings
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.clickable
@@ -81,8 +84,10 @@ fun SettingsScreen(
     val activeRecurringCount by viewModel.activeRecurringCount.collectAsStateWithLifecycle()
     val themePreference by viewModel.themePreference.collectAsStateWithLifecycle()
     val analyticsConsent by viewModel.analyticsConsent.collectAsStateWithLifecycle()
+    val budgetAlertsEnabled by viewModel.budgetAlertsEnabled.collectAsStateWithLifecycle()
     var showCurrencyDialog by remember { mutableStateOf(false) }
     var showFeedbackSheet by remember { mutableStateOf(false) }
+    var showPermissionRationale by remember { mutableStateOf(false) }
     val snackbarHostState = remember { SnackbarHostState() }
 
     val exportLauncher =
@@ -104,6 +109,16 @@ fun SettingsScreen(
             contract = ActivityResultContracts.CreateDocument("text/csv"),
         ) { uri ->
             uri?.let { viewModel.exportCsv(it) }
+        }
+
+    val notificationPermissionLauncher =
+        rememberLauncherForActivityResult(
+            contract = ActivityResultContracts.RequestPermission(),
+        ) { granted ->
+            if (granted) {
+                viewModel.setBudgetAlertsEnabled(true)
+            }
+            // If denied, toggle stays OFF — subtitle hints at permission needed
         }
 
     val context = LocalContext.current
@@ -325,6 +340,81 @@ fun SettingsScreen(
                         Icons.Default.KeyboardArrowRight,
                         contentDescription = null,
                         tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+            }
+
+            // Notifications Section
+            SettingsSection(title = stringResource(R.string.settings_notifications)) {
+                val hasPermission =
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                        androidx.core.content.ContextCompat.checkSelfPermission(
+                            context,
+                            Manifest.permission.POST_NOTIFICATIONS,
+                        ) == android.content.pm.PackageManager.PERMISSION_GRANTED
+                    } else {
+                        true
+                    }
+                val subtitleText =
+                    if (!hasPermission && !budgetAlertsEnabled) {
+                        stringResource(R.string.settings_budget_alerts_permission)
+                    } else {
+                        stringResource(R.string.settings_budget_alerts_subtitle)
+                    }
+                val toggleStateLabel = if (budgetAlertsEnabled) "on" else "off"
+                val budgetAlertsA11y =
+                    stringResource(R.string.a11y_budget_alerts_toggle, toggleStateLabel)
+
+                Row(
+                    modifier =
+                        Modifier
+                            .fillMaxWidth()
+                            .padding(DesignSystemSpacing.large)
+                            .semantics {
+                                contentDescription = budgetAlertsA11y
+                            },
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = stringResource(R.string.settings_budget_alerts_title),
+                            style = MaterialTheme.typography.bodyLarge,
+                            fontWeight = FontWeight.Medium,
+                            color = MaterialTheme.colorScheme.onSurface,
+                        )
+                        Text(
+                            text = subtitleText,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.padding(top = DesignSystemSpacing.xs),
+                        )
+                    }
+                    Switch(
+                        checked = budgetAlertsEnabled,
+                        onCheckedChange = { enabled ->
+                            if (enabled) {
+                                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU && !hasPermission) {
+                                    // Check if we should show rationale (second denial)
+                                    val activity = context as? android.app.Activity
+                                    if (activity != null &&
+                                        activity.shouldShowRequestPermissionRationale(
+                                            Manifest.permission.POST_NOTIFICATIONS,
+                                        )
+                                    ) {
+                                        showPermissionRationale = true
+                                    } else {
+                                        notificationPermissionLauncher.launch(
+                                            Manifest.permission.POST_NOTIFICATIONS,
+                                        )
+                                    }
+                                } else {
+                                    viewModel.setBudgetAlertsEnabled(true)
+                                }
+                            } else {
+                                viewModel.setBudgetAlertsEnabled(false)
+                            }
+                        },
                     )
                 }
             }
@@ -687,6 +777,34 @@ fun SettingsScreen(
             dismissButton = {
                 TextButton(onClick = { viewModel.dismissRestoreConfirmation() }) {
                     Text(stringResource(R.string.cancel))
+                }
+            },
+        )
+    }
+
+    // Permission Rationale Dialog
+    if (showPermissionRationale) {
+        AlertDialog(
+            onDismissRequest = { showPermissionRationale = false },
+            title = { Text(stringResource(R.string.alert_rationale_title)) },
+            text = { Text(stringResource(R.string.alert_rationale_body)) },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        showPermissionRationale = false
+                        val intent =
+                            Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS).apply {
+                                putExtra(Settings.EXTRA_APP_PACKAGE, context.packageName)
+                            }
+                        context.startActivity(intent)
+                    },
+                ) {
+                    Text(stringResource(R.string.alert_rationale_open_settings))
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showPermissionRationale = false }) {
+                    Text(stringResource(R.string.alert_rationale_not_now))
                 }
             },
         )
