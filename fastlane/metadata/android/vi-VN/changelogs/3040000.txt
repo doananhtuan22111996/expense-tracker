@@ -1,0 +1,9 @@
+Mới trong v3.4:
+
+• Biểu mẫu thông minh hơn: trường số tiền mở trước với tự động lấy nét và kiểm tra lỗi trực tiếp
+• Chỉnh sửa giao dịch định kỳ trực tiếp
+• Hoàn tác giao dịch đã xóa nhầm chỉ bằng một chạm
+• Sửa 2 lỗi crash và cải thiện độ ổn định
+• Tải dữ liệu nhanh hơn với tối ưu hiệu suất
+• Thông báo lỗi rõ ràng hơn trong toàn ứng dụng
+• Sẵn sàng hỗ trợ đa ngôn ngữ trong tương lai

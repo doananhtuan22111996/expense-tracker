@@ -1,0 +1,9 @@
+What's new in v3.4:
+
+• Smarter forms: amount field opens first with auto-focus and inline validation
+• Edit recurring transactions directly
+• Undo accidentally deleted transactions with one tap
+• Fixed 2 crashes and improved app stability
+• Faster data loading with performance optimizations
+• Better error messages throughout the app
+• All text ready for future language support
