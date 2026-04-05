@@ -101,13 +101,18 @@ fun SettingsScreen(
     var hasNotificationPermission by remember { mutableStateOf(checkNotificationPermission(context)) }
     val snackbarHostState = remember { SnackbarHostState() }
 
-    // Re-check permission when returning from system settings
+    // Re-check permission when returning from system settings.
+    // If permission was revoked while alerts were enabled, disable them to stay in sync.
     val lifecycleOwner = LocalLifecycleOwner.current
     DisposableEffect(lifecycleOwner) {
         val observer =
             LifecycleEventObserver { _, event ->
                 if (event == Lifecycle.Event.ON_RESUME) {
-                    hasNotificationPermission = checkNotificationPermission(context)
+                    val currentPermission = checkNotificationPermission(context)
+                    hasNotificationPermission = currentPermission
+                    if (!currentPermission && budgetAlertsEnabled) {
+                        viewModel.setBudgetAlertsEnabled(false)
+                    }
                 }
             }
         lifecycleOwner.lifecycle.addObserver(observer)
