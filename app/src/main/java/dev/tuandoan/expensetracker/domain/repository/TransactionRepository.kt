@@ -41,6 +41,14 @@ interface TransactionRepository {
         filterType: TransactionType? = null,
     ): Flow<List<Transaction>>
 
+    fun searchTransactionsAdvanced(
+        from: Long?,
+        to: Long?,
+        query: String,
+        filterType: TransactionType? = null,
+        categoryId: Long? = null,
+    ): Flow<List<Transaction>>
+
     suspend fun getMonthlyExpenseTotals(
         from: Long,
         to: Long,

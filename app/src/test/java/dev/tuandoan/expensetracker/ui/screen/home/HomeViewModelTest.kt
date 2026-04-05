@@ -1,10 +1,13 @@
 package dev.tuandoan.expensetracker.ui.screen.home
 
 import dev.tuandoan.expensetracker.core.util.DateRangeCalculator
+import dev.tuandoan.expensetracker.domain.model.Category
+import dev.tuandoan.expensetracker.domain.model.CategoryWithCount
 import dev.tuandoan.expensetracker.domain.model.MonthlyBarPoint
 import dev.tuandoan.expensetracker.domain.model.MonthlySummary
 import dev.tuandoan.expensetracker.domain.model.Transaction
 import dev.tuandoan.expensetracker.domain.model.TransactionType
+import dev.tuandoan.expensetracker.domain.repository.CategoryRepository
 import dev.tuandoan.expensetracker.domain.repository.TransactionRepository
 import dev.tuandoan.expensetracker.testutil.FakeSelectedMonthRepository
 import dev.tuandoan.expensetracker.testutil.MainDispatcherRule
@@ -34,6 +37,7 @@ class HomeViewModelTest {
     val mainDispatcherRule = MainDispatcherRule()
 
     private lateinit var fakeRepository: FakeTransactionRepository
+    private lateinit var fakeCategoryRepository: FakeCategoryRepository
     private lateinit var fakeSelectedMonth: FakeSelectedMonthRepository
     private lateinit var dateRangeCalculator: DateRangeCalculator
 
@@ -45,11 +49,13 @@ class HomeViewModelTest {
     @Before
     fun setup() {
         fakeRepository = FakeTransactionRepository()
+        fakeCategoryRepository = FakeCategoryRepository()
         fakeSelectedMonth = FakeSelectedMonthRepository()
         dateRangeCalculator = DateRangeCalculator(fixedClock, fixedZone)
     }
 
-    private fun createViewModel(): HomeViewModel = HomeViewModel(fakeRepository, fakeSelectedMonth, dateRangeCalculator)
+    private fun createViewModel(): HomeViewModel =
+        HomeViewModel(fakeRepository, fakeSelectedMonth, fakeCategoryRepository, dateRangeCalculator)
 
     @Test
     fun init_loadsTransactions() =
@@ -577,5 +583,39 @@ class HomeViewModelTest {
             to: Long,
             currencyCode: String,
         ): List<MonthlyBarPoint> = (1..12).map { MonthlyBarPoint(month = it, totalExpense = 0L) }
+
+        override fun searchTransactionsAdvanced(
+            from: Long?,
+            to: Long?,
+            query: String,
+            filterType: TransactionType?,
+            categoryId: Long?,
+        ): Flow<List<Transaction>> = flow { emit(searchResultsToEmit) }
+    }
+
+    private class FakeCategoryRepository : CategoryRepository {
+        var categoriesToReturn: List<Category> = emptyList()
+
+        override fun observeCategories(type: TransactionType): Flow<List<Category>> = flow { emit(categoriesToReturn) }
+
+        override suspend fun getCategory(id: Long): Category? = categoriesToReturn.find { it.id == id }
+
+        override suspend fun createCategory(
+            name: String,
+            type: TransactionType,
+            iconKey: String?,
+            colorKey: String?,
+        ): Long = 0L
+
+        override suspend fun updateCategory(
+            id: Long,
+            name: String,
+            iconKey: String?,
+            colorKey: String?,
+        ) {}
+
+        override suspend fun deleteCategory(id: Long) {}
+
+        override fun getCategoriesWithTransactionCount(): Flow<List<CategoryWithCount>> = flow { emit(emptyList()) }
     }
 }

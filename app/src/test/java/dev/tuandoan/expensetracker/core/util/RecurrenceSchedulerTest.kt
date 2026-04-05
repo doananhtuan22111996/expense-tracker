@@ -361,5 +361,13 @@ class RecurrenceSchedulerTest {
             fromId: Long,
             toId: Long,
         ) {}
+
+        override fun searchTransactionsAdvanced(
+            from: Long?,
+            to: Long?,
+            query: String,
+            type: Int?,
+            categoryId: Long?,
+        ): Flow<List<TransactionEntity>> = MutableStateFlow(emptyList())
     }
 }

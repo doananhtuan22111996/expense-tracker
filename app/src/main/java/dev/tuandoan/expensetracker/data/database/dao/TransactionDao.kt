@@ -42,6 +42,25 @@ interface TransactionDao {
         type: Int? = null,
     ): Flow<List<TransactionEntity>>
 
+    @Query(
+        """
+        SELECT * FROM transactions
+        WHERE (:from IS NULL OR timestamp >= :from)
+        AND (:to IS NULL OR timestamp < :to)
+        AND (:type IS NULL OR type = :type)
+        AND (:categoryId IS NULL OR category_id = :categoryId)
+        AND (:query = '' OR note LIKE '%' || :query || '%' ESCAPE '\' COLLATE NOCASE)
+        ORDER BY timestamp DESC
+    """,
+    )
+    fun searchTransactionsAdvanced(
+        from: Long?,
+        to: Long?,
+        query: String,
+        type: Int? = null,
+        categoryId: Long? = null,
+    ): Flow<List<TransactionEntity>>
+
     @Insert
     suspend fun insert(entity: TransactionEntity): Long
 

@@ -607,6 +607,17 @@ class AddEditTransactionViewModelTest {
             to: Long,
             currencyCode: String,
         ): List<MonthlyBarPoint> = (1..12).map { MonthlyBarPoint(month = it, totalExpense = 0L) }
+
+        override fun searchTransactionsAdvanced(
+            from: Long?,
+            to: Long?,
+            query: String,
+            filterType: TransactionType?,
+            categoryId: Long?,
+        ): Flow<List<Transaction>> =
+            flow {
+                emit(emptyList())
+            }
     }
 
     private class FakeCategoryRepository : CategoryRepository {
