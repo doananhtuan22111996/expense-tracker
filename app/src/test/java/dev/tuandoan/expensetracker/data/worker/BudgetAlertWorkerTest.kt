@@ -6,8 +6,8 @@ import dev.tuandoan.expensetracker.core.formatter.CurrencyFormatter
 import dev.tuandoan.expensetracker.core.notification.NotificationHelper
 import dev.tuandoan.expensetracker.data.database.dao.TransactionDao
 import dev.tuandoan.expensetracker.data.database.entity.CurrencySumRow
+import dev.tuandoan.expensetracker.data.preferences.FakeBudgetAlertPreferences
 import dev.tuandoan.expensetracker.domain.crash.NoOpCrashReporter
-import dev.tuandoan.expensetracker.domain.repository.BudgetAlertPreferences
 import dev.tuandoan.expensetracker.domain.repository.BudgetPreferences
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
@@ -290,30 +290,5 @@ class BudgetAlertWorkerTest {
         }
 
         override fun getAllBudgets(): Flow<Map<String, Long>> = budgetsFlow
-    }
-
-    private class FakeBudgetAlertPreferences : BudgetAlertPreferences {
-        private val enabledState = MutableStateFlow(false)
-        private val lastAlertMonthState = MutableStateFlow<String?>(null)
-        private val lastAlertLevelState = MutableStateFlow<String?>(null)
-
-        val lastAlertMonthValue: String? get() = lastAlertMonthState.value
-        val lastAlertLevelValue: String? get() = lastAlertLevelState.value
-
-        override val alertsEnabled: Flow<Boolean> = enabledState
-        override val lastAlertMonth: Flow<String?> = lastAlertMonthState
-        override val lastAlertLevel: Flow<String?> = lastAlertLevelState
-
-        override suspend fun setAlertsEnabled(enabled: Boolean) {
-            enabledState.value = enabled
-        }
-
-        override suspend fun setLastAlertMonth(yearMonth: String) {
-            lastAlertMonthState.value = yearMonth
-        }
-
-        override suspend fun setLastAlertLevel(level: String) {
-            lastAlertLevelState.value = level
-        }
     }
 }

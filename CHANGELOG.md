@@ -3,6 +3,8 @@
 ## [Unreleased]
 
 ### Added
+- Unit tests for BudgetAlertPreferences (defaults, read/write, overwrite)
+- Shared FakeBudgetAlertPreferences for reuse across test classes
 - Auto-focus amount/weight field on form open in add mode for faster input
 - Inline validation with error states on Amount field (Recurring) and Weight/Buy Price fields (Gold)
 - Loading state with spinner on Add/Edit Recurring Transaction screen
