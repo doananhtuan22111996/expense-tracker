@@ -126,6 +126,21 @@
     <string name="feedback_email_subject">Expense Tracker Feedback</string>
     <string name="feedback_email_body_prefix">App Version: %1$s\nDevice: %2$s\nAndroid: %3$s\n\n</string>
 
+    <!-- Notifications -->
+    <string name="settings_notifications">Notifications</string>
+    <string name="settings_budget_alerts_title">Budget alerts</string>
+    <string name="settings_budget_alerts_subtitle">Get notified when spending reaches 80% or exceeds your budget</string>
+    <string name="settings_budget_alerts_permission">Notification permission required. Tap to enable.</string>
+    <string name="notification_channel_budget_alerts">Budget Alerts</string>
+    <string name="notification_channel_budget_alerts_description">Notifications when spending approaches or exceeds your budget</string>
+    <string name="alert_rationale_title">Allow notifications?</string>
+    <string name="alert_rationale_body">Budget alerts notify you when your spending reaches 80% of your budget or goes over. You can turn them off anytime.</string>
+    <string name="alert_rationale_open_settings">Open Settings</string>
+    <string name="alert_rationale_not_now">Not now</string>
+    <string name="a11y_on">on</string>
+    <string name="a11y_off">off</string>
+    <string name="a11y_budget_alerts_toggle">Budget alerts, currently %1$s</string>
+
     <!-- Analytics / Crash Reporting -->
     <string name="settings_analytics_title">Share anonymous crash reports</string>
     <string name="settings_analytics_subtitle">Help improve the app by sharing crash data. No personal information is collected.</string>

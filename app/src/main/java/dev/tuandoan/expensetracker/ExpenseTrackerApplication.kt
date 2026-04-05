@@ -9,6 +9,7 @@ import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.WorkManager
 import dagger.hilt.android.HiltAndroidApp
+import dev.tuandoan.expensetracker.core.notification.NotificationHelper
 import dev.tuandoan.expensetracker.data.preferences.AnalyticsPreferences
 import dev.tuandoan.expensetracker.data.seed.SeedRepository
 import dev.tuandoan.expensetracker.data.worker.RecurringTransactionWorker
@@ -35,6 +36,9 @@ class ExpenseTrackerApplication :
     @Inject
     lateinit var crashReporter: CrashReporter
 
+    @Inject
+    lateinit var notificationHelper: NotificationHelper
+
     private val applicationScope = CoroutineScope(SupervisorJob())
 
     override val workManagerConfiguration: Configuration by lazy {
@@ -46,6 +50,8 @@ class ExpenseTrackerApplication :
 
     override fun onCreate() {
         super.onCreate()
+
+        notificationHelper.createChannels()
 
         // Seed database with default categories on first run,
         // then schedule recurring transaction processing via WorkManager

@@ -16,6 +16,7 @@ import dev.tuandoan.expensetracker.domain.model.CurrencyDefinition
 import dev.tuandoan.expensetracker.domain.model.SupportedCurrencies
 import dev.tuandoan.expensetracker.domain.repository.BackupRepository
 import dev.tuandoan.expensetracker.domain.repository.BackupRestoreResult
+import dev.tuandoan.expensetracker.domain.repository.BudgetAlertPreferences
 import dev.tuandoan.expensetracker.domain.repository.CurrencyPreferenceRepository
 import dev.tuandoan.expensetracker.domain.repository.RecurringTransactionRepository
 import kotlinx.coroutines.CancellationException
@@ -43,6 +44,7 @@ class SettingsViewModel
         private val recurringTransactionRepository: RecurringTransactionRepository,
         private val themePreferencesRepository: ThemePreferencesRepository,
         private val analyticsPreferences: AnalyticsPreferences,
+        private val budgetAlertPreferences: BudgetAlertPreferences,
         private val crashReporter: CrashReporter,
         @IoDispatcher private val ioDispatcher: CoroutineDispatcher,
     ) : ViewModel() {
@@ -57,6 +59,11 @@ class SettingsViewModel
         /** Whether the user has opted in to anonymous crash reporting. */
         val analyticsConsent: StateFlow<Boolean> =
             analyticsPreferences.analyticsConsent
+                .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000L), false)
+
+        /** Whether budget alerts are enabled. */
+        val budgetAlertsEnabled: StateFlow<Boolean> =
+            budgetAlertPreferences.alertsEnabled
                 .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000L), false)
 
         /** Number of currently active recurring transactions. */
@@ -266,6 +273,12 @@ class SettingsViewModel
         fun setAnalyticsConsent(enabled: Boolean) {
             viewModelScope.launch {
                 analyticsPreferences.setAnalyticsConsent(enabled)
+            }
+        }
+
+        fun setBudgetAlertsEnabled(enabled: Boolean) {
+            viewModelScope.launch {
+                budgetAlertPreferences.setAlertsEnabled(enabled)
             }
         }
 

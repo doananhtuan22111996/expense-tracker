@@ -14,6 +14,7 @@ import dev.tuandoan.expensetracker.domain.model.RecurringTransaction
 import dev.tuandoan.expensetracker.domain.model.SupportedCurrencies
 import dev.tuandoan.expensetracker.domain.repository.BackupRepository
 import dev.tuandoan.expensetracker.domain.repository.BackupRestoreResult
+import dev.tuandoan.expensetracker.domain.repository.BudgetAlertPreferences
 import dev.tuandoan.expensetracker.domain.repository.RecurringTransactionRepository
 import dev.tuandoan.expensetracker.testutil.FakeCurrencyPreferenceRepository
 import dev.tuandoan.expensetracker.testutil.MainDispatcherRule
@@ -43,6 +44,7 @@ class SettingsViewModelTest {
     private lateinit var fakeRecurringRepo: FakeRecurringTransactionRepository
     private lateinit var fakeThemeRepo: FakeThemePreferencesRepository
     private lateinit var fakeAnalyticsPrefs: FakeAnalyticsPreferences
+    private lateinit var fakeBudgetAlertPrefs: FakeBudgetAlertPreferences
     private lateinit var mockContentResolver: ContentResolver
     private lateinit var mockUri: Uri
 
@@ -53,6 +55,7 @@ class SettingsViewModelTest {
         fakeRecurringRepo = FakeRecurringTransactionRepository()
         fakeThemeRepo = FakeThemePreferencesRepository()
         fakeAnalyticsPrefs = FakeAnalyticsPreferences()
+        fakeBudgetAlertPrefs = FakeBudgetAlertPreferences()
         mockContentResolver = Mockito.mock(ContentResolver::class.java)
         mockUri = Mockito.mock(Uri::class.java)
     }
@@ -65,6 +68,7 @@ class SettingsViewModelTest {
             fakeRecurringRepo,
             fakeThemeRepo,
             fakeAnalyticsPrefs,
+            fakeBudgetAlertPrefs,
             NoOpCrashReporter(),
             mainDispatcherRule.testDispatcher,
         )
@@ -577,6 +581,76 @@ class SettingsViewModelTest {
             assertEquals(false, viewModel.analyticsConsent.value)
             collectJob.cancel()
         }
+
+    // --- Budget alerts tests ---
+
+    @Test
+    fun budgetAlertsEnabled_defaultsToFalse() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            val viewModel = createViewModel()
+
+            val collectJob =
+                backgroundScope.launch {
+                    viewModel.budgetAlertsEnabled.collect {}
+                }
+            advanceUntilIdle()
+
+            assertEquals(false, viewModel.budgetAlertsEnabled.value)
+            collectJob.cancel()
+        }
+
+    @Test
+    fun setBudgetAlertsEnabled_true_reflectsInStateFlow() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            val viewModel = createViewModel()
+
+            val collectJob =
+                backgroundScope.launch {
+                    viewModel.budgetAlertsEnabled.collect {}
+                }
+            advanceUntilIdle()
+
+            viewModel.setBudgetAlertsEnabled(true)
+            advanceUntilIdle()
+
+            assertEquals(true, viewModel.budgetAlertsEnabled.value)
+            collectJob.cancel()
+        }
+
+    @Test
+    fun setBudgetAlertsEnabled_false_reflectsInStateFlow() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            val viewModel = createViewModel()
+
+            val collectJob =
+                backgroundScope.launch {
+                    viewModel.budgetAlertsEnabled.collect {}
+                }
+            advanceUntilIdle()
+
+            viewModel.setBudgetAlertsEnabled(true)
+            advanceUntilIdle()
+            viewModel.setBudgetAlertsEnabled(false)
+            advanceUntilIdle()
+
+            assertEquals(false, viewModel.budgetAlertsEnabled.value)
+            collectJob.cancel()
+        }
+
+    private class FakeBudgetAlertPreferences : BudgetAlertPreferences {
+        private val enabledState = MutableStateFlow(false)
+        private val lastAlertMonthState = MutableStateFlow<String?>(null)
+        override val alertsEnabled: Flow<Boolean> = enabledState
+        override val lastAlertMonth: Flow<String?> = lastAlertMonthState
+
+        override suspend fun setAlertsEnabled(enabled: Boolean) {
+            enabledState.value = enabled
+        }
+
+        override suspend fun setLastAlertMonth(yearMonth: String) {
+            lastAlertMonthState.value = yearMonth
+        }
+    }
 
     private class FakeAnalyticsPreferences : AnalyticsPreferences {
         private val consentState = MutableStateFlow(false)

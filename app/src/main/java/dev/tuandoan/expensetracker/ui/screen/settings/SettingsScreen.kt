@@ -1,8 +1,15 @@
 package dev.tuandoan.expensetracker.ui.screen.settings
 
+import android.Manifest
+import android.app.Activity
 import android.content.ActivityNotFoundException
+import android.content.Context
+import android.content.ContextWrapper
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.net.Uri
+import android.os.Build
+import android.provider.Settings
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.clickable
@@ -43,6 +50,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -55,7 +63,11 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
+import androidx.core.content.ContextCompat
 import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import dev.tuandoan.expensetracker.R
 import dev.tuandoan.expensetracker.core.util.AppInfo
@@ -81,9 +93,31 @@ fun SettingsScreen(
     val activeRecurringCount by viewModel.activeRecurringCount.collectAsStateWithLifecycle()
     val themePreference by viewModel.themePreference.collectAsStateWithLifecycle()
     val analyticsConsent by viewModel.analyticsConsent.collectAsStateWithLifecycle()
+    val budgetAlertsEnabled by viewModel.budgetAlertsEnabled.collectAsStateWithLifecycle()
     var showCurrencyDialog by remember { mutableStateOf(false) }
     var showFeedbackSheet by remember { mutableStateOf(false) }
+    var showPermissionRationale by remember { mutableStateOf(false) }
+    val context = LocalContext.current
+    var hasNotificationPermission by remember { mutableStateOf(checkNotificationPermission(context)) }
     val snackbarHostState = remember { SnackbarHostState() }
+
+    // Re-check permission when returning from system settings.
+    // If permission was revoked while alerts were enabled, disable them to stay in sync.
+    val lifecycleOwner = LocalLifecycleOwner.current
+    DisposableEffect(lifecycleOwner) {
+        val observer =
+            LifecycleEventObserver { _, event ->
+                if (event == Lifecycle.Event.ON_RESUME) {
+                    val currentPermission = checkNotificationPermission(context)
+                    hasNotificationPermission = currentPermission
+                    if (!currentPermission && budgetAlertsEnabled) {
+                        viewModel.setBudgetAlertsEnabled(false)
+                    }
+                }
+            }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
+    }
 
     val exportLauncher =
         rememberLauncherForActivityResult(
@@ -106,7 +140,16 @@ fun SettingsScreen(
             uri?.let { viewModel.exportCsv(it) }
         }
 
-    val context = LocalContext.current
+    val notificationPermissionLauncher =
+        rememberLauncherForActivityResult(
+            contract = ActivityResultContracts.RequestPermission(),
+        ) { granted ->
+            hasNotificationPermission = granted
+            if (granted) {
+                viewModel.setBudgetAlertsEnabled(true)
+            }
+        }
+
     LaunchedEffect(uiState.errorMessage) {
         uiState.errorMessage?.let {
             snackbarHostState.showSnackbar(it.asString(context))
@@ -325,6 +368,78 @@ fun SettingsScreen(
                         Icons.Default.KeyboardArrowRight,
                         contentDescription = null,
                         tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+            }
+
+            // Notifications Section
+            SettingsSection(title = stringResource(R.string.settings_notifications)) {
+                val subtitleText =
+                    if (!hasNotificationPermission && !budgetAlertsEnabled) {
+                        stringResource(R.string.settings_budget_alerts_permission)
+                    } else {
+                        stringResource(R.string.settings_budget_alerts_subtitle)
+                    }
+                val toggleStateLabel =
+                    if (budgetAlertsEnabled) {
+                        stringResource(R.string.a11y_on)
+                    } else {
+                        stringResource(R.string.a11y_off)
+                    }
+                val budgetAlertsA11y =
+                    stringResource(R.string.a11y_budget_alerts_toggle, toggleStateLabel)
+
+                Row(
+                    modifier =
+                        Modifier
+                            .fillMaxWidth()
+                            .padding(DesignSystemSpacing.large)
+                            .semantics {
+                                contentDescription = budgetAlertsA11y
+                            },
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = stringResource(R.string.settings_budget_alerts_title),
+                            style = MaterialTheme.typography.bodyLarge,
+                            fontWeight = FontWeight.Medium,
+                            color = MaterialTheme.colorScheme.onSurface,
+                        )
+                        Text(
+                            text = subtitleText,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.padding(top = DesignSystemSpacing.xs),
+                        )
+                    }
+                    Switch(
+                        checked = budgetAlertsEnabled,
+                        onCheckedChange = { enabled ->
+                            if (enabled) {
+                                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
+                                    !hasNotificationPermission
+                                ) {
+                                    val activity = context.findActivity()
+                                    if (activity != null &&
+                                        activity.shouldShowRequestPermissionRationale(
+                                            Manifest.permission.POST_NOTIFICATIONS,
+                                        )
+                                    ) {
+                                        showPermissionRationale = true
+                                    } else {
+                                        notificationPermissionLauncher.launch(
+                                            Manifest.permission.POST_NOTIFICATIONS,
+                                        )
+                                    }
+                                } else {
+                                    viewModel.setBudgetAlertsEnabled(true)
+                                }
+                            } else {
+                                viewModel.setBudgetAlertsEnabled(false)
+                            }
+                        },
                     )
                 }
             }
@@ -692,6 +807,34 @@ fun SettingsScreen(
         )
     }
 
+    // Permission Rationale Dialog
+    if (showPermissionRationale) {
+        AlertDialog(
+            onDismissRequest = { showPermissionRationale = false },
+            title = { Text(stringResource(R.string.alert_rationale_title)) },
+            text = { Text(stringResource(R.string.alert_rationale_body)) },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        showPermissionRationale = false
+                        val intent =
+                            Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS).apply {
+                                putExtra(Settings.EXTRA_APP_PACKAGE, context.packageName)
+                            }
+                        context.startActivity(intent)
+                    },
+                ) {
+                    Text(stringResource(R.string.alert_rationale_open_settings))
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showPermissionRationale = false }) {
+                    Text(stringResource(R.string.alert_rationale_not_now))
+                }
+            },
+        )
+    }
+
     // Feedback Bottom Sheet
     if (showFeedbackSheet) {
         FeedbackBottomSheet(
@@ -917,4 +1060,23 @@ private fun BackupProgressBar(
             modifier = Modifier.padding(top = DesignSystemSpacing.xs),
         )
     }
+}
+
+private fun checkNotificationPermission(context: Context): Boolean =
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+        ContextCompat.checkSelfPermission(
+            context,
+            Manifest.permission.POST_NOTIFICATIONS,
+        ) == PackageManager.PERMISSION_GRANTED
+    } else {
+        true
+    }
+
+private fun Context.findActivity(): Activity? {
+    var current = this
+    while (current is ContextWrapper) {
+        if (current is Activity) return current
+        current = current.baseContext
+    }
+    return null
 }
