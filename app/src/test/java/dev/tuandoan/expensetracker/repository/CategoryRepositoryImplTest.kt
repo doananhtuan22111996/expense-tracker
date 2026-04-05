@@ -269,6 +269,11 @@ class CategoryRepositoryImplTest {
             to: Long,
             type: Int,
         ): Flow<List<CurrencyCategorySumRow>> = MutableStateFlow(emptyList())
+
+        override suspend fun getExpenseTotalsByCurrency(
+            from: Long,
+            to: Long,
+        ): List<CurrencySumRow> = emptyList()
     }
 
     private class FakeTransactionRunner : TransactionRunner {

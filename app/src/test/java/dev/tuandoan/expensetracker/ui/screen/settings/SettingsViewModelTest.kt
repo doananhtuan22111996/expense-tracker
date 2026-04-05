@@ -640,8 +640,10 @@ class SettingsViewModelTest {
     private class FakeBudgetAlertPreferences : BudgetAlertPreferences {
         private val enabledState = MutableStateFlow(false)
         private val lastAlertMonthState = MutableStateFlow<String?>(null)
+        private val lastAlertLevelState = MutableStateFlow<String?>(null)
         override val alertsEnabled: Flow<Boolean> = enabledState
         override val lastAlertMonth: Flow<String?> = lastAlertMonthState
+        override val lastAlertLevel: Flow<String?> = lastAlertLevelState
 
         override suspend fun setAlertsEnabled(enabled: Boolean) {
             enabledState.value = enabled
@@ -649,6 +651,10 @@ class SettingsViewModelTest {
 
         override suspend fun setLastAlertMonth(yearMonth: String) {
             lastAlertMonthState.value = yearMonth
+        }
+
+        override suspend fun setLastAlertLevel(level: String) {
+            lastAlertLevelState.value = level
         }
     }
 

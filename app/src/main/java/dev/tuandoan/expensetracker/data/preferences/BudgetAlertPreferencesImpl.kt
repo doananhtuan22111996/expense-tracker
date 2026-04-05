@@ -34,8 +34,16 @@ class BudgetAlertPreferencesImpl
             context.budgetAlertDataStore.edit { it[KEY_LAST_ALERT_MONTH] = yearMonth }
         }
 
+        override val lastAlertLevel: Flow<String?> =
+            context.budgetAlertDataStore.data.map { it[KEY_LAST_ALERT_LEVEL] }
+
+        override suspend fun setLastAlertLevel(level: String) {
+            context.budgetAlertDataStore.edit { it[KEY_LAST_ALERT_LEVEL] = level }
+        }
+
         private companion object {
             val KEY_ALERTS_ENABLED = booleanPreferencesKey("alerts_enabled")
             val KEY_LAST_ALERT_MONTH = stringPreferencesKey("last_alert_month")
+            val KEY_LAST_ALERT_LEVEL = stringPreferencesKey("last_alert_level")
         }
     }
