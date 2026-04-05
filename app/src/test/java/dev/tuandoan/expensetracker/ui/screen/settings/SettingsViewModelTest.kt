@@ -7,6 +7,7 @@ import dev.tuandoan.expensetracker.core.util.UiText
 import dev.tuandoan.expensetracker.data.backup.BackupValidationError
 import dev.tuandoan.expensetracker.data.backup.BackupValidationException
 import dev.tuandoan.expensetracker.data.preferences.AnalyticsPreferences
+import dev.tuandoan.expensetracker.data.preferences.FakeBudgetAlertPreferences
 import dev.tuandoan.expensetracker.data.preferences.FakeThemePreferencesRepository
 import dev.tuandoan.expensetracker.data.preferences.ThemePreference
 import dev.tuandoan.expensetracker.domain.crash.NoOpCrashReporter
@@ -14,7 +15,6 @@ import dev.tuandoan.expensetracker.domain.model.RecurringTransaction
 import dev.tuandoan.expensetracker.domain.model.SupportedCurrencies
 import dev.tuandoan.expensetracker.domain.repository.BackupRepository
 import dev.tuandoan.expensetracker.domain.repository.BackupRestoreResult
-import dev.tuandoan.expensetracker.domain.repository.BudgetAlertPreferences
 import dev.tuandoan.expensetracker.domain.repository.RecurringTransactionRepository
 import dev.tuandoan.expensetracker.testutil.FakeCurrencyPreferenceRepository
 import dev.tuandoan.expensetracker.testutil.MainDispatcherRule
@@ -636,27 +636,6 @@ class SettingsViewModelTest {
             assertEquals(false, viewModel.budgetAlertsEnabled.value)
             collectJob.cancel()
         }
-
-    private class FakeBudgetAlertPreferences : BudgetAlertPreferences {
-        private val enabledState = MutableStateFlow(false)
-        private val lastAlertMonthState = MutableStateFlow<String?>(null)
-        private val lastAlertLevelState = MutableStateFlow<String?>(null)
-        override val alertsEnabled: Flow<Boolean> = enabledState
-        override val lastAlertMonth: Flow<String?> = lastAlertMonthState
-        override val lastAlertLevel: Flow<String?> = lastAlertLevelState
-
-        override suspend fun setAlertsEnabled(enabled: Boolean) {
-            enabledState.value = enabled
-        }
-
-        override suspend fun setLastAlertMonth(yearMonth: String) {
-            lastAlertMonthState.value = yearMonth
-        }
-
-        override suspend fun setLastAlertLevel(level: String) {
-            lastAlertLevelState.value = level
-        }
-    }
 
     private class FakeAnalyticsPreferences : AnalyticsPreferences {
         private val consentState = MutableStateFlow(false)
