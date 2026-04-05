@@ -13,6 +13,7 @@ import dev.tuandoan.expensetracker.domain.model.Category
 import dev.tuandoan.expensetracker.domain.model.SupportedCurrencies
 import dev.tuandoan.expensetracker.domain.model.Transaction
 import dev.tuandoan.expensetracker.domain.model.TransactionType
+import dev.tuandoan.expensetracker.domain.repository.BudgetAlertScheduler
 import dev.tuandoan.expensetracker.domain.repository.CategoryRepository
 import dev.tuandoan.expensetracker.domain.repository.CurrencyPreferenceRepository
 import dev.tuandoan.expensetracker.domain.repository.TransactionRepository
@@ -32,6 +33,7 @@ class AddEditTransactionViewModel
         private val categoryRepository: CategoryRepository,
         private val timeProvider: TimeProvider,
         private val currencyPreferenceRepository: CurrencyPreferenceRepository,
+        private val budgetAlertScheduler: BudgetAlertScheduler,
         savedStateHandle: SavedStateHandle,
     ) : ViewModel() {
         private val transactionId: Long = savedStateHandle.get<Long>("transactionId") ?: 0L
@@ -154,6 +156,7 @@ class AddEditTransactionViewModel
                             currencyCode = state.currencyCode,
                         )
                     }
+                    budgetAlertScheduler.scheduleImmediateCheck()
                     onSuccess()
                 } catch (e: Exception) {
                     _uiState.value =

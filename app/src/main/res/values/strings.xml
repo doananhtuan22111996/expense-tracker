@@ -137,6 +137,10 @@
     <string name="alert_rationale_body">Budget alerts notify you when your spending reaches 80% of your budget or goes over. You can turn them off anytime.</string>
     <string name="alert_rationale_open_settings">Open Settings</string>
     <string name="alert_rationale_not_now">Not now</string>
+    <string name="notification_budget_warning_title">Budget warning</string>
+    <string name="notification_budget_warning_body">You\'ve spent %1$s of your %2$s budget (%3$d%%)</string>
+    <string name="notification_budget_exceeded_title">Budget exceeded</string>
+    <string name="notification_budget_exceeded_body">You\'ve spent %1$s, exceeding your %2$s budget by %3$s</string>
     <string name="a11y_on">on</string>
     <string name="a11y_off">off</string>
     <string name="a11y_budget_alerts_toggle">Budget alerts, currently %1$s</string>

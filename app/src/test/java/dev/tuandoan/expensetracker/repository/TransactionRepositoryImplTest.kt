@@ -688,6 +688,11 @@ class TransactionRepositoryImplTest {
             currencyCode: String,
         ): List<MonthlyTotalRow> = monthlyTotalRows
 
+        override suspend fun getExpenseTotalsByCurrency(
+            from: Long,
+            to: Long,
+        ): List<CurrencySumRow> = emptyList()
+
         override suspend fun reassignCategory(
             fromId: Long,
             toId: Long,

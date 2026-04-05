@@ -91,6 +91,20 @@ interface TransactionDao {
         SELECT currency_code AS currencyCode, SUM(amount) AS total
         FROM transactions
         WHERE timestamp >= :from AND timestamp < :to
+        AND type = ${TransactionEntity.TYPE_EXPENSE}
+        GROUP BY currency_code
+    """,
+    )
+    suspend fun getExpenseTotalsByCurrency(
+        from: Long,
+        to: Long,
+    ): List<CurrencySumRow>
+
+    @Query(
+        """
+        SELECT currency_code AS currencyCode, SUM(amount) AS total
+        FROM transactions
+        WHERE timestamp >= :from AND timestamp < :to
         AND type = ${TransactionEntity.TYPE_INCOME}
         GROUP BY currency_code
     """,

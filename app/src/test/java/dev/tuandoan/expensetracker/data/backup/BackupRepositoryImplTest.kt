@@ -776,6 +776,11 @@ class BackupRepositoryImplTest {
             currencyCode: String,
         ): List<dev.tuandoan.expensetracker.data.database.entity.MonthlyTotalRow> = emptyList()
 
+        override suspend fun getExpenseTotalsByCurrency(
+            from: Long,
+            to: Long,
+        ): List<CurrencySumRow> = emptyList()
+
         override suspend fun reassignCategory(
             fromId: Long,
             toId: Long,

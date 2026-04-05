@@ -12,6 +12,7 @@ import dagger.hilt.android.HiltAndroidApp
 import dev.tuandoan.expensetracker.core.notification.NotificationHelper
 import dev.tuandoan.expensetracker.data.preferences.AnalyticsPreferences
 import dev.tuandoan.expensetracker.data.seed.SeedRepository
+import dev.tuandoan.expensetracker.data.worker.BudgetAlertWorker
 import dev.tuandoan.expensetracker.data.worker.RecurringTransactionWorker
 import dev.tuandoan.expensetracker.domain.crash.CrashReporter
 import kotlinx.coroutines.CoroutineScope
@@ -58,6 +59,7 @@ class ExpenseTrackerApplication :
         applicationScope.launch {
             seedRepository.seedDatabaseIfNeeded()
             scheduleRecurringWork()
+            scheduleBudgetAlertWork()
         }
 
         // Observe analytics consent and enable/disable crash reporting accordingly.
@@ -85,6 +87,27 @@ class ExpenseTrackerApplication :
             PeriodicWorkRequestBuilder<RecurringTransactionWorker>(1, TimeUnit.DAYS).build()
         workManager.enqueueUniquePeriodicWork(
             RecurringTransactionWorker.PERIODIC_WORK_NAME,
+            ExistingPeriodicWorkPolicy.KEEP,
+            periodicRequest,
+        )
+    }
+
+    private fun scheduleBudgetAlertWork() {
+        val workManager = WorkManager.getInstance(this)
+
+        // One-time check on startup
+        val oneTimeRequest = OneTimeWorkRequestBuilder<BudgetAlertWorker>().build()
+        workManager.enqueueUniqueWork(
+            BudgetAlertWorker.WORK_NAME,
+            ExistingWorkPolicy.REPLACE,
+            oneTimeRequest,
+        )
+
+        // Daily periodic check for budget thresholds
+        val periodicRequest =
+            PeriodicWorkRequestBuilder<BudgetAlertWorker>(1, TimeUnit.DAYS).build()
+        workManager.enqueueUniquePeriodicWork(
+            BudgetAlertWorker.PERIODIC_WORK_NAME,
             ExistingPeriodicWorkPolicy.KEEP,
             periodicRequest,
         )

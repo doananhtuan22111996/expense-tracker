@@ -9,6 +9,7 @@ import dev.tuandoan.expensetracker.domain.model.MonthlyBarPoint
 import dev.tuandoan.expensetracker.domain.model.MonthlySummary
 import dev.tuandoan.expensetracker.domain.model.Transaction
 import dev.tuandoan.expensetracker.domain.model.TransactionType
+import dev.tuandoan.expensetracker.domain.repository.BudgetAlertScheduler
 import dev.tuandoan.expensetracker.domain.repository.CategoryRepository
 import dev.tuandoan.expensetracker.domain.repository.TransactionRepository
 import dev.tuandoan.expensetracker.testutil.FakeCurrencyPreferenceRepository
@@ -38,6 +39,7 @@ class AddEditTransactionViewModelTest {
     private lateinit var fakeCategoryRepo: FakeCategoryRepository
     private lateinit var fakeTimeProvider: FakeTimeProvider
     private lateinit var fakeCurrencyPreferenceRepo: FakeCurrencyPreferenceRepository
+    private lateinit var fakeBudgetAlertScheduler: FakeBudgetAlertScheduler
 
     @Before
     fun setup() {
@@ -45,6 +47,7 @@ class AddEditTransactionViewModelTest {
         fakeCategoryRepo = FakeCategoryRepository()
         fakeTimeProvider = FakeTimeProvider(currentMillis = 1700000000000L)
         fakeCurrencyPreferenceRepo = FakeCurrencyPreferenceRepository()
+        fakeBudgetAlertScheduler = FakeBudgetAlertScheduler()
     }
 
     private fun createViewModel(transactionId: Long = 0L): AddEditTransactionViewModel {
@@ -54,6 +57,7 @@ class AddEditTransactionViewModelTest {
             fakeCategoryRepo,
             fakeTimeProvider,
             fakeCurrencyPreferenceRepo,
+            fakeBudgetAlertScheduler,
             savedStateHandle,
         )
     }
@@ -250,6 +254,7 @@ class AddEditTransactionViewModelTest {
 
             assertTrue(successCalled)
             assertTrue(fakeTransactionRepo.addCalled)
+            assertEquals(1, fakeBudgetAlertScheduler.scheduleCount)
         }
 
     @Test
@@ -268,6 +273,7 @@ class AddEditTransactionViewModelTest {
 
             assertTrue(successCalled)
             assertTrue(fakeTransactionRepo.updateCalled)
+            assertEquals(1, fakeBudgetAlertScheduler.scheduleCount)
         }
 
     @Test
@@ -627,5 +633,14 @@ class AddEditTransactionViewModelTest {
         override suspend fun deleteCategory(id: Long) {}
 
         override fun getCategoriesWithTransactionCount(): Flow<List<CategoryWithCount>> = flow { emit(emptyList()) }
+    }
+
+    private class FakeBudgetAlertScheduler : BudgetAlertScheduler {
+        var scheduleCount = 0
+            private set
+
+        override fun scheduleImmediateCheck() {
+            scheduleCount++
+        }
     }
 }

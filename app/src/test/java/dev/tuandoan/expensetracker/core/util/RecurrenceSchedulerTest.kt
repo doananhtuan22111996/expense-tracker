@@ -352,6 +352,11 @@ class RecurrenceSchedulerTest {
             currencyCode: String,
         ): List<MonthlyTotalRow> = emptyList()
 
+        override suspend fun getExpenseTotalsByCurrency(
+            from: Long,
+            to: Long,
+        ): List<CurrencySumRow> = emptyList()
+
         override suspend fun reassignCategory(
             fromId: Long,
             toId: Long,

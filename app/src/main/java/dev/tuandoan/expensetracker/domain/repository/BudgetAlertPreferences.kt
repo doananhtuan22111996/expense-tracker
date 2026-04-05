@@ -18,4 +18,10 @@ interface BudgetAlertPreferences {
 
     /** Updates the last alert month after sending a notification. */
     suspend fun setLastAlertMonth(yearMonth: String)
+
+    /** The highest alert level sent this month (e.g., "WARNING" or "OVER_BUDGET"). */
+    val lastAlertLevel: Flow<String?>
+
+    /** Updates the highest alert level sent after sending a notification. */
+    suspend fun setLastAlertLevel(level: String)
 }
