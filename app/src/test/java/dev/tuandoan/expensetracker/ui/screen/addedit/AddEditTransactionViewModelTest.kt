@@ -254,6 +254,7 @@ class AddEditTransactionViewModelTest {
 
             assertTrue(successCalled)
             assertTrue(fakeTransactionRepo.addCalled)
+            assertEquals(1, fakeBudgetAlertScheduler.scheduleCount)
         }
 
     @Test
@@ -272,6 +273,7 @@ class AddEditTransactionViewModelTest {
 
             assertTrue(successCalled)
             assertTrue(fakeTransactionRepo.updateCalled)
+            assertEquals(1, fakeBudgetAlertScheduler.scheduleCount)
         }
 
     @Test
