@@ -1,8 +1,12 @@
 package dev.tuandoan.expensetracker.ui.screen.settings
 
 import android.Manifest
+import android.app.Activity
 import android.content.ActivityNotFoundException
+import android.content.Context
+import android.content.ContextWrapper
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Build
 import android.provider.Settings
@@ -46,6 +50,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -58,7 +63,11 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
+import androidx.core.content.ContextCompat
 import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import dev.tuandoan.expensetracker.R
 import dev.tuandoan.expensetracker.core.util.AppInfo
@@ -88,7 +97,22 @@ fun SettingsScreen(
     var showCurrencyDialog by remember { mutableStateOf(false) }
     var showFeedbackSheet by remember { mutableStateOf(false) }
     var showPermissionRationale by remember { mutableStateOf(false) }
+    val context = LocalContext.current
+    var hasNotificationPermission by remember { mutableStateOf(checkNotificationPermission(context)) }
     val snackbarHostState = remember { SnackbarHostState() }
+
+    // Re-check permission when returning from system settings
+    val lifecycleOwner = LocalLifecycleOwner.current
+    DisposableEffect(lifecycleOwner) {
+        val observer =
+            LifecycleEventObserver { _, event ->
+                if (event == Lifecycle.Event.ON_RESUME) {
+                    hasNotificationPermission = checkNotificationPermission(context)
+                }
+            }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
+    }
 
     val exportLauncher =
         rememberLauncherForActivityResult(
@@ -115,13 +139,12 @@ fun SettingsScreen(
         rememberLauncherForActivityResult(
             contract = ActivityResultContracts.RequestPermission(),
         ) { granted ->
+            hasNotificationPermission = granted
             if (granted) {
                 viewModel.setBudgetAlertsEnabled(true)
             }
-            // If denied, toggle stays OFF — subtitle hints at permission needed
         }
 
-    val context = LocalContext.current
     LaunchedEffect(uiState.errorMessage) {
         uiState.errorMessage?.let {
             snackbarHostState.showSnackbar(it.asString(context))
@@ -346,22 +369,18 @@ fun SettingsScreen(
 
             // Notifications Section
             SettingsSection(title = stringResource(R.string.settings_notifications)) {
-                val hasPermission =
-                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                        androidx.core.content.ContextCompat.checkSelfPermission(
-                            context,
-                            Manifest.permission.POST_NOTIFICATIONS,
-                        ) == android.content.pm.PackageManager.PERMISSION_GRANTED
-                    } else {
-                        true
-                    }
                 val subtitleText =
-                    if (!hasPermission && !budgetAlertsEnabled) {
+                    if (!hasNotificationPermission && !budgetAlertsEnabled) {
                         stringResource(R.string.settings_budget_alerts_permission)
                     } else {
                         stringResource(R.string.settings_budget_alerts_subtitle)
                     }
-                val toggleStateLabel = if (budgetAlertsEnabled) "on" else "off"
+                val toggleStateLabel =
+                    if (budgetAlertsEnabled) {
+                        stringResource(R.string.a11y_on)
+                    } else {
+                        stringResource(R.string.a11y_off)
+                    }
                 val budgetAlertsA11y =
                     stringResource(R.string.a11y_budget_alerts_toggle, toggleStateLabel)
 
@@ -394,9 +413,10 @@ fun SettingsScreen(
                         checked = budgetAlertsEnabled,
                         onCheckedChange = { enabled ->
                             if (enabled) {
-                                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU && !hasPermission) {
-                                    // Check if we should show rationale (second denial)
-                                    val activity = context as? android.app.Activity
+                                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
+                                    !hasNotificationPermission
+                                ) {
+                                    val activity = context.findActivity()
                                     if (activity != null &&
                                         activity.shouldShowRequestPermissionRationale(
                                             Manifest.permission.POST_NOTIFICATIONS,
@@ -1035,4 +1055,23 @@ private fun BackupProgressBar(
             modifier = Modifier.padding(top = DesignSystemSpacing.xs),
         )
     }
+}
+
+private fun checkNotificationPermission(context: Context): Boolean =
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+        ContextCompat.checkSelfPermission(
+            context,
+            Manifest.permission.POST_NOTIFICATIONS,
+        ) == PackageManager.PERMISSION_GRANTED
+    } else {
+        true
+    }
+
+private fun Context.findActivity(): Activity? {
+    var current = this
+    while (current is ContextWrapper) {
+        if (current is Activity) return current
+        current = current.baseContext
+    }
+    return null
 }

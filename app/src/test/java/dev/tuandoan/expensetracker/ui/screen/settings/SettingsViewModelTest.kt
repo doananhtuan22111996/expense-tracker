@@ -582,6 +582,61 @@ class SettingsViewModelTest {
             collectJob.cancel()
         }
 
+    // --- Budget alerts tests ---
+
+    @Test
+    fun budgetAlertsEnabled_defaultsToFalse() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            val viewModel = createViewModel()
+
+            val collectJob =
+                backgroundScope.launch {
+                    viewModel.budgetAlertsEnabled.collect {}
+                }
+            advanceUntilIdle()
+
+            assertEquals(false, viewModel.budgetAlertsEnabled.value)
+            collectJob.cancel()
+        }
+
+    @Test
+    fun setBudgetAlertsEnabled_true_reflectsInStateFlow() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            val viewModel = createViewModel()
+
+            val collectJob =
+                backgroundScope.launch {
+                    viewModel.budgetAlertsEnabled.collect {}
+                }
+            advanceUntilIdle()
+
+            viewModel.setBudgetAlertsEnabled(true)
+            advanceUntilIdle()
+
+            assertEquals(true, viewModel.budgetAlertsEnabled.value)
+            collectJob.cancel()
+        }
+
+    @Test
+    fun setBudgetAlertsEnabled_false_reflectsInStateFlow() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            val viewModel = createViewModel()
+
+            val collectJob =
+                backgroundScope.launch {
+                    viewModel.budgetAlertsEnabled.collect {}
+                }
+            advanceUntilIdle()
+
+            viewModel.setBudgetAlertsEnabled(true)
+            advanceUntilIdle()
+            viewModel.setBudgetAlertsEnabled(false)
+            advanceUntilIdle()
+
+            assertEquals(false, viewModel.budgetAlertsEnabled.value)
+            collectJob.cancel()
+        }
+
     private class FakeBudgetAlertPreferences : BudgetAlertPreferences {
         private val enabledState = MutableStateFlow(false)
         private val lastAlertMonthState = MutableStateFlow<String?>(null)
