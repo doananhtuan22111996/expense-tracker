@@ -1,5 +1,6 @@
 package dev.tuandoan.expensetracker.ui.screen.home
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -13,12 +14,15 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.rounded.ArrowDownward
 import androidx.compose.material.icons.rounded.ArrowUpward
+import androidx.compose.material3.Badge
+import androidx.compose.material3.BadgedBox
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -28,13 +32,14 @@ import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarDuration
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.SnackbarResult
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextField
+import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -44,6 +49,9 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalHapticFeedback
@@ -80,6 +88,8 @@ fun HomeScreen(
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
     var showMonthPicker by remember { mutableStateOf(false) }
+    var isSearchActive by remember { mutableStateOf(false) }
+    val searchFocusRequester = remember { FocusRequester() }
     val context = LocalContext.current
 
     val transactionDeletedMsg = stringResource(R.string.transaction_deleted)
@@ -117,13 +127,62 @@ fun HomeScreen(
         )
     }
 
+    BackHandler(enabled = isSearchActive) {
+        viewModel.clearSearch()
+        isSearchActive = false
+    }
+
+    // Auto-focus search field when opened
+    LaunchedEffect(isSearchActive) {
+        if (isSearchActive) {
+            searchFocusRequester.requestFocus()
+        }
+    }
+
     val hapticFeedback = LocalHapticFeedback.current
     Scaffold(
         topBar = {
-            TopAppBar(
-                title = { Text(stringResource(R.string.app_name)) },
-                windowInsets = WindowInsets(0, 0, 0, 0),
-            )
+            if (isSearchActive) {
+                SearchTopBar(
+                    query = uiState.searchQuery,
+                    onQueryChanged = viewModel::onSearchQueryChanged,
+                    onClose = {
+                        viewModel.clearSearch()
+                        isSearchActive = false
+                    },
+                    onClear = viewModel::clearSearch,
+                    focusRequester = searchFocusRequester,
+                )
+            } else {
+                TopAppBar(
+                    title = { Text(stringResource(R.string.app_name)) },
+                    actions = {
+                        val searchDesc = stringResource(R.string.a11y_search_transactions)
+                        IconButton(
+                            onClick = { isSearchActive = true },
+                            modifier =
+                                Modifier.semantics {
+                                    contentDescription = searchDesc
+                                },
+                        ) {
+                            if (uiState.searchQuery.isNotEmpty()) {
+                                BadgedBox(badge = { Badge() }) {
+                                    Icon(
+                                        imageVector = Icons.Default.Search,
+                                        contentDescription = null,
+                                    )
+                                }
+                            } else {
+                                Icon(
+                                    imageVector = Icons.Default.Search,
+                                    contentDescription = null,
+                                )
+                            }
+                        }
+                    },
+                    windowInsets = WindowInsets(0, 0, 0, 0),
+                )
+            }
         },
         floatingActionButton = {
             FloatingActionButton(
@@ -155,14 +214,6 @@ fun HomeScreen(
                 onPreviousMonth = viewModel::goToPreviousMonth,
                 onNextMonth = viewModel::goToNextMonth,
                 onMonthLabelClick = { showMonthPicker = true },
-            )
-
-            // Search bar
-            SearchBar(
-                query = uiState.searchQuery,
-                onQueryChanged = viewModel::onSearchQueryChanged,
-                onClear = viewModel::clearSearch,
-                modifier = Modifier.padding(bottom = DesignSystemSpacing.small),
             )
 
             // Filter chips
@@ -494,40 +545,68 @@ private fun TransactionItem(
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun SearchBar(
+private fun SearchTopBar(
     query: String,
     onQueryChanged: (String) -> Unit,
+    onClose: () -> Unit,
     onClear: () -> Unit,
+    focusRequester: FocusRequester,
     modifier: Modifier = Modifier,
 ) {
-    val searchDesc = stringResource(R.string.a11y_search_transactions)
-    OutlinedTextField(
-        value = query,
-        onValueChange = onQueryChanged,
-        placeholder = { Text(stringResource(R.string.home_search_placeholder)) },
-        leadingIcon = {
-            Icon(
-                imageVector = Icons.Default.Search,
-                contentDescription = null,
+    TopAppBar(
+        title = {
+            TextField(
+                value = query,
+                onValueChange = onQueryChanged,
+                placeholder = {
+                    Text(
+                        stringResource(R.string.home_search_placeholder),
+                        style = MaterialTheme.typography.bodyLarge,
+                    )
+                },
+                trailingIcon = {
+                    if (query.isNotEmpty()) {
+                        IconButton(onClick = onClear) {
+                            Icon(
+                                imageVector = Icons.Default.Clear,
+                                contentDescription = stringResource(R.string.a11y_clear_search),
+                            )
+                        }
+                    }
+                },
+                singleLine = true,
+                colors =
+                    TextFieldDefaults.colors(
+                        focusedContainerColor = Color.Transparent,
+                        unfocusedContainerColor = Color.Transparent,
+                        focusedIndicatorColor = Color.Transparent,
+                        unfocusedIndicatorColor = Color.Transparent,
+                    ),
+                textStyle = MaterialTheme.typography.bodyLarge,
+                modifier =
+                    Modifier
+                        .fillMaxWidth()
+                        .focusRequester(focusRequester),
             )
         },
-        trailingIcon = {
-            if (query.isNotEmpty()) {
-                IconButton(onClick = onClear) {
-                    Icon(
-                        imageVector = Icons.Default.Clear,
-                        contentDescription = stringResource(R.string.a11y_clear_search),
-                    )
-                }
+        navigationIcon = {
+            val closeDesc = stringResource(R.string.a11y_close_search)
+            IconButton(
+                onClick = onClose,
+                modifier =
+                    Modifier.semantics {
+                        contentDescription = closeDesc
+                    },
+            ) {
+                Icon(
+                    imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                    contentDescription = null,
+                )
             }
         },
-        singleLine = true,
-        modifier =
-            modifier
-                .fillMaxWidth()
-                .semantics {
-                    contentDescription = searchDesc
-                },
+        windowInsets = WindowInsets(0, 0, 0, 0),
+        modifier = modifier,
     )
 }

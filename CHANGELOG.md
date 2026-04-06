@@ -3,6 +3,9 @@
 ## [Unreleased]
 
 ### Added
+- Collapsible search bar — search icon in AppBar with inline expanding search field, saving ~56dp vertical space
+- Badge dot on search icon when search query is active
+- BackHandler to close search bar on back press
 - Advanced search DAO query with nullable date range, category, and type filters (NULL bypass pattern)
 - SearchScope enum (CURRENT_MONTH / ALL_MONTHS) for cross-month transaction search
 - Category filter and search scope state in HomeViewModel with combine/flatMapLatest
@@ -24,6 +27,7 @@
 - All user-facing strings extracted to strings.xml across all screens, ViewModels, and components (~150+ strings)
 
 ### Changed
+- Search bar moved from standalone field to collapsible TopAppBar — SearchBar composable replaced by SearchTopBar
 - Form field order: Amount/Weight now first on all form screens for faster data entry
 - Discard dialog now shows in add mode (all 3 forms) when user has entered data, preventing accidental data loss
 - ErrorUtils.getErrorMessage() returns UiText instead of String for i18n support

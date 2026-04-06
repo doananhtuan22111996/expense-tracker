@@ -371,6 +371,7 @@
     <string name="a11y_delete_transaction_detail">Delete %1$s transaction of %2$s</string>
     <string name="a11y_clear_search">Clear search</string>
     <string name="a11y_search_transactions">Search transactions by note</string>
+    <string name="a11y_close_search">Close search</string>
 
     <!-- Accessibility: AddEditTransaction -->
     <string name="a11y_loading_details">Loading transaction details</string>
