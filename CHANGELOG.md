@@ -3,6 +3,13 @@
 ## [Unreleased]
 
 ### Added
+- All Months toggle chip in filter row for cross-month transaction search
+- CategoryFilterBottomSheet with grouped expense/income categories and radio selection
+- DateRangePicker dialog in ModalBottomSheet for custom date range filtering
+- Active filter bar with dismissible InputChips and clear-all action
+- Date range state in HomeUiState (dateRangeStart/dateRangeEnd) with ViewModel support
+- Category lists exposed from HomeViewModel via StateFlow for filter UI
+- Unit tests for filter logic: search scope, category selection, date range, clearAllFilters, activeFilterCount
 - Advanced search DAO query with nullable date range, category, and type filters (NULL bypass pattern)
 - SearchScope enum (CURRENT_MONTH / ALL_MONTHS) for cross-month transaction search
 - Category filter and search scope state in HomeViewModel with combine/flatMapLatest
@@ -24,6 +31,10 @@
 - All user-facing strings extracted to strings.xml across all screens, ViewModels, and components (~150+ strings)
 
 ### Changed
+- MonthSelector shows visual disabled state (alpha + disabled buttons) when All Months is active
+- Date range chip shows formatted date range when active instead of generic "Date range" label
+- CategoryFilterBottomSheet uses heightIn(max=400dp) instead of fixed height for better adaptiveness
+- Empty state now shows "no results" message when filters are active with no matches
 - Form field order: Amount/Weight now first on all form screens for faster data entry
 - Discard dialog now shows in add mode (all 3 forms) when user has entered data, preventing accidental data loss
 - ErrorUtils.getErrorMessage() returns UiText instead of String for i18n support
@@ -32,6 +43,9 @@
 - Unit tests updated to assert UiText types instead of raw strings (ErrorUtilsTest, AddEditTransactionViewModelTest, SettingsViewModelTest)
 
 ### Fixed
+- Date range re-selection when scope is already All Months now triggers re-query (was silently deduped by MutableStateFlow)
+- DateRangePicker prevents selecting future dates via SelectableDates constraint
+- Clearing "All months" scope badge now also clears date range to prevent inconsistent filter state
 - Large gap between Note field and keyboard on form screens — removed imePadding from bottomBar so keyboard naturally covers the save button
 - Budget error message uses string resource instead of hardcoded string
 - HomeViewModel retry() was a no-op due to MutableStateFlow same-value dedup; now uses counter-based retryTrigger

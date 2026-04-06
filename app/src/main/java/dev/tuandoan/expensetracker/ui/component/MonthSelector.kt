@@ -15,6 +15,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
@@ -30,6 +31,7 @@ fun MonthSelector(
     onPreviousMonth: () -> Unit,
     onNextMonth: () -> Unit,
     modifier: Modifier = Modifier,
+    enabled: Boolean = true,
     onMonthLabelClick: (() -> Unit)? = null,
     periodType: String = "month",
 ) {
@@ -42,16 +44,20 @@ fun MonthSelector(
             stringResource(R.string.a11y_selected_period, periodType, monthLabel)
         }
 
+    val alpha = if (enabled) 1f else DISABLED_ALPHA
+
     Row(
         modifier =
             modifier
                 .fillMaxWidth()
-                .padding(bottom = DesignSystemSpacing.large),
+                .padding(bottom = DesignSystemSpacing.large)
+                .alpha(alpha),
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically,
     ) {
         IconButton(
             onClick = onPreviousMonth,
+            enabled = enabled,
             modifier =
                 Modifier.semantics {
                     contentDescription = previousPeriodDesc
@@ -83,6 +89,7 @@ fun MonthSelector(
 
         IconButton(
             onClick = onNextMonth,
+            enabled = enabled,
             modifier =
                 Modifier.semantics {
                     contentDescription = nextPeriodDesc
@@ -95,3 +102,5 @@ fun MonthSelector(
         }
     }
 }
+
+private const val DISABLED_ALPHA = 0.38f

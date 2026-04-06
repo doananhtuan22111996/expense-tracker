@@ -276,6 +276,14 @@
     <string name="filter_all">All</string>
     <string name="filter_expenses">Expenses</string>
     <string name="filter_income">Income</string>
+    <string name="filter_all_months">All months</string>
+    <string name="filter_category">Category</string>
+    <string name="filter_category_all">All Categories</string>
+    <string name="filter_category_title">Filter by Category</string>
+    <string name="filter_date_range">Date range</string>
+    <string name="filter_date_range_title">Select Date Range</string>
+    <string name="filter_clear_all">Clear all</string>
+    <string name="filter_active_count">%1$d filters active</string>
 
     <!-- AddEditTransaction Screen -->
     <string name="add_transaction_title">Add Transaction</string>
@@ -371,6 +379,14 @@
     <string name="a11y_delete_transaction_detail">Delete %1$s transaction of %2$s</string>
     <string name="a11y_clear_search">Clear search</string>
     <string name="a11y_search_transactions">Search transactions by note</string>
+    <string name="a11y_all_months_selected">All months filter selected, showing transactions from all time</string>
+    <string name="a11y_all_months">Search across all months</string>
+    <string name="a11y_category_filter">Filter by category: %1$s</string>
+    <string name="a11y_clear_filter">Clear %1$s filter</string>
+    <string name="a11y_clear_all_filters">Clear all active filters</string>
+    <string name="a11y_date_range_filter">Date range: %1$s to %2$s</string>
+    <string name="a11y_open_category_filter">Open category filter</string>
+    <string name="a11y_open_date_range_filter">Open date range filter</string>
 
     <!-- Accessibility: AddEditTransaction -->
     <string name="a11y_loading_details">Loading transaction details</string>
