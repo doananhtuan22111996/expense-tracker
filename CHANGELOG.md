@@ -3,6 +3,12 @@
 ## [Unreleased]
 
 ### Added
+- All Months toggle chip in filter row for cross-month transaction search
+- CategoryFilterBottomSheet with grouped expense/income categories and radio selection
+- DateRangePicker dialog in ModalBottomSheet for custom date range filtering
+- Active filter bar with dismissible InputChips and clear-all action
+- Date range state in HomeUiState (dateRangeStart/dateRangeEnd) with ViewModel support
+- Category lists exposed from HomeViewModel via StateFlow for filter UI
 - Advanced search DAO query with nullable date range, category, and type filters (NULL bypass pattern)
 - SearchScope enum (CURRENT_MONTH / ALL_MONTHS) for cross-month transaction search
 - Category filter and search scope state in HomeViewModel with combine/flatMapLatest
@@ -24,6 +30,8 @@
 - All user-facing strings extracted to strings.xml across all screens, ViewModels, and components (~150+ strings)
 
 ### Changed
+- MonthSelector disabled when All Months search scope is active
+- Empty state now shows "no results" message when filters are active with no matches
 - Form field order: Amount/Weight now first on all form screens for faster data entry
 - Discard dialog now shows in add mode (all 3 forms) when user has entered data, preventing accidental data loss
 - ErrorUtils.getErrorMessage() returns UiText instead of String for i18n support
