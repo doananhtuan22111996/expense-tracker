@@ -611,6 +611,27 @@ class HomeViewModelTest {
         }
 
     @Test
+    fun onDateRangeSelected_whenScopeAlreadyAllMonths_stillTriggersReQuery() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            fakeRepository.transactionsToEmit = emptyList()
+            val viewModel = createViewModel()
+            advanceUntilIdle()
+
+            // Set scope to ALL_MONTHS first
+            viewModel.onSearchScopeChanged(SearchScope.ALL_MONTHS)
+            advanceUntilIdle()
+            fakeRepository.advancedSearchCalled = false
+
+            // Now select a date range — scope is already ALL_MONTHS
+            viewModel.onDateRangeSelected(1735689600000L, 1738281600000L)
+            advanceUntilIdle()
+
+            // Should still trigger a re-query via retryTrigger
+            assertTrue(fakeRepository.advancedSearchCalled)
+            assertNotNull(viewModel.uiState.value.dateRangeStart)
+        }
+
+    @Test
     fun clearAllFilters_resetsEverything() =
         runTest(mainDispatcherRule.testDispatcher) {
             fakeCategoryRepository.categoriesToReturn = listOf(TestData.expenseCategory)

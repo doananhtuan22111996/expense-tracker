@@ -192,8 +192,13 @@ class HomeViewModel
                     dateRangeStart = startDate,
                     dateRangeEnd = endDate,
                 )
-            // Date range implies ALL_MONTHS scope — triggers re-query via searchScopeFlow
-            onSearchScopeChanged(SearchScope.ALL_MONTHS)
+            // Date range implies ALL_MONTHS scope
+            if (searchScopeFlow.value == SearchScope.ALL_MONTHS) {
+                // Scope already ALL_MONTHS — MutableStateFlow deduplicates, so bump retryTrigger
+                retryTrigger.value++
+            } else {
+                onSearchScopeChanged(SearchScope.ALL_MONTHS)
+            }
         }
 
         fun clearDateRange() {

@@ -5,7 +5,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -65,7 +65,7 @@ fun CategoryFilterBottomSheet(
             )
 
             LazyColumn(
-                modifier = Modifier.height(SHEET_MAX_HEIGHT),
+                modifier = Modifier.heightIn(max = SHEET_MAX_HEIGHT),
             ) {
                 // All Categories option
                 item {

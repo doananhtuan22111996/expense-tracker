@@ -37,6 +37,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SelectableDates
 import androidx.compose.material3.SnackbarDuration
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
@@ -157,6 +158,13 @@ fun HomeScreen(
 
     val hapticFeedback = LocalHapticFeedback.current
     val isAllMonths = uiState.searchScope == SearchScope.ALL_MONTHS
+    val dateFormatter = remember { DateTimeFormatter.ofLocalizedDate(FormatStyle.SHORT) }
+    val formattedDateRange =
+        if (uiState.dateRangeStart != null && uiState.dateRangeEnd != null) {
+            "${dateFormatter.format(uiState.dateRangeStart)} – ${dateFormatter.format(uiState.dateRangeEnd)}"
+        } else {
+            null
+        }
     Scaffold(
         topBar = {
             TopAppBar(
@@ -191,18 +199,9 @@ fun HomeScreen(
             // Month selector — disabled when All Months is active
             MonthSelector(
                 monthLabel = uiState.monthLabel,
-                onPreviousMonth =
-                    if (isAllMonths) {
-                        {}
-                    } else {
-                        viewModel::goToPreviousMonth
-                    },
-                onNextMonth =
-                    if (isAllMonths) {
-                        {}
-                    } else {
-                        viewModel::goToNextMonth
-                    },
+                onPreviousMonth = viewModel::goToPreviousMonth,
+                onNextMonth = viewModel::goToNextMonth,
+                enabled = !isAllMonths,
                 onMonthLabelClick =
                     if (isAllMonths) {
                         null
@@ -229,6 +228,7 @@ fun HomeScreen(
                 selectedCategoryName = uiState.selectedCategoryName,
                 onDateRangeChipClick = { showDateRangePicker = true },
                 hasDateRange = uiState.dateRangeStart != null,
+                dateRangeLabel = formattedDateRange,
                 modifier = Modifier.padding(bottom = DesignSystemSpacing.small),
             )
 
@@ -236,7 +236,10 @@ fun HomeScreen(
             if (uiState.hasActiveFilters) {
                 ActiveFilterBar(
                     uiState = uiState,
-                    onClearScope = { viewModel.onSearchScopeChanged(SearchScope.CURRENT_MONTH) },
+                    onClearScope = {
+                        viewModel.onSearchScopeChanged(SearchScope.CURRENT_MONTH)
+                        viewModel.clearDateRange()
+                    },
                     onClearCategory = { viewModel.onCategorySelected(null) },
                     onClearDateRange = viewModel::clearDateRange,
                     onClearType = { viewModel.onFilterChanged(null) },
@@ -307,6 +310,7 @@ private fun FilterChipsRow(
     selectedCategoryName: String?,
     onDateRangeChipClick: () -> Unit,
     hasDateRange: Boolean,
+    dateRangeLabel: String? = null,
     modifier: Modifier = Modifier,
 ) {
     val hapticFeedback = LocalHapticFeedback.current
@@ -453,7 +457,12 @@ private fun FilterChipsRow(
         }
         // Date range filter
         item {
-            val dateRangeLabel = stringResource(R.string.filter_date_range)
+            val chipLabel =
+                if (hasDateRange && dateRangeLabel != null) {
+                    dateRangeLabel
+                } else {
+                    stringResource(R.string.filter_date_range)
+                }
             val dateRangeDesc = stringResource(R.string.a11y_open_date_range_filter)
             FilterChip(
                 selected = hasDateRange,
@@ -461,7 +470,7 @@ private fun FilterChipsRow(
                     hapticFeedback.performHapticFeedback(HapticFeedbackType.LongPress)
                     onDateRangeChipClick()
                 },
-                label = { Text(dateRangeLabel) },
+                label = { Text(chipLabel) },
                 modifier =
                     Modifier.semantics {
                         contentDescription = dateRangeDesc
@@ -568,7 +577,17 @@ private fun DateRangePickerSheet(
     onDismiss: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val dateRangePickerState = rememberDateRangePickerState()
+    val todayMillis =
+        remember {
+            System.currentTimeMillis()
+        }
+    val dateRangePickerState =
+        rememberDateRangePickerState(
+            selectableDates =
+                object : SelectableDates {
+                    override fun isSelectableDate(utcTimeMillis: Long): Boolean = utcTimeMillis <= todayMillis
+                },
+        )
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
 
     ModalBottomSheet(
