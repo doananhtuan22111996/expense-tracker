@@ -274,6 +274,14 @@ class CategoryRepositoryImplTest {
             from: Long,
             to: Long,
         ): List<CurrencySumRow> = emptyList()
+
+        override fun searchTransactionsAdvanced(
+            from: Long?,
+            to: Long?,
+            query: String,
+            type: Int?,
+            categoryId: Long?,
+        ): Flow<List<TransactionEntity>> = MutableStateFlow(emptyList())
     }
 
     private class FakeTransactionRunner : TransactionRunner {

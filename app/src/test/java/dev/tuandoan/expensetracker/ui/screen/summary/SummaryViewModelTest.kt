@@ -2,12 +2,15 @@ package dev.tuandoan.expensetracker.ui.screen.summary
 
 import dev.tuandoan.expensetracker.core.util.DateRangeCalculator
 import dev.tuandoan.expensetracker.domain.model.BudgetStatusLevel
+import dev.tuandoan.expensetracker.domain.model.Category
+import dev.tuandoan.expensetracker.domain.model.CategoryWithCount
 import dev.tuandoan.expensetracker.domain.model.CurrencyMonthlySummary
 import dev.tuandoan.expensetracker.domain.model.MonthlyBarPoint
 import dev.tuandoan.expensetracker.domain.model.MonthlySummary
 import dev.tuandoan.expensetracker.domain.model.Transaction
 import dev.tuandoan.expensetracker.domain.model.TransactionType
 import dev.tuandoan.expensetracker.domain.repository.BudgetPreferences
+import dev.tuandoan.expensetracker.domain.repository.CategoryRepository
 import dev.tuandoan.expensetracker.domain.repository.TransactionRepository
 import dev.tuandoan.expensetracker.testutil.FakeSelectedMonthRepository
 import dev.tuandoan.expensetracker.testutil.MainDispatcherRule
@@ -488,6 +491,7 @@ class SummaryViewModelTest {
                 HomeViewModel(
                     FakeTransactionRepository().also { it.summaryToEmit = TestData.sampleMonthlySummary },
                     fakeSelectedMonth,
+                    StubCategoryRepository(),
                     dateRangeCalculator,
                 )
             val summaryVm = createViewModel()
@@ -652,5 +656,37 @@ class SummaryViewModelTest {
                 ?: (1..12).map { MonthlyBarPoint(month = it, totalExpense = 0L) }
 
         var monthlyBarPointsToEmit: Map<String, List<MonthlyBarPoint>> = emptyMap()
+
+        override fun searchTransactionsAdvanced(
+            from: Long?,
+            to: Long?,
+            query: String,
+            filterType: TransactionType?,
+            categoryId: Long?,
+        ): Flow<List<Transaction>> = MutableStateFlow(emptyList())
+    }
+
+    private class StubCategoryRepository : CategoryRepository {
+        override fun observeCategories(type: TransactionType): Flow<List<Category>> = flow { emit(emptyList()) }
+
+        override suspend fun getCategory(id: Long): Category? = null
+
+        override suspend fun createCategory(
+            name: String,
+            type: TransactionType,
+            iconKey: String?,
+            colorKey: String?,
+        ): Long = 0L
+
+        override suspend fun updateCategory(
+            id: Long,
+            name: String,
+            iconKey: String?,
+            colorKey: String?,
+        ) {}
+
+        override suspend fun deleteCategory(id: Long) {}
+
+        override fun getCategoriesWithTransactionCount(): Flow<List<CategoryWithCount>> = flow { emit(emptyList()) }
     }
 }

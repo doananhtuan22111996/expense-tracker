@@ -6,8 +6,10 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import dev.tuandoan.expensetracker.core.util.DateRangeCalculator
 import dev.tuandoan.expensetracker.core.util.ErrorUtils
 import dev.tuandoan.expensetracker.core.util.UiText
+import dev.tuandoan.expensetracker.domain.model.SearchScope
 import dev.tuandoan.expensetracker.domain.model.Transaction
 import dev.tuandoan.expensetracker.domain.model.TransactionType
+import dev.tuandoan.expensetracker.domain.repository.CategoryRepository
 import dev.tuandoan.expensetracker.domain.repository.SelectedMonthRepository
 import dev.tuandoan.expensetracker.domain.repository.TransactionRepository
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -31,12 +33,15 @@ class HomeViewModel
     constructor(
         private val transactionRepository: TransactionRepository,
         private val selectedMonthRepository: SelectedMonthRepository,
+        private val categoryRepository: CategoryRepository,
         private val dateRangeCalculator: DateRangeCalculator,
     ) : ViewModel() {
         private val _uiState = MutableStateFlow(HomeUiState())
         val uiState: StateFlow<HomeUiState> = _uiState.asStateFlow()
         private val searchQueryFlow = MutableStateFlow("")
         private val filterFlow = MutableStateFlow<TransactionType?>(null)
+        private val searchScopeFlow = MutableStateFlow(SearchScope.CURRENT_MONTH)
+        private val selectedCategoryIdFlow = MutableStateFlow<Long?>(null)
         private val retryTrigger = MutableStateFlow(0)
 
         init {
@@ -46,50 +51,63 @@ class HomeViewModel
                     selectedMonthRepository.selectedMonth,
                     searchQueryFlow.debounce(SEARCH_DEBOUNCE_MS).distinctUntilChanged(),
                     filterFlow,
-                    retryTrigger,
-                ) { month, query, filter, _ ->
-                    Triple(month, query.trim(), filter)
-                }.flatMapLatest { (month, query, filter) ->
-                    _uiState.value =
-                        _uiState.value.copy(
-                            isLoading = true,
-                            isError = false,
-                            monthLabel = dateRangeCalculator.displayLabel(month),
-                        )
-
-                    val range = dateRangeCalculator.rangeOf(month)
-
-                    val sourceFlow =
-                        if (query.isEmpty()) {
-                            transactionRepository.observeTransactions(
-                                from = range.startMillis,
-                                to = range.endMillisExclusive,
-                                filterType = filter,
-                            )
-                        } else {
-                            transactionRepository.searchTransactions(
-                                from = range.startMillis,
-                                to = range.endMillisExclusive,
-                                query = query,
-                                filterType = filter,
-                            )
-                        }
-                    sourceFlow.catch { e ->
+                    searchScopeFlow,
+                    selectedCategoryIdFlow,
+                ) { month, query, filter, scope, categoryId ->
+                    FilterParams(month, query.trim(), filter, scope, categoryId)
+                }.combine(retryTrigger) { params, _ -> params }
+                    .flatMapLatest { params ->
                         _uiState.value =
                             _uiState.value.copy(
+                                isLoading = true,
+                                isError = false,
+                                monthLabel = dateRangeCalculator.displayLabel(params.month),
+                            )
+
+                        val range = dateRangeCalculator.rangeOf(params.month)
+                        val hasAdvancedFilters = params.scope == SearchScope.ALL_MONTHS || params.categoryId != null
+
+                        val sourceFlow =
+                            if (hasAdvancedFilters) {
+                                val from = if (params.scope == SearchScope.ALL_MONTHS) null else range.startMillis
+                                val to = if (params.scope == SearchScope.ALL_MONTHS) null else range.endMillisExclusive
+                                transactionRepository.searchTransactionsAdvanced(
+                                    from = from,
+                                    to = to,
+                                    query = params.query,
+                                    filterType = params.filter,
+                                    categoryId = params.categoryId,
+                                )
+                            } else if (params.query.isEmpty()) {
+                                transactionRepository.observeTransactions(
+                                    from = range.startMillis,
+                                    to = range.endMillisExclusive,
+                                    filterType = params.filter,
+                                )
+                            } else {
+                                transactionRepository.searchTransactions(
+                                    from = range.startMillis,
+                                    to = range.endMillisExclusive,
+                                    query = params.query,
+                                    filterType = params.filter,
+                                )
+                            }
+                        sourceFlow.catch { e ->
+                            _uiState.value =
+                                _uiState.value.copy(
+                                    isLoading = false,
+                                    isError = true,
+                                    errorMessage = ErrorUtils.getErrorMessage(e),
+                                )
+                        }
+                    }.collectLatest { transactions ->
+                        _uiState.value =
+                            _uiState.value.copy(
+                                transactions = transactions,
                                 isLoading = false,
-                                isError = true,
-                                errorMessage = ErrorUtils.getErrorMessage(e),
+                                isError = false,
                             )
                     }
-                }.collectLatest { transactions ->
-                    _uiState.value =
-                        _uiState.value.copy(
-                            transactions = transactions,
-                            isLoading = false,
-                            isError = false,
-                        )
-                }
             }
         }
 
@@ -105,6 +123,35 @@ class HomeViewModel
         fun onFilterChanged(filter: TransactionType?) {
             _uiState.value = _uiState.value.copy(filter = filter)
             filterFlow.value = filter
+        }
+
+        fun onSearchScopeChanged(scope: SearchScope) {
+            _uiState.value = _uiState.value.copy(searchScope = scope)
+            searchScopeFlow.value = scope
+        }
+
+        fun onCategorySelected(categoryId: Long?) {
+            selectedCategoryIdFlow.value = categoryId
+            if (categoryId == null) {
+                _uiState.value =
+                    _uiState.value.copy(
+                        selectedCategoryId = null,
+                        selectedCategoryName = null,
+                    )
+            } else {
+                _uiState.value = _uiState.value.copy(selectedCategoryId = categoryId)
+                viewModelScope.launch {
+                    val category = categoryRepository.getCategory(categoryId)
+                    _uiState.value = _uiState.value.copy(selectedCategoryName = category?.name)
+                }
+            }
+        }
+
+        fun clearAllFilters() {
+            onFilterChanged(null)
+            onSearchScopeChanged(SearchScope.CURRENT_MONTH)
+            onCategorySelected(null)
+            clearSearch()
         }
 
         fun goToPreviousMonth() {
@@ -173,6 +220,14 @@ class HomeViewModel
             retryTrigger.value++
         }
 
+        private data class FilterParams(
+            val month: YearMonth,
+            val query: String,
+            val filter: TransactionType?,
+            val scope: SearchScope,
+            val categoryId: Long?,
+        )
+
         companion object {
             const val SEARCH_DEBOUNCE_MS = 300L
         }
@@ -187,4 +242,16 @@ data class HomeUiState(
     val errorMessage: UiText? = null,
     val monthLabel: String = "",
     val lastDeletedTransaction: Transaction? = null,
-)
+    val searchScope: SearchScope = SearchScope.CURRENT_MONTH,
+    val selectedCategoryId: Long? = null,
+    val selectedCategoryName: String? = null,
+) {
+    val activeFilterCount: Int
+        get() {
+            var count = 0
+            if (filter != null) count++
+            if (searchScope == SearchScope.ALL_MONTHS) count++
+            if (selectedCategoryId != null) count++
+            return count
+        }
+}

@@ -3,6 +3,11 @@
 ## [Unreleased]
 
 ### Added
+- Advanced search DAO query with nullable date range, category, and type filters (NULL bypass pattern)
+- SearchScope enum (CURRENT_MONTH / ALL_MONTHS) for cross-month transaction search
+- Category filter and search scope state in HomeViewModel with combine/flatMapLatest
+- activeFilterCount, selectedCategoryName, selectedCategoryId, searchScope in HomeUiState
+- searchTransactionsAdvanced() in TransactionRepository interface and impl
 - Unit tests for BudgetAlertPreferences (defaults, read/write, overwrite)
 - Shared FakeBudgetAlertPreferences for reuse across test classes
 - Auto-focus amount/weight field on form open in add mode for faster input

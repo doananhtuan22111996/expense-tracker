@@ -120,6 +120,34 @@ class TransactionRepositoryImpl
                     }
                 }.flowOn(ioDispatcher)
 
+        override fun searchTransactionsAdvanced(
+            from: Long?,
+            to: Long?,
+            query: String,
+            filterType: TransactionType?,
+            categoryId: Long?,
+        ): Flow<List<Transaction>> =
+            transactionDao
+                .searchTransactionsAdvanced(
+                    from = from,
+                    to = to,
+                    query = if (query.isBlank()) "" else escapeLikeQuery(query),
+                    type = filterType?.toInt(),
+                    categoryId = categoryId,
+                ).combine(
+                    categoryDao
+                        .getCategories(TransactionType.EXPENSE.toInt())
+                        .combine(categoryDao.getCategories(TransactionType.INCOME.toInt())) { expense, income ->
+                            (expense + income).associateBy { it.id }
+                        },
+                ) { transactions, categoriesMap ->
+                    transactions.mapNotNull { transaction ->
+                        categoriesMap[transaction.categoryId]?.let { category ->
+                            transaction.toDomain(category.toDomain())
+                        }
+                    }
+                }.flowOn(ioDispatcher)
+
         override suspend fun getMonthlyExpenseTotals(
             from: Long,
             to: Long,
