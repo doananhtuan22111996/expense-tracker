@@ -5,6 +5,7 @@ import dev.tuandoan.expensetracker.domain.model.Category
 import dev.tuandoan.expensetracker.domain.model.CategoryWithCount
 import dev.tuandoan.expensetracker.domain.model.MonthlyBarPoint
 import dev.tuandoan.expensetracker.domain.model.MonthlySummary
+import dev.tuandoan.expensetracker.domain.model.SearchScope
 import dev.tuandoan.expensetracker.domain.model.Transaction
 import dev.tuandoan.expensetracker.domain.model.TransactionType
 import dev.tuandoan.expensetracker.domain.repository.CategoryRepository
@@ -15,6 +16,7 @@ import dev.tuandoan.expensetracker.testutil.TestData
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.advanceTimeBy
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
@@ -508,6 +510,177 @@ class HomeViewModelTest {
             assertEquals("Nov 2025", viewModel.uiState.value.monthLabel)
         }
 
+    // --- Search scope / category / date range filter tests ---
+
+    @Test
+    fun onSearchScopeChanged_allMonths_updatesState() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            fakeRepository.transactionsToEmit = emptyList()
+            val viewModel = createViewModel()
+            advanceUntilIdle()
+
+            viewModel.onSearchScopeChanged(SearchScope.ALL_MONTHS)
+            advanceUntilIdle()
+
+            assertEquals(SearchScope.ALL_MONTHS, viewModel.uiState.value.searchScope)
+        }
+
+    @Test
+    fun onSearchScopeChanged_allMonths_usesAdvancedSearch() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            fakeRepository.transactionsToEmit = emptyList()
+            val viewModel = createViewModel()
+            advanceUntilIdle()
+
+            fakeRepository.searchResultsToEmit = listOf(TestData.sampleExpenseTransaction)
+            viewModel.onSearchScopeChanged(SearchScope.ALL_MONTHS)
+            advanceUntilIdle()
+
+            assertTrue(fakeRepository.advancedSearchCalled)
+            assertNull(fakeRepository.lastAdvancedFrom)
+            assertNull(fakeRepository.lastAdvancedTo)
+        }
+
+    @Test
+    fun onCategorySelected_updatesStateWithName() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            fakeCategoryRepository.categoriesToReturn = listOf(TestData.expenseCategory)
+            fakeRepository.transactionsToEmit = emptyList()
+            val viewModel = createViewModel()
+            advanceUntilIdle()
+
+            viewModel.onCategorySelected(TestData.expenseCategory.id)
+            advanceUntilIdle()
+
+            assertEquals(TestData.expenseCategory.id, viewModel.uiState.value.selectedCategoryId)
+            assertEquals(TestData.expenseCategory.name, viewModel.uiState.value.selectedCategoryName)
+        }
+
+    @Test
+    fun onCategorySelected_null_clearsCategory() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            fakeCategoryRepository.categoriesToReturn = listOf(TestData.expenseCategory)
+            fakeRepository.transactionsToEmit = emptyList()
+            val viewModel = createViewModel()
+            advanceUntilIdle()
+
+            viewModel.onCategorySelected(TestData.expenseCategory.id)
+            advanceUntilIdle()
+
+            viewModel.onCategorySelected(null)
+            advanceUntilIdle()
+
+            assertNull(viewModel.uiState.value.selectedCategoryId)
+            assertNull(viewModel.uiState.value.selectedCategoryName)
+        }
+
+    @Test
+    fun onDateRangeSelected_setsDateRangeAndScope() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            fakeRepository.transactionsToEmit = emptyList()
+            val viewModel = createViewModel()
+            advanceUntilIdle()
+
+            // 2026-01-01 to 2026-01-31 in UTC millis
+            val startMillis = 1735689600000L // 2026-01-01T00:00:00Z
+            val endMillis = 1738281600000L // 2026-01-31T00:00:00Z
+            viewModel.onDateRangeSelected(startMillis, endMillis)
+            advanceUntilIdle()
+
+            assertNotNull(viewModel.uiState.value.dateRangeStart)
+            assertNotNull(viewModel.uiState.value.dateRangeEnd)
+            assertEquals(SearchScope.ALL_MONTHS, viewModel.uiState.value.searchScope)
+        }
+
+    @Test
+    fun clearDateRange_resetsDateRange() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            fakeRepository.transactionsToEmit = emptyList()
+            val viewModel = createViewModel()
+            advanceUntilIdle()
+
+            viewModel.onDateRangeSelected(1735689600000L, 1738281600000L)
+            advanceUntilIdle()
+            assertNotNull(viewModel.uiState.value.dateRangeStart)
+
+            viewModel.clearDateRange()
+            advanceUntilIdle()
+
+            assertNull(viewModel.uiState.value.dateRangeStart)
+            assertNull(viewModel.uiState.value.dateRangeEnd)
+        }
+
+    @Test
+    fun clearAllFilters_resetsEverything() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            fakeCategoryRepository.categoriesToReturn = listOf(TestData.expenseCategory)
+            fakeRepository.transactionsToEmit = emptyList()
+            val viewModel = createViewModel()
+            advanceUntilIdle()
+
+            // Set various filters
+            viewModel.onFilterChanged(TransactionType.EXPENSE)
+            viewModel.onSearchScopeChanged(SearchScope.ALL_MONTHS)
+            viewModel.onCategorySelected(TestData.expenseCategory.id)
+            viewModel.onSearchQueryChanged("test")
+            advanceUntilIdle()
+
+            viewModel.clearAllFilters()
+            advanceTimeBy(350)
+            advanceUntilIdle()
+
+            val state = viewModel.uiState.value
+            assertNull(state.filter)
+            assertEquals(SearchScope.CURRENT_MONTH, state.searchScope)
+            assertNull(state.selectedCategoryId)
+            assertNull(state.selectedCategoryName)
+            assertNull(state.dateRangeStart)
+            assertNull(state.dateRangeEnd)
+            assertEquals("", state.searchQuery)
+        }
+
+    @Test
+    fun activeFilterCount_multipleFilters() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            fakeRepository.transactionsToEmit = emptyList()
+            val viewModel = createViewModel()
+            advanceUntilIdle()
+
+            assertEquals(0, viewModel.uiState.value.activeFilterCount)
+            assertFalse(viewModel.uiState.value.hasActiveFilters)
+
+            viewModel.onFilterChanged(TransactionType.EXPENSE)
+            assertEquals(1, viewModel.uiState.value.activeFilterCount)
+            assertTrue(viewModel.uiState.value.hasActiveFilters)
+
+            viewModel.onSearchScopeChanged(SearchScope.ALL_MONTHS)
+            assertEquals(2, viewModel.uiState.value.activeFilterCount)
+
+            viewModel.onCategorySelected(1L)
+            advanceUntilIdle()
+            assertEquals(3, viewModel.uiState.value.activeFilterCount)
+        }
+
+    @Test
+    fun expenseCategories_emitsFromRepository() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            fakeCategoryRepository.categoriesToReturn =
+                listOf(TestData.expenseCategory, TestData.transportCategory)
+            val viewModel = createViewModel()
+
+            // Collect to trigger WhileSubscribed
+            val job =
+                backgroundScope.launch(mainDispatcherRule.testDispatcher) {
+                    viewModel.expenseCategories.collect {}
+                }
+            advanceUntilIdle()
+
+            val categories = viewModel.expenseCategories.value
+            assertEquals(2, categories.size)
+            assertEquals("Food", categories[0].name)
+            job.cancel()
+        }
+
     private class FakeTransactionRepository : TransactionRepository {
         var transactionsToEmit: List<Transaction> = emptyList()
         var searchResultsToEmit: List<Transaction> = emptyList()
@@ -517,6 +690,9 @@ class HomeViewModelTest {
         var lastObservedFrom: Long? = null
         var lastObservedTo: Long? = null
         var lastSearchQuery: String? = null
+        var advancedSearchCalled = false
+        var lastAdvancedFrom: Long? = null
+        var lastAdvancedTo: Long? = null
         val addedTransactions = mutableListOf<Map<String, Any?>>()
 
         override fun observeTransactions(
@@ -590,13 +766,19 @@ class HomeViewModelTest {
             query: String,
             filterType: TransactionType?,
             categoryId: Long?,
-        ): Flow<List<Transaction>> = flow { emit(searchResultsToEmit) }
+        ): Flow<List<Transaction>> {
+            advancedSearchCalled = true
+            lastAdvancedFrom = from
+            lastAdvancedTo = to
+            return flow { emit(searchResultsToEmit) }
+        }
     }
 
     private class FakeCategoryRepository : CategoryRepository {
         var categoriesToReturn: List<Category> = emptyList()
 
-        override fun observeCategories(type: TransactionType): Flow<List<Category>> = flow { emit(categoriesToReturn) }
+        override fun observeCategories(type: TransactionType): Flow<List<Category>> =
+            flow { emit(categoriesToReturn.filter { it.type == type }) }
 
         override suspend fun getCategory(id: Long): Category? = categoriesToReturn.find { it.id == id }
 
