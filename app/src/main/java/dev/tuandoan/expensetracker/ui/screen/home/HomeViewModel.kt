@@ -6,6 +6,7 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import dev.tuandoan.expensetracker.core.util.DateRangeCalculator
 import dev.tuandoan.expensetracker.core.util.ErrorUtils
 import dev.tuandoan.expensetracker.core.util.UiText
+import dev.tuandoan.expensetracker.domain.model.Category
 import dev.tuandoan.expensetracker.domain.model.SearchScope
 import dev.tuandoan.expensetracker.domain.model.Transaction
 import dev.tuandoan.expensetracker.domain.model.TransactionType
@@ -15,6 +16,7 @@ import dev.tuandoan.expensetracker.domain.repository.TransactionRepository
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.catch
@@ -23,8 +25,12 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import java.time.Instant
+import java.time.LocalDate
 import java.time.YearMonth
+import java.time.ZoneId
 import javax.inject.Inject
 
 @HiltViewModel
@@ -44,6 +50,18 @@ class HomeViewModel
         private val selectedCategoryIdFlow = MutableStateFlow<Long?>(null)
         private val retryTrigger = MutableStateFlow(0)
 
+        val expenseCategories: StateFlow<List<Category>> =
+            categoryRepository
+                .observeCategories(TransactionType.EXPENSE)
+                .catch { emit(emptyList()) }
+                .stateIn(viewModelScope, SharingStarted.WhileSubscribed(STOP_TIMEOUT_MS), emptyList())
+
+        val incomeCategories: StateFlow<List<Category>> =
+            categoryRepository
+                .observeCategories(TransactionType.INCOME)
+                .catch { emit(emptyList()) }
+                .stateIn(viewModelScope, SharingStarted.WhileSubscribed(STOP_TIMEOUT_MS), emptyList())
+
         init {
             @OptIn(FlowPreview::class, ExperimentalCoroutinesApi::class)
             viewModelScope.launch {
@@ -57,20 +75,35 @@ class HomeViewModel
                     FilterParams(month, query.trim(), filter, scope, categoryId)
                 }.combine(retryTrigger) { params, _ -> params }
                     .flatMapLatest { params ->
+                        val currentState = _uiState.value
                         _uiState.value =
-                            _uiState.value.copy(
+                            currentState.copy(
                                 isLoading = true,
                                 isError = false,
                                 monthLabel = dateRangeCalculator.displayLabel(params.month),
                             )
 
                         val range = dateRangeCalculator.rangeOf(params.month)
-                        val hasAdvancedFilters = params.scope == SearchScope.ALL_MONTHS || params.categoryId != null
+                        val dateRangeFrom = currentState.dateRangeStart?.let { dateToMillis(it) }
+                        val dateRangeTo = currentState.dateRangeEnd?.let { dateToEndOfDayMillis(it) }
+                        val hasDateRange = dateRangeFrom != null
+                        val hasAdvancedFilters =
+                            params.scope == SearchScope.ALL_MONTHS || params.categoryId != null || hasDateRange
 
                         val sourceFlow =
                             if (hasAdvancedFilters) {
-                                val from = if (params.scope == SearchScope.ALL_MONTHS) null else range.startMillis
-                                val to = if (params.scope == SearchScope.ALL_MONTHS) null else range.endMillisExclusive
+                                val from =
+                                    when {
+                                        hasDateRange -> dateRangeFrom
+                                        params.scope == SearchScope.ALL_MONTHS -> null
+                                        else -> range.startMillis
+                                    }
+                                val to =
+                                    when {
+                                        hasDateRange -> dateRangeTo
+                                        params.scope == SearchScope.ALL_MONTHS -> null
+                                        else -> range.endMillisExclusive
+                                    }
                                 transactionRepository.searchTransactionsAdvanced(
                                     from = from,
                                     to = to,
@@ -147,10 +180,42 @@ class HomeViewModel
             }
         }
 
+        fun onDateRangeSelected(
+            startMillis: Long,
+            endMillis: Long,
+        ) {
+            val zone = ZoneId.systemDefault()
+            val startDate = Instant.ofEpochMilli(startMillis).atZone(zone).toLocalDate()
+            val endDate = Instant.ofEpochMilli(endMillis).atZone(zone).toLocalDate()
+            _uiState.value =
+                _uiState.value.copy(
+                    dateRangeStart = startDate,
+                    dateRangeEnd = endDate,
+                )
+            // Date range implies ALL_MONTHS scope
+            if (searchScopeFlow.value == SearchScope.ALL_MONTHS) {
+                // Scope already ALL_MONTHS — MutableStateFlow deduplicates, so bump retryTrigger
+                retryTrigger.value++
+            } else {
+                onSearchScopeChanged(SearchScope.ALL_MONTHS)
+            }
+        }
+
+        fun clearDateRange() {
+            _uiState.value =
+                _uiState.value.copy(
+                    dateRangeStart = null,
+                    dateRangeEnd = null,
+                )
+            // Trigger re-query
+            retryTrigger.value++
+        }
+
         fun clearAllFilters() {
             onFilterChanged(null)
             onSearchScopeChanged(SearchScope.CURRENT_MONTH)
             onCategorySelected(null)
+            clearDateRange()
             clearSearch()
         }
 
@@ -220,6 +285,16 @@ class HomeViewModel
             retryTrigger.value++
         }
 
+        private fun dateToMillis(date: LocalDate): Long =
+            date.atStartOfDay(ZoneId.systemDefault()).toInstant().toEpochMilli()
+
+        private fun dateToEndOfDayMillis(date: LocalDate): Long =
+            date
+                .plusDays(1)
+                .atStartOfDay(ZoneId.systemDefault())
+                .toInstant()
+                .toEpochMilli()
+
         private data class FilterParams(
             val month: YearMonth,
             val query: String,
@@ -230,6 +305,7 @@ class HomeViewModel
 
         companion object {
             const val SEARCH_DEBOUNCE_MS = 300L
+            const val STOP_TIMEOUT_MS = 5000L
         }
     }
 
@@ -245,6 +321,8 @@ data class HomeUiState(
     val searchScope: SearchScope = SearchScope.CURRENT_MONTH,
     val selectedCategoryId: Long? = null,
     val selectedCategoryName: String? = null,
+    val dateRangeStart: LocalDate? = null,
+    val dateRangeEnd: LocalDate? = null,
 ) {
     val activeFilterCount: Int
         get() {
@@ -252,6 +330,10 @@ data class HomeUiState(
             if (filter != null) count++
             if (searchScope == SearchScope.ALL_MONTHS) count++
             if (selectedCategoryId != null) count++
+            if (dateRangeStart != null) count++
             return count
         }
+
+    val hasActiveFilters: Boolean
+        get() = activeFilterCount > 0
 }
