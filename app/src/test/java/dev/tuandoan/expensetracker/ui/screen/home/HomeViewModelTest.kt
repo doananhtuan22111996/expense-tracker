@@ -559,6 +559,48 @@ class HomeViewModelTest {
         }
 
     @Test
+    fun clearAllFilters_persistsCurrentMonthToPreferences() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            fakeSearchScopePreferences = FakeSearchScopePreferencesRepository(SearchScope.ALL_MONTHS)
+            fakeRepository.transactionsToEmit = emptyList()
+            val viewModel = createViewModel()
+            advanceUntilIdle()
+
+            viewModel.clearAllFilters()
+            advanceTimeBy(350)
+            advanceUntilIdle()
+
+            assertEquals(SearchScope.CURRENT_MONTH, fakeSearchScopePreferences.lastSetScope)
+            assertEquals(SearchScope.CURRENT_MONTH, viewModel.uiState.value.searchScope)
+        }
+
+    @Test
+    fun onDateRangeSelected_persistsAllMonthsScope() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            fakeRepository.transactionsToEmit = emptyList()
+            val viewModel = createViewModel()
+            advanceUntilIdle()
+
+            viewModel.onDateRangeSelected(1735689600000L, 1738281600000L)
+            advanceUntilIdle()
+
+            assertEquals(SearchScope.ALL_MONTHS, fakeSearchScopePreferences.lastSetScope)
+        }
+
+    @Test
+    fun init_restoredAllMonths_usesAdvancedSearch() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            fakeSearchScopePreferences = FakeSearchScopePreferencesRepository(SearchScope.ALL_MONTHS)
+            fakeRepository.transactionsToEmit = emptyList()
+            val viewModel = createViewModel()
+            advanceUntilIdle()
+
+            assertTrue(fakeRepository.advancedSearchCalled)
+            assertNull(fakeRepository.lastAdvancedFrom)
+            assertNull(fakeRepository.lastAdvancedTo)
+        }
+
+    @Test
     fun onSearchScopeChanged_allMonths_usesAdvancedSearch() =
         runTest(mainDispatcherRule.testDispatcher) {
             fakeRepository.transactionsToEmit = emptyList()
