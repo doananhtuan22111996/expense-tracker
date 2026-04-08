@@ -494,7 +494,7 @@ class SummaryViewModelTest {
                     StubCategoryRepository(),
                     dateRangeCalculator,
                     dev.tuandoan.expensetracker.testutil
-                        .FakeSearchScopePreferencesRepository(),
+                        .FakeSearchFilterPreferences(),
                 )
             val summaryVm = createViewModel()
             advanceUntilIdle()

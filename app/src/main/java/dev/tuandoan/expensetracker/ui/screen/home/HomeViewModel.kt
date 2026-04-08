@@ -6,12 +6,12 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import dev.tuandoan.expensetracker.core.util.DateRangeCalculator
 import dev.tuandoan.expensetracker.core.util.ErrorUtils
 import dev.tuandoan.expensetracker.core.util.UiText
-import dev.tuandoan.expensetracker.data.preferences.SearchScopePreferencesRepository
 import dev.tuandoan.expensetracker.domain.model.Category
 import dev.tuandoan.expensetracker.domain.model.SearchScope
 import dev.tuandoan.expensetracker.domain.model.Transaction
 import dev.tuandoan.expensetracker.domain.model.TransactionType
 import dev.tuandoan.expensetracker.domain.repository.CategoryRepository
+import dev.tuandoan.expensetracker.domain.repository.SearchFilterPreferences
 import dev.tuandoan.expensetracker.domain.repository.SelectedMonthRepository
 import dev.tuandoan.expensetracker.domain.repository.TransactionRepository
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -25,6 +25,7 @@ import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
@@ -42,7 +43,7 @@ class HomeViewModel
         private val selectedMonthRepository: SelectedMonthRepository,
         private val categoryRepository: CategoryRepository,
         private val dateRangeCalculator: DateRangeCalculator,
-        private val searchScopePreferencesRepository: SearchScopePreferencesRepository,
+        private val searchFilterPreferences: SearchFilterPreferences,
     ) : ViewModel() {
         private val _uiState = MutableStateFlow(HomeUiState())
         val uiState: StateFlow<HomeUiState> = _uiState.asStateFlow()
@@ -66,9 +67,33 @@ class HomeViewModel
 
         init {
             viewModelScope.launch {
-                searchScopePreferencesRepository.searchScope.collectLatest { scope ->
-                    searchScopeFlow.value = scope
-                    _uiState.value = _uiState.value.copy(searchScope = scope)
+                val scope = searchFilterPreferences.searchScope.first()
+                val type = searchFilterPreferences.filterType.first()
+                val catId = searchFilterPreferences.categoryId.first()
+                val startDay = searchFilterPreferences.dateRangeStartEpochDay.first()
+                val endDay = searchFilterPreferences.dateRangeEndEpochDay.first()
+
+                _uiState.value =
+                    _uiState.value.copy(
+                        searchScope = scope,
+                        filter = type,
+                        selectedCategoryId = catId,
+                        dateRangeStart = startDay?.let { LocalDate.ofEpochDay(it) },
+                        dateRangeEnd = endDay?.let { LocalDate.ofEpochDay(it) },
+                    )
+                searchScopeFlow.value = scope
+                filterFlow.value = type
+                selectedCategoryIdFlow.value = catId
+
+                if (catId != null) {
+                    val category = categoryRepository.getCategory(catId)
+                    if (category != null) {
+                        _uiState.value = _uiState.value.copy(selectedCategoryName = category.name)
+                    } else {
+                        selectedCategoryIdFlow.value = null
+                        _uiState.value = _uiState.value.copy(selectedCategoryId = null)
+                        searchFilterPreferences.setCategoryId(null)
+                    }
                 }
             }
 
@@ -165,18 +190,18 @@ class HomeViewModel
         fun onFilterChanged(filter: TransactionType?) {
             _uiState.value = _uiState.value.copy(filter = filter)
             filterFlow.value = filter
+            viewModelScope.launch { searchFilterPreferences.setFilterType(filter) }
         }
 
         fun onSearchScopeChanged(scope: SearchScope) {
             _uiState.value = _uiState.value.copy(searchScope = scope)
             searchScopeFlow.value = scope
-            viewModelScope.launch {
-                searchScopePreferencesRepository.setSearchScope(scope)
-            }
+            viewModelScope.launch { searchFilterPreferences.setSearchScope(scope) }
         }
 
         fun onCategorySelected(categoryId: Long?) {
             selectedCategoryIdFlow.value = categoryId
+            viewModelScope.launch { searchFilterPreferences.setCategoryId(categoryId) }
             if (categoryId == null) {
                 _uiState.value =
                     _uiState.value.copy(
@@ -204,6 +229,9 @@ class HomeViewModel
                     dateRangeStart = startDate,
                     dateRangeEnd = endDate,
                 )
+            viewModelScope.launch {
+                searchFilterPreferences.setDateRange(startDate.toEpochDay(), endDate.toEpochDay())
+            }
             // Date range implies ALL_MONTHS scope
             if (searchScopeFlow.value == SearchScope.ALL_MONTHS) {
                 // Scope already ALL_MONTHS — MutableStateFlow deduplicates, so bump retryTrigger
@@ -219,6 +247,7 @@ class HomeViewModel
                     dateRangeStart = null,
                     dateRangeEnd = null,
                 )
+            viewModelScope.launch { searchFilterPreferences.setDateRange(null, null) }
             // Trigger re-query
             retryTrigger.value++
         }
