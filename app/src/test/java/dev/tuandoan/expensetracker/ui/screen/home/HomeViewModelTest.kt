@@ -720,6 +720,98 @@ class HomeViewModelTest {
         }
 
     @Test
+    fun init_restoresAllPersistedFiltersCombined() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            fakeCategoryRepository.categoriesToReturn = listOf(TestData.expenseCategory)
+            fakeSearchFilterPreferences =
+                FakeSearchFilterPreferences(
+                    initialScope = SearchScope.ALL_MONTHS,
+                    initialFilterType = TransactionType.EXPENSE,
+                    initialCategoryId = TestData.expenseCategory.id,
+                    initialDateRangeStartEpochDay = LocalDate.of(2026, 1, 1).toEpochDay(),
+                    initialDateRangeEndEpochDay = LocalDate.of(2026, 1, 31).toEpochDay(),
+                )
+            fakeRepository.transactionsToEmit = emptyList()
+            val viewModel = createViewModel()
+            advanceUntilIdle()
+
+            val state = viewModel.uiState.value
+            assertEquals(SearchScope.ALL_MONTHS, state.searchScope)
+            assertEquals(TransactionType.EXPENSE, state.filter)
+            assertEquals(TestData.expenseCategory.id, state.selectedCategoryId)
+            assertEquals(TestData.expenseCategory.name, state.selectedCategoryName)
+            assertEquals(LocalDate.of(2026, 1, 1), state.dateRangeStart)
+            assertEquals(LocalDate.of(2026, 1, 31), state.dateRangeEnd)
+            assertEquals(4, state.activeFilterCount)
+        }
+
+    @Test
+    fun onFilterChanged_null_persistsNullFilterType() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            fakeSearchFilterPreferences =
+                FakeSearchFilterPreferences(initialFilterType = TransactionType.EXPENSE)
+            fakeRepository.transactionsToEmit = emptyList()
+            val viewModel = createViewModel()
+            advanceUntilIdle()
+
+            viewModel.onFilterChanged(null)
+            advanceUntilIdle()
+
+            assertTrue(fakeSearchFilterPreferences.setFilterTypeCalled)
+            assertNull(fakeSearchFilterPreferences.lastSetFilterType)
+        }
+
+    @Test
+    fun onCategorySelected_null_persistsNullCategoryId() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            fakeSearchFilterPreferences =
+                FakeSearchFilterPreferences(initialCategoryId = TestData.expenseCategory.id)
+            fakeRepository.transactionsToEmit = emptyList()
+            val viewModel = createViewModel()
+            advanceUntilIdle()
+
+            viewModel.onCategorySelected(null)
+            advanceUntilIdle()
+
+            assertTrue(fakeSearchFilterPreferences.setCategoryIdCalled)
+            assertNull(fakeSearchFilterPreferences.lastSetCategoryId)
+        }
+
+    @Test
+    fun init_restoredDateRange_usesDateBoundsInAdvancedSearch() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            fakeSearchFilterPreferences =
+                FakeSearchFilterPreferences(
+                    initialScope = SearchScope.ALL_MONTHS,
+                    initialDateRangeStartEpochDay = LocalDate.of(2026, 1, 1).toEpochDay(),
+                    initialDateRangeEndEpochDay = LocalDate.of(2026, 1, 31).toEpochDay(),
+                )
+            fakeRepository.transactionsToEmit = emptyList()
+            val viewModel = createViewModel()
+            advanceUntilIdle()
+
+            assertTrue(fakeRepository.advancedSearchCalled)
+            assertNotNull(fakeRepository.lastAdvancedFrom)
+            assertNotNull(fakeRepository.lastAdvancedTo)
+        }
+
+    @Test
+    fun init_noPersistedFilters_usesDefaults() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            fakeRepository.transactionsToEmit = emptyList()
+            val viewModel = createViewModel()
+            advanceUntilIdle()
+
+            val state = viewModel.uiState.value
+            assertEquals(SearchScope.CURRENT_MONTH, state.searchScope)
+            assertNull(state.filter)
+            assertNull(state.selectedCategoryId)
+            assertNull(state.dateRangeStart)
+            assertNull(state.dateRangeEnd)
+            assertEquals(0, state.activeFilterCount)
+        }
+
+    @Test
     fun onSearchScopeChanged_allMonths_usesAdvancedSearch() =
         runTest(mainDispatcherRule.testDispatcher) {
             fakeRepository.transactionsToEmit = emptyList()
