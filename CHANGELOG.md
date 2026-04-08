@@ -6,6 +6,7 @@
 - Collapsible search bar — search icon in AppBar with inline expanding search field, saving ~56dp vertical space
 - Badge dot on search icon when search query is active
 - BackHandler to close search bar on back press
+- Persist all search filter preferences (scope, transaction type, category, date range) across app restarts via DataStore
 - All Months toggle chip in filter row for cross-month transaction search
 - CategoryFilterBottomSheet with grouped expense/income categories and radio selection
 - DateRangePicker dialog in ModalBottomSheet for custom date range filtering

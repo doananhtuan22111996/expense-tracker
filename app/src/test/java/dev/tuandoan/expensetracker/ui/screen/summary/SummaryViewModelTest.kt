@@ -493,6 +493,8 @@ class SummaryViewModelTest {
                     fakeSelectedMonth,
                     StubCategoryRepository(),
                     dateRangeCalculator,
+                    dev.tuandoan.expensetracker.testutil
+                        .FakeSearchFilterPreferences(),
                 )
             val summaryVm = createViewModel()
             advanceUntilIdle()
