@@ -6,6 +6,7 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import dev.tuandoan.expensetracker.core.util.DateRangeCalculator
 import dev.tuandoan.expensetracker.core.util.ErrorUtils
 import dev.tuandoan.expensetracker.core.util.UiText
+import dev.tuandoan.expensetracker.data.preferences.SearchScopePreferencesRepository
 import dev.tuandoan.expensetracker.domain.model.Category
 import dev.tuandoan.expensetracker.domain.model.SearchScope
 import dev.tuandoan.expensetracker.domain.model.Transaction
@@ -41,6 +42,7 @@ class HomeViewModel
         private val selectedMonthRepository: SelectedMonthRepository,
         private val categoryRepository: CategoryRepository,
         private val dateRangeCalculator: DateRangeCalculator,
+        private val searchScopePreferencesRepository: SearchScopePreferencesRepository,
     ) : ViewModel() {
         private val _uiState = MutableStateFlow(HomeUiState())
         val uiState: StateFlow<HomeUiState> = _uiState.asStateFlow()
@@ -63,6 +65,13 @@ class HomeViewModel
                 .stateIn(viewModelScope, SharingStarted.WhileSubscribed(STOP_TIMEOUT_MS), emptyList())
 
         init {
+            viewModelScope.launch {
+                searchScopePreferencesRepository.searchScope.collectLatest { scope ->
+                    searchScopeFlow.value = scope
+                    _uiState.value = _uiState.value.copy(searchScope = scope)
+                }
+            }
+
             @OptIn(FlowPreview::class, ExperimentalCoroutinesApi::class)
             viewModelScope.launch {
                 combine(
@@ -161,6 +170,9 @@ class HomeViewModel
         fun onSearchScopeChanged(scope: SearchScope) {
             _uiState.value = _uiState.value.copy(searchScope = scope)
             searchScopeFlow.value = scope
+            viewModelScope.launch {
+                searchScopePreferencesRepository.setSearchScope(scope)
+            }
         }
 
         fun onCategorySelected(categoryId: Long?) {

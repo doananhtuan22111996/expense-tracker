@@ -14,6 +14,8 @@ import dev.tuandoan.expensetracker.data.database.TransactionRunner
 import dev.tuandoan.expensetracker.data.preferences.BudgetAlertPreferencesImpl
 import dev.tuandoan.expensetracker.data.preferences.BudgetPreferencesImpl
 import dev.tuandoan.expensetracker.data.preferences.CurrencyPreferenceRepositoryImpl
+import dev.tuandoan.expensetracker.data.preferences.SearchScopePreferencesRepository
+import dev.tuandoan.expensetracker.data.preferences.SearchScopePreferencesRepositoryImpl
 import dev.tuandoan.expensetracker.data.preferences.SelectedMonthRepositoryImpl
 import dev.tuandoan.expensetracker.data.worker.BudgetAlertSchedulerImpl
 import dev.tuandoan.expensetracker.domain.repository.BackupRepository
@@ -80,4 +82,9 @@ abstract class RepositoryModule {
 
     @Binds
     abstract fun bindBudgetAlertScheduler(budgetAlertSchedulerImpl: BudgetAlertSchedulerImpl): BudgetAlertScheduler
+
+    @Binds
+    abstract fun bindSearchScopePreferencesRepository(
+        searchScopePreferencesRepositoryImpl: SearchScopePreferencesRepositoryImpl,
+    ): SearchScopePreferencesRepository
 }

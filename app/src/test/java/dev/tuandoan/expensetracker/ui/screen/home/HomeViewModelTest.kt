@@ -10,6 +10,7 @@ import dev.tuandoan.expensetracker.domain.model.Transaction
 import dev.tuandoan.expensetracker.domain.model.TransactionType
 import dev.tuandoan.expensetracker.domain.repository.CategoryRepository
 import dev.tuandoan.expensetracker.domain.repository.TransactionRepository
+import dev.tuandoan.expensetracker.testutil.FakeSearchScopePreferencesRepository
 import dev.tuandoan.expensetracker.testutil.FakeSelectedMonthRepository
 import dev.tuandoan.expensetracker.testutil.MainDispatcherRule
 import dev.tuandoan.expensetracker.testutil.TestData
@@ -41,6 +42,7 @@ class HomeViewModelTest {
     private lateinit var fakeRepository: FakeTransactionRepository
     private lateinit var fakeCategoryRepository: FakeCategoryRepository
     private lateinit var fakeSelectedMonth: FakeSelectedMonthRepository
+    private lateinit var fakeSearchScopePreferences: FakeSearchScopePreferencesRepository
     private lateinit var dateRangeCalculator: DateRangeCalculator
 
     private val fixedZone: ZoneId = ZoneId.of("UTC")
@@ -53,11 +55,18 @@ class HomeViewModelTest {
         fakeRepository = FakeTransactionRepository()
         fakeCategoryRepository = FakeCategoryRepository()
         fakeSelectedMonth = FakeSelectedMonthRepository()
+        fakeSearchScopePreferences = FakeSearchScopePreferencesRepository()
         dateRangeCalculator = DateRangeCalculator(fixedClock, fixedZone)
     }
 
     private fun createViewModel(): HomeViewModel =
-        HomeViewModel(fakeRepository, fakeSelectedMonth, fakeCategoryRepository, dateRangeCalculator)
+        HomeViewModel(
+            fakeRepository,
+            fakeSelectedMonth,
+            fakeCategoryRepository,
+            dateRangeCalculator,
+            fakeSearchScopePreferences,
+        )
 
     @Test
     fun init_loadsTransactions() =
@@ -520,6 +529,30 @@ class HomeViewModelTest {
             advanceUntilIdle()
 
             viewModel.onSearchScopeChanged(SearchScope.ALL_MONTHS)
+            advanceUntilIdle()
+
+            assertEquals(SearchScope.ALL_MONTHS, viewModel.uiState.value.searchScope)
+        }
+
+    @Test
+    fun onSearchScopeChanged_persistsScopeToPreferences() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            fakeRepository.transactionsToEmit = emptyList()
+            val viewModel = createViewModel()
+            advanceUntilIdle()
+
+            viewModel.onSearchScopeChanged(SearchScope.ALL_MONTHS)
+            advanceUntilIdle()
+
+            assertEquals(SearchScope.ALL_MONTHS, fakeSearchScopePreferences.lastSetScope)
+        }
+
+    @Test
+    fun init_restoresPersistedSearchScope() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            fakeSearchScopePreferences = FakeSearchScopePreferencesRepository(SearchScope.ALL_MONTHS)
+            fakeRepository.transactionsToEmit = emptyList()
+            val viewModel = createViewModel()
             advanceUntilIdle()
 
             assertEquals(SearchScope.ALL_MONTHS, viewModel.uiState.value.searchScope)
