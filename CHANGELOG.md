@@ -3,6 +3,9 @@
 ## [Unreleased]
 
 ### Added
+- Collapsible search bar — search icon in AppBar with inline expanding search field, saving ~56dp vertical space
+- Badge dot on search icon when search query is active
+- BackHandler to close search bar on back press
 - All Months toggle chip in filter row for cross-month transaction search
 - CategoryFilterBottomSheet with grouped expense/income categories and radio selection
 - DateRangePicker dialog in ModalBottomSheet for custom date range filtering
@@ -31,6 +34,7 @@
 - All user-facing strings extracted to strings.xml across all screens, ViewModels, and components (~150+ strings)
 
 ### Changed
+- Search bar moved from standalone field to collapsible TopAppBar — SearchBar composable replaced by SearchTopBar
 - MonthSelector shows visual disabled state (alpha + disabled buttons) when All Months is active
 - Date range chip shows formatted date range when active instead of generic "Date range" label
 - CategoryFilterBottomSheet uses heightIn(max=400dp) instead of fixed height for better adaptiveness

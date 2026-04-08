@@ -379,6 +379,7 @@
     <string name="a11y_delete_transaction_detail">Delete %1$s transaction of %2$s</string>
     <string name="a11y_clear_search">Clear search</string>
     <string name="a11y_search_transactions">Search transactions by note</string>
+    <string name="a11y_close_search">Close search</string>
     <string name="a11y_all_months_selected">All months filter selected, showing transactions from all time</string>
     <string name="a11y_all_months">Search across all months</string>
     <string name="a11y_category_filter">Filter by category: %1$s</string>
