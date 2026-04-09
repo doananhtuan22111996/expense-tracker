@@ -11,6 +11,8 @@ import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
 
+private val ALL_MIGRATIONS = arrayOf(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6)
+
 /**
  * Instrumented tests that verify Room migrations preserve data across all
  * upgrade paths. Uses manual SQL to create old-version databases since
@@ -50,7 +52,7 @@ class MigrationTest {
         val db =
             Room
                 .databaseBuilder(context, AppDatabase::class.java, testDbName)
-                .addMigrations(MIGRATION_1_2)
+                .addMigrations(*ALL_MIGRATIONS)
                 .build()
 
         val cursor =
@@ -71,7 +73,7 @@ class MigrationTest {
         val db =
             Room
                 .databaseBuilder(context, AppDatabase::class.java, testDbName)
-                .addMigrations(MIGRATION_1_2)
+                .addMigrations(*ALL_MIGRATIONS)
                 .build()
 
         val cursor =
@@ -105,7 +107,7 @@ class MigrationTest {
         val db =
             Room
                 .databaseBuilder(context, AppDatabase::class.java, testDbName)
-                .addMigrations(MIGRATION_1_2)
+                .addMigrations(*ALL_MIGRATIONS)
                 .build()
 
         val cursor =
@@ -132,7 +134,7 @@ class MigrationTest {
         val db =
             Room
                 .databaseBuilder(context, AppDatabase::class.java, testDbName)
-                .addMigrations(MIGRATION_1_2)
+                .addMigrations(*ALL_MIGRATIONS)
                 .build()
 
         val cursor =
@@ -168,7 +170,7 @@ class MigrationTest {
         val db =
             Room
                 .databaseBuilder(context, AppDatabase::class.java, testDbName)
-                .addMigrations(MIGRATION_2_3)
+                .addMigrations(*ALL_MIGRATIONS)
                 .build()
 
         val cursor =
@@ -201,7 +203,7 @@ class MigrationTest {
         val db =
             Room
                 .databaseBuilder(context, AppDatabase::class.java, testDbName)
-                .addMigrations(MIGRATION_2_3)
+                .addMigrations(*ALL_MIGRATIONS)
                 .build()
 
         val cursor =
@@ -233,7 +235,7 @@ class MigrationTest {
         val db =
             Room
                 .databaseBuilder(context, AppDatabase::class.java, testDbName)
-                .addMigrations(MIGRATION_2_3)
+                .addMigrations(*ALL_MIGRATIONS)
                 .build()
 
         val cursor =
@@ -262,7 +264,7 @@ class MigrationTest {
         val db =
             Room
                 .databaseBuilder(context, AppDatabase::class.java, testDbName)
-                .addMigrations(MIGRATION_2_3)
+                .addMigrations(*ALL_MIGRATIONS)
                 .build()
 
         // Verify the migrated DB is queryable via raw SQL on Room's open helper
@@ -288,7 +290,7 @@ class MigrationTest {
         val db =
             Room
                 .databaseBuilder(context, AppDatabase::class.java, testDbName)
-                .addMigrations(MIGRATION_1_2, MIGRATION_2_3)
+                .addMigrations(*ALL_MIGRATIONS)
                 .build()
 
         val cursor =
@@ -323,7 +325,7 @@ class MigrationTest {
         val db =
             Room
                 .databaseBuilder(context, AppDatabase::class.java, testDbName)
-                .addMigrations(MIGRATION_1_2, MIGRATION_2_3)
+                .addMigrations(*ALL_MIGRATIONS)
                 .build()
 
         val cursor =
@@ -355,7 +357,7 @@ class MigrationTest {
         val db =
             Room
                 .databaseBuilder(context, AppDatabase::class.java, testDbName)
-                .addMigrations(MIGRATION_1_2, MIGRATION_2_3)
+                .addMigrations(*ALL_MIGRATIONS)
                 .build()
 
         val cursor =
@@ -388,7 +390,7 @@ class MigrationTest {
         val db =
             Room
                 .databaseBuilder(context, AppDatabase::class.java, testDbName)
-                .addMigrations(MIGRATION_1_2, MIGRATION_2_3)
+                .addMigrations(*ALL_MIGRATIONS)
                 .build()
 
         val cursor =
@@ -415,7 +417,7 @@ class MigrationTest {
         val db =
             Room
                 .databaseBuilder(context, AppDatabase::class.java, testDbName)
-                .addMigrations(MIGRATION_1_2, MIGRATION_2_3)
+                .addMigrations(*ALL_MIGRATIONS)
                 .build()
 
         // Verify the migrated DB is fully queryable after chained migration
