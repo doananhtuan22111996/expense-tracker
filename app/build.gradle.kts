@@ -20,7 +20,7 @@ android {
         minSdk = 26
         targetSdk = 36
         versionCode = Instant.now().epochSecond.toInt() // Epoch seconds: safe until 2038, always increasing
-        versionName = "3.4.0"
+        versionName = "3.5.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }

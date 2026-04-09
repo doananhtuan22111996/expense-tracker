@@ -1,0 +1,8 @@
+Mới trong v3.5:
+
+• Cảnh báo ngân sách: nhận thông báo khi chi tiêu đạt 80% hoặc vượt ngân sách
+• Tìm kiếm thông minh hơn: lọc theo danh mục, khoảng thời gian và loại giao dịch
+• Tìm kiếm xuyên tháng với nút "Tất cả tháng" mới
+• Bộ lọc tìm kiếm được lưu tự động giữa các phiên
+• Thanh tìm kiếm thu gọn giữ màn hình chính gọn gàng
+• Sửa 13 bài kiểm tra migration cơ sở dữ liệu và cải thiện độ ổn định
