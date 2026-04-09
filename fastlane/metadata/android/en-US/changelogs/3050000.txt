@@ -1,0 +1,8 @@
+What's new in v3.5:
+
+• Budget alerts: get notified when spending hits 80% or exceeds your budget
+• Smarter search: filter by category, date range, and transaction type
+• Search across all months with the new "All Months" toggle
+• Your search filters are saved automatically between sessions
+• Collapsible search bar keeps the home screen clean
+• Fixed 13 database migration tests and improved stability

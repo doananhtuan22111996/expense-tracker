@@ -1,30 +1,43 @@
 # Changelog
 
-## [Unreleased]
+## [3.5.0] - 2026-04-09
 
 ### Added
-- Collapsible search bar — search icon in AppBar with inline expanding search field, saving ~56dp vertical space
-- Badge dot on search icon when search query is active
-- BackHandler to close search bar on back press
-- Persist all search filter preferences (scope, transaction type, category, date range) across app restarts via DataStore
-- All Months toggle chip in filter row for cross-month transaction search
+- Budget alert notifications at 80% (warning) and 100% (over budget) thresholds via WorkManager
+- Budget alert preferences (enable/disable, warning threshold) with Settings UI toggle
+- POST_NOTIFICATIONS runtime permission for Android 13+ with rationale
+- Daily budget check worker with per-month dedup and immediate check on transaction save
+- Notification tap opens Home screen
+- Collapsible search bar in AppBar with badge dot when query is active
+- All Months toggle chip for cross-month transaction search
 - CategoryFilterBottomSheet with grouped expense/income categories and radio selection
 - DateRangePicker dialog in ModalBottomSheet for custom date range filtering
 - Active filter bar with dismissible InputChips and clear-all action
-- Date range state in HomeUiState (dateRangeStart/dateRangeEnd) with ViewModel support
-- Category lists exposed from HomeViewModel via StateFlow for filter UI
-- Unit tests for filter logic: search scope, category selection, date range, clearAllFilters, activeFilterCount
-- Instrumented Room in-memory DB tests for searchTransactionsAdvanced DAO query (12 tests covering all filter combinations)
+- Persist all search filter preferences (scope, type, category, date range) across app restarts via DataStore
+- Advanced search DAO query with nullable date range, category, and type filters (NULL bypass pattern)
+- SearchScope enum (CURRENT_MONTH / ALL_MONTHS) for cross-month search
+- searchTransactionsAdvanced() in TransactionRepository interface and impl
+- Stale category auto-cleanup when persisted category filter no longer exists
+- Instrumented Room in-memory DB tests for searchTransactionsAdvanced DAO query (12 tests)
+- Unit tests for BudgetAlertPreferences (defaults, read/write, overwrite) with shared fake
+- Unit tests for HomeViewModel filter persistence (18 tests)
+
+### Changed
+- Search bar moved from standalone field to collapsible TopAppBar — SearchBar composable replaced by SearchTopBar
+- MonthSelector shows visual disabled state (alpha + disabled buttons) when All Months is active
+- Date range chip shows formatted date range when active instead of generic "Date range" label
+- CategoryFilterBottomSheet uses heightIn(max=400dp) instead of fixed height for better adaptiveness
+- Empty state now shows "no results" message when filters are active with no matches
 
 ### Fixed
 - MigrationTest failures — all 13 tests now pass by providing full migration chain (v1→v6) to Room.databaseBuilder
-- Advanced search DAO query with nullable date range, category, and type filters (NULL bypass pattern)
-- SearchScope enum (CURRENT_MONTH / ALL_MONTHS) for cross-month transaction search
-- Category filter and search scope state in HomeViewModel with combine/flatMapLatest
-- activeFilterCount, selectedCategoryName, selectedCategoryId, searchScope in HomeUiState
-- searchTransactionsAdvanced() in TransactionRepository interface and impl
-- Unit tests for BudgetAlertPreferences (defaults, read/write, overwrite)
-- Shared FakeBudgetAlertPreferences for reuse across test classes
+- Date range re-selection when scope is already All Months now triggers re-query (was silently deduped by MutableStateFlow)
+- DateRangePicker prevents selecting future dates via SelectableDates constraint
+- Clearing "All months" scope badge now also clears date range to prevent inconsistent filter state
+
+## [3.4.0] - 2026-04-05
+
+### Added
 - Auto-focus amount/weight field on form open in add mode for faster input
 - Inline validation with error states on Amount field (Recurring) and Weight/Buy Price fields (Gold)
 - Loading state with spinner on Add/Edit Recurring Transaction screen
@@ -39,11 +52,6 @@
 - All user-facing strings extracted to strings.xml across all screens, ViewModels, and components (~150+ strings)
 
 ### Changed
-- Search bar moved from standalone field to collapsible TopAppBar — SearchBar composable replaced by SearchTopBar
-- MonthSelector shows visual disabled state (alpha + disabled buttons) when All Months is active
-- Date range chip shows formatted date range when active instead of generic "Date range" label
-- CategoryFilterBottomSheet uses heightIn(max=400dp) instead of fixed height for better adaptiveness
-- Empty state now shows "no results" message when filters are active with no matches
 - Form field order: Amount/Weight now first on all form screens for faster data entry
 - Discard dialog now shows in add mode (all 3 forms) when user has entered data, preventing accidental data loss
 - ErrorUtils.getErrorMessage() returns UiText instead of String for i18n support
@@ -52,9 +60,6 @@
 - Unit tests updated to assert UiText types instead of raw strings (ErrorUtilsTest, AddEditTransactionViewModelTest, SettingsViewModelTest)
 
 ### Fixed
-- Date range re-selection when scope is already All Months now triggers re-query (was silently deduped by MutableStateFlow)
-- DateRangePicker prevents selecting future dates via SelectableDates constraint
-- Clearing "All months" scope badge now also clears date range to prevent inconsistent filter state
 - Large gap between Note field and keyboard on form screens — removed imePadding from bottomBar so keyboard naturally covers the save button
 - Budget error message uses string resource instead of hardcoded string
 - HomeViewModel retry() was a no-op due to MutableStateFlow same-value dedup; now uses counter-based retryTrigger
