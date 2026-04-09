@@ -14,6 +14,7 @@
 - Date range state in HomeUiState (dateRangeStart/dateRangeEnd) with ViewModel support
 - Category lists exposed from HomeViewModel via StateFlow for filter UI
 - Unit tests for filter logic: search scope, category selection, date range, clearAllFilters, activeFilterCount
+- Instrumented Room in-memory DB tests for searchTransactionsAdvanced DAO query (12 tests covering all filter combinations)
 - Advanced search DAO query with nullable date range, category, and type filters (NULL bypass pattern)
 - SearchScope enum (CURRENT_MONTH / ALL_MONTHS) for cross-month transaction search
 - Category filter and search scope state in HomeViewModel with combine/flatMapLatest
