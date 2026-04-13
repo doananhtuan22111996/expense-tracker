@@ -11,7 +11,8 @@ import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
 
-private val ALL_MIGRATIONS = arrayOf(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6)
+private val ALL_MIGRATIONS =
+    arrayOf(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7)
 
 /**
  * Instrumented tests that verify Room migrations preserve data across all
@@ -437,6 +438,95 @@ class MigrationTest {
     }
 
     // ───────────────────────────────────────────────────────────
+    //  v6 → v7: adds buy_back_price_per_unit to gold_prices
+    // ───────────────────────────────────────────────────────────
+
+    @Test
+    fun migration6To7_addsColumnWithNullDefault() {
+        createV6Database()
+
+        val db =
+            Room
+                .databaseBuilder(context, AppDatabase::class.java, testDbName)
+                .addMigrations(*ALL_MIGRATIONS)
+                .build()
+
+        val cursor =
+            db.openHelper.readableDatabase.query("PRAGMA table_info(gold_prices)")
+
+        val columnNames = mutableListOf<String>()
+        while (cursor.moveToNext()) {
+            columnNames.add(cursor.getString(cursor.getColumnIndexOrThrow("name")))
+        }
+        cursor.close()
+
+        assertTrue(
+            "Expected buy_back_price_per_unit column. Found: $columnNames",
+            columnNames.contains("buy_back_price_per_unit"),
+        )
+
+        db.close()
+    }
+
+    @Test
+    fun migration6To7_preservesExistingPriceData() {
+        createV6Database()
+
+        val db =
+            Room
+                .databaseBuilder(context, AppDatabase::class.java, testDbName)
+                .addMigrations(*ALL_MIGRATIONS)
+                .build()
+
+        val cursor =
+            db.openHelper.readableDatabase.query(
+                "SELECT type, unit, price_per_unit, buy_back_price_per_unit, currency_code FROM gold_prices ORDER BY type",
+            )
+
+        assertEquals(1, cursor.count)
+
+        cursor.moveToFirst()
+        assertEquals("SJC", cursor.getString(cursor.getColumnIndexOrThrow("type")))
+        assertEquals("TAEL", cursor.getString(cursor.getColumnIndexOrThrow("unit")))
+        assertEquals(92_000_000L, cursor.getLong(cursor.getColumnIndexOrThrow("price_per_unit")))
+        assertTrue(
+            "buy_back_price_per_unit should be NULL for existing rows",
+            cursor.isNull(cursor.getColumnIndexOrThrow("buy_back_price_per_unit")),
+        )
+        assertEquals("VND", cursor.getString(cursor.getColumnIndexOrThrow("currency_code")))
+
+        cursor.close()
+        db.close()
+    }
+
+    @Test
+    fun migration6To7_preservesExistingHoldingData() {
+        createV6Database()
+
+        val db =
+            Room
+                .databaseBuilder(context, AppDatabase::class.java, testDbName)
+                .addMigrations(*ALL_MIGRATIONS)
+                .build()
+
+        val cursor =
+            db.openHelper.readableDatabase.query(
+                "SELECT id, type, weight_value, buy_price_per_unit FROM gold_holdings ORDER BY id",
+            )
+
+        assertEquals(1, cursor.count)
+
+        cursor.moveToFirst()
+        assertEquals(1L, cursor.getLong(cursor.getColumnIndexOrThrow("id")))
+        assertEquals("SJC", cursor.getString(cursor.getColumnIndexOrThrow("type")))
+        assertEquals(2.0, cursor.getDouble(cursor.getColumnIndexOrThrow("weight_value")), 0.001)
+        assertEquals(87_000_000L, cursor.getLong(cursor.getColumnIndexOrThrow("buy_price_per_unit")))
+
+        cursor.close()
+        db.close()
+    }
+
+    // ───────────────────────────────────────────────────────────
     //  Helper: create databases at specific versions
     // ───────────────────────────────────────────────────────────
 
@@ -580,6 +670,138 @@ class MigrationTest {
         )
 
         db.version = 2
+        db.close()
+    }
+
+    /**
+     * Creates a raw SQLite database matching the v6 schema (with gold tables).
+     * Inserts sample gold price and holding for migration validation.
+     */
+    private fun createV6Database() {
+        val db = context.openOrCreateDatabase(testDbName, 0, null)
+
+        db.execSQL(
+            """
+            CREATE TABLE IF NOT EXISTS categories (
+                id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                name TEXT NOT NULL,
+                type INTEGER NOT NULL,
+                icon_key TEXT,
+                color_key TEXT,
+                is_default INTEGER NOT NULL DEFAULT 0
+            )
+            """.trimIndent(),
+        )
+
+        db.execSQL(
+            """
+            CREATE TABLE IF NOT EXISTS transactions (
+                id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                type INTEGER NOT NULL,
+                amount INTEGER NOT NULL,
+                currency_code TEXT NOT NULL DEFAULT 'VND',
+                category_id INTEGER,
+                note TEXT,
+                timestamp INTEGER NOT NULL,
+                created_at INTEGER NOT NULL,
+                updated_at INTEGER NOT NULL,
+                FOREIGN KEY (category_id) REFERENCES categories(id) ON DELETE SET NULL
+            )
+            """.trimIndent(),
+        )
+
+        db.execSQL(
+            "CREATE INDEX IF NOT EXISTS `index_transactions_timestamp` ON `transactions` (`timestamp`)",
+        )
+        db.execSQL(
+            "CREATE INDEX IF NOT EXISTS `index_transactions_category_id` ON `transactions` (`category_id`)",
+        )
+
+        db.execSQL(
+            """
+            CREATE TABLE IF NOT EXISTS recurring_transactions (
+                id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                type INTEGER NOT NULL,
+                amount INTEGER NOT NULL,
+                currency_code TEXT NOT NULL DEFAULT 'VND',
+                category_id INTEGER,
+                note TEXT,
+                frequency INTEGER NOT NULL,
+                day_of_month INTEGER,
+                day_of_week INTEGER,
+                next_due_millis INTEGER NOT NULL,
+                is_active INTEGER NOT NULL DEFAULT 1,
+                created_at INTEGER NOT NULL,
+                updated_at INTEGER NOT NULL,
+                FOREIGN KEY (category_id) REFERENCES categories(id) ON DELETE SET NULL
+            )
+            """.trimIndent(),
+        )
+
+        db.execSQL(
+            """
+            CREATE TABLE IF NOT EXISTS gold_holdings (
+                id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                type TEXT NOT NULL,
+                weight_value REAL NOT NULL,
+                weight_unit TEXT NOT NULL,
+                buy_price_per_unit INTEGER NOT NULL,
+                currency_code TEXT NOT NULL DEFAULT 'VND',
+                buy_date_millis INTEGER NOT NULL,
+                note TEXT,
+                created_at INTEGER NOT NULL,
+                updated_at INTEGER NOT NULL
+            )
+            """.trimIndent(),
+        )
+        db.execSQL(
+            "CREATE INDEX IF NOT EXISTS `index_gold_holdings_buy_date_millis` ON `gold_holdings` (`buy_date_millis`)",
+        )
+
+        db.execSQL(
+            """
+            CREATE TABLE IF NOT EXISTS gold_prices (
+                type TEXT NOT NULL,
+                unit TEXT NOT NULL,
+                price_per_unit INTEGER NOT NULL,
+                currency_code TEXT NOT NULL DEFAULT 'VND',
+                updated_at INTEGER NOT NULL,
+                PRIMARY KEY (type, unit)
+            )
+            """.trimIndent(),
+        )
+
+        db.execSQL(
+            """
+            CREATE TABLE IF NOT EXISTS room_master_table (
+                id INTEGER PRIMARY KEY,
+                identity_hash TEXT
+            )
+            """.trimIndent(),
+        )
+
+        // Seed categories
+        db.execSQL(
+            "INSERT INTO categories (id, name, type, is_default) VALUES (1, 'Food', 0, 1)",
+        )
+
+        // Seed gold price
+        db.execSQL(
+            """
+            INSERT INTO gold_prices (type, unit, price_per_unit, currency_code, updated_at)
+            VALUES ('SJC', 'TAEL', 92000000, 'VND', 1700000000000)
+            """.trimIndent(),
+        )
+
+        // Seed gold holding
+        db.execSQL(
+            """
+            INSERT INTO gold_holdings (type, weight_value, weight_unit, buy_price_per_unit, currency_code, buy_date_millis, note, created_at, updated_at)
+            VALUES ('SJC', 2.0, 'TAEL', 87000000, 'VND', 1700000000000, NULL, 1700000000000, 1700000000000)
+            """.trimIndent(),
+        )
+
+        db.version = 6
         db.close()
     }
 }

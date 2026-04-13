@@ -171,6 +171,7 @@ object TestData {
             type = "SJC",
             unit = "TAEL",
             pricePerUnit = 92_000_000L,
+            buyBackPricePerUnit = null,
             currencyCode = "VND",
             updatedAt = FIXED_TIME,
         )

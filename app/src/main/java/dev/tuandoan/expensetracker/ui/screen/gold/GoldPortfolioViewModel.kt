@@ -108,7 +108,7 @@ class GoldPortfolioViewModel
                             GoldPrice(
                                 type = key.first,
                                 unit = key.second,
-                                pricePerUnit = amount,
+                                sellPricePerUnit = amount,
                                 currencyCode = currencyCode,
                             )
                         }
@@ -150,7 +150,7 @@ class GoldPortfolioViewModel
                     val currentPrice = priceMap[holding.type to holding.weightUnit]
                     GoldHoldingWithPnL(
                         holding = holding,
-                        currentPricePerUnit = currentPrice?.pricePerUnit,
+                        currentPricePerUnit = currentPrice?.sellPricePerUnit,
                     )
                 }
 
@@ -173,7 +173,7 @@ class GoldPortfolioViewModel
                     priceMap[combo] ?: GoldPrice(
                         type = combo.first,
                         unit = combo.second,
-                        pricePerUnit = 0L,
+                        sellPricePerUnit = 0L,
                         currencyCode = currencyCode,
                     )
                 }

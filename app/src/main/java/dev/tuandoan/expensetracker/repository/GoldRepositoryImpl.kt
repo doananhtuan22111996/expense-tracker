@@ -101,7 +101,8 @@ class GoldRepositoryImpl
             GoldPrice(
                 type = GoldType.fromString(type),
                 unit = GoldWeightUnit.fromString(unit),
-                pricePerUnit = pricePerUnit,
+                sellPricePerUnit = pricePerUnit,
+                buyBackPricePerUnit = buyBackPricePerUnit,
                 currencyCode = currencyCode,
                 updatedAt = updatedAt,
             )
@@ -110,7 +111,8 @@ class GoldRepositoryImpl
             GoldPriceEntity(
                 type = type.name,
                 unit = unit.name,
-                pricePerUnit = pricePerUnit,
+                pricePerUnit = sellPricePerUnit,
+                buyBackPricePerUnit = buyBackPricePerUnit,
                 currencyCode = currencyCode,
                 updatedAt = updatedAt,
             )
