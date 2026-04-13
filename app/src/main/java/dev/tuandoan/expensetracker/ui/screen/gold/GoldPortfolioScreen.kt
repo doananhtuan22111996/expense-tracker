@@ -419,9 +419,9 @@ private fun PortfolioSummaryCard(
     modifier: Modifier = Modifier,
 ) {
     val pnlColor =
-        FinancialColors.balanceColor(summary.totalPnL >= 0)
-    val pnlSign = if (summary.totalPnL >= 0) "+" else ""
-    val pnlPercentText = "$pnlSign%.1f%%".format(summary.pnLPercent)
+        FinancialColors.balanceColor(summary.marketPnL >= 0)
+    val pnlSign = if (summary.marketPnL >= 0) "+" else ""
+    val pnlPercentText = "$pnlSign%.1f%%".format(summary.marketPnLPercent)
 
     ElevatedCard(modifier = modifier) {
         Column(modifier = Modifier.padding(DesignSystemSpacing.large)) {
@@ -458,7 +458,7 @@ private fun PortfolioSummaryCard(
                     style = MaterialTheme.typography.bodyMedium,
                 )
                 AmountText(
-                    amount = summary.totalCurrentValue,
+                    amount = summary.totalMarketValue,
                     currencyCode = summary.currencyCode,
                     textStyle = MaterialTheme.typography.bodyMedium,
                 )
@@ -478,7 +478,7 @@ private fun PortfolioSummaryCard(
                     )
                     Spacer(Modifier.width(DesignSystemSpacing.small))
                     val pnlDesc =
-                        if (summary.totalPnL >= 0) {
+                        if (summary.marketPnL >= 0) {
                             stringResource(R.string.a11y_gold_profit)
                         } else {
                             stringResource(R.string.a11y_gold_loss)
@@ -496,7 +496,7 @@ private fun PortfolioSummaryCard(
                 }
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     AmountText(
-                        amount = summary.totalPnL,
+                        amount = summary.marketPnL,
                         currencyCode = summary.currencyCode,
                         showSign = true,
                         textStyle = MaterialTheme.typography.titleMedium,
@@ -616,10 +616,10 @@ private fun HoldingCard(
 
             Spacer(Modifier.height(DesignSystemSpacing.small))
 
-            if (holdingWithPnL.currentPricePerUnit != null) {
-                val currentValue = holdingWithPnL.currentValue ?: 0L
-                val pnl = holdingWithPnL.pnL ?: 0L
-                val pnlPercent = holdingWithPnL.pnLPercent ?: 0.0
+            if (holdingWithPnL.currentSellPricePerUnit != null) {
+                val currentValue = holdingWithPnL.marketValue ?: 0L
+                val pnl = holdingWithPnL.marketPnL ?: 0L
+                val pnlPercent = holdingWithPnL.marketPnLPercent ?: 0.0
 
                 // Row 3: Cost → Value
                 Text(
@@ -692,7 +692,7 @@ private fun HoldingCard(
 private fun UpdatePricesBottomSheet(
     currentPrices: List<GoldPrice>,
     currencyCode: String,
-    onSave: (Map<Pair<GoldType, GoldWeightUnit>, Long>) -> Unit,
+    onSave: (Map<Pair<GoldType, GoldWeightUnit>, PriceInput>) -> Unit,
     onDismiss: () -> Unit,
 ) {
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
@@ -759,8 +759,8 @@ private fun UpdatePricesBottomSheet(
                     val parsed =
                         priceInputs
                             .mapValues { (_, text) ->
-                                text.toLongOrNull() ?: 0L
-                            }.filter { it.value > 0 }
+                                PriceInput(sellPrice = text.toLongOrNull() ?: 0L)
+                            }.filter { it.value.sellPrice > 0 }
                     onSave(parsed)
                 },
                 modifier = Modifier.fillMaxWidth(),

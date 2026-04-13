@@ -68,11 +68,11 @@ class GoldPortfolioViewModelTest {
             assertFalse(state.isError)
             assertEquals(1, state.holdings.size)
             assertEquals(GoldType.SJC, state.holdings[0].holding.type)
-            assertEquals(90_000_000L, state.holdings[0].currentPricePerUnit)
+            assertEquals(90_000_000L, state.holdings[0].currentSellPricePerUnit)
             assertNotNull(state.summary)
             assertEquals(174_000_000L, state.summary!!.totalCost)
-            assertEquals(180_000_000L, state.summary!!.totalCurrentValue)
-            assertEquals(6_000_000L, state.summary!!.totalPnL)
+            assertEquals(180_000_000L, state.summary!!.totalMarketValue)
+            assertEquals(6_000_000L, state.summary!!.marketPnL)
             assertEquals("VND", state.currencyCode)
         }
 
@@ -99,7 +99,7 @@ class GoldPortfolioViewModelTest {
 
             val state = viewModel.uiState.value
             assertEquals(1, state.holdings.size)
-            assertNull(state.holdings[0].currentPricePerUnit)
+            assertNull(state.holdings[0].currentSellPricePerUnit)
             assertNull(state.summary)
             assertEquals(1, state.currentPrices.size)
             assertEquals(0L, state.currentPrices[0].sellPricePerUnit)
@@ -127,7 +127,7 @@ class GoldPortfolioViewModelTest {
                     testHolding(id = 1, weightValue = 2.0, buyPrice = 87_000_000L),
                     testHolding(id = 2, weightValue = 1.0, buyPrice = 85_000_000L),
                 )
-            fakeGoldRepository.pricesFlow.value = listOf(testPrice(pricePerUnit = 90_000_000L))
+            fakeGoldRepository.pricesFlow.value = listOf(testPrice(sellPrice = 90_000_000L))
 
             val viewModel = createViewModel()
             advanceUntilIdle()
@@ -138,7 +138,7 @@ class GoldPortfolioViewModelTest {
             // cost = (87M * 2) + (85M * 1) = 174M + 85M = 259M
             assertEquals(259_000_000L, state.summary!!.totalCost)
             // value = (90M * 2) + (90M * 1) = 180M + 90M = 270M
-            assertEquals(270_000_000L, state.summary!!.totalCurrentValue)
+            assertEquals(270_000_000L, state.summary!!.totalMarketValue)
         }
 
     @Test
@@ -152,7 +152,7 @@ class GoldPortfolioViewModelTest {
                 )
             fakeGoldRepository.pricesFlow.value =
                 listOf(
-                    testPrice(type = GoldType.SJC, unit = GoldWeightUnit.TAEL, pricePerUnit = 90_000_000L),
+                    testPrice(type = GoldType.SJC, unit = GoldWeightUnit.TAEL, sellPrice = 90_000_000L),
                 )
 
             val viewModel = createViewModel()
@@ -161,6 +161,56 @@ class GoldPortfolioViewModelTest {
             val state = viewModel.uiState.value
             // 2 distinct combos: SJC/TAEL and 24K/GRAM
             assertEquals(2, state.currentPrices.size)
+        }
+
+    // --- Buy-back price flow ---
+
+    @Test
+    fun init_loadsPortfolio_withBuyBackPrices() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            fakeGoldRepository.holdingsFlow.value = listOf(testHolding())
+            fakeGoldRepository.pricesFlow.value =
+                listOf(testPrice(sellPrice = 93_000_000L, buyBackPrice = 91_000_000L))
+
+            val viewModel = createViewModel()
+            advanceUntilIdle()
+
+            val state = viewModel.uiState.value
+            assertEquals(93_000_000L, state.holdings[0].currentSellPricePerUnit)
+            assertEquals(91_000_000L, state.holdings[0].currentBuyBackPricePerUnit)
+            assertNotNull(state.summary!!.totalLiquidationValue)
+            // market = 93M * 2 = 186M, liquidation = 91M * 2 = 182M
+            assertEquals(186_000_000L, state.summary!!.totalMarketValue)
+            assertEquals(182_000_000L, state.summary!!.totalLiquidationValue)
+        }
+
+    @Test
+    fun init_nullBuyBack_liquidationIsNull() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            fakeGoldRepository.holdingsFlow.value = listOf(testHolding())
+            fakeGoldRepository.pricesFlow.value = listOf(testPrice(sellPrice = 93_000_000L))
+
+            val viewModel = createViewModel()
+            advanceUntilIdle()
+
+            val state = viewModel.uiState.value
+            assertNull(state.holdings[0].currentBuyBackPricePerUnit)
+            assertNull(state.summary!!.totalLiquidationValue)
+        }
+
+    @Test
+    fun init_currentPrices_includesBuyBackPricePerUnit() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            fakeGoldRepository.holdingsFlow.value = listOf(testHolding())
+            fakeGoldRepository.pricesFlow.value =
+                listOf(testPrice(sellPrice = 93_000_000L, buyBackPrice = 91_000_000L))
+
+            val viewModel = createViewModel()
+            advanceUntilIdle()
+
+            val price = viewModel.uiState.value.currentPrices[0]
+            assertEquals(93_000_000L, price.sellPricePerUnit)
+            assertEquals(91_000_000L, price.buyBackPricePerUnit)
         }
 
     // --- Delete / Undo ---
@@ -281,7 +331,7 @@ class GoldPortfolioViewModelTest {
 
             val priceInputs =
                 mapOf(
-                    (GoldType.SJC to GoldWeightUnit.TAEL) to 92_000_000L,
+                    (GoldType.SJC to GoldWeightUnit.TAEL) to PriceInput(sellPrice = 92_000_000L),
                 )
             viewModel.savePrices(priceInputs)
             advanceUntilIdle()
@@ -289,7 +339,29 @@ class GoldPortfolioViewModelTest {
             assertTrue(viewModel.uiState.value.showPricesUpdated)
             assertEquals(1, fakeGoldRepository.upsertedPrices.size)
             assertEquals(92_000_000L, fakeGoldRepository.upsertedPrices[0].sellPricePerUnit)
+            assertNull(fakeGoldRepository.upsertedPrices[0].buyBackPricePerUnit)
             assertEquals("VND", fakeGoldRepository.upsertedPrices[0].currencyCode)
+        }
+
+    @Test
+    fun savePrices_withBuyBack_persistsBothPrices() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            fakeGoldRepository.holdingsFlow.value = listOf(testHolding())
+
+            val viewModel = createViewModel()
+            advanceUntilIdle()
+
+            val priceInputs =
+                mapOf(
+                    (GoldType.SJC to GoldWeightUnit.TAEL) to
+                        PriceInput(sellPrice = 93_000_000L, buyBackPrice = 91_000_000L),
+                )
+            viewModel.savePrices(priceInputs)
+            advanceUntilIdle()
+
+            assertTrue(viewModel.uiState.value.showPricesUpdated)
+            assertEquals(93_000_000L, fakeGoldRepository.upsertedPrices[0].sellPricePerUnit)
+            assertEquals(91_000_000L, fakeGoldRepository.upsertedPrices[0].buyBackPricePerUnit)
         }
 
     @Test
@@ -301,7 +373,11 @@ class GoldPortfolioViewModelTest {
             advanceUntilIdle()
 
             fakeGoldRepository.shouldThrowOnMutation = true
-            viewModel.savePrices(mapOf((GoldType.SJC to GoldWeightUnit.TAEL) to 90_000_000L))
+            viewModel.savePrices(
+                mapOf(
+                    (GoldType.SJC to GoldWeightUnit.TAEL) to PriceInput(sellPrice = 90_000_000L),
+                ),
+            )
             advanceUntilIdle()
 
             assertTrue(viewModel.uiState.value.isError)
@@ -316,7 +392,11 @@ class GoldPortfolioViewModelTest {
             val viewModel = createViewModel()
             advanceUntilIdle()
 
-            viewModel.savePrices(mapOf((GoldType.SJC to GoldWeightUnit.TAEL) to 90_000_000L))
+            viewModel.savePrices(
+                mapOf(
+                    (GoldType.SJC to GoldWeightUnit.TAEL) to PriceInput(sellPrice = 90_000_000L),
+                ),
+            )
             advanceUntilIdle()
             assertTrue(viewModel.uiState.value.showPricesUpdated)
 
@@ -346,11 +426,13 @@ class GoldPortfolioViewModelTest {
     private fun testPrice(
         type: GoldType = GoldType.SJC,
         unit: GoldWeightUnit = GoldWeightUnit.TAEL,
-        pricePerUnit: Long = 90_000_000L,
+        sellPrice: Long = 90_000_000L,
+        buyBackPrice: Long? = null,
     ) = GoldPrice(
         type = type,
         unit = unit,
-        sellPricePerUnit = pricePerUnit,
+        sellPricePerUnit = sellPrice,
+        buyBackPricePerUnit = buyBackPrice,
         currencyCode = "VND",
     )
 

@@ -7,11 +7,20 @@
 - `buyBackPricePerUnit` field on `GoldPriceEntity`, `GoldPrice` domain model, `BackupGoldPriceDto`, and mappers
 - String resources for dealer sell/buy-back price labels, market/liquidation value, and accessibility descriptions
 - Instrumented migration tests for v6→v7 (column existence, null default, data preservation)
+- `GoldHoldingWithPnL`: `liquidationValue`, `liquidationPnL`, `liquidationPnLPercent` computed properties based on buy-back price
+- `GoldPortfolioSummary`: `totalLiquidationValue`, `liquidationPnL`, `liquidationPnLPercent` for portfolio-level liquidation P&L
+- `PriceInput` data class for dual sell/buy-back price input in `savePrices()`
+- Unit tests for dual P&L (market + liquidation) on `GoldPortfolioSummaryTest` (12 tests) and `GoldPortfolioViewModelTest` (18 tests)
 
 ### Changed
 - `GoldPrice.pricePerUnit` renamed to `sellPricePerUnit` for clarity (entity column name unchanged)
 - `BackupGoldPriceMapper` maps new `buyBackPricePerUnit` field bidirectionally
 - Backup import backward compatible: old JSON without `buy_back_price_per_unit` defaults to null
+- `GoldHoldingWithPnL.currentPricePerUnit` renamed to `currentSellPricePerUnit`, added `currentBuyBackPricePerUnit`
+- `GoldHoldingWithPnL`: `currentValue`/`pnL`/`pnLPercent` renamed to `marketValue`/`marketPnL`/`marketPnLPercent`
+- `GoldPortfolioSummary.totalCurrentValue` renamed to `totalMarketValue`, `totalPnL`/`pnLPercent` renamed to `marketPnL`/`marketPnLPercent`
+- `GoldPortfolioViewModel.savePrices()` accepts `Map<Pair, PriceInput>` instead of `Map<Pair, Long>` for dual-price support
+- `buildPortfolioState()` passes buy-back prices through to `GoldHoldingWithPnL` and computes `totalLiquidationValue`
 
 ## [3.5.0] - 2026-04-09
 

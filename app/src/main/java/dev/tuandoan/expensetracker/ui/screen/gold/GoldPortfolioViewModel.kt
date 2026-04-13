@@ -99,16 +99,17 @@ class GoldPortfolioViewModel
             _uiState.value = _uiState.value.copy(lastDeletedHolding = null)
         }
 
-        fun savePrices(priceInputs: Map<Pair<GoldType, GoldWeightUnit>, Long>) {
+        fun savePrices(priceInputs: Map<Pair<GoldType, GoldWeightUnit>, PriceInput>) {
             viewModelScope.launch {
                 try {
                     val currencyCode = currencyPreferenceRepository.getDefaultCurrency()
                     val prices =
-                        priceInputs.map { (key, amount) ->
+                        priceInputs.map { (key, input) ->
                             GoldPrice(
                                 type = key.first,
                                 unit = key.second,
-                                sellPricePerUnit = amount,
+                                sellPricePerUnit = input.sellPrice,
+                                buyBackPricePerUnit = input.buyBackPrice,
                                 currencyCode = currencyCode,
                             )
                         }
@@ -150,16 +151,24 @@ class GoldPortfolioViewModel
                     val currentPrice = priceMap[holding.type to holding.weightUnit]
                     GoldHoldingWithPnL(
                         holding = holding,
-                        currentPricePerUnit = currentPrice?.sellPricePerUnit,
+                        currentSellPricePerUnit = currentPrice?.sellPricePerUnit,
+                        currentBuyBackPricePerUnit = currentPrice?.buyBackPricePerUnit,
                     )
                 }
 
-            val holdingsWithPrice = holdingsWithPnL.filter { it.currentPricePerUnit != null }
+            val holdingsWithPrice = holdingsWithPnL.filter { it.currentSellPricePerUnit != null }
             val summary =
                 if (holdingsWithPrice.isNotEmpty()) {
+                    val totalLiquidation =
+                        if (holdingsWithPrice.any { it.currentBuyBackPricePerUnit != null }) {
+                            holdingsWithPrice.sumOf { it.liquidationValue ?: it.marketValue ?: 0L }
+                        } else {
+                            null
+                        }
                     GoldPortfolioSummary(
                         totalCost = holdingsWithPrice.sumOf { it.totalCost },
-                        totalCurrentValue = holdingsWithPrice.sumOf { it.currentValue ?: 0L },
+                        totalMarketValue = holdingsWithPrice.sumOf { it.marketValue ?: 0L },
+                        totalLiquidationValue = totalLiquidation,
                         currencyCode = currencyCode,
                     )
                 } else {
@@ -188,6 +197,11 @@ class GoldPortfolioViewModel
             )
         }
     }
+
+data class PriceInput(
+    val sellPrice: Long,
+    val buyBackPrice: Long? = null,
+)
 
 data class GoldPortfolioUiState(
     val holdings: List<GoldHoldingWithPnL> = emptyList(),
