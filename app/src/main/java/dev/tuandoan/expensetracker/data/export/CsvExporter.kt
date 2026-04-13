@@ -87,31 +87,39 @@ class CsvExporter
             val rows =
                 holdings.mapNotNull { h ->
                     val price = priceMap[h.type to h.weightUnit] ?: return@mapNotNull null
+                    val marketValue = (price.pricePerUnit * h.weightValue).toLong()
+                    val liquidationValue = price.buyBackPricePerUnit?.let { (it * h.weightValue).toLong() }
                     GoldSummaryRow(
                         type = h.type,
                         unit = h.weightUnit,
                         weight = h.weightValue,
                         buyPrice = h.buyPricePerUnit,
                         currentPrice = price.pricePerUnit,
+                        buyBackPrice = price.buyBackPricePerUnit,
                         currencyCode = h.currencyCode,
                         cost = (h.buyPricePerUnit * h.weightValue).toLong(),
-                        value = (price.pricePerUnit * h.weightValue).toLong(),
+                        marketValue = marketValue,
+                        liquidationValue = liquidationValue,
                     )
                 }
             if (rows.isEmpty()) return
 
             writer.newLine()
-            writer.write("Type,Unit,Weight,Buy Price,Current Price,Currency,Cost,Value,P&L")
+            writer.write(
+                "Type,Unit,Weight,Buy Price,Current Price,Buy-Back Price,Currency,Cost,Market Value,Liquidation Value,P&L",
+            )
             writer.newLine()
 
             for (r in rows) {
                 val buyPrice = formatPlainAmount(r.buyPrice, r.currencyCode)
                 val currentPrice = formatPlainAmount(r.currentPrice, r.currencyCode)
+                val buyBackPrice = r.buyBackPrice?.let { formatPlainAmount(it, r.currencyCode) } ?: ""
                 val cost = formatPlainAmount(r.cost, r.currencyCode)
-                val value = formatPlainAmount(r.value, r.currencyCode)
-                val pnl = formatPlainAmount(r.value - r.cost, r.currencyCode)
+                val marketValue = formatPlainAmount(r.marketValue, r.currencyCode)
+                val liquidationValue = r.liquidationValue?.let { formatPlainAmount(it, r.currencyCode) } ?: ""
+                val pnl = formatPlainAmount((r.liquidationValue ?: r.marketValue) - r.cost, r.currencyCode)
                 writer.write(
-                    "${r.type},${r.unit},${r.weight},$buyPrice,$currentPrice,${r.currencyCode},$cost,$value,$pnl",
+                    "${r.type},${r.unit},${r.weight},$buyPrice,$currentPrice,$buyBackPrice,${r.currencyCode},$cost,$marketValue,$liquidationValue,$pnl",
                 )
                 writer.newLine()
             }
@@ -153,7 +161,9 @@ internal data class GoldSummaryRow(
     val weight: Double,
     val buyPrice: Long,
     val currentPrice: Long,
+    val buyBackPrice: Long?,
     val currencyCode: String,
     val cost: Long,
-    val value: Long,
+    val marketValue: Long,
+    val liquidationValue: Long?,
 )

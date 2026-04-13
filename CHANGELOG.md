@@ -18,6 +18,9 @@
 - Holding cards show liquidation-based P&L when buy-back price is set, market-based P&L as fallback
 - Estimated P&L indicator (`~` prefix + muted color) on holding cards when buy-back price is missing
 - Current prices section shows buy-back prices alongside sell prices
+- CSV gold P&L summary: Buy-Back Price, Market Value, and Liquidation Value columns
+- Unit tests for backup import backward compat: old JSON without `buy_back_price_per_unit` defaults to null
+- Unit test for round-trip gold price serialization with `buyBackPricePerUnit`
 
 ### Changed
 - `GoldPrice.pricePerUnit` renamed to `sellPricePerUnit` for clarity (entity column name unchanged)
@@ -31,6 +34,7 @@
 - `UpdatePricesBottomSheet` refactored from single-field to dual-field layout with `sellInputs` and `buyBackInputs` state maps
 - `PortfolioSummaryCard` "Current Value" label changed to "Market Value"; shows liquidation P&L as primary when available with market P&L as secondary
 - `HoldingCard` P&L display uses liquidation value when buy-back price exists, falls back to market value with `~` estimated indicator
+- CSV gold summary header: `Value` → `Market Value`, added `Buy-Back Price` and `Liquidation Value` columns; P&L uses liquidation when available
 
 ## [3.5.0] - 2026-04-09
 
