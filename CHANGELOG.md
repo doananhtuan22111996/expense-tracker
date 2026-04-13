@@ -14,6 +14,10 @@
 - Dual-input `UpdatePricesBottomSheet`: separate sell price and buy-back price fields per gold type/unit
 - Inline cross-field validation: buy-back price cannot exceed sell price, with real-time error feedback
 - Pre-populates existing buy-back prices from current price data
+- Portfolio summary card shows Market Value + Liquidation Value (when buy-back prices exist) with dual P&L display
+- Holding cards show liquidation-based P&L when buy-back price is set, market-based P&L as fallback
+- Estimated P&L indicator (`~` prefix + muted color) on holding cards when buy-back price is missing
+- Current prices section shows buy-back prices alongside sell prices
 
 ### Changed
 - `GoldPrice.pricePerUnit` renamed to `sellPricePerUnit` for clarity (entity column name unchanged)
@@ -25,6 +29,8 @@
 - `GoldPortfolioViewModel.savePrices()` accepts `Map<Pair, PriceInput>` instead of `Map<Pair, Long>` for dual-price support
 - `buildPortfolioState()` passes buy-back prices through to `GoldHoldingWithPnL` and computes `totalLiquidationValue`
 - `UpdatePricesBottomSheet` refactored from single-field to dual-field layout with `sellInputs` and `buyBackInputs` state maps
+- `PortfolioSummaryCard` "Current Value" label changed to "Market Value"; shows liquidation P&L as primary when available with market P&L as secondary
+- `HoldingCard` P&L display uses liquidation value when buy-back price exists, falls back to market value with `~` estimated indicator
 
 ## [3.5.0] - 2026-04-09
 

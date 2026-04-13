@@ -355,28 +355,55 @@ private fun GoldPortfolioContent(
                                         ),
                                 )
                             }
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.SpaceBetween,
-                            ) {
-                                Text(
-                                    text =
-                                        "${goldTypeLabel(price.type)} / ${goldUnitLabel(price.unit)}",
-                                    style = MaterialTheme.typography.bodyMedium,
-                                )
-                                if (price.sellPricePerUnit > 0) {
-                                    AmountText(
-                                        amount = price.sellPricePerUnit,
-                                        currencyCode = price.currencyCode,
-                                        textStyle = MaterialTheme.typography.bodyMedium,
-                                        fontWeight = FontWeight.Medium,
-                                    )
-                                } else {
+                            Column {
+                                // Sell price row
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                ) {
                                     Text(
-                                        text = "—",
+                                        text =
+                                            "${goldTypeLabel(price.type)} / ${goldUnitLabel(price.unit)}",
                                         style = MaterialTheme.typography.bodyMedium,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                                     )
+                                    if (price.sellPricePerUnit > 0) {
+                                        AmountText(
+                                            amount = price.sellPricePerUnit,
+                                            currencyCode = price.currencyCode,
+                                            textStyle = MaterialTheme.typography.bodyMedium,
+                                            fontWeight = FontWeight.Medium,
+                                        )
+                                    } else {
+                                        Text(
+                                            text = "—",
+                                            style = MaterialTheme.typography.bodyMedium,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        )
+                                    }
+                                }
+                                // Buy-back price row
+                                val buyBack = price.buyBackPricePerUnit
+                                if (buyBack != null && buyBack > 0) {
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        horizontalArrangement = Arrangement.SpaceBetween,
+                                    ) {
+                                        Text(
+                                            text =
+                                                stringResource(
+                                                    R.string.gold_dealer_buyback_price,
+                                                    goldTypeLabel(price.type),
+                                                    goldUnitLabel(price.unit),
+                                                ),
+                                            style = MaterialTheme.typography.bodySmall,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        )
+                                        AmountText(
+                                            amount = buyBack,
+                                            currencyCode = price.currencyCode,
+                                            textStyle = MaterialTheme.typography.bodySmall,
+                                        )
+                                    }
                                 }
                             }
                         }
@@ -418,10 +445,12 @@ private fun PortfolioSummaryCard(
     summary: GoldPortfolioSummary,
     modifier: Modifier = Modifier,
 ) {
-    val pnlColor =
-        FinancialColors.balanceColor(summary.marketPnL >= 0)
-    val pnlSign = if (summary.marketPnL >= 0) "+" else ""
-    val pnlPercentText = "$pnlSign%.1f%%".format(summary.marketPnLPercent)
+    val hasLiquidation = summary.totalLiquidationValue != null
+    val primaryPnL = if (hasLiquidation) summary.liquidationPnL!! else summary.marketPnL
+    val primaryPercent = if (hasLiquidation) summary.liquidationPnLPercent!! else summary.marketPnLPercent
+    val primaryColor = FinancialColors.balanceColor(primaryPnL >= 0)
+    val primarySign = if (primaryPnL >= 0) "+" else ""
+    val primaryPercentText = "$primarySign%.1f%%".format(primaryPercent)
 
     ElevatedCard(modifier = modifier) {
         Column(modifier = Modifier.padding(DesignSystemSpacing.large)) {
@@ -432,6 +461,7 @@ private fun PortfolioSummaryCard(
             )
             Spacer(Modifier.height(DesignSystemSpacing.medium))
 
+            // Total Cost
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -449,12 +479,13 @@ private fun PortfolioSummaryCard(
 
             Spacer(Modifier.height(DesignSystemSpacing.xs))
 
+            // Market Value
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
             ) {
                 Text(
-                    stringResource(R.string.gold_current_value),
+                    stringResource(R.string.gold_market_value),
                     style = MaterialTheme.typography.bodyMedium,
                 )
                 AmountText(
@@ -464,8 +495,30 @@ private fun PortfolioSummaryCard(
                 )
             }
 
+            // Liquidation Value (only when buy-back prices exist)
+            if (hasLiquidation) {
+                Spacer(Modifier.height(DesignSystemSpacing.xs))
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                ) {
+                    Text(
+                        stringResource(R.string.gold_liquidation_value),
+                        style = MaterialTheme.typography.bodyMedium,
+                        fontWeight = FontWeight.Medium,
+                    )
+                    AmountText(
+                        amount = summary.totalLiquidationValue!!,
+                        currencyCode = summary.currencyCode,
+                        textStyle = MaterialTheme.typography.bodyMedium,
+                        fontWeight = FontWeight.Medium,
+                    )
+                }
+            }
+
             HorizontalDivider(modifier = Modifier.padding(vertical = DesignSystemSpacing.small))
 
+            // Primary P&L (liquidation if available, market otherwise)
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -478,7 +531,7 @@ private fun PortfolioSummaryCard(
                     )
                     Spacer(Modifier.width(DesignSystemSpacing.small))
                     val pnlDesc =
-                        if (summary.marketPnL >= 0) {
+                        if (primaryPnL >= 0) {
                             stringResource(R.string.a11y_gold_profit)
                         } else {
                             stringResource(R.string.a11y_gold_loss)
@@ -488,7 +541,7 @@ private fun PortfolioSummaryCard(
                             Modifier
                                 .size(8.dp)
                                 .clip(CircleShape)
-                                .background(pnlColor)
+                                .background(primaryColor)
                                 .semantics {
                                     contentDescription = pnlDesc
                                 },
@@ -496,7 +549,7 @@ private fun PortfolioSummaryCard(
                 }
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     AmountText(
-                        amount = summary.marketPnL,
+                        amount = primaryPnL,
                         currencyCode = summary.currencyCode,
                         showSign = true,
                         textStyle = MaterialTheme.typography.titleMedium,
@@ -504,11 +557,44 @@ private fun PortfolioSummaryCard(
                     )
                     Spacer(Modifier.width(DesignSystemSpacing.small))
                     Text(
-                        text = pnlPercentText,
+                        text = primaryPercentText,
                         style = MaterialTheme.typography.bodyMedium,
-                        color = pnlColor,
+                        color = primaryColor,
                         fontWeight = FontWeight.Medium,
                     )
+                }
+            }
+
+            // Secondary P&L line: show market P&L when liquidation is primary
+            if (hasLiquidation) {
+                Spacer(Modifier.height(DesignSystemSpacing.xs))
+                val marketColor = FinancialColors.balanceColor(summary.marketPnL >= 0)
+                val marketSign = if (summary.marketPnL >= 0) "+" else ""
+                val marketPercentText = "$marketSign%.1f%%".format(summary.marketPnLPercent)
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Text(
+                        stringResource(R.string.gold_market_value),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        AmountText(
+                            amount = summary.marketPnL,
+                            currencyCode = summary.currencyCode,
+                            showSign = true,
+                            textStyle = MaterialTheme.typography.bodySmall,
+                        )
+                        Spacer(Modifier.width(DesignSystemSpacing.xs))
+                        Text(
+                            text = marketPercentText,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = marketColor,
+                        )
+                    }
                 }
             }
         }
@@ -617,9 +703,18 @@ private fun HoldingCard(
             Spacer(Modifier.height(DesignSystemSpacing.small))
 
             if (holdingWithPnL.currentSellPricePerUnit != null) {
-                val currentValue = holdingWithPnL.marketValue ?: 0L
-                val pnl = holdingWithPnL.marketPnL ?: 0L
-                val pnlPercent = holdingWithPnL.marketPnLPercent ?: 0.0
+                val hasBuyBack = holdingWithPnL.currentBuyBackPricePerUnit != null
+                val displayValue =
+                    if (hasBuyBack) holdingWithPnL.liquidationValue ?: 0L else holdingWithPnL.marketValue ?: 0L
+                val pnl =
+                    if (hasBuyBack) holdingWithPnL.liquidationPnL ?: 0L else holdingWithPnL.marketPnL ?: 0L
+                val pnlPercent =
+                    if (hasBuyBack) {
+                        holdingWithPnL.liquidationPnLPercent ?: 0.0
+                    } else {
+                        holdingWithPnL.marketPnLPercent ?: 0.0
+                    }
+                val isEstimated = !hasBuyBack
 
                 // Row 3: Cost → Value
                 Text(
@@ -627,35 +722,61 @@ private fun HoldingCard(
                         stringResource(
                             R.string.gold_cost_to_value,
                             formatAmountShort(holdingWithPnL.totalCost, holding.currencyCode),
-                            formatAmountShort(currentValue, holding.currencyCode),
+                            formatAmountShort(displayValue, holding.currencyCode),
                         ),
                     style = MaterialTheme.typography.bodyMedium,
                 )
 
                 Spacer(Modifier.height(DesignSystemSpacing.xs))
 
-                // Row 4: P&L
+                // Row 4: P&L with estimated indicator
                 val pnlColor = FinancialColors.balanceColor(pnl >= 0)
                 val sign = if (pnl >= 0) "+" else ""
+                val estimatedPrefix =
+                    if (isEstimated) stringResource(R.string.gold_estimated_pnl_indicator) else ""
 
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        AmountText(
-                            amount = pnl,
-                            currencyCode = holding.currencyCode,
-                            showSign = true,
-                            textStyle = MaterialTheme.typography.bodyMedium,
-                            fontWeight = FontWeight.SemiBold,
-                        )
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier =
+                            if (isEstimated) {
+                                val estimatedDesc = stringResource(R.string.a11y_gold_estimated_pnl)
+                                Modifier.semantics { contentDescription = estimatedDesc }
+                            } else {
+                                Modifier
+                            },
+                    ) {
+                        if (isEstimated) {
+                            Text(
+                                text =
+                                    "$estimatedPrefix$sign${formatAmountShort(pnl, holding.currencyCode)}",
+                                style = MaterialTheme.typography.bodyMedium,
+                                fontWeight = FontWeight.SemiBold,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        } else {
+                            AmountText(
+                                amount = pnl,
+                                currencyCode = holding.currencyCode,
+                                showSign = true,
+                                textStyle = MaterialTheme.typography.bodyMedium,
+                                fontWeight = FontWeight.SemiBold,
+                            )
+                        }
                         Spacer(Modifier.width(DesignSystemSpacing.xs))
                         Text(
-                            text = "($sign%.1f%%)".format(pnlPercent),
+                            text = "$estimatedPrefix($sign%.1f%%)".format(pnlPercent),
                             style = MaterialTheme.typography.bodySmall,
-                            color = pnlColor,
+                            color =
+                                if (isEstimated) {
+                                    MaterialTheme.colorScheme.onSurfaceVariant
+                                } else {
+                                    pnlColor
+                                },
                         )
                     }
                     Box(
