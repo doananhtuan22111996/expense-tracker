@@ -14,6 +14,8 @@ data class GoldPriceEntity(
     val unit: String, // GoldWeightUnit.name
     @ColumnInfo(name = "price_per_unit")
     val pricePerUnit: Long,
+    @ColumnInfo(name = "buy_back_price_per_unit")
+    val buyBackPricePerUnit: Long? = null,
     @ColumnInfo(name = "currency_code", defaultValue = "VND")
     val currencyCode: String = "VND",
     @ColumnInfo(name = "updated_at")

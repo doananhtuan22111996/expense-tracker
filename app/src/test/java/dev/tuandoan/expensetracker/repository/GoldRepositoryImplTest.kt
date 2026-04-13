@@ -136,7 +136,7 @@ class GoldRepositoryImplTest {
                 assertEquals(1, prices.size)
                 assertEquals(GoldType.SJC, prices[0].type)
                 assertEquals(GoldWeightUnit.TAEL, prices[0].unit)
-                assertEquals(93_000_000L, prices[0].pricePerUnit)
+                assertEquals(93_000_000L, prices[0].sellPricePerUnit)
                 cancelAndIgnoreRemainingEvents()
             }
         }
@@ -151,7 +151,7 @@ class GoldRepositoryImplTest {
             val price = repository.getPrice(GoldType.SJC, GoldWeightUnit.TAEL)
 
             assertNotNull(price)
-            assertEquals(93_000_000L, price!!.pricePerUnit)
+            assertEquals(93_000_000L, price!!.sellPricePerUnit)
         }
 
     @Test
@@ -187,7 +187,7 @@ class GoldRepositoryImplTest {
                     GoldPrice(
                         type = GoldType.GOLD_24K,
                         unit = GoldWeightUnit.GRAM,
-                        pricePerUnit = 2_480_000L,
+                        sellPricePerUnit = 2_480_000L,
                     ),
                 )
 
@@ -236,7 +236,7 @@ class GoldRepositoryImplTest {
         GoldPrice(
             type = GoldType.SJC,
             unit = GoldWeightUnit.TAEL,
-            pricePerUnit = 93_000_000L,
+            sellPricePerUnit = 93_000_000L,
         )
 
     // --- Fake DAOs ---

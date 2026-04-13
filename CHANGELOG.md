@@ -1,5 +1,18 @@
 # Changelog
 
+## [Unreleased]
+
+### Added
+- Room migration v6→v7: `buy_back_price_per_unit` nullable column on `gold_prices` table
+- `buyBackPricePerUnit` field on `GoldPriceEntity`, `GoldPrice` domain model, `BackupGoldPriceDto`, and mappers
+- String resources for dealer sell/buy-back price labels, market/liquidation value, and accessibility descriptions
+- Instrumented migration tests for v6→v7 (column existence, null default, data preservation)
+
+### Changed
+- `GoldPrice.pricePerUnit` renamed to `sellPricePerUnit` for clarity (entity column name unchanged)
+- `BackupGoldPriceMapper` maps new `buyBackPricePerUnit` field bidirectionally
+- Backup import backward compatible: old JSON without `buy_back_price_per_unit` defaults to null
+
 ## [3.5.0] - 2026-04-09
 
 ### Added

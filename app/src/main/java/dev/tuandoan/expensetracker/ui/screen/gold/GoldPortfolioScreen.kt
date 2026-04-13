@@ -364,9 +364,9 @@ private fun GoldPortfolioContent(
                                         "${goldTypeLabel(price.type)} / ${goldUnitLabel(price.unit)}",
                                     style = MaterialTheme.typography.bodyMedium,
                                 )
-                                if (price.pricePerUnit > 0) {
+                                if (price.sellPricePerUnit > 0) {
                                     AmountText(
-                                        amount = price.pricePerUnit,
+                                        amount = price.sellPricePerUnit,
                                         currencyCode = price.currencyCode,
                                         textStyle = MaterialTheme.typography.bodyMedium,
                                         fontWeight = FontWeight.Medium,
@@ -701,7 +701,7 @@ private fun UpdatePricesBottomSheet(
             mutableStateMapOf<Pair<GoldType, GoldWeightUnit>, String>().apply {
                 currentPrices.forEach { price ->
                     val key = price.type to price.unit
-                    this[key] = if (price.pricePerUnit > 0) price.pricePerUnit.toString() else ""
+                    this[key] = if (price.sellPricePerUnit > 0) price.sellPricePerUnit.toString() else ""
                 }
             }
         }

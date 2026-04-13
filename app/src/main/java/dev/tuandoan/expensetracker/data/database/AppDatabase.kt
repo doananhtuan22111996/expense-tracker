@@ -21,7 +21,7 @@ import dev.tuandoan.expensetracker.data.database.entity.TransactionEntity
         GoldHoldingEntity::class,
         GoldPriceEntity::class,
     ],
-    version = 6,
+    version = 7,
     exportSchema = true,
 )
 abstract class AppDatabase : RoomDatabase() {

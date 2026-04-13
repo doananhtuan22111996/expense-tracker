@@ -8,6 +8,7 @@ fun GoldPriceEntity.toBackupDto(): BackupGoldPriceDto =
         type = type,
         unit = unit,
         pricePerUnit = pricePerUnit,
+        buyBackPricePerUnit = buyBackPricePerUnit,
         currencyCode = currencyCode,
         updatedAt = updatedAt,
     )
@@ -17,6 +18,7 @@ fun BackupGoldPriceDto.toEntity(): GoldPriceEntity =
         type = type,
         unit = unit,
         pricePerUnit = pricePerUnit,
+        buyBackPricePerUnit = buyBackPricePerUnit,
         currencyCode = currencyCode,
         updatedAt = updatedAt,
     )

@@ -176,3 +176,19 @@ val MIGRATION_5_6 =
             )
         }
     }
+
+/**
+ * Migration from version 6 to version 7.
+ *
+ * Adds buy_back_price_per_unit column to gold_prices table for
+ * dealer buy/sell price spread tracking. Nullable with no default,
+ * so existing rows get NULL (single-price fallback behavior preserved).
+ */
+val MIGRATION_6_7 =
+    object : Migration(6, 7) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            db.execSQL(
+                "ALTER TABLE `gold_prices` ADD COLUMN `buy_back_price_per_unit` INTEGER DEFAULT NULL",
+            )
+        }
+    }

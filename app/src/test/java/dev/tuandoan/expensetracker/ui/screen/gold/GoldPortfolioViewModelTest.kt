@@ -102,7 +102,7 @@ class GoldPortfolioViewModelTest {
             assertNull(state.holdings[0].currentPricePerUnit)
             assertNull(state.summary)
             assertEquals(1, state.currentPrices.size)
-            assertEquals(0L, state.currentPrices[0].pricePerUnit)
+            assertEquals(0L, state.currentPrices[0].sellPricePerUnit)
         }
 
     @Test
@@ -288,7 +288,7 @@ class GoldPortfolioViewModelTest {
 
             assertTrue(viewModel.uiState.value.showPricesUpdated)
             assertEquals(1, fakeGoldRepository.upsertedPrices.size)
-            assertEquals(92_000_000L, fakeGoldRepository.upsertedPrices[0].pricePerUnit)
+            assertEquals(92_000_000L, fakeGoldRepository.upsertedPrices[0].sellPricePerUnit)
             assertEquals("VND", fakeGoldRepository.upsertedPrices[0].currencyCode)
         }
 
@@ -350,7 +350,7 @@ class GoldPortfolioViewModelTest {
     ) = GoldPrice(
         type = type,
         unit = unit,
-        pricePerUnit = pricePerUnit,
+        sellPricePerUnit = pricePerUnit,
         currencyCode = "VND",
     )
 

@@ -190,6 +190,17 @@
     <string name="a11y_gold_loss">Loss</string>
     <string name="a11y_update_gold_prices">Update current gold prices</string>
 
+    <!-- Gold Buy/Sell Spread -->
+    <string name="gold_dealer_sell_price">Dealer Sell (%1$s/%2$s)</string>
+    <string name="gold_dealer_buyback_price">Dealer Buy-back (%1$s/%2$s)</string>
+    <string name="gold_market_value">Market Value</string>
+    <string name="gold_liquidation_value">Liquidation Value</string>
+    <string name="gold_estimated_pnl_indicator">~</string>
+    <string name="gold_buyback_exceeds_sell">Buy-back price cannot exceed sell price</string>
+    <string name="a11y_gold_dealer_sell_price">Dealer sell price for %1$s per %2$s</string>
+    <string name="a11y_gold_dealer_buyback_price">Dealer buy-back price for %1$s per %2$s</string>
+    <string name="a11y_gold_estimated_pnl">Estimated P&amp;L, buy-back price not set</string>
+
     <!-- Gold Add/Edit -->
     <string name="gold_add_title">Add Gold Holding</string>
     <string name="gold_edit_title">Edit Gold Holding</string>
