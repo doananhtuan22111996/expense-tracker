@@ -696,7 +696,7 @@ private fun UpdatePricesBottomSheet(
     onDismiss: () -> Unit,
 ) {
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
-    val priceInputs =
+    val sellInputs =
         remember {
             mutableStateMapOf<Pair<GoldType, GoldWeightUnit>, String>().apply {
                 currentPrices.forEach { price ->
@@ -705,6 +705,21 @@ private fun UpdatePricesBottomSheet(
                 }
             }
         }
+    val buyBackInputs =
+        remember {
+            mutableStateMapOf<Pair<GoldType, GoldWeightUnit>, String>().apply {
+                currentPrices.forEach { price ->
+                    val key = price.type to price.unit
+                    this[key] =
+                        price.buyBackPricePerUnit?.let { if (it > 0) it.toString() else "" } ?: ""
+                }
+            }
+        }
+    val validationErrors =
+        remember { mutableStateMapOf<Pair<GoldType, GoldWeightUnit>, Boolean>() }
+
+    val buyBackExceedsSellMsg = stringResource(R.string.gold_buyback_exceeds_sell)
+    val hasValidationErrors = validationErrors.any { it.value }
 
     ModalBottomSheet(
         onDismissRequest = onDismiss,
@@ -727,26 +742,66 @@ private fun UpdatePricesBottomSheet(
 
             currentPrices.forEach { price ->
                 val key = price.type to price.unit
-                val label =
-                    stringResource(
-                        R.string.gold_price_per_unit,
-                        goldTypeLabel(price.type),
-                        goldUnitLabel(price.unit),
-                    )
+                val typeLabel = goldTypeLabel(price.type)
+                val unitLabel = goldUnitLabel(price.unit)
+                val sellLabel = stringResource(R.string.gold_dealer_sell_price, typeLabel, unitLabel)
+                val buyBackLabel =
+                    stringResource(R.string.gold_dealer_buyback_price, typeLabel, unitLabel)
+                val sellA11y =
+                    stringResource(R.string.a11y_gold_dealer_sell_price, typeLabel, unitLabel)
+                val buyBackA11y =
+                    stringResource(R.string.a11y_gold_dealer_buyback_price, typeLabel, unitLabel)
+                val visualTransformation =
+                    remember(currencyCode) { CurrencyAmountVisualTransformation(currencyCode) }
+                val isError = validationErrors[key] == true
 
+                // Sell price field
                 OutlinedTextField(
-                    value = priceInputs[key] ?: "",
+                    value = sellInputs[key] ?: "",
                     onValueChange = { input ->
-                        priceInputs[key] = input.replace("[^0-9]".toRegex(), "")
+                        val cleaned = input.replace("[^0-9]".toRegex(), "")
+                        sellInputs[key] = cleaned
+                        val sell = cleaned.toLongOrNull() ?: 0L
+                        val buyBack = buyBackInputs[key]?.toLongOrNull() ?: 0L
+                        validationErrors[key] = buyBack > 0 && sell > 0 && buyBack > sell
                     },
-                    label = { Text(label) },
+                    label = { Text(sellLabel) },
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                    visualTransformation =
-                        remember(currencyCode) {
-                            CurrencyAmountVisualTransformation(currencyCode)
-                        },
+                    visualTransformation = visualTransformation,
                     singleLine = true,
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier =
+                        Modifier.fillMaxWidth().semantics {
+                            contentDescription = sellA11y
+                        },
+                )
+
+                Spacer(Modifier.height(DesignSystemSpacing.small))
+
+                // Buy-back price field
+                OutlinedTextField(
+                    value = buyBackInputs[key] ?: "",
+                    onValueChange = { input ->
+                        val cleaned = input.replace("[^0-9]".toRegex(), "")
+                        buyBackInputs[key] = cleaned
+                        val sell = sellInputs[key]?.toLongOrNull() ?: 0L
+                        val buyBack = cleaned.toLongOrNull() ?: 0L
+                        validationErrors[key] = buyBack > 0 && sell > 0 && buyBack > sell
+                    },
+                    label = { Text(buyBackLabel) },
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                    visualTransformation = visualTransformation,
+                    singleLine = true,
+                    isError = isError,
+                    supportingText =
+                        if (isError) {
+                            { Text(buyBackExceedsSellMsg) }
+                        } else {
+                            null
+                        },
+                    modifier =
+                        Modifier.fillMaxWidth().semantics {
+                            contentDescription = buyBackA11y
+                        },
                 )
 
                 Spacer(Modifier.height(DesignSystemSpacing.medium))
@@ -757,12 +812,18 @@ private fun UpdatePricesBottomSheet(
             FilledTonalButton(
                 onClick = {
                     val parsed =
-                        priceInputs
-                            .mapValues { (_, text) ->
-                                PriceInput(sellPrice = text.toLongOrNull() ?: 0L)
+                        sellInputs
+                            .mapValues { (key, text) ->
+                                val sell = text.toLongOrNull() ?: 0L
+                                val buyBack = buyBackInputs[key]?.toLongOrNull()
+                                PriceInput(
+                                    sellPrice = sell,
+                                    buyBackPrice = buyBack?.takeIf { it > 0 },
+                                )
                             }.filter { it.value.sellPrice > 0 }
                     onSave(parsed)
                 },
+                enabled = !hasValidationErrors,
                 modifier = Modifier.fillMaxWidth(),
             ) {
                 Text(stringResource(R.string.gold_save_prices))
