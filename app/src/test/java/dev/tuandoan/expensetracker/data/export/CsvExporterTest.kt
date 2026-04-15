@@ -240,12 +240,14 @@ class CsvExporterTest {
         type: String = "SJC",
         unit: String = "TAEL",
         pricePerUnit: Long = 92_000_000L,
+        buyBackPricePerUnit: Long? = null,
         currencyCode: String = "VND",
     ): GoldPriceEntity =
         GoldPriceEntity(
             type = type,
             unit = unit,
             pricePerUnit = pricePerUnit,
+            buyBackPricePerUnit = buyBackPricePerUnit,
             currencyCode = currencyCode,
             updatedAt = 1700000000000L,
         )
@@ -257,21 +259,46 @@ class CsvExporterTest {
         val prices = listOf(createGoldPrice())
         exporter.exportGoldSummary(holdings, prices, writer.buffered())
         val lines = writer.toString().lines().filter { it.isNotBlank() }
-        assertEquals("Type,Unit,Weight,Buy Price,Current Price,Currency,Cost,Value,P&L", lines[0])
+        assertEquals(
+            "Type,Unit,Weight,Buy Price,Current Price,Buy-Back Price,Currency,Cost,Market Value,Liquidation Value,P&L",
+            lines[0],
+        )
     }
 
     @Test
-    fun exportGoldSummary_computesPnLCorrectly() {
+    fun exportGoldSummary_noBuyBack_marketPnL() {
         val writer = StringWriter()
-        // buy at 87M, current at 92M, weight 2.5 tael
+        // buy at 87M, current at 92M, weight 2.5 tael, no buy-back
         // cost = 87M * 2.5 = 217,500,000
-        // value = 92M * 2.5 = 230,000,000
-        // P&L = 12,500,000
+        // market value = 92M * 2.5 = 230,000,000
+        // P&L = 230M - 217.5M = 12,500,000 (market-based)
         val holdings = listOf(createGoldHolding(buyPricePerUnit = 87_000_000L, weightValue = 2.5))
         val prices = listOf(createGoldPrice(pricePerUnit = 92_000_000L))
         exporter.exportGoldSummary(holdings, prices, writer.buffered())
         val lines = writer.toString().lines().filter { it.isNotBlank() }
-        assertEquals("SJC,TAEL,2.5,87000000,92000000,VND,217500000,230000000,12500000", lines[1])
+        // Buy-Back Price empty, Liquidation Value empty, P&L = market-based
+        assertEquals(
+            "SJC,TAEL,2.5,87000000,92000000,,VND,217500000,230000000,,12500000",
+            lines[1],
+        )
+    }
+
+    @Test
+    fun exportGoldSummary_withBuyBack_liquidationPnL() {
+        val writer = StringWriter()
+        // buy at 87M, sell at 93M, buy-back at 91M, weight 2.0 tael
+        // cost = 87M * 2 = 174,000,000
+        // market value = 93M * 2 = 186,000,000
+        // liquidation value = 91M * 2 = 182,000,000
+        // P&L = 182M - 174M = 8,000,000 (liquidation-based)
+        val holdings = listOf(createGoldHolding(buyPricePerUnit = 87_000_000L, weightValue = 2.0))
+        val prices = listOf(createGoldPrice(pricePerUnit = 93_000_000L, buyBackPricePerUnit = 91_000_000L))
+        exporter.exportGoldSummary(holdings, prices, writer.buffered())
+        val lines = writer.toString().lines().filter { it.isNotBlank() }
+        assertEquals(
+            "SJC,TAEL,2.0,87000000,93000000,91000000,VND,174000000,186000000,182000000,8000000",
+            lines[1],
+        )
     }
 
     @Test

@@ -353,6 +353,59 @@ class BackupSerializerTest {
     }
 
     @Test
+    fun decode_goldPrice_withoutBuyBackField_defaultsToNull() {
+        val json =
+            """
+            {
+                "schema_version": 1,
+                "app_version_name": "3.4.0",
+                "created_at_epoch_ms": 1700000000000,
+                "categories": [],
+                "transactions": [],
+                "gold_prices": [
+                    {
+                        "type": "SJC",
+                        "unit": "TAEL",
+                        "price_per_unit": 92000000,
+                        "currency_code": "VND",
+                        "updated_at": 1700000000000
+                    }
+                ]
+            }
+            """.trimIndent()
+
+        val decoded = serializer.decode(json)
+
+        assertNotNull(decoded)
+        assertEquals(1, decoded!!.goldPrices.size)
+        val price = decoded.goldPrices[0]
+        assertEquals("SJC", price.type)
+        assertEquals("TAEL", price.unit)
+        assertEquals(92_000_000L, price.pricePerUnit)
+        assertNull(price.buyBackPricePerUnit)
+        assertEquals("VND", price.currencyCode)
+    }
+
+    @Test
+    fun roundTrip_goldPrice_withBuyBack_preserved() {
+        val priceWithBuyBack =
+            TestData.sampleBackupGoldPriceDto.copy(
+                buyBackPricePerUnit = 91_000_000L,
+            )
+        val document =
+            TestData.sampleBackupDocument.copy(
+                goldPrices = listOf(priceWithBuyBack),
+            )
+
+        val json = serializer.encode(document)
+        val decoded = serializer.decode(json)
+
+        assertNotNull(decoded)
+        assertEquals(1, decoded!!.goldPrices.size)
+        assertEquals(91_000_000L, decoded.goldPrices[0].buyBackPricePerUnit)
+    }
+
+    @Test
     fun decode_missingRequiredField_returnsNull() {
         val json =
             """{"schema_version": 1, "app_version_name": "1.0.0", "created_at_epoch_ms": 1700000000000}"""
