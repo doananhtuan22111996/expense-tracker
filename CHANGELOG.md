@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+## [3.6.0] - 2026-04-16
+
 ### Added
 - Room migration v6→v7: `buy_back_price_per_unit` nullable column on `gold_prices` table
 - `buyBackPricePerUnit` field on `GoldPriceEntity`, `GoldPrice` domain model, `BackupGoldPriceDto`, and mappers
