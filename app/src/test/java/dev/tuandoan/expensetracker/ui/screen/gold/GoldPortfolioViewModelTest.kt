@@ -405,6 +405,144 @@ class GoldPortfolioViewModelTest {
             assertFalse(viewModel.uiState.value.showPricesUpdated)
         }
 
+    // --- Mixed buy-back ---
+
+    @Test
+    fun init_mixedBuyBack_liquidationFallsBackToMarketValue() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            // Holding 1: SJC/TAEL with buy-back price
+            // Holding 2: 24K/GRAM without buy-back price
+            fakeGoldRepository.holdingsFlow.value =
+                listOf(
+                    testHolding(
+                        id = 1,
+                        type = GoldType.SJC,
+                        unit = GoldWeightUnit.TAEL,
+                        weightValue = 2.0,
+                        buyPrice = 87_000_000L,
+                    ),
+                    testHolding(
+                        id = 2,
+                        type = GoldType.GOLD_24K,
+                        unit = GoldWeightUnit.GRAM,
+                        weightValue = 10.0,
+                        buyPrice = 2_000_000L,
+                    ),
+                )
+            fakeGoldRepository.pricesFlow.value =
+                listOf(
+                    testPrice(
+                        type = GoldType.SJC,
+                        unit = GoldWeightUnit.TAEL,
+                        sellPrice = 93_000_000L,
+                        buyBackPrice = 91_000_000L,
+                    ),
+                    testPrice(
+                        type = GoldType.GOLD_24K,
+                        unit = GoldWeightUnit.GRAM,
+                        sellPrice = 2_500_000L,
+                        buyBackPrice = null,
+                    ),
+                )
+
+            val viewModel = createViewModel()
+            advanceUntilIdle()
+
+            val state = viewModel.uiState.value
+            assertNotNull(state.summary)
+            // At least one holding has buy-back → totalLiquidationValue is computed
+            assertNotNull(state.summary!!.totalLiquidationValue)
+            // Holding 1: liquidationValue = 91M * 2 = 182M
+            // Holding 2: liquidationValue = null, falls back to marketValue = 2.5M * 10 = 25M
+            // totalLiquidation = 182M + 25M = 207M
+            assertEquals(207_000_000L, state.summary!!.totalLiquidationValue)
+            // totalMarketValue = (93M * 2) + (2.5M * 10) = 186M + 25M = 211M
+            assertEquals(211_000_000L, state.summary!!.totalMarketValue)
+            // totalCost = (87M * 2) + (2M * 10) = 174M + 20M = 194M
+            assertEquals(194_000_000L, state.summary!!.totalCost)
+        }
+
+    @Test
+    fun init_allHoldingsHaveBuyBack_liquidationUsesOnlyBuyBack() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            fakeGoldRepository.holdingsFlow.value =
+                listOf(
+                    testHolding(
+                        id = 1,
+                        type = GoldType.SJC,
+                        unit = GoldWeightUnit.TAEL,
+                        weightValue = 2.0,
+                        buyPrice = 87_000_000L,
+                    ),
+                    testHolding(
+                        id = 2,
+                        type = GoldType.GOLD_24K,
+                        unit = GoldWeightUnit.GRAM,
+                        weightValue = 10.0,
+                        buyPrice = 2_000_000L,
+                    ),
+                )
+            fakeGoldRepository.pricesFlow.value =
+                listOf(
+                    testPrice(
+                        type = GoldType.SJC,
+                        unit = GoldWeightUnit.TAEL,
+                        sellPrice = 93_000_000L,
+                        buyBackPrice = 91_000_000L,
+                    ),
+                    testPrice(
+                        type = GoldType.GOLD_24K,
+                        unit = GoldWeightUnit.GRAM,
+                        sellPrice = 2_500_000L,
+                        buyBackPrice = 2_400_000L,
+                    ),
+                )
+
+            val viewModel = createViewModel()
+            advanceUntilIdle()
+
+            val state = viewModel.uiState.value
+            assertNotNull(state.summary!!.totalLiquidationValue)
+            // All buy-back: no market fallback — pure liquidation
+            // Holding 1: 91M * 2 = 182M, Holding 2: 2.4M * 10 = 24M → total = 206M
+            assertEquals(206_000_000L, state.summary!!.totalLiquidationValue)
+            // Market: 93M * 2 + 2.5M * 10 = 186M + 25M = 211M
+            assertEquals(211_000_000L, state.summary!!.totalMarketValue)
+        }
+
+    @Test
+    fun savePrices_emptyMap_doesNotCrash() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            val viewModel = createViewModel()
+            advanceUntilIdle()
+
+            viewModel.savePrices(emptyMap())
+            advanceUntilIdle()
+
+            assertTrue(viewModel.uiState.value.showPricesUpdated)
+            assertTrue(fakeGoldRepository.upsertedPrices.isEmpty())
+        }
+
+    @Test
+    fun savePrices_withBuyBackZero_persistsZeroNotNull() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            fakeGoldRepository.holdingsFlow.value = listOf(testHolding())
+
+            val viewModel = createViewModel()
+            advanceUntilIdle()
+
+            val priceInputs =
+                mapOf(
+                    (GoldType.SJC to GoldWeightUnit.TAEL) to
+                        PriceInput(sellPrice = 93_000_000L, buyBackPrice = 0L),
+                )
+            viewModel.savePrices(priceInputs)
+            advanceUntilIdle()
+
+            assertTrue(viewModel.uiState.value.showPricesUpdated)
+            assertEquals(0L, fakeGoldRepository.upsertedPrices[0].buyBackPricePerUnit)
+        }
+
     // --- Test Helpers ---
 
     private fun testHolding(
