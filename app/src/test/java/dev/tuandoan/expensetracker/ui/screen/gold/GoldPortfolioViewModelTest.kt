@@ -609,6 +609,43 @@ class GoldPortfolioViewModelTest {
             assertEquals(0L, fakeGoldRepository.upsertedPrices[0].buyBackPricePerUnit)
         }
 
+    // --- Clear Error / Retry ---
+
+    @Test
+    fun clearError_resetsErrorState() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            fakeGoldRepository.shouldThrow = true
+            val viewModel = createViewModel()
+            advanceUntilIdle()
+            assertTrue(viewModel.uiState.value.isError)
+            assertNotNull(viewModel.uiState.value.errorMessage)
+
+            viewModel.clearError()
+
+            assertFalse(viewModel.uiState.value.isError)
+            assertNull(viewModel.uiState.value.errorMessage)
+        }
+
+    @Test
+    fun retry_clearsErrorAndReloadsData() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            fakeGoldRepository.shouldThrow = true
+            val viewModel = createViewModel()
+            advanceUntilIdle()
+            assertTrue(viewModel.uiState.value.isError)
+
+            fakeGoldRepository.shouldThrow = false
+            fakeGoldRepository.holdingsFlow.value = listOf(testHolding())
+            fakeGoldRepository.pricesFlow.value = listOf(testPrice(sellPrice = 93_000_000L))
+            viewModel.retry()
+            advanceUntilIdle()
+
+            assertFalse(viewModel.uiState.value.isError)
+            assertFalse(viewModel.uiState.value.isLoading)
+            assertEquals(1, viewModel.uiState.value.holdings.size)
+            assertNotNull(viewModel.uiState.value.summary)
+        }
+
     // --- Test Helpers ---
 
     private fun testHolding(
