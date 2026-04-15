@@ -302,6 +302,55 @@ class CsvExporterTest {
     }
 
     @Test
+    fun exportGoldSummary_multipleTypes_producesCorrectRows() {
+        val writer = StringWriter()
+        val holdings =
+            listOf(
+                createGoldHolding(
+                    id = 1,
+                    type = "SJC",
+                    weightUnit = "TAEL",
+                    weightValue = 2.0,
+                    buyPricePerUnit = 87_000_000L,
+                ),
+                createGoldHolding(
+                    id = 2,
+                    type = "GOLD_24K",
+                    weightUnit = "GRAM",
+                    weightValue = 10.0,
+                    buyPricePerUnit = 2_000_000L,
+                ),
+            )
+        val prices =
+            listOf(
+                createGoldPrice(
+                    type = "SJC",
+                    unit = "TAEL",
+                    pricePerUnit = 93_000_000L,
+                    buyBackPricePerUnit = 91_000_000L,
+                ),
+                createGoldPrice(
+                    type = "GOLD_24K",
+                    unit = "GRAM",
+                    pricePerUnit = 2_500_000L,
+                ),
+            )
+        exporter.exportGoldSummary(holdings, prices, writer.buffered())
+        val lines = writer.toString().lines().filter { it.isNotBlank() }
+        assertEquals(3, lines.size) // header + 2 data rows
+        // SJC: cost=174M, market=186M, liquidation=182M, P&L=182M-174M=8M
+        assertEquals(
+            "SJC,TAEL,2.0,87000000,93000000,91000000,VND,174000000,186000000,182000000,8000000",
+            lines[1],
+        )
+        // GOLD_24K: cost=20M, market=25M, no buyBack, P&L=25M-20M=5M
+        assertEquals(
+            "GOLD_24K,GRAM,10.0,2000000,2500000,,VND,20000000,25000000,,5000000",
+            lines[2],
+        )
+    }
+
+    @Test
     fun exportGoldSummary_noPricesForHolding_skipsRow() {
         val writer = StringWriter()
         val holdings = listOf(createGoldHolding(type = "GOLD_24K", weightUnit = "GRAM"))
