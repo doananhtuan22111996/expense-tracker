@@ -11,6 +11,9 @@
 - `GoldPortfolioSummary`: `totalLiquidationValue`, `liquidationPnL`, `liquidationPnLPercent` for portfolio-level liquidation P&L
 - `PriceInput` data class for dual sell/buy-back price input in `savePrices()`
 - Unit tests for dual P&L (market + liquidation) on `GoldPortfolioSummaryTest` (12 tests) and `GoldPortfolioViewModelTest` (18 tests)
+- Dual-input `UpdatePricesBottomSheet`: separate sell price and buy-back price fields per gold type/unit
+- Inline cross-field validation: buy-back price cannot exceed sell price, with real-time error feedback
+- Pre-populates existing buy-back prices from current price data
 
 ### Changed
 - `GoldPrice.pricePerUnit` renamed to `sellPricePerUnit` for clarity (entity column name unchanged)
@@ -21,6 +24,7 @@
 - `GoldPortfolioSummary.totalCurrentValue` renamed to `totalMarketValue`, `totalPnL`/`pnLPercent` renamed to `marketPnL`/`marketPnLPercent`
 - `GoldPortfolioViewModel.savePrices()` accepts `Map<Pair, PriceInput>` instead of `Map<Pair, Long>` for dual-price support
 - `buildPortfolioState()` passes buy-back prices through to `GoldHoldingWithPnL` and computes `totalLiquidationValue`
+- `UpdatePricesBottomSheet` refactored from single-field to dual-field layout with `sellInputs` and `buyBackInputs` state maps
 
 ## [3.5.0] - 2026-04-09
 
