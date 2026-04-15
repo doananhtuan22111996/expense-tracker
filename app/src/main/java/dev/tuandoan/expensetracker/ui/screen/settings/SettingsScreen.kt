@@ -30,6 +30,7 @@ import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.FileDownload
 import androidx.compose.material.icons.filled.FileUpload
 import androidx.compose.material.icons.filled.KeyboardArrowRight
+import androidx.compose.material.icons.filled.Share
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -636,6 +637,47 @@ fun SettingsScreen(
                         tint = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 }
+
+                HorizontalDivider()
+
+                // Share App
+                val shareText = stringResource(R.string.share_app_text)
+                val shareChooserTitle = stringResource(R.string.share_app_chooser_title)
+                val shareLabel = stringResource(R.string.settings_share_app)
+                Row(
+                    modifier =
+                        Modifier
+                            .fillMaxWidth()
+                            .clickable {
+                                val intent =
+                                    Intent(Intent.ACTION_SEND).apply {
+                                        type = "text/plain"
+                                        putExtra(Intent.EXTRA_TEXT, shareText)
+                                    }
+                                context.startActivity(
+                                    Intent.createChooser(intent, shareChooserTitle),
+                                )
+                            }.padding(DesignSystemSpacing.large)
+                            .semantics {
+                                contentDescription = shareLabel
+                            },
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = stringResource(R.string.settings_share_app),
+                            style = MaterialTheme.typography.bodyLarge,
+                            fontWeight = FontWeight.Medium,
+                            color = MaterialTheme.colorScheme.onSurface,
+                        )
+                    }
+                    Icon(
+                        Icons.Default.Share,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
             }
 
             // More Apps Section
@@ -728,6 +770,22 @@ fun SettingsScreen(
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 }
+
+                HorizontalDivider()
+
+                // Privacy Policy link
+                SettingsExternalLinkRow(
+                    label = stringResource(R.string.settings_privacy_policy),
+                    url = stringResource(R.string.privacy_policy_url),
+                )
+
+                HorizontalDivider()
+
+                // Terms of Service link
+                SettingsExternalLinkRow(
+                    label = stringResource(R.string.settings_terms_of_service),
+                    url = stringResource(R.string.terms_of_service_url),
+                )
             }
 
             // About Section
@@ -1071,6 +1129,50 @@ private fun checkNotificationPermission(context: Context): Boolean =
     } else {
         true
     }
+
+@Composable
+private fun SettingsExternalLinkRow(
+    label: String,
+    url: String,
+    modifier: Modifier = Modifier,
+) {
+    val context = LocalContext.current
+    val snackbarMessage = stringResource(R.string.settings_no_browser, url)
+    val opensInBrowser = stringResource(R.string.settings_opens_in_browser)
+    val a11yLabel = "$label. $opensInBrowser"
+    Row(
+        modifier =
+            modifier
+                .fillMaxWidth()
+                .clickable {
+                    try {
+                        context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)))
+                    } catch (_: ActivityNotFoundException) {
+                        android.widget.Toast
+                            .makeText(context, snackbarMessage, android.widget.Toast.LENGTH_LONG)
+                            .show()
+                    }
+                }.padding(DesignSystemSpacing.large)
+                .semantics {
+                    contentDescription = a11yLabel
+                },
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(
+            text = label,
+            style = MaterialTheme.typography.bodyLarge,
+            fontWeight = FontWeight.Medium,
+            color = MaterialTheme.colorScheme.onSurface,
+            modifier = Modifier.weight(1f),
+        )
+        Icon(
+            Icons.AutoMirrored.Filled.OpenInNew,
+            contentDescription = opensInBrowser,
+            tint = MaterialTheme.colorScheme.primary,
+        )
+    }
+}
 
 private fun Context.findActivity(): Activity? {
     var current = this

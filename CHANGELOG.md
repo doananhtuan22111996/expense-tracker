@@ -2,6 +2,11 @@
 
 ## [Unreleased]
 
+### Added
+- Privacy Policy and Terms of Service links in Settings (opens in browser)
+- Share App button in Settings with Play Store link via Android share sheet
+- Graceful fallback toast when no browser is installed for external links
+
 ## [3.6.0] - 2026-04-16
 
 ### Added
