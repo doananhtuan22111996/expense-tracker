@@ -511,6 +511,72 @@ class GoldPortfolioViewModelTest {
         }
 
     @Test
+    fun savePrices_multipleTypes_persistsAll() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            fakeGoldRepository.holdingsFlow.value =
+                listOf(
+                    testHolding(id = 1, type = GoldType.SJC, unit = GoldWeightUnit.TAEL),
+                    testHolding(id = 2, type = GoldType.GOLD_24K, unit = GoldWeightUnit.GRAM, buyPrice = 2_400_000L),
+                )
+
+            val viewModel = createViewModel()
+            advanceUntilIdle()
+
+            viewModel.savePrices(
+                mapOf(
+                    (GoldType.SJC to GoldWeightUnit.TAEL) to
+                        PriceInput(sellPrice = 93_000_000L, buyBackPrice = 91_000_000L),
+                    (GoldType.GOLD_24K to GoldWeightUnit.GRAM) to
+                        PriceInput(sellPrice = 2_500_000L),
+                ),
+            )
+            advanceUntilIdle()
+
+            assertTrue(viewModel.uiState.value.showPricesUpdated)
+            assertEquals(2, fakeGoldRepository.upsertedPrices.size)
+            val sjc = fakeGoldRepository.upsertedPrices.first { it.type == GoldType.SJC }
+            assertEquals(93_000_000L, sjc.sellPricePerUnit)
+            assertEquals(91_000_000L, sjc.buyBackPricePerUnit)
+            val gold24k = fakeGoldRepository.upsertedPrices.first { it.type == GoldType.GOLD_24K }
+            assertEquals(2_500_000L, gold24k.sellPricePerUnit)
+            assertNull(gold24k.buyBackPricePerUnit)
+        }
+
+    @Test
+    fun savePrices_emptyMap_setsUpdatedFlagAndPersistsNothing() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            val viewModel = createViewModel()
+            advanceUntilIdle()
+
+            viewModel.savePrices(emptyMap())
+            advanceUntilIdle()
+
+            assertTrue(viewModel.uiState.value.showPricesUpdated)
+            assertTrue(fakeGoldRepository.upsertedPrices.isEmpty())
+        }
+
+    @Test
+    fun savePrices_nullBuyBack_persistsAsNull() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            fakeGoldRepository.holdingsFlow.value = listOf(testHolding())
+
+            val viewModel = createViewModel()
+            advanceUntilIdle()
+
+            viewModel.savePrices(
+                mapOf(
+                    (GoldType.SJC to GoldWeightUnit.TAEL) to
+                        PriceInput(sellPrice = 93_000_000L, buyBackPrice = null),
+                ),
+            )
+            advanceUntilIdle()
+
+            assertEquals(1, fakeGoldRepository.upsertedPrices.size)
+            assertEquals(93_000_000L, fakeGoldRepository.upsertedPrices[0].sellPricePerUnit)
+            assertNull(fakeGoldRepository.upsertedPrices[0].buyBackPricePerUnit)
+        }
+
+    @Test
     fun savePrices_emptyMap_doesNotCrash() =
         runTest(mainDispatcherRule.testDispatcher) {
             val viewModel = createViewModel()
