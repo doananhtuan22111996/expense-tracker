@@ -1,0 +1,7 @@
+What's new in v3.6:
+
+• See your gold portfolio's real P&L based on buy-back prices — know exactly what you'd get if you sold today
+• Separate sell price and buy-back price inputs for each gold type
+• Market P&L shown as secondary when buy-back prices are available
+• Holdings without buy-back prices show estimated P&L with ~ indicator
+• CSV export now includes buy-back and liquidation columns
