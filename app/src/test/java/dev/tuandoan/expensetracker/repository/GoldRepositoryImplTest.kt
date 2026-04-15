@@ -198,6 +198,30 @@ class GoldRepositoryImplTest {
             assertEquals(8000L, fakePriceDao.lastUpsertedBatch!![1].updatedAt)
         }
 
+    @Test
+    fun observeAllPrices_mapsBuyBackPricePerUnit() =
+        runTest {
+            fakePriceDao.prices.value =
+                listOf(testPriceEntity().copy(buyBackPricePerUnit = 91_000_000L))
+
+            repository.observeAllPrices().test {
+                val prices = awaitItem()
+                assertEquals(91_000_000L, prices[0].buyBackPricePerUnit)
+                cancelAndIgnoreRemainingEvents()
+            }
+        }
+
+    @Test
+    fun upsertPrice_mapsBuyBackPricePerUnit() =
+        runTest {
+            fakeTimeProvider.setCurrentMillis(7000L)
+
+            repository.upsertPrice(testPrice().copy(buyBackPricePerUnit = 91_000_000L))
+
+            val upserted = fakePriceDao.lastUpserted!!
+            assertEquals(91_000_000L, upserted.buyBackPricePerUnit)
+        }
+
     // --- Helpers ---
 
     private fun testHoldingEntity() =

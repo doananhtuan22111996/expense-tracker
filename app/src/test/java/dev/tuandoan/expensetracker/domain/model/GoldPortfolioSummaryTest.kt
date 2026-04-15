@@ -177,6 +177,38 @@ class GoldPortfolioSummaryTest {
         assertEquals(-4_000_000L, withPnL.liquidationPnL)
     }
 
+    @Test
+    fun `portfolio summary liquidation percent is zero when totalCost is zero`() {
+        val summary =
+            GoldPortfolioSummary(
+                totalCost = 0L,
+                totalMarketValue = 100_000L,
+                totalLiquidationValue = 50_000L,
+                currencyCode = "VND",
+            )
+        assertEquals(50_000L, summary.liquidationPnL)
+        assertEquals(0.0, summary.liquidationPnLPercent!!, 0.001)
+    }
+
+    @Test
+    fun `holdingWithPnL percent is zero when totalCost is zero`() {
+        val holding = testHolding(buyPrice = 0L, weight = 2.0)
+        val withPnL =
+            GoldHoldingWithPnL(
+                holding = holding,
+                currentSellPricePerUnit = 93_000_000L,
+                currentBuyBackPricePerUnit = 91_000_000L,
+            )
+
+        assertEquals(0L, withPnL.totalCost)
+        assertEquals(186_000_000L, withPnL.marketValue)
+        assertEquals(186_000_000L, withPnL.marketPnL)
+        assertEquals(0.0, withPnL.marketPnLPercent!!, 0.001)
+        assertEquals(182_000_000L, withPnL.liquidationValue)
+        assertEquals(182_000_000L, withPnL.liquidationPnL)
+        assertEquals(0.0, withPnL.liquidationPnLPercent!!, 0.001)
+    }
+
     // --- Helpers ---
 
     private fun testHolding(
