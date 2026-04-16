@@ -5,6 +5,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
@@ -67,6 +68,7 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import dev.tuandoan.expensetracker.R
@@ -90,6 +92,7 @@ import java.util.Locale
 fun GoldPortfolioScreen(
     viewModel: GoldPortfolioViewModel,
     modifier: Modifier = Modifier,
+    bottomContentPadding: Dp = 0.dp,
     onNavigateToAddHolding: () -> Unit = {},
     onNavigateToEditHolding: (holdingId: Long) -> Unit = {},
 ) {
@@ -210,6 +213,7 @@ fun GoldPortfolioScreen(
                     onUpdatePrices = { showPriceSheet = true },
                     onEditHolding = onNavigateToEditHolding,
                     onDeleteHolding = viewModel::deleteHolding,
+                    contentPadding = PaddingValues(bottom = bottomContentPadding),
                     modifier =
                         Modifier
                             .fillMaxSize()
@@ -264,9 +268,11 @@ private fun GoldPortfolioContent(
     onEditHolding: (holdingId: Long) -> Unit,
     onDeleteHolding: (GoldHolding) -> Unit,
     modifier: Modifier = Modifier,
+    contentPadding: PaddingValues = PaddingValues(),
 ) {
     LazyColumn(
         modifier = modifier.padding(horizontal = DesignSystemSpacing.screenPadding),
+        contentPadding = contentPadding,
         verticalArrangement = Arrangement.spacedBy(DesignSystemSpacing.componentSpacing),
     ) {
         // Portfolio Summary

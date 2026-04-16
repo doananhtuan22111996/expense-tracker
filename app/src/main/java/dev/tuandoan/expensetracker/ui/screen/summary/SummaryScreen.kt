@@ -4,6 +4,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
@@ -40,6 +41,7 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import dev.tuandoan.expensetracker.R
@@ -68,6 +70,7 @@ import dev.tuandoan.expensetracker.ui.theme.DesignSystemSpacing
 fun SummaryScreen(
     viewModel: SummaryViewModel,
     modifier: Modifier = Modifier,
+    bottomContentPadding: Dp = 0.dp,
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     var showMonthPicker by remember { mutableStateOf(false) }
@@ -190,6 +193,7 @@ fun SummaryScreen(
                                     month,
                                 )
                             },
+                            contentPadding = PaddingValues(bottom = bottomContentPadding),
                             modifier = Modifier.fillMaxSize(),
                         )
                     }
@@ -283,10 +287,14 @@ private fun SummaryContent(
     onMonthLabelClick: () -> Unit,
     onBudgetTap: (String) -> Unit,
     onMonthTapped: ((Int) -> Unit)? = null,
+    contentPadding: PaddingValues = PaddingValues(),
     modifier: Modifier = Modifier,
 ) {
     val currencyFormatter = remember { DefaultCurrencyFormatter() }
-    LazyColumn(modifier = modifier.padding(horizontal = DesignSystemSpacing.screenPadding)) {
+    LazyColumn(
+        contentPadding = contentPadding,
+        modifier = modifier.padding(horizontal = DesignSystemSpacing.screenPadding),
+    ) {
         item(key = "mode_chips") {
             SummaryModeChips(
                 mode = uiState.mode,

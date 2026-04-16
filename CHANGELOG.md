@@ -14,6 +14,10 @@
 - Replace hardcoded chart colors with M3 `colorScheme` tokens in `ChartColors`
 - Remove 25 redundant `fontWeight = FontWeight.Medium` overrides on `titleMedium`/`titleSmall` Text (M3 default is already Medium)
 
+### Fixed
+- Edge-to-edge: content now scrolls behind NavigationBar instead of being clipped above it
+- Last list items on Home, Summary, Gold, and Settings screens are fully visible when scrolled to bottom
+
 ### Removed
 - Inline Privacy Statement, Data Privacy, and Data Storage text from Settings (replaced by Privacy Policy link)
 

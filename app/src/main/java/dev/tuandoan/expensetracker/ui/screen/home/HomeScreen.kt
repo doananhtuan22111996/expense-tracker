@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
@@ -76,6 +77,7 @@ import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import dev.tuandoan.expensetracker.R
@@ -101,6 +103,7 @@ fun HomeScreen(
     onNavigateToEditTransaction: (Long) -> Unit,
     viewModel: HomeViewModel,
     modifier: Modifier = Modifier,
+    bottomContentPadding: Dp = 0.dp,
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val expenseCategories by viewModel.expenseCategories.collectAsStateWithLifecycle()
@@ -349,6 +352,7 @@ fun HomeScreen(
                         transactions = uiState.transactions,
                         onTransactionClick = onNavigateToEditTransaction,
                         onDeleteTransaction = viewModel::deleteTransaction,
+                        contentPadding = PaddingValues(bottom = bottomContentPadding),
                         modifier = Modifier.weight(1f),
                     )
                 }
@@ -709,9 +713,11 @@ private fun TransactionsList(
     onTransactionClick: (Long) -> Unit,
     onDeleteTransaction: (Transaction) -> Unit,
     modifier: Modifier = Modifier,
+    contentPadding: PaddingValues = PaddingValues(),
 ) {
     LazyColumn(
         verticalArrangement = Arrangement.spacedBy(DesignSystemSpacing.listItemSpacing),
+        contentPadding = contentPadding,
         modifier = modifier,
     ) {
         items(transactions, key = { it.id }) { transaction ->

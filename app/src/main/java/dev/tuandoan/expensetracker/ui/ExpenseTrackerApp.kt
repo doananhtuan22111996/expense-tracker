@@ -211,12 +211,15 @@ private fun Home(
             )
         },
     ) { innerPadding ->
+        // Apply only top padding so content extends behind the NavigationBar (edge-to-edge).
+        // Each screen adds bottomContentPadding to its scrollable content.
         ExpenseTrackerNavigation(
             navController = navController,
             modifier =
                 Modifier
                     .fillMaxSize()
-                    .padding(innerPadding),
+                    .padding(top = innerPadding.calculateTopPadding()),
+            bottomContentPadding = innerPadding.calculateBottomPadding(),
             onNavigateToAddTransaction = onNavigateToAddTransaction,
             onNavigateToEditTransaction = onNavigateToEditTransaction,
             onNavigateToCategories = onNavigateToCategories,
