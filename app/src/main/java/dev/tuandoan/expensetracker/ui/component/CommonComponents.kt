@@ -188,7 +188,6 @@ fun SectionTitle(
     Text(
         text = title,
         style = MaterialTheme.typography.titleMedium,
-        fontWeight = FontWeight.Medium,
         color = MaterialTheme.colorScheme.primary,
         modifier = modifier.padding(bottom = DesignSystemSpacing.small),
     )

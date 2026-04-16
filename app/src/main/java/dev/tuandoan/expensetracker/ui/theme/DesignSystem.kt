@@ -40,14 +40,14 @@ object DesignSystemElevation {
  */
 @Stable
 object ChartColors {
-    private val fallbackChartColors =
+    private fun fallbackChartColors(colorScheme: ColorScheme) =
         listOf(
-            Color(0xFF4CAF50),
-            Color(0xFF2196F3),
-            Color(0xFFF44336),
-            Color(0xFFFF9800),
-            Color(0xFF9C27B0),
-            Color(0xFF607D8B),
+            colorScheme.primary,
+            colorScheme.secondary,
+            colorScheme.tertiary,
+            colorScheme.error,
+            colorScheme.inversePrimary,
+            colorScheme.outline,
         )
 
     fun categoryColor(
@@ -57,11 +57,11 @@ object ChartColors {
         when (colorKey) {
             "red" -> colorScheme.error
             "blue" -> colorScheme.primary
-            "green" -> Color(0xFF43A047)
+            "green" -> colorScheme.onPrimaryContainer
             "orange" -> colorScheme.secondary
             "purple" -> colorScheme.inversePrimary
             "teal" -> colorScheme.tertiary
-            "pink" -> Color(0xFFD81B60)
+            "pink" -> colorScheme.onTertiaryContainer
             "gray" -> colorScheme.outline
             else -> colorScheme.primary
         }
@@ -69,11 +69,12 @@ object ChartColors {
     @Composable
     fun resolveChartColors(colorKeys: List<String?>): List<Color> {
         val colorScheme = MaterialTheme.colorScheme
+        val fallbacks = fallbackChartColors(colorScheme)
         return colorKeys.mapIndexed { index, key ->
             if (key != null) {
                 categoryColor(key, colorScheme)
             } else {
-                fallbackChartColors[index % fallbackChartColors.size]
+                fallbacks[index % fallbacks.size]
             }
         }
     }

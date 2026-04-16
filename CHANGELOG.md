@@ -8,6 +8,12 @@
 - Graceful fallback toast when no browser is installed for external links
 - Terms of Service document (`terms-of-service.md`) for GitHub Pages hosting
 
+### Changed
+- Enable dynamic color (Material You) on Android 12+ devices
+- Add `pinnedScrollBehavior()` + `nestedScroll` to TopAppBar on Home, Summary, Settings, and Gold Portfolio screens
+- Replace hardcoded chart colors with M3 `colorScheme` tokens in `ChartColors`
+- Remove 25 redundant `fontWeight = FontWeight.Medium` overrides on `titleMedium`/`titleSmall` Text (M3 default is already Medium)
+
 ### Removed
 - Inline Privacy Statement, Data Privacy, and Data Storage text from Settings (replaced by Privacy Policy link)
 

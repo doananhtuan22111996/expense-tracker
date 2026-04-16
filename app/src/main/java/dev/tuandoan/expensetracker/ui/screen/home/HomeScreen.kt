@@ -50,6 +50,8 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.TextField
 import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.material3.TopAppBarScrollBehavior
 import androidx.compose.material3.rememberDateRangePickerState
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
@@ -64,6 +66,7 @@ import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.stringResource
@@ -187,6 +190,7 @@ fun HomeScreen(
         } else {
             null
         }
+    val scrollBehavior = TopAppBarDefaults.pinnedScrollBehavior()
     Scaffold(
         topBar = {
             if (isSearchActive) {
@@ -199,6 +203,7 @@ fun HomeScreen(
                     },
                     onClear = viewModel::clearSearch,
                     focusRequester = searchFocusRequester,
+                    scrollBehavior = scrollBehavior,
                 )
             } else {
                 TopAppBar(
@@ -227,6 +232,7 @@ fun HomeScreen(
                             }
                         }
                     },
+                    scrollBehavior = scrollBehavior,
                     windowInsets = WindowInsets(0, 0, 0, 0),
                 )
             }
@@ -246,7 +252,7 @@ fun HomeScreen(
         },
         snackbarHost = { SnackbarHost(snackbarHostState) },
         contentWindowInsets = WindowInsets(0, 0, 0, 0),
-        modifier = modifier,
+        modifier = modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
     ) { innerPadding ->
         Column(
             modifier =
@@ -876,6 +882,7 @@ private fun SearchTopBar(
     onClose: () -> Unit,
     onClear: () -> Unit,
     focusRequester: FocusRequester,
+    scrollBehavior: TopAppBarScrollBehavior,
     modifier: Modifier = Modifier,
 ) {
     TopAppBar(
@@ -929,6 +936,7 @@ private fun SearchTopBar(
                 )
             }
         },
+        scrollBehavior = scrollBehavior,
         windowInsets = WindowInsets(0, 0, 0, 0),
         modifier = modifier,
     )
