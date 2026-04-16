@@ -17,6 +17,7 @@
 ### Fixed
 - Edge-to-edge: content now scrolls behind NavigationBar instead of being clipped above it
 - Last list items on Home, Summary, Gold, and Settings screens are fully visible when scrolled to bottom
+- Status bar color now matches TopAppBar surface tint on scroll (inner Scaffold handles insets instead of outer)
 
 ### Removed
 - Inline Privacy Statement, Data Privacy, and Data Storage text from Settings (replaced by Privacy Policy link)

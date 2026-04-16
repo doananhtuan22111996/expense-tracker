@@ -1,7 +1,6 @@
 package dev.tuandoan.expensetracker.ui
 
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Icon
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
@@ -211,14 +210,12 @@ private fun Home(
             )
         },
     ) { innerPadding ->
-        // Apply only top padding so content extends behind the NavigationBar (edge-to-edge).
-        // Each screen adds bottomContentPadding to its scrollable content.
+        // Don't apply top padding here — let each screen's Scaffold/TopAppBar handle
+        // status bar insets so the TopAppBar color extends behind the status bar (M3 edge-to-edge).
+        // Bottom padding is passed to each screen's scrollable content.
         ExpenseTrackerNavigation(
             navController = navController,
-            modifier =
-                Modifier
-                    .fillMaxSize()
-                    .padding(top = innerPadding.calculateTopPadding()),
+            modifier = Modifier.fillMaxSize(),
             bottomContentPadding = innerPadding.calculateBottomPadding(),
             onNavigateToAddTransaction = onNavigateToAddTransaction,
             onNavigateToEditTransaction = onNavigateToEditTransaction,
