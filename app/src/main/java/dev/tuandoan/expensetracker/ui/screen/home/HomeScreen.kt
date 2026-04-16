@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -258,6 +259,7 @@ fun HomeScreen(
                 modifier = Modifier.padding(bottom = bottomContentPadding),
             )
         },
+        contentWindowInsets = WindowInsets(0, 0, 0, 0),
         modifier = modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
     ) { innerPadding ->
         Column(
@@ -355,7 +357,7 @@ fun HomeScreen(
                         transactions = uiState.transactions,
                         onTransactionClick = onNavigateToEditTransaction,
                         onDeleteTransaction = viewModel::deleteTransaction,
-                        contentPadding = PaddingValues(bottom = bottomContentPadding),
+                        contentPadding = PaddingValues(bottom = bottomContentPadding + 80.dp),
                         modifier = Modifier.weight(1f),
                     )
                 }

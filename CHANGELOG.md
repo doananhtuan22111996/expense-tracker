@@ -19,6 +19,8 @@
 - Last list items on Home, Summary, Gold, and Settings screens are fully visible when scrolled to bottom
 - Status bar color now matches TopAppBar surface tint on scroll (inner Scaffold handles insets instead of outer)
 - FAB and Snackbar no longer hidden behind NavigationBar on Home, Gold Portfolio, and Settings screens
+- FAB no longer overlaps last list item — added FAB clearance to LazyColumn contentPadding on Home and Gold screens
+- FAB position no longer double-counts system insets (restored `contentWindowInsets` on inner Scaffolds)
 
 ### Removed
 - Inline Privacy Statement, Data Privacy, and Data Storage text from Settings (replaced by Privacy Policy link)

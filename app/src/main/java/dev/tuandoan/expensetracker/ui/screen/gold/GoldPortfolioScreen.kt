@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -178,6 +179,7 @@ fun GoldPortfolioScreen(
                 modifier = Modifier.padding(bottom = bottomContentPadding),
             )
         },
+        contentWindowInsets = WindowInsets(0, 0, 0, 0),
     ) { innerPadding ->
         when {
             uiState.isLoading -> {
@@ -217,7 +219,7 @@ fun GoldPortfolioScreen(
                     onUpdatePrices = { showPriceSheet = true },
                     onEditHolding = onNavigateToEditHolding,
                     onDeleteHolding = viewModel::deleteHolding,
-                    contentPadding = PaddingValues(bottom = bottomContentPadding),
+                    contentPadding = PaddingValues(bottom = bottomContentPadding + 80.dp),
                     modifier =
                         Modifier
                             .fillMaxSize()
