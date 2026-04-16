@@ -340,12 +340,6 @@
     <string name="settings_version">Version</string>
     <string name="settings_contact_email">Contact Email</string>
     <string name="settings_privacy">Privacy</string>
-    <string name="settings_privacy_statement">Privacy Statement</string>
-    <string name="settings_privacy_statement_body">All data is stored locally on your device. No data is collected or shared.</string>
-    <string name="settings_data_privacy">Data Privacy</string>
-    <string name="settings_data_privacy_body">• All transaction data is stored locally on your device\n• No personal information is transmitted to external servers\n• No analytics or tracking is performed\n• No advertisements are displayed\n• No account creation or login is required</string>
-    <string name="settings_data_storage">Data Storage</string>
-    <string name="settings_data_storage_body">Your expense data is stored in a local database on your device. Uninstalling the app will permanently delete all data. We recommend backing up your data if needed.</string>
     <!-- Privacy Policy & Terms of Service -->
     <string name="settings_privacy_policy">Privacy Policy</string>
     <string name="settings_terms_of_service">Terms of Service</string>

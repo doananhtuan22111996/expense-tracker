@@ -731,48 +731,6 @@ fun SettingsScreen(
 
                 HorizontalDivider()
 
-                Column(modifier = Modifier.padding(DesignSystemSpacing.large)) {
-                    Text(
-                        text = stringResource(R.string.settings_privacy_statement),
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Medium,
-                        modifier = Modifier.padding(bottom = DesignSystemSpacing.small),
-                    )
-                    Text(
-                        text = stringResource(R.string.settings_privacy_statement_body),
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.padding(bottom = DesignSystemSpacing.large),
-                    )
-
-                    Text(
-                        text = stringResource(R.string.settings_data_privacy),
-                        style = MaterialTheme.typography.titleSmall,
-                        fontWeight = FontWeight.Medium,
-                        modifier = Modifier.padding(bottom = DesignSystemSpacing.xs),
-                    )
-                    Text(
-                        text = stringResource(R.string.settings_data_privacy_body),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.padding(bottom = DesignSystemSpacing.large),
-                    )
-
-                    Text(
-                        text = stringResource(R.string.settings_data_storage),
-                        style = MaterialTheme.typography.titleSmall,
-                        fontWeight = FontWeight.Medium,
-                        modifier = Modifier.padding(bottom = DesignSystemSpacing.xs),
-                    )
-                    Text(
-                        text = stringResource(R.string.settings_data_storage_body),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                }
-
-                HorizontalDivider()
-
                 // Privacy Policy link
                 SettingsExternalLinkRow(
                     label = stringResource(R.string.settings_privacy_policy),

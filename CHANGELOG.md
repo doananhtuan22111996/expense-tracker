@@ -7,6 +7,9 @@
 - Share App button in Settings with Play Store link via Android share sheet
 - Graceful fallback toast when no browser is installed for external links
 
+### Removed
+- Inline Privacy Statement, Data Privacy, and Data Storage text from Settings (replaced by Privacy Policy link)
+
 ## [3.6.0] - 2026-04-16
 
 ### Added
