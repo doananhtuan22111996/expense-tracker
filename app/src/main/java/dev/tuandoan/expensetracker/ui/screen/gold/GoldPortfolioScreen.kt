@@ -162,15 +162,22 @@ fun GoldPortfolioScreen(
                 FloatingActionButton(
                     onClick = onNavigateToAddHolding,
                     modifier =
-                        Modifier.semantics {
-                            contentDescription = addHoldingDesc
-                        },
+                        Modifier
+                            .padding(bottom = bottomContentPadding)
+                            .semantics {
+                                contentDescription = addHoldingDesc
+                            },
                 ) {
                     Icon(Icons.Default.Add, contentDescription = null)
                 }
             }
         },
-        snackbarHost = { SnackbarHost(snackbarHostState) },
+        snackbarHost = {
+            SnackbarHost(
+                hostState = snackbarHostState,
+                modifier = Modifier.padding(bottom = bottomContentPadding),
+            )
+        },
     ) { innerPadding ->
         when {
             uiState.isLoading -> {

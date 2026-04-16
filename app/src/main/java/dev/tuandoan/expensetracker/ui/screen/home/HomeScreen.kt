@@ -244,6 +244,7 @@ fun HomeScreen(
                     hapticFeedback.performHapticFeedback(HapticFeedbackType.LongPress)
                     onNavigateToAddTransaction()
                 },
+                modifier = Modifier.padding(bottom = bottomContentPadding),
             ) {
                 Icon(
                     imageVector = Icons.Default.Add,
@@ -251,7 +252,12 @@ fun HomeScreen(
                 )
             }
         },
-        snackbarHost = { SnackbarHost(snackbarHostState) },
+        snackbarHost = {
+            SnackbarHost(
+                hostState = snackbarHostState,
+                modifier = Modifier.padding(bottom = bottomContentPadding),
+            )
+        },
         modifier = modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
     ) { innerPadding ->
         Column(
