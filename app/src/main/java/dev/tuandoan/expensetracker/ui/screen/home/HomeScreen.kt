@@ -1,7 +1,6 @@
 package dev.tuandoan.expensetracker.ui.screen.home
 
 import androidx.activity.compose.BackHandler
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -197,47 +196,89 @@ fun HomeScreen(
     val scrollBehavior = TopAppBarDefaults.pinnedScrollBehavior()
     Scaffold(
         topBar = {
-            if (isSearchActive) {
-                SearchTopBar(
-                    query = uiState.searchQuery,
-                    onQueryChanged = viewModel::onSearchQueryChanged,
-                    onClose = {
-                        viewModel.clearSearch()
-                        isSearchActive = false
-                    },
-                    onClear = viewModel::clearSearch,
-                    focusRequester = searchFocusRequester,
-                    scrollBehavior = scrollBehavior,
-                )
-            } else {
-                TopAppBar(
-                    title = { Text(stringResource(R.string.app_name)) },
-                    actions = {
-                        val searchDesc = stringResource(R.string.a11y_search_transactions)
-                        IconButton(
-                            onClick = { isSearchActive = true },
-                            modifier =
-                                Modifier.semantics {
-                                    contentDescription = searchDesc
-                                },
-                        ) {
-                            if (uiState.searchQuery.isNotEmpty()) {
-                                BadgedBox(badge = { Badge() }) {
+            Column {
+                if (isSearchActive) {
+                    SearchTopBar(
+                        query = uiState.searchQuery,
+                        onQueryChanged = viewModel::onSearchQueryChanged,
+                        onClose = {
+                            viewModel.clearSearch()
+                            isSearchActive = false
+                        },
+                        onClear = viewModel::clearSearch,
+                        focusRequester = searchFocusRequester,
+                        scrollBehavior = scrollBehavior,
+                    )
+                } else {
+                    TopAppBar(
+                        title = { Text(stringResource(R.string.app_name)) },
+                        actions = {
+                            val searchDesc = stringResource(R.string.a11y_search_transactions)
+                            IconButton(
+                                onClick = { isSearchActive = true },
+                                modifier =
+                                    Modifier.semantics {
+                                        contentDescription = searchDesc
+                                    },
+                            ) {
+                                if (uiState.searchQuery.isNotEmpty()) {
+                                    BadgedBox(badge = { Badge() }) {
+                                        Icon(
+                                            imageVector = Icons.Default.Search,
+                                            contentDescription = null,
+                                        )
+                                    }
+                                } else {
                                     Icon(
                                         imageVector = Icons.Default.Search,
                                         contentDescription = null,
                                     )
                                 }
-                            } else {
-                                Icon(
-                                    imageVector = Icons.Default.Search,
-                                    contentDescription = null,
-                                )
                             }
-                        }
-                    },
-                    scrollBehavior = scrollBehavior,
+                        },
+                        scrollBehavior = scrollBehavior,
+                    )
+                }
+
+                // Filter chips — pinned below TopAppBar, shares surface tinting
+                FilterChipsRow(
+                    selectedFilter = uiState.filter,
+                    onFilterChanged = viewModel::onFilterChanged,
+                    searchScope = uiState.searchScope,
+                    onSearchScopeChanged = viewModel::onSearchScopeChanged,
+                    onCategoryChipClick = { showCategorySheet = true },
+                    selectedCategoryName = uiState.selectedCategoryName,
+                    onDateRangeChipClick = { showDateRangePicker = true },
+                    hasDateRange = uiState.dateRangeStart != null,
+                    dateRangeLabel = formattedDateRange,
+                    modifier =
+                        Modifier.padding(
+                            start = DesignSystemSpacing.screenPadding,
+                            end = DesignSystemSpacing.screenPadding,
+                            bottom = DesignSystemSpacing.small,
+                        ),
                 )
+
+                // Active filter badges
+                if (uiState.hasActiveFilters) {
+                    ActiveFilterBar(
+                        uiState = uiState,
+                        onClearScope = {
+                            viewModel.onSearchScopeChanged(SearchScope.CURRENT_MONTH)
+                            viewModel.clearDateRange()
+                        },
+                        onClearCategory = { viewModel.onCategorySelected(null) },
+                        onClearDateRange = viewModel::clearDateRange,
+                        onClearType = { viewModel.onFilterChanged(null) },
+                        onClearAll = viewModel::clearAllFilters,
+                        modifier =
+                            Modifier.padding(
+                                start = DesignSystemSpacing.screenPadding,
+                                end = DesignSystemSpacing.screenPadding,
+                                bottom = DesignSystemSpacing.small,
+                            ),
+                    )
+                }
             }
         },
         floatingActionButton = {
@@ -286,45 +327,6 @@ fun HomeScreen(
                             { showMonthPicker = true }
                         },
                 )
-            }
-
-            // Filter chips — sticky header, always visible under TopAppBar
-            stickyHeader(key = "filter_chips") {
-                Column(
-                    modifier =
-                        Modifier
-                            .fillMaxWidth()
-                            .background(MaterialTheme.colorScheme.surface),
-                ) {
-                    FilterChipsRow(
-                        selectedFilter = uiState.filter,
-                        onFilterChanged = viewModel::onFilterChanged,
-                        searchScope = uiState.searchScope,
-                        onSearchScopeChanged = viewModel::onSearchScopeChanged,
-                        onCategoryChipClick = { showCategorySheet = true },
-                        selectedCategoryName = uiState.selectedCategoryName,
-                        onDateRangeChipClick = { showDateRangePicker = true },
-                        hasDateRange = uiState.dateRangeStart != null,
-                        dateRangeLabel = formattedDateRange,
-                        modifier = Modifier.padding(bottom = DesignSystemSpacing.small),
-                    )
-
-                    // Active filter badges
-                    if (uiState.hasActiveFilters) {
-                        ActiveFilterBar(
-                            uiState = uiState,
-                            onClearScope = {
-                                viewModel.onSearchScopeChanged(SearchScope.CURRENT_MONTH)
-                                viewModel.clearDateRange()
-                            },
-                            onClearCategory = { viewModel.onCategorySelected(null) },
-                            onClearDateRange = viewModel::clearDateRange,
-                            onClearType = { viewModel.onFilterChanged(null) },
-                            onClearAll = viewModel::clearAllFilters,
-                            modifier = Modifier.padding(bottom = DesignSystemSpacing.small),
-                        )
-                    }
-                }
             }
 
             // Content
