@@ -9,6 +9,8 @@
 - Terms of Service document (`terms-of-service.md`) for GitHub Pages hosting
 
 ### Changed
+- Home screen: MonthSelector scrolls away with content; FilterChips sticky under TopAppBar
+- Home screen: replaced outer Column + nested TransactionsList LazyColumn with single unified LazyColumn
 - Enable dynamic color (Material You) on Android 12+ devices
 - Add `pinnedScrollBehavior()` + `nestedScroll` to TopAppBar on Home, Summary, Settings, and Gold Portfolio screens
 - Replace hardcoded chart colors with M3 `colorScheme` tokens in `ChartColors`

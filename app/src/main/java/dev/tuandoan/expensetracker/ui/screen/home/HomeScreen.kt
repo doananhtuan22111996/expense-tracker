@@ -1,6 +1,7 @@
 package dev.tuandoan.expensetracker.ui.screen.home
 
 import androidx.activity.compose.BackHandler
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -262,104 +263,123 @@ fun HomeScreen(
         contentWindowInsets = WindowInsets(0, 0, 0, 0),
         modifier = modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
     ) { innerPadding ->
-        Column(
+        LazyColumn(
             modifier =
                 Modifier
                     .fillMaxSize()
                     .padding(innerPadding)
                     .padding(horizontal = DesignSystemSpacing.screenPadding),
+            verticalArrangement = Arrangement.spacedBy(DesignSystemSpacing.listItemSpacing),
+            contentPadding = PaddingValues(bottom = bottomContentPadding + 80.dp),
         ) {
-            // Month selector — disabled when All Months is active
-            MonthSelector(
-                monthLabel = uiState.monthLabel,
-                onPreviousMonth = viewModel::goToPreviousMonth,
-                onNextMonth = viewModel::goToNextMonth,
-                enabled = !isAllMonths,
-                onMonthLabelClick =
-                    if (isAllMonths) {
-                        null
-                    } else {
-                        { showMonthPicker = true }
-                    },
-            )
-
-            // Filter chips row (type + scope + category + date range)
-            FilterChipsRow(
-                selectedFilter = uiState.filter,
-                onFilterChanged = viewModel::onFilterChanged,
-                searchScope = uiState.searchScope,
-                onSearchScopeChanged = viewModel::onSearchScopeChanged,
-                onCategoryChipClick = { showCategorySheet = true },
-                selectedCategoryName = uiState.selectedCategoryName,
-                onDateRangeChipClick = { showDateRangePicker = true },
-                hasDateRange = uiState.dateRangeStart != null,
-                dateRangeLabel = formattedDateRange,
-                modifier = Modifier.padding(bottom = DesignSystemSpacing.small),
-            )
-
-            // Active filter badges
-            if (uiState.hasActiveFilters) {
-                ActiveFilterBar(
-                    uiState = uiState,
-                    onClearScope = {
-                        viewModel.onSearchScopeChanged(SearchScope.CURRENT_MONTH)
-                        viewModel.clearDateRange()
-                    },
-                    onClearCategory = { viewModel.onCategorySelected(null) },
-                    onClearDateRange = viewModel::clearDateRange,
-                    onClearType = { viewModel.onFilterChanged(null) },
-                    onClearAll = viewModel::clearAllFilters,
-                    modifier = Modifier.padding(bottom = DesignSystemSpacing.small),
+            // Month selector — scrolls away when user scrolls down
+            item(key = "month_selector") {
+                MonthSelector(
+                    monthLabel = uiState.monthLabel,
+                    onPreviousMonth = viewModel::goToPreviousMonth,
+                    onNextMonth = viewModel::goToNextMonth,
+                    enabled = !isAllMonths,
+                    onMonthLabelClick =
+                        if (isAllMonths) {
+                            null
+                        } else {
+                            { showMonthPicker = true }
+                        },
                 )
+            }
+
+            // Filter chips — sticky header, always visible under TopAppBar
+            stickyHeader(key = "filter_chips") {
+                Column(
+                    modifier =
+                        Modifier
+                            .fillMaxWidth()
+                            .background(MaterialTheme.colorScheme.surface),
+                ) {
+                    FilterChipsRow(
+                        selectedFilter = uiState.filter,
+                        onFilterChanged = viewModel::onFilterChanged,
+                        searchScope = uiState.searchScope,
+                        onSearchScopeChanged = viewModel::onSearchScopeChanged,
+                        onCategoryChipClick = { showCategorySheet = true },
+                        selectedCategoryName = uiState.selectedCategoryName,
+                        onDateRangeChipClick = { showDateRangePicker = true },
+                        hasDateRange = uiState.dateRangeStart != null,
+                        dateRangeLabel = formattedDateRange,
+                        modifier = Modifier.padding(bottom = DesignSystemSpacing.small),
+                    )
+
+                    // Active filter badges
+                    if (uiState.hasActiveFilters) {
+                        ActiveFilterBar(
+                            uiState = uiState,
+                            onClearScope = {
+                                viewModel.onSearchScopeChanged(SearchScope.CURRENT_MONTH)
+                                viewModel.clearDateRange()
+                            },
+                            onClearCategory = { viewModel.onCategorySelected(null) },
+                            onClearDateRange = viewModel::clearDateRange,
+                            onClearType = { viewModel.onFilterChanged(null) },
+                            onClearAll = viewModel::clearAllFilters,
+                            modifier = Modifier.padding(bottom = DesignSystemSpacing.small),
+                        )
+                    }
+                }
             }
 
             // Content
             when {
                 uiState.isLoading -> {
-                    Box(
-                        modifier = Modifier.fillMaxSize(),
-                        contentAlignment = Alignment.Center,
-                    ) {
-                        val loadingDesc = stringResource(R.string.a11y_loading_transactions)
-                        CircularProgressIndicator(
-                            modifier =
-                                Modifier.semantics {
-                                    contentDescription = loadingDesc
-                                },
-                        )
+                    item(key = "loading") {
+                        Box(
+                            modifier = Modifier.fillParentMaxSize(),
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            val loadingDesc = stringResource(R.string.a11y_loading_transactions)
+                            CircularProgressIndicator(
+                                modifier =
+                                    Modifier.semantics {
+                                        contentDescription = loadingDesc
+                                    },
+                            )
+                        }
                     }
                 }
                 uiState.isError && uiState.transactions.isEmpty() -> {
-                    ErrorStateMessage(
-                        title = stringResource(R.string.error_load_transactions),
-                        message = uiState.errorMessage?.asString() ?: stringResource(R.string.error_unexpected),
-                        onRetry = viewModel::retry,
-                        modifier = Modifier.fillMaxSize(),
-                    )
-                }
-                uiState.transactions.isEmpty() -> {
-                    if (uiState.searchQuery.isNotEmpty() || uiState.hasActiveFilters) {
-                        EmptyStateMessage(
-                            title = stringResource(R.string.home_no_results),
-                            subtitle = stringResource(R.string.home_no_results_subtitle),
-                            modifier = Modifier.fillMaxSize(),
-                        )
-                    } else {
-                        EmptyStateMessage(
-                            title = stringResource(R.string.home_no_transactions),
-                            subtitle = stringResource(R.string.home_no_transactions_subtitle),
-                            modifier = Modifier.fillMaxSize(),
+                    item(key = "error") {
+                        ErrorStateMessage(
+                            title = stringResource(R.string.error_load_transactions),
+                            message = uiState.errorMessage?.asString() ?: stringResource(R.string.error_unexpected),
+                            onRetry = viewModel::retry,
+                            modifier = Modifier.fillParentMaxSize(),
                         )
                     }
                 }
+                uiState.transactions.isEmpty() -> {
+                    item(key = "empty") {
+                        if (uiState.searchQuery.isNotEmpty() || uiState.hasActiveFilters) {
+                            EmptyStateMessage(
+                                title = stringResource(R.string.home_no_results),
+                                subtitle = stringResource(R.string.home_no_results_subtitle),
+                                modifier = Modifier.fillParentMaxSize(),
+                            )
+                        } else {
+                            EmptyStateMessage(
+                                title = stringResource(R.string.home_no_transactions),
+                                subtitle = stringResource(R.string.home_no_transactions_subtitle),
+                                modifier = Modifier.fillParentMaxSize(),
+                            )
+                        }
+                    }
+                }
                 else -> {
-                    TransactionsList(
-                        transactions = uiState.transactions,
-                        onTransactionClick = onNavigateToEditTransaction,
-                        onDeleteTransaction = viewModel::deleteTransaction,
-                        contentPadding = PaddingValues(bottom = bottomContentPadding + 80.dp),
-                        modifier = Modifier.weight(1f),
-                    )
+                    items(uiState.transactions, key = { it.id }) { transaction ->
+                        TransactionItem(
+                            transaction = transaction,
+                            onClick = { onNavigateToEditTransaction(transaction.id) },
+                            onDeleteClick = { viewModel.deleteTransaction(transaction) },
+                        )
+                    }
                 }
             }
         }
@@ -708,29 +728,6 @@ private fun DateRangePickerSheet(
                     Text(stringResource(R.string.action_ok))
                 }
             }
-        }
-    }
-}
-
-@Composable
-private fun TransactionsList(
-    transactions: List<Transaction>,
-    onTransactionClick: (Long) -> Unit,
-    onDeleteTransaction: (Transaction) -> Unit,
-    modifier: Modifier = Modifier,
-    contentPadding: PaddingValues = PaddingValues(),
-) {
-    LazyColumn(
-        verticalArrangement = Arrangement.spacedBy(DesignSystemSpacing.listItemSpacing),
-        contentPadding = contentPadding,
-        modifier = modifier,
-    ) {
-        items(transactions, key = { it.id }) { transaction ->
-            TransactionItem(
-                transaction = transaction,
-                onClick = { onTransactionClick(transaction.id) },
-                onDeleteClick = { onDeleteTransaction(transaction) },
-            )
         }
     }
 }
