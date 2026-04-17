@@ -16,6 +16,7 @@
 - Add `pinnedScrollBehavior()` + `nestedScroll` to TopAppBar on Home, Summary, Settings, and Gold Portfolio screens
 - Replace hardcoded chart colors with M3 `colorScheme` tokens in `ChartColors`
 - Remove 25 redundant `fontWeight = FontWeight.Medium` overrides on `titleMedium`/`titleSmall` Text (M3 default is already Medium)
+- Extract `80.dp` FAB clearance magic number into `DesignSystemSpacing.fabClearance` constant
 
 ### Fixed
 - Edge-to-edge: content now scrolls behind NavigationBar instead of being clipped above it
@@ -24,6 +25,7 @@
 - FAB and Snackbar no longer hidden behind NavigationBar on Home, Gold Portfolio, and Settings screens
 - FAB no longer overlaps last list item — added FAB clearance to LazyColumn contentPadding on Home and Gold screens
 - FAB position no longer double-counts system insets (restored `contentWindowInsets` on inner Scaffolds)
+- Gold Portfolio: removed redundant `bottom_spacer` item (now handled by `contentPadding`)
 
 ### Removed
 - Inline Privacy Statement, Data Privacy, and Data Storage text from Settings (replaced by Privacy Policy link)

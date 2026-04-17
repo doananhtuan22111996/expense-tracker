@@ -311,7 +311,7 @@ fun HomeScreen(
                     .padding(innerPadding)
                     .padding(horizontal = DesignSystemSpacing.screenPadding),
             verticalArrangement = Arrangement.spacedBy(DesignSystemSpacing.listItemSpacing),
-            contentPadding = PaddingValues(bottom = bottomContentPadding + 80.dp),
+            contentPadding = PaddingValues(bottom = bottomContentPadding + DesignSystemSpacing.fabClearance),
         ) {
             // Month selector — scrolls away when user scrolls down
             item(key = "month_selector") {

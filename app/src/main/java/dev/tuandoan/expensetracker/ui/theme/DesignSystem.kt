@@ -25,6 +25,7 @@ object DesignSystemSpacing {
     val sectionSpacing: Dp = medium
     val componentSpacing: Dp = small
     val listItemSpacing: Dp = small
+    val fabClearance: Dp = 80.dp
 }
 
 @Stable

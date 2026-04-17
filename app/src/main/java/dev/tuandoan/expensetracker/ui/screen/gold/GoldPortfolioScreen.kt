@@ -219,7 +219,7 @@ fun GoldPortfolioScreen(
                     onUpdatePrices = { showPriceSheet = true },
                     onEditHolding = onNavigateToEditHolding,
                     onDeleteHolding = viewModel::deleteHolding,
-                    contentPadding = PaddingValues(bottom = bottomContentPadding + 80.dp),
+                    contentPadding = PaddingValues(bottom = bottomContentPadding + DesignSystemSpacing.fabClearance),
                     modifier =
                         Modifier
                             .fillMaxSize()
@@ -448,10 +448,6 @@ private fun GoldPortfolioContent(
                 onDelete = { onDeleteHolding(holdingWithPnL.holding) },
                 modifier = Modifier.fillMaxWidth().animateItem(),
             )
-        }
-
-        item(key = "bottom_spacer") {
-            Spacer(Modifier.height(80.dp))
         }
     }
 }
