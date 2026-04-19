@@ -5,6 +5,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
@@ -47,6 +48,7 @@ import androidx.compose.material3.SwipeToDismissBoxValue
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.material3.rememberSwipeToDismissBoxState
 import androidx.compose.runtime.Composable
@@ -59,12 +61,14 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import dev.tuandoan.expensetracker.R
@@ -88,6 +92,7 @@ import java.util.Locale
 fun GoldPortfolioScreen(
     viewModel: GoldPortfolioViewModel,
     modifier: Modifier = Modifier,
+    bottomContentPadding: Dp = 0.dp,
     onNavigateToAddHolding: () -> Unit = {},
     onNavigateToEditHolding: (holdingId: Long) -> Unit = {},
 ) {
@@ -143,13 +148,13 @@ fun GoldPortfolioScreen(
         )
     }
 
+    val scrollBehavior = TopAppBarDefaults.pinnedScrollBehavior()
     Scaffold(
-        modifier = modifier,
-        contentWindowInsets = WindowInsets(0, 0, 0, 0),
+        modifier = modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
         topBar = {
             TopAppBar(
                 title = { Text(stringResource(R.string.gold_portfolio_title)) },
-                windowInsets = WindowInsets(0, 0, 0, 0),
+                scrollBehavior = scrollBehavior,
             )
         },
         floatingActionButton = {
@@ -158,15 +163,23 @@ fun GoldPortfolioScreen(
                 FloatingActionButton(
                     onClick = onNavigateToAddHolding,
                     modifier =
-                        Modifier.semantics {
-                            contentDescription = addHoldingDesc
-                        },
+                        Modifier
+                            .padding(bottom = bottomContentPadding)
+                            .semantics {
+                                contentDescription = addHoldingDesc
+                            },
                 ) {
                     Icon(Icons.Default.Add, contentDescription = null)
                 }
             }
         },
-        snackbarHost = { SnackbarHost(snackbarHostState) },
+        snackbarHost = {
+            SnackbarHost(
+                hostState = snackbarHostState,
+                modifier = Modifier.padding(bottom = bottomContentPadding),
+            )
+        },
+        contentWindowInsets = WindowInsets(0, 0, 0, 0),
     ) { innerPadding ->
         when {
             uiState.isLoading -> {
@@ -206,6 +219,7 @@ fun GoldPortfolioScreen(
                     onUpdatePrices = { showPriceSheet = true },
                     onEditHolding = onNavigateToEditHolding,
                     onDeleteHolding = viewModel::deleteHolding,
+                    contentPadding = PaddingValues(bottom = bottomContentPadding + DesignSystemSpacing.fabClearance),
                     modifier =
                         Modifier
                             .fillMaxSize()
@@ -260,9 +274,11 @@ private fun GoldPortfolioContent(
     onEditHolding: (holdingId: Long) -> Unit,
     onDeleteHolding: (GoldHolding) -> Unit,
     modifier: Modifier = Modifier,
+    contentPadding: PaddingValues = PaddingValues(),
 ) {
     LazyColumn(
         modifier = modifier.padding(horizontal = DesignSystemSpacing.screenPadding),
+        contentPadding = contentPadding,
         verticalArrangement = Arrangement.spacedBy(DesignSystemSpacing.componentSpacing),
     ) {
         // Portfolio Summary
@@ -432,10 +448,6 @@ private fun GoldPortfolioContent(
                 onDelete = { onDeleteHolding(holdingWithPnL.holding) },
                 modifier = Modifier.fillMaxWidth().animateItem(),
             )
-        }
-
-        item(key = "bottom_spacer") {
-            Spacer(Modifier.height(80.dp))
         }
     }
 }

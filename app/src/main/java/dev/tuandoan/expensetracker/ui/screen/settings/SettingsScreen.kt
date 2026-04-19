@@ -49,6 +49,7 @@ import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
@@ -59,11 +60,14 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.Lifecycle
@@ -88,6 +92,7 @@ fun SettingsScreen(
     modifier: Modifier = Modifier,
     onNavigateToCategories: () -> Unit = {},
     onNavigateToRecurring: () -> Unit = {},
+    bottomContentPadding: Dp = 0.dp,
     viewModel: SettingsViewModel = hiltViewModel(),
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
@@ -165,16 +170,22 @@ fun SettingsScreen(
         }
     }
 
+    val scrollBehavior = TopAppBarDefaults.pinnedScrollBehavior()
     Scaffold(
         topBar = {
             TopAppBar(
                 title = { Text(stringResource(R.string.screen_title_settings)) },
-                windowInsets = WindowInsets(0, 0, 0, 0),
+                scrollBehavior = scrollBehavior,
             )
         },
-        snackbarHost = { SnackbarHost(snackbarHostState) },
+        snackbarHost = {
+            SnackbarHost(
+                hostState = snackbarHostState,
+                modifier = Modifier.padding(bottom = bottomContentPadding),
+            )
+        },
         contentWindowInsets = WindowInsets(0, 0, 0, 0),
-        modifier = modifier,
+        modifier = modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
     ) { innerPadding ->
         Column(
             modifier =
@@ -182,6 +193,7 @@ fun SettingsScreen(
                     .fillMaxSize()
                     .padding(innerPadding)
                     .padding(horizontal = DesignSystemSpacing.screenPadding)
+                    .padding(bottom = bottomContentPadding)
                     .verticalScroll(rememberScrollState()),
         ) {
             // Preferences Section
@@ -752,7 +764,6 @@ fun SettingsScreen(
                     Text(
                         text = stringResource(R.string.app_name),
                         style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Medium,
                         modifier = Modifier.padding(bottom = DesignSystemSpacing.small),
                     )
                     Text(
@@ -767,7 +778,6 @@ fun SettingsScreen(
                         Text(
                             text = stringResource(R.string.settings_debug_info),
                             style = MaterialTheme.typography.titleSmall,
-                            fontWeight = FontWeight.Medium,
                             modifier = Modifier.padding(bottom = DesignSystemSpacing.xs),
                         )
                         Text(

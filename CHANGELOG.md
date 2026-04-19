@@ -8,6 +8,25 @@
 - Graceful fallback toast when no browser is installed for external links
 - Terms of Service document (`terms-of-service.md`) for GitHub Pages hosting
 
+### Changed
+- Home screen: FilterChips and ActiveFilterBar moved into `topBar` slot — pinned below TopAppBar with scroll tint
+- Home screen: MonthSelector scrolls away with content inside the LazyColumn
+- Home screen: replaced outer Column + nested TransactionsList LazyColumn with single unified LazyColumn
+- Enable dynamic color (Material You) on Android 12+ devices
+- Add `pinnedScrollBehavior()` + `nestedScroll` to TopAppBar on Home, Summary, Settings, and Gold Portfolio screens
+- Replace hardcoded chart colors with M3 `colorScheme` tokens in `ChartColors`
+- Remove 25 redundant `fontWeight = FontWeight.Medium` overrides on `titleMedium`/`titleSmall` Text (M3 default is already Medium)
+- Extract `80.dp` FAB clearance magic number into `DesignSystemSpacing.fabClearance` constant
+
+### Fixed
+- Edge-to-edge: content now scrolls behind NavigationBar instead of being clipped above it
+- Last list items on Home, Summary, Gold, and Settings screens are fully visible when scrolled to bottom
+- Status bar color now matches TopAppBar surface tint on scroll (inner Scaffold handles insets instead of outer)
+- FAB and Snackbar no longer hidden behind NavigationBar on Home, Gold Portfolio, and Settings screens
+- FAB no longer overlaps last list item — added FAB clearance to LazyColumn contentPadding on Home and Gold screens
+- FAB position no longer double-counts system insets (restored `contentWindowInsets` on inner Scaffolds)
+- Gold Portfolio: removed redundant `bottom_spacer` item (now handled by `contentPadding`)
+
 ### Removed
 - Inline Privacy Statement, Data Privacy, and Data Storage text from Settings (replaced by Privacy Policy link)
 

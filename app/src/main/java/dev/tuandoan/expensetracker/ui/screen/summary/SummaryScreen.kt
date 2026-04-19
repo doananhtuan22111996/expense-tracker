@@ -4,6 +4,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
@@ -25,6 +26,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -32,12 +34,14 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import dev.tuandoan.expensetracker.R
@@ -66,6 +70,7 @@ import dev.tuandoan.expensetracker.ui.theme.DesignSystemSpacing
 fun SummaryScreen(
     viewModel: SummaryViewModel,
     modifier: Modifier = Modifier,
+    bottomContentPadding: Dp = 0.dp,
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     var showMonthPicker by remember { mutableStateOf(false) }
@@ -90,15 +95,16 @@ fun SummaryScreen(
         )
     }
 
+    val scrollBehavior = TopAppBarDefaults.pinnedScrollBehavior()
     Scaffold(
         topBar = {
             TopAppBar(
                 title = { Text(stringResource(R.string.screen_title_summary)) },
-                windowInsets = WindowInsets(0, 0, 0, 0),
+                scrollBehavior = scrollBehavior,
             )
         },
         contentWindowInsets = WindowInsets(0, 0, 0, 0),
-        modifier = modifier,
+        modifier = modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
     ) { innerPadding ->
         Box(
             modifier =
@@ -186,6 +192,7 @@ fun SummaryScreen(
                                     month,
                                 )
                             },
+                            contentPadding = PaddingValues(bottom = bottomContentPadding),
                             modifier = Modifier.fillMaxSize(),
                         )
                     }
@@ -279,10 +286,14 @@ private fun SummaryContent(
     onMonthLabelClick: () -> Unit,
     onBudgetTap: (String) -> Unit,
     onMonthTapped: ((Int) -> Unit)? = null,
+    contentPadding: PaddingValues = PaddingValues(),
     modifier: Modifier = Modifier,
 ) {
     val currencyFormatter = remember { DefaultCurrencyFormatter() }
-    LazyColumn(modifier = modifier.padding(horizontal = DesignSystemSpacing.screenPadding)) {
+    LazyColumn(
+        contentPadding = contentPadding,
+        modifier = modifier.padding(horizontal = DesignSystemSpacing.screenPadding),
+    ) {
         item(key = "mode_chips") {
             SummaryModeChips(
                 mode = uiState.mode,

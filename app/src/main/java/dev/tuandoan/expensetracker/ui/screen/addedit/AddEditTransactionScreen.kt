@@ -277,7 +277,6 @@ private fun TransactionForm(
             Text(
                 text = stringResource(R.string.label_amount),
                 style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Medium,
                 color = MaterialTheme.colorScheme.onSurface,
             )
 
@@ -842,7 +841,6 @@ private fun EnhancedDateSelector(
         Text(
             text = stringResource(R.string.label_date),
             style = MaterialTheme.typography.titleMedium,
-            fontWeight = FontWeight.Medium,
             color = MaterialTheme.colorScheme.onSurface,
         )
 

@@ -240,7 +240,6 @@ private fun GoldHoldingForm(
                 Text(
                     text = stringResource(R.string.gold_weight_label),
                     style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Medium,
                 )
                 OutlinedTextField(
                     value = uiState.weightText,
@@ -281,7 +280,6 @@ private fun GoldHoldingForm(
                 Text(
                     text = stringResource(R.string.gold_weight_unit_label),
                     style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Medium,
                 )
                 GoldUnitSelector(
                     selectedUnit = uiState.weightUnit,
@@ -295,7 +293,6 @@ private fun GoldHoldingForm(
             Text(
                 text = stringResource(R.string.gold_buy_price_label),
                 style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Medium,
             )
             OutlinedTextField(
                 value = uiState.buyPriceText,
@@ -388,7 +385,6 @@ private fun GoldTypeSelector(
         Text(
             text = stringResource(R.string.gold_type_label),
             style = MaterialTheme.typography.titleMedium,
-            fontWeight = FontWeight.Medium,
         )
         Row(horizontalArrangement = Arrangement.spacedBy(DesignSystemSpacing.small)) {
             GoldType.entries.forEach { type ->
@@ -447,7 +443,6 @@ private fun GoldDateSelector(
         Text(
             text = stringResource(R.string.gold_buy_date_label),
             style = MaterialTheme.typography.titleMedium,
-            fontWeight = FontWeight.Medium,
         )
 
         Card(
@@ -565,7 +560,6 @@ private fun GoldSaveBottomBar(
                                 stringResource(R.string.gold_saving)
                             },
                         style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Medium,
                         modifier = Modifier.padding(start = DesignSystemSpacing.small),
                     )
                 }
@@ -578,7 +572,6 @@ private fun GoldSaveBottomBar(
                             stringResource(R.string.gold_save_holding)
                         },
                     style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Medium,
                 )
             }
         }

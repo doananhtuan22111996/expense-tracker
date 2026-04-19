@@ -194,7 +194,6 @@ fun AddEditRecurringTransactionScreen(
                     Text(
                         text = stringResource(R.string.label_amount),
                         style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Medium,
                         color = MaterialTheme.colorScheme.onSurface,
                     )
                     OutlinedTextField(
@@ -357,7 +356,6 @@ private fun TransactionTypeSelector(
         Text(
             text = stringResource(R.string.label_transaction_type),
             style = MaterialTheme.typography.titleMedium,
-            fontWeight = FontWeight.Medium,
             color = MaterialTheme.colorScheme.onSurface,
         )
         Row(horizontalArrangement = Arrangement.spacedBy(DesignSystemSpacing.small)) {
@@ -423,7 +421,6 @@ private fun CurrencyDropdown(
         Text(
             text = stringResource(R.string.label_currency),
             style = MaterialTheme.typography.titleMedium,
-            fontWeight = FontWeight.Medium,
             color = MaterialTheme.colorScheme.onSurface,
         )
         val hapticFeedback = LocalHapticFeedback.current
@@ -516,7 +513,6 @@ private fun CategoryDropdown(
         Text(
             text = stringResource(R.string.label_category),
             style = MaterialTheme.typography.titleMedium,
-            fontWeight = FontWeight.Medium,
             color = MaterialTheme.colorScheme.onSurface,
         )
         val hapticFeedback = LocalHapticFeedback.current
@@ -608,7 +604,6 @@ private fun FrequencyDropdown(
         Text(
             text = stringResource(R.string.frequency),
             style = MaterialTheme.typography.titleMedium,
-            fontWeight = FontWeight.Medium,
             color = MaterialTheme.colorScheme.onSurface,
         )
         val hapticFeedback = LocalHapticFeedback.current
@@ -706,7 +701,6 @@ private fun StartDateSelector(
         Text(
             text = stringResource(R.string.start_date),
             style = MaterialTheme.typography.titleMedium,
-            fontWeight = FontWeight.Medium,
             color = MaterialTheme.colorScheme.onSurface,
         )
         val startDateDesc =
@@ -843,7 +837,6 @@ private fun RecurringSaveBottomBar(
                     Text(
                         text = stringResource(R.string.saving),
                         style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Medium,
                         modifier = Modifier.padding(start = DesignSystemSpacing.small),
                     )
                 }
@@ -851,7 +844,6 @@ private fun RecurringSaveBottomBar(
                 Text(
                     text = stringResource(R.string.save),
                     style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Medium,
                 )
             }
         }
