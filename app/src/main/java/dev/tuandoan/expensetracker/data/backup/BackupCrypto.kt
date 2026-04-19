@@ -104,6 +104,8 @@ class BackupCrypto
             }
         }
 
+        // Zeros the ephemeral clone returned by getEncoded(). SecretKeySpec's internal
+        // key array is unreachable without reflection — this is best-effort, not total.
         private fun zeroKey(key: SecretKey) {
             val encoded = key.encoded ?: return
             encoded.fill(0)
