@@ -1,0 +1,7 @@
+What's new in v3.8:
+
+• Material You dynamic color on Android 12+ — app picks up your wallpaper palette
+• Redesigned Home: filter chips stay pinned, content flows behind the nav bar
+• Smoother scroll behavior on every tab — top bar tints as you scroll
+• Fixed: FAB and notifications no longer hidden behind the nav bar
+• New in Settings: Privacy Policy, Terms of Service, and Share App
