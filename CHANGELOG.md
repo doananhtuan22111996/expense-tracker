@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+## [3.8.0] - 2026-04-19
+
 ### Added
 - Privacy Policy and Terms of Service links in Settings (opens in browser)
 - Share App button in Settings with Play Store link via Android share sheet

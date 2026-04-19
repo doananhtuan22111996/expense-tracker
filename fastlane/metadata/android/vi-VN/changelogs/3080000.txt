@@ -1,0 +1,7 @@
+Mới trong v3.8:
+
+• Material You: màu chủ đề tự điều chỉnh theo hình nền trên Android 12 trở lên
+• Màn hình Home được thiết kế lại: bộ lọc được ghim, nội dung trượt dưới thanh điều hướng
+• Cuộn mượt hơn trên mọi tab — thanh tiêu đề đổi màu theo nội dung
+• Sửa lỗi: nút thêm và thông báo không còn bị thanh điều hướng che mất
+• Trong Cài đặt: thêm Chính sách bảo mật, Điều khoản sử dụng và Chia sẻ ứng dụng
