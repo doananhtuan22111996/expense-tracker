@@ -54,8 +54,6 @@ class BackupCrypto
                     cipher.doFinal(body)
                 } catch (e: javax.crypto.AEADBadTagException) {
                     throw BackupCryptoException.WrongPassword(e)
-                } catch (e: javax.crypto.BadPaddingException) {
-                    throw BackupCryptoException.WrongPassword(e)
                 } catch (e: javax.crypto.IllegalBlockSizeException) {
                     throw BackupCryptoException.DecryptionFailed(e)
                 }

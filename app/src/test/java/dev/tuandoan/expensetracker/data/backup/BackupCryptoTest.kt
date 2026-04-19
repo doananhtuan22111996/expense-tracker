@@ -61,7 +61,7 @@ class BackupCryptoTest {
         val second = crypto.encrypt(plaintext, password.copyOf())
 
         // Salt + IV are random, so two encrypts of the same input must differ.
-        assertFalse_arraysEqual(first, second)
+        assertArraysDiffer(first, second)
     }
 
     @Test
@@ -199,11 +199,10 @@ class BackupCryptoTest {
         assertArrayEquals(snapshot, password)
     }
 
-    private fun assertFalse_arraysEqual(
+    private fun assertArraysDiffer(
         a: ByteArray,
         b: ByteArray,
     ) {
-        val equal = a.contentEquals(b)
-        assertTrue("expected arrays to differ", !equal)
+        assertTrue("expected arrays to differ", !a.contentEquals(b))
     }
 }
