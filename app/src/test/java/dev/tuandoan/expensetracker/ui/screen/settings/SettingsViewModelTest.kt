@@ -737,6 +737,49 @@ class SettingsViewModelTest {
         }
 
     @Test
+    fun onExportClicked_whenPrefReadFails_surfacesErrorMessage() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            fakeBackupEncryptionPrefs.readError = RuntimeException("datastore down")
+            val viewModel = createViewModel()
+            advanceUntilIdle()
+
+            viewModel.onExportClicked()
+            advanceUntilIdle()
+
+            val err = viewModel.uiState.value.errorMessage
+            assertTrue(err is UiText.StringResource)
+            assertEquals(R.string.error_export_failed, (err as UiText.StringResource).resId)
+        }
+
+    @Test
+    fun onExportClicked_twiceInFlight_emitsOnlyOneEvent() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            val viewModel = createViewModel()
+            advanceUntilIdle()
+
+            // Two rapid clicks. The first launches a coroutine that only runs
+            // when we advance — the second should see clickInFlight=true and
+            // be a no-op, so only one event is ever sent to the channel.
+            viewModel.onExportClicked()
+            viewModel.onExportClicked()
+            advanceUntilIdle()
+
+            // Drain: first event should be immediately available, second should not.
+            val first = viewModel.exportLaunchEvents.first()
+            assertEquals(ExportLaunchEvent.Plain, first)
+
+            var secondReceived = false
+            val job =
+                launch {
+                    viewModel.exportLaunchEvents.first()
+                    secondReceived = true
+                }
+            advanceUntilIdle()
+            assertEquals(false, secondReceived)
+            job.cancel()
+        }
+
+    @Test
     fun onExportPasswordConfirmed_noPendingUri_doesNothing() =
         runTest(mainDispatcherRule.testDispatcher) {
             val viewModel = createViewModel()
@@ -806,7 +849,12 @@ class SettingsViewModelTest {
 
     private class FakeBackupEncryptionPreferences : BackupEncryptionPreferences {
         private val state = MutableStateFlow(false)
-        override val encryptBackups: Flow<Boolean> = state
+        var readError: Throwable? = null
+        override val encryptBackups: Flow<Boolean> =
+            kotlinx.coroutines.flow.flow {
+                readError?.let { throw it }
+                state.collect { emit(it) }
+            }
 
         override suspend fun setEncryptBackups(enabled: Boolean) {
             state.value = enabled

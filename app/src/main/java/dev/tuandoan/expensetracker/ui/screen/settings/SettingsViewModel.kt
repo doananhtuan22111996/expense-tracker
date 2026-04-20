@@ -61,7 +61,15 @@ class SettingsViewModel
 
         // Captured at click time from DataStore so the later URI-ready callback
         // isn't subject to the StateFlow's initial-value race window.
+        // @Volatile because it's written on viewModelScope and read on the main
+        // thread when the picker returns a URI.
+        @Volatile
         private var pendingEncrypt: Boolean = false
+
+        // Guards against a double-tap launching two file pickers while the first
+        // DataStore read is still in flight.
+        @Volatile
+        private var clickInFlight: Boolean = false
 
         private val _exportLaunchEvents = Channel<ExportLaunchEvent>(Channel.BUFFERED)
         val exportLaunchEvents: Flow<ExportLaunchEvent> = _exportLaunchEvents.receiveAsFlow()
@@ -119,12 +127,30 @@ class SettingsViewModel
          * [ExportLaunchEvent] telling the UI which `CreateDocument` contract to fire.
          */
         fun onExportClicked() {
+            if (clickInFlight) return
+            clickInFlight = true
             viewModelScope.launch {
-                val encrypt = backupEncryptionPreferences.encryptBackups.first()
-                pendingEncrypt = encrypt
-                _exportLaunchEvents.send(
-                    if (encrypt) ExportLaunchEvent.Encrypted else ExportLaunchEvent.Plain,
-                )
+                try {
+                    val encrypt = backupEncryptionPreferences.encryptBackups.first()
+                    pendingEncrypt = encrypt
+                    _exportLaunchEvents.send(
+                        if (encrypt) ExportLaunchEvent.Encrypted else ExportLaunchEvent.Plain,
+                    )
+                } catch (e: CancellationException) {
+                    throw e
+                } catch (e: Exception) {
+                    _uiState.update {
+                        it.copy(
+                            errorMessage =
+                                UiText.StringResource(
+                                    R.string.error_export_failed,
+                                    listOf(e.message ?: ""),
+                                ),
+                        )
+                    }
+                } finally {
+                    clickInFlight = false
+                }
             }
         }
 
