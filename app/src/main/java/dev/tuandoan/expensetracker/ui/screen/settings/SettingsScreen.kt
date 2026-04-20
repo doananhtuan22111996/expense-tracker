@@ -165,6 +165,18 @@ fun SettingsScreen(
             }
         }
 
+    LaunchedEffect(Unit) {
+        viewModel.exportLaunchEvents.collect { event ->
+            val date = SimpleDateFormat("yyyy-MM-dd", Locale.US).format(Date())
+            when (event) {
+                ExportLaunchEvent.Encrypted ->
+                    exportEncryptedLauncher.launch("expense-tracker-backup_$date.etbackup")
+                ExportLaunchEvent.Plain ->
+                    exportJsonLauncher.launch("expense-tracker-backup_$date.json")
+            }
+        }
+    }
+
     LaunchedEffect(uiState.errorMessage) {
         uiState.errorMessage?.let {
             snackbarHostState.showSnackbar(it.asString(context))
@@ -483,17 +495,7 @@ fun SettingsScreen(
                         Modifier
                             .fillMaxWidth()
                             .clickable(enabled = !isBusy) {
-                                val date =
-                                    SimpleDateFormat("yyyy-MM-dd", Locale.US).format(Date())
-                                if (encryptBackupsEnabled) {
-                                    exportEncryptedLauncher.launch(
-                                        "expense-tracker-backup_$date.etbackup",
-                                    )
-                                } else {
-                                    exportJsonLauncher.launch(
-                                        "expense-tracker-backup_$date.json",
-                                    )
-                                }
+                                viewModel.onExportClicked()
                             }.padding(DesignSystemSpacing.large)
                             .semantics {
                                 contentDescription = exportA11y

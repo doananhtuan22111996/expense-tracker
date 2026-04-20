@@ -24,12 +24,16 @@ import dev.tuandoan.expensetracker.domain.repository.RecurringTransactionReposit
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.catch
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
@@ -54,6 +58,13 @@ class SettingsViewModel
         private val _uiState = MutableStateFlow(SettingsUiState())
         val uiState: StateFlow<SettingsUiState> = _uiState.asStateFlow()
         private var backupJob: Job? = null
+
+        // Captured at click time from DataStore so the later URI-ready callback
+        // isn't subject to the StateFlow's initial-value race window.
+        private var pendingEncrypt: Boolean = false
+
+        private val _exportLaunchEvents = Channel<ExportLaunchEvent>(Channel.BUFFERED)
+        val exportLaunchEvents: Flow<ExportLaunchEvent> = _exportLaunchEvents.receiveAsFlow()
 
         val themePreference: StateFlow<ThemePreference> =
             themePreferencesRepository.themePreference
@@ -102,12 +113,28 @@ class SettingsViewModel
         }
 
         /**
+         * Called when the user taps the export row. Reads the encryption preference
+         * one-shot from DataStore (so we never rely on the initial `false` seed of
+         * `encryptBackupsEnabled` before the first emission lands) and emits an
+         * [ExportLaunchEvent] telling the UI which `CreateDocument` contract to fire.
+         */
+        fun onExportClicked() {
+            viewModelScope.launch {
+                val encrypt = backupEncryptionPreferences.encryptBackups.first()
+                pendingEncrypt = encrypt
+                _exportLaunchEvents.send(
+                    if (encrypt) ExportLaunchEvent.Encrypted else ExportLaunchEvent.Plain,
+                )
+            }
+        }
+
+        /**
          * Called by the UI once a target file URI has been chosen for export.
-         * If encryption is enabled, stashes the URI and shows the password dialog;
-         * otherwise kicks off a plain export immediately.
+         * If encryption was enabled at click time, stashes the URI and shows the
+         * password dialog; otherwise kicks off a plain export immediately.
          */
         fun onExportUriReady(uri: Uri) {
-            if (encryptBackupsEnabled.value) {
+            if (pendingEncrypt) {
                 _uiState.update { it.copy(pendingExportUri = uri) }
             } else {
                 runExport(uri, encrypt = null)
@@ -376,6 +403,13 @@ enum class BackupOperation {
     Idle,
     Exporting,
     Importing,
+}
+
+/** One-shot event telling the Settings screen which export file picker to fire. */
+sealed class ExportLaunchEvent {
+    data object Plain : ExportLaunchEvent()
+
+    data object Encrypted : ExportLaunchEvent()
 }
 
 data class SettingsUiState(

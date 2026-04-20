@@ -22,10 +22,12 @@ import dev.tuandoan.expensetracker.testutil.MainDispatcherRule
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
@@ -622,28 +624,51 @@ class SettingsViewModelTest {
         }
 
     @Test
-    fun onExportUriReady_whenEncryptEnabled_setsPendingExportUri() =
+    fun onExportClicked_whenEncryptDisabled_emitsPlainEvent() =
         runTest(mainDispatcherRule.testDispatcher) {
             val viewModel = createViewModel()
+            advanceUntilIdle()
 
-            val collectJob =
-                backgroundScope.launch {
-                    viewModel.encryptBackupsEnabled.collect {}
-                }
+            viewModel.onExportClicked()
+            val event = viewModel.exportLaunchEvents.first()
+
+            assertEquals(ExportLaunchEvent.Plain, event)
+        }
+
+    @Test
+    fun onExportClicked_whenEncryptEnabled_emitsEncryptedEvent() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            val viewModel = createViewModel()
             advanceUntilIdle()
 
             viewModel.setEncryptBackupsEnabled(true)
             advanceUntilIdle()
 
+            viewModel.onExportClicked()
+            val event = viewModel.exportLaunchEvents.first()
+
+            assertEquals(ExportLaunchEvent.Encrypted, event)
+        }
+
+    @Test
+    fun onExportUriReady_afterEncryptedClick_setsPendingExportUri() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            val viewModel = createViewModel()
+            advanceUntilIdle()
+
+            viewModel.setEncryptBackupsEnabled(true)
+            advanceUntilIdle()
+            viewModel.onExportClicked()
+            viewModel.exportLaunchEvents.first()
+
             viewModel.onExportUriReady(mockUri)
 
             assertEquals(mockUri, viewModel.uiState.value.pendingExportUri)
             assertEquals(BackupOperation.Idle, viewModel.uiState.value.backupOperation)
-            collectJob.cancel()
         }
 
     @Test
-    fun onExportUriReady_whenEncryptDisabled_exportsImmediately() =
+    fun onExportUriReady_afterPlainClick_exportsImmediately() =
         runTest(mainDispatcherRule.testDispatcher) {
             val outputStream = ByteArrayOutputStream()
             Mockito
@@ -652,6 +677,9 @@ class SettingsViewModelTest {
 
             val viewModel = createViewModel()
             advanceUntilIdle()
+
+            viewModel.onExportClicked()
+            viewModel.exportLaunchEvents.first()
 
             viewModel.onExportUriReady(mockUri)
             advanceUntilIdle()
@@ -667,20 +695,16 @@ class SettingsViewModelTest {
     fun dismissExportPasswordDialog_clearsPendingExportUri() =
         runTest(mainDispatcherRule.testDispatcher) {
             val viewModel = createViewModel()
-
-            val collectJob =
-                backgroundScope.launch {
-                    viewModel.encryptBackupsEnabled.collect {}
-                }
             advanceUntilIdle()
 
             viewModel.setEncryptBackupsEnabled(true)
             advanceUntilIdle()
+            viewModel.onExportClicked()
+            viewModel.exportLaunchEvents.first()
             viewModel.onExportUriReady(mockUri)
             viewModel.dismissExportPasswordDialog()
 
             assertNull(viewModel.uiState.value.pendingExportUri)
-            collectJob.cancel()
         }
 
     @Test
@@ -692,15 +716,12 @@ class SettingsViewModelTest {
                 .thenReturn(outputStream)
 
             val viewModel = createViewModel()
-
-            val collectJob =
-                backgroundScope.launch {
-                    viewModel.encryptBackupsEnabled.collect {}
-                }
             advanceUntilIdle()
 
             viewModel.setEncryptBackupsEnabled(true)
             advanceUntilIdle()
+            viewModel.onExportClicked()
+            viewModel.exportLaunchEvents.first()
             viewModel.onExportUriReady(mockUri)
 
             val password = "hunter22!".toCharArray()
@@ -710,10 +731,9 @@ class SettingsViewModelTest {
             assertNull(viewModel.uiState.value.pendingExportUri)
             assertEquals(BackupOperation.Idle, viewModel.uiState.value.backupOperation)
             val capturedEncrypt = fakeBackupRepository.lastEncryptOptions
-            assertTrue(capturedEncrypt != null)
+            assertNotNull(capturedEncrypt)
             // Repository-owned copy must be zeroed via close() in the finally block.
             assertTrue(capturedEncrypt!!.password.all { it == '\u0000' })
-            collectJob.cancel()
         }
 
     @Test
