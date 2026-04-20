@@ -686,6 +686,7 @@ class SettingsViewModelTest {
 
         override suspend fun exportBackup(
             outputStream: java.io.OutputStream,
+            encrypt: dev.tuandoan.expensetracker.domain.repository.EncryptOptions?,
             onProgress: suspend (dev.tuandoan.expensetracker.domain.repository.BackupProgress) -> Unit,
         ) {
             exportException?.let { throw it }
@@ -703,6 +704,7 @@ class SettingsViewModelTest {
 
         override suspend fun importBackup(
             inputStream: java.io.InputStream,
+            decrypt: dev.tuandoan.expensetracker.domain.repository.EncryptOptions?,
             onProgress: suspend (dev.tuandoan.expensetracker.domain.repository.BackupProgress) -> Unit,
         ): BackupRestoreResult {
             importException?.let { throw it }

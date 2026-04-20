@@ -118,10 +118,25 @@ class BackupCrypto
 
             private val MAGIC_BYTES: ByteArray =
                 byteArrayOf(0x45, 0x54, 0x42, 0x4B) // "ETBK"
-            private const val MAGIC_LENGTH = 4
+            const val MAGIC_LENGTH = 4
             private const val VERSION_LENGTH = 1
             private const val SALT_OFFSET = MAGIC_LENGTH + VERSION_LENGTH
             private const val IV_OFFSET = SALT_OFFSET + SALT_LENGTH
             const val HEADER_LENGTH = IV_OFFSET + IV_LENGTH
+
+            /**
+             * Returns true when the first [bytesRead] bytes of [header] contain the
+             * `ETBK` magic that identifies an encrypted backup container.
+             */
+            fun isEtbkHeader(
+                header: ByteArray,
+                bytesRead: Int,
+            ): Boolean {
+                if (bytesRead < MAGIC_LENGTH) return false
+                for (i in 0 until MAGIC_LENGTH) {
+                    if (header[i] != MAGIC_BYTES[i]) return false
+                }
+                return true
+            }
         }
     }
