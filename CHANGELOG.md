@@ -9,6 +9,10 @@
 - `docs/backup-format.md` — specification for the `.etbackup` container (byte layout, crypto params, version policy, threat model)
 - `BackupRepository.exportBackup` / `importBackup` accept optional `EncryptOptions(password)` — when present, export writes an `.etbackup` and import transparently decrypts; import auto-detects the `ETBK` magic and falls back to the existing plain/gzip path otherwise
 
+### Changed
+- Lift `ETBK` magic detection into `BackupCrypto.isEtbkHeader()` so `BackupRepositoryImpl` no longer duplicates the magic-byte constant
+- `EncryptOptions` implements `AutoCloseable`; `close()` zeroes the password array (best-effort — JVM may have copied it already)
+
 ## [3.8.0] - 2026-04-19
 
 ### Added

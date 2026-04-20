@@ -264,12 +264,11 @@ class BackupRepositoryImpl
         ): InputStream {
             val buffered =
                 if (inputStream.markSupported()) inputStream else BufferedInputStream(inputStream)
-            buffered.mark(ETBK_MAGIC.size)
-            val header = ByteArray(ETBK_MAGIC.size)
+            buffered.mark(BackupCrypto.MAGIC_LENGTH)
+            val header = ByteArray(BackupCrypto.MAGIC_LENGTH)
             val read = buffered.read(header)
             buffered.reset()
-            val isEncrypted = read == ETBK_MAGIC.size && header.contentEquals(ETBK_MAGIC)
-            if (!isEncrypted) {
+            if (!BackupCrypto.isEtbkHeader(header, read)) {
                 return buffered
             }
             if (decrypt == null) {
@@ -305,7 +304,6 @@ class BackupRepositoryImpl
             const val BATCH_SIZE = 500
             private const val GZIP_MAGIC_BYTE1 = 0x1f
             private const val GZIP_MAGIC_BYTE2 = 0x8b
-            private val ETBK_MAGIC: ByteArray = byteArrayOf(0x45, 0x54, 0x42, 0x4B)
         }
     }
 
