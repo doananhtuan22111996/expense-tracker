@@ -199,6 +199,17 @@ class BackupCryptoTest {
         assertArrayEquals(snapshot, password)
     }
 
+    @Test
+    fun decrypt_doesNotModifyCallerPassword() {
+        val password = "stayIntact1".toCharArray()
+        val ciphertext = crypto.encrypt(byteArrayOf(1, 2, 3), password.copyOf())
+        val snapshot = password.copyOf()
+
+        crypto.decrypt(ciphertext, password)
+
+        assertArrayEquals(snapshot, password)
+    }
+
     private fun assertArraysDiffer(
         a: ByteArray,
         b: ByteArray,

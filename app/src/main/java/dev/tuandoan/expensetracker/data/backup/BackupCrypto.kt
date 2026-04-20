@@ -44,21 +44,22 @@ class BackupCrypto
             }
             val salt = ciphertext.copyOfRange(SALT_OFFSET, SALT_OFFSET + SALT_LENGTH)
             val iv = ciphertext.copyOfRange(IV_OFFSET, IV_OFFSET + IV_LENGTH)
-            val body = ciphertext.copyOfRange(HEADER_LENGTH, ciphertext.size)
 
             val key = deriveKey(password, salt)
+            val cipher = Cipher.getInstance(CIPHER_TRANSFORMATION)
             try {
-                val cipher = Cipher.getInstance(CIPHER_TRANSFORMATION)
                 cipher.init(Cipher.DECRYPT_MODE, key, GCMParameterSpec(GCM_TAG_BITS, iv))
-                return try {
-                    cipher.doFinal(body)
-                } catch (e: javax.crypto.AEADBadTagException) {
-                    throw BackupCryptoException.WrongPassword(e)
-                } catch (e: javax.crypto.IllegalBlockSizeException) {
-                    throw BackupCryptoException.DecryptionFailed(e)
-                }
-            } finally {
-                zeroKey(key)
+            } catch (e: java.security.InvalidKeyException) {
+                throw BackupCryptoException.DecryptionFailed(e)
+            } catch (e: java.security.InvalidAlgorithmParameterException) {
+                throw BackupCryptoException.DecryptionFailed(e)
+            }
+            return try {
+                cipher.doFinal(ciphertext, HEADER_LENGTH, ciphertext.size - HEADER_LENGTH)
+            } catch (e: javax.crypto.AEADBadTagException) {
+                throw BackupCryptoException.WrongPassword(e)
+            } catch (e: javax.crypto.IllegalBlockSizeException) {
+                throw BackupCryptoException.DecryptionFailed(e)
             }
         }
 
@@ -72,14 +73,9 @@ class BackupCrypto
             require(iv.size == IV_LENGTH) { "iv must be $IV_LENGTH bytes" }
 
             val key = deriveKey(password, salt)
-            val body: ByteArray =
-                try {
-                    val cipher = Cipher.getInstance(CIPHER_TRANSFORMATION)
-                    cipher.init(Cipher.ENCRYPT_MODE, key, GCMParameterSpec(GCM_TAG_BITS, iv))
-                    cipher.doFinal(plaintext)
-                } finally {
-                    zeroKey(key)
-                }
+            val cipher = Cipher.getInstance(CIPHER_TRANSFORMATION)
+            cipher.init(Cipher.ENCRYPT_MODE, key, GCMParameterSpec(GCM_TAG_BITS, iv))
+            val body = cipher.doFinal(plaintext)
 
             val output = ByteArray(HEADER_LENGTH + body.size)
             System.arraycopy(MAGIC_BYTES, 0, output, 0, MAGIC_LENGTH)
@@ -95,20 +91,17 @@ class BackupCrypto
             salt: ByteArray,
         ): SecretKey {
             val spec: KeySpec = PBEKeySpec(password, salt, PBKDF2_ITERATIONS, KEY_LENGTH_BITS)
+            val factory = SecretKeyFactory.getInstance(PBKDF2_ALGORITHM)
+            var keyBytes: ByteArray? = null
             try {
-                val factory = SecretKeyFactory.getInstance(PBKDF2_ALGORITHM)
-                val keyBytes = factory.generateSecret(spec).encoded
+                keyBytes = factory.generateSecret(spec).encoded
                 return SecretKeySpec(keyBytes, KEY_ALGORITHM)
             } finally {
                 (spec as PBEKeySpec).clearPassword()
+                // SecretKeySpec copies its input, so the local keyBytes reference is now
+                // an unreachable-but-lingering copy of the raw AES key. Wipe it before GC.
+                keyBytes?.fill(0)
             }
-        }
-
-        // Zeros the ephemeral clone returned by getEncoded(). SecretKeySpec's internal
-        // key array is unreachable without reflection — this is best-effort, not total.
-        private fun zeroKey(key: SecretKey) {
-            val encoded = key.encoded ?: return
-            encoded.fill(0)
         }
 
         companion object {
