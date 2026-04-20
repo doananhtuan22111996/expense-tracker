@@ -8,6 +8,7 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import dev.tuandoan.expensetracker.R
 import dev.tuandoan.expensetracker.core.util.UiText
 import dev.tuandoan.expensetracker.data.preferences.AnalyticsPreferences
+import dev.tuandoan.expensetracker.data.preferences.BackupEncryptionPreferences
 import dev.tuandoan.expensetracker.data.preferences.ThemePreference
 import dev.tuandoan.expensetracker.data.preferences.ThemePreferencesRepository
 import dev.tuandoan.expensetracker.di.IoDispatcher
@@ -18,6 +19,7 @@ import dev.tuandoan.expensetracker.domain.repository.BackupRepository
 import dev.tuandoan.expensetracker.domain.repository.BackupRestoreResult
 import dev.tuandoan.expensetracker.domain.repository.BudgetAlertPreferences
 import dev.tuandoan.expensetracker.domain.repository.CurrencyPreferenceRepository
+import dev.tuandoan.expensetracker.domain.repository.EncryptOptions
 import dev.tuandoan.expensetracker.domain.repository.RecurringTransactionRepository
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineDispatcher
@@ -45,6 +47,7 @@ class SettingsViewModel
         private val themePreferencesRepository: ThemePreferencesRepository,
         private val analyticsPreferences: AnalyticsPreferences,
         private val budgetAlertPreferences: BudgetAlertPreferences,
+        private val backupEncryptionPreferences: BackupEncryptionPreferences,
         private val crashReporter: CrashReporter,
         @IoDispatcher private val ioDispatcher: CoroutineDispatcher,
     ) : ViewModel() {
@@ -64,6 +67,11 @@ class SettingsViewModel
         /** Whether budget alerts are enabled. */
         val budgetAlertsEnabled: StateFlow<Boolean> =
             budgetAlertPreferences.alertsEnabled
+                .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000L), false)
+
+        /** Whether backup export should write an encrypted `.etbackup` container. */
+        val encryptBackupsEnabled: StateFlow<Boolean> =
+            backupEncryptionPreferences.encryptBackups
                 .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000L), false)
 
         /** Number of currently active recurring transactions. */
@@ -93,7 +101,44 @@ class SettingsViewModel
             }
         }
 
-        fun exportBackup(uri: Uri) {
+        /**
+         * Called by the UI once a target file URI has been chosen for export.
+         * If encryption is enabled, stashes the URI and shows the password dialog;
+         * otherwise kicks off a plain export immediately.
+         */
+        fun onExportUriReady(uri: Uri) {
+            if (encryptBackupsEnabled.value) {
+                _uiState.update { it.copy(pendingExportUri = uri) }
+            } else {
+                runExport(uri, encrypt = null)
+            }
+        }
+
+        /**
+         * Dismisses the export password dialog without starting an export.
+         * The caller is expected to also zero any password input it kept locally.
+         */
+        fun dismissExportPasswordDialog() {
+            _uiState.update { it.copy(pendingExportUri = null) }
+        }
+
+        /**
+         * Confirms the password typed into the export dialog and starts the encrypted
+         * export. The repository takes ownership of the [password] array long enough to
+         * derive the key; this function wraps it in an [EncryptOptions] that is closed
+         * (zeroed) once the job completes. The caller should still discard its own
+         * copy of the array after calling.
+         */
+        fun onExportPasswordConfirmed(password: CharArray) {
+            val uri = _uiState.value.pendingExportUri ?: return
+            _uiState.update { it.copy(pendingExportUri = null) }
+            runExport(uri, encrypt = EncryptOptions(password.copyOf()))
+        }
+
+        private fun runExport(
+            uri: Uri,
+            encrypt: EncryptOptions?,
+        ) {
             backupJob =
                 viewModelScope.launch {
                     _uiState.update {
@@ -105,7 +150,7 @@ class SettingsViewModel
                     try {
                         withContext(ioDispatcher) {
                             contentResolver.openOutputStream(uri)?.use { outputStream ->
-                                backupRepository.exportBackup(outputStream) { progress ->
+                                backupRepository.exportBackup(outputStream, encrypt) { progress ->
                                     val fraction =
                                         if (progress.total > 0) {
                                             progress.current.toFloat() / progress.total
@@ -145,6 +190,9 @@ class SettingsViewModel
                                     ),
                             )
                         }
+                    } finally {
+                        // Zero the password array whether the export succeeded, failed, or was cancelled.
+                        encrypt?.close()
                     }
                 }
         }
@@ -276,6 +324,12 @@ class SettingsViewModel
             }
         }
 
+        fun setEncryptBackupsEnabled(enabled: Boolean) {
+            viewModelScope.launch {
+                backupEncryptionPreferences.setEncryptBackups(enabled)
+            }
+        }
+
         fun setBudgetAlertsEnabled(enabled: Boolean) {
             viewModelScope.launch {
                 budgetAlertPreferences.setAlertsEnabled(enabled)
@@ -332,4 +386,5 @@ data class SettingsUiState(
     val backupProgress: Float? = null,
     val backupMessage: UiText? = null,
     val pendingRestoreUri: Uri? = null,
+    val pendingExportUri: Uri? = null,
 )
