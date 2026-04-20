@@ -24,9 +24,12 @@ import dev.tuandoan.expensetracker.domain.repository.BackupProgress
 import dev.tuandoan.expensetracker.domain.repository.BackupRepository
 import dev.tuandoan.expensetracker.domain.repository.BackupRestoreResult
 import dev.tuandoan.expensetracker.domain.repository.CurrencyPreferenceRepository
+import dev.tuandoan.expensetracker.domain.repository.EncryptOptions
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.withContext
 import java.io.BufferedInputStream
+import java.io.ByteArrayInputStream
+import java.io.ByteArrayOutputStream
 import java.io.IOException
 import java.io.InputStream
 import java.io.OutputStream
@@ -50,6 +53,7 @@ class BackupRepositoryImpl
         private val currencyPreferenceRepository: CurrencyPreferenceRepository,
         private val csvExporter: CsvExporter,
         private val crashReporter: CrashReporter,
+        private val backupCrypto: BackupCrypto,
     ) : BackupRepository {
         override suspend fun exportBackupJson(): String {
             val document = buildExportDocument()
@@ -65,27 +69,40 @@ class BackupRepositoryImpl
 
         override suspend fun exportBackup(
             outputStream: OutputStream,
+            encrypt: EncryptOptions?,
             onProgress: suspend (BackupProgress) -> Unit,
         ) {
             val document = buildExportDocument()
             val total = document.categories.size + document.transactions.size
             onProgress(BackupProgress(current = 0, total = total))
-            backupSerializer.encodeToStream(document, outputStream)
+            if (encrypt != null) {
+                val buffer = ByteArrayOutputStream()
+                backupSerializer.encodeToStream(document, buffer)
+                val ciphertext = backupCrypto.encrypt(buffer.toByteArray(), encrypt.password)
+                outputStream.write(ciphertext)
+            } else {
+                backupSerializer.encodeToStream(document, outputStream)
+            }
             onProgress(BackupProgress(current = total, total = total))
         }
 
         override suspend fun importBackup(
             inputStream: InputStream,
+            decrypt: EncryptOptions?,
             onProgress: suspend (BackupProgress) -> Unit,
         ): BackupRestoreResult =
             @Suppress("TooGenericExceptionCaught")
             try {
-                val decompressed = decompressIfGzip(inputStream)
+                val decoded = decryptIfEncrypted(inputStream, decrypt)
+                val decompressed = decompressIfGzip(decoded)
                 val document =
                     backupSerializer.decodeFromStream(decompressed)
                         ?: throw IllegalArgumentException("Invalid backup file format")
                 performImport(document, onProgress)
             } catch (e: kotlin.coroutines.cancellation.CancellationException) {
+                throw e
+            } catch (e: BackupCryptoException) {
+                // Crypto errors are expected user-facing failures, not bugs — don't report them.
                 throw e
             } catch (e: Exception) {
                 crashReporter.recordException(e)
@@ -241,6 +258,30 @@ class BackupRepositoryImpl
             }
         }
 
+        private fun decryptIfEncrypted(
+            inputStream: InputStream,
+            decrypt: EncryptOptions?,
+        ): InputStream {
+            val buffered =
+                if (inputStream.markSupported()) inputStream else BufferedInputStream(inputStream)
+            buffered.mark(ETBK_MAGIC.size)
+            val header = ByteArray(ETBK_MAGIC.size)
+            val read = buffered.read(header)
+            buffered.reset()
+            val isEncrypted = read == ETBK_MAGIC.size && header.contentEquals(ETBK_MAGIC)
+            if (!isEncrypted) {
+                return buffered
+            }
+            if (decrypt == null) {
+                // File is encrypted but caller supplied no password — indistinguishable
+                // from a wrong-password failure, and the UI handles both the same way.
+                throw BackupCryptoException.WrongPassword()
+            }
+            val ciphertext = buffered.readBytes()
+            val plaintext = backupCrypto.decrypt(ciphertext, decrypt.password)
+            return ByteArrayInputStream(plaintext)
+        }
+
         private fun decompressIfGzip(inputStream: InputStream): InputStream {
             val buffered =
                 if (inputStream.markSupported()) inputStream else BufferedInputStream(inputStream)
@@ -264,6 +305,7 @@ class BackupRepositoryImpl
             const val BATCH_SIZE = 500
             private const val GZIP_MAGIC_BYTE1 = 0x1f
             private const val GZIP_MAGIC_BYTE2 = 0x8b
+            private val ETBK_MAGIC: ByteArray = byteArrayOf(0x45, 0x54, 0x42, 0x4B)
         }
     }
 

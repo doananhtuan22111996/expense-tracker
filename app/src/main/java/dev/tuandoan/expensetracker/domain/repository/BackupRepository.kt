@@ -10,11 +10,13 @@ interface BackupRepository {
 
     suspend fun exportBackup(
         outputStream: OutputStream,
+        encrypt: EncryptOptions? = null,
         onProgress: suspend (BackupProgress) -> Unit = {},
     )
 
     suspend fun importBackup(
         inputStream: InputStream,
+        decrypt: EncryptOptions? = null,
         onProgress: suspend (BackupProgress) -> Unit = {},
     ): BackupRestoreResult
 
@@ -32,3 +34,15 @@ data class BackupProgress(
     val current: Int,
     val total: Int,
 )
+
+class EncryptOptions(
+    val password: CharArray,
+) {
+    override fun equals(other: Any?): Boolean {
+        if (this === other) return true
+        if (other !is EncryptOptions) return false
+        return password.contentEquals(other.password)
+    }
+
+    override fun hashCode(): Int = password.contentHashCode()
+}

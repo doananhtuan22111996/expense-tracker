@@ -17,6 +17,7 @@ import dev.tuandoan.expensetracker.data.database.entity.TransactionEntity
 import dev.tuandoan.expensetracker.data.export.CsvExporter
 import dev.tuandoan.expensetracker.domain.crash.NoOpCrashReporter
 import dev.tuandoan.expensetracker.domain.repository.BackupProgress
+import dev.tuandoan.expensetracker.domain.repository.EncryptOptions
 import dev.tuandoan.expensetracker.testutil.FakeCurrencyPreferenceRepository
 import dev.tuandoan.expensetracker.testutil.FakeTimeProvider
 import dev.tuandoan.expensetracker.testutil.TestData
@@ -75,6 +76,7 @@ class BackupRepositoryImplTest {
                 currencyPreferenceRepository = fakeCurrencyPreferenceRepo,
                 csvExporter = CsvExporter(ZoneId.of("UTC")),
                 crashReporter = NoOpCrashReporter(),
+                backupCrypto = BackupCrypto(),
             )
     }
 
@@ -708,6 +710,96 @@ class BackupRepositoryImplTest {
             val inputStream = ByteArrayInputStream(json.toByteArray(Charsets.UTF_8))
 
             repository.importBackup(inputStream)
+        }
+
+    // --- Encrypted export/import tests ---
+
+    @Test
+    fun exportBackup_withEncryption_writesEtbkMagicHeader() =
+        runTest {
+            fakeCategoryDao.allCategories.add(TestData.expenseCategoryEntity)
+            fakeTransactionDao.allTransactions.add(TestData.sampleExpenseEntity)
+
+            val outputStream = ByteArrayOutputStream()
+            val password = "correctPW1".toCharArray()
+            repository.exportBackup(outputStream, encrypt = EncryptOptions(password))
+
+            val bytes = outputStream.toByteArray()
+            assertTrue("output must be longer than header", bytes.size > 4)
+            assertEquals(0x45.toByte(), bytes[0]) // E
+            assertEquals(0x54.toByte(), bytes[1]) // T
+            assertEquals(0x42.toByte(), bytes[2]) // B
+            assertEquals(0x4B.toByte(), bytes[3]) // K
+        }
+
+    @Test
+    fun exportBackup_withoutEncryption_writesPlainJson() =
+        runTest {
+            fakeCategoryDao.allCategories.add(TestData.expenseCategoryEntity)
+
+            val outputStream = ByteArrayOutputStream()
+            repository.exportBackup(outputStream)
+
+            val bytes = outputStream.toByteArray()
+            // Plain JSON starts with '{' — not the ETBK magic.
+            assertEquals('{'.code.toByte(), bytes[0])
+        }
+
+    @Test
+    fun exportAndImport_encryptedRoundTrip_restoresData() =
+        runTest {
+            fakeCategoryDao.allCategories.add(TestData.expenseCategoryEntity)
+            fakeTransactionDao.allTransactions.add(TestData.sampleExpenseEntity)
+
+            val outputStream = ByteArrayOutputStream()
+            val password = "correctPW1".toCharArray()
+            repository.exportBackup(outputStream, encrypt = EncryptOptions(password.copyOf()))
+
+            val inputStream = ByteArrayInputStream(outputStream.toByteArray())
+            val result = repository.importBackup(inputStream, decrypt = EncryptOptions(password.copyOf()))
+
+            assertEquals(1, result.categoryCount)
+            assertEquals(1, result.transactionCount)
+        }
+
+    @Test(expected = BackupCryptoException.WrongPassword::class)
+    fun importBackup_encrypted_wrongPassword_throwsWrongPassword() =
+        runTest {
+            val outputStream = ByteArrayOutputStream()
+            repository.exportBackup(outputStream, encrypt = EncryptOptions("correctPW1".toCharArray()))
+
+            val inputStream = ByteArrayInputStream(outputStream.toByteArray())
+            repository.importBackup(inputStream, decrypt = EncryptOptions("wrongPW1234".toCharArray()))
+        }
+
+    @Test(expected = BackupCryptoException.WrongPassword::class)
+    fun importBackup_encrypted_noPasswordSupplied_throwsWrongPassword() =
+        runTest {
+            val outputStream = ByteArrayOutputStream()
+            repository.exportBackup(outputStream, encrypt = EncryptOptions("correctPW1".toCharArray()))
+
+            val inputStream = ByteArrayInputStream(outputStream.toByteArray())
+            // decrypt = null on an encrypted file surfaces as WrongPassword to the caller —
+            // indistinguishable from bad password, and the UI handles both identically.
+            repository.importBackup(inputStream, decrypt = null)
+        }
+
+    @Test
+    fun importBackup_plainJson_withPasswordProvided_ignoresPassword() =
+        runTest {
+            val json = serializer.encode(TestData.sampleBackupDocument)
+            val inputStream = ByteArrayInputStream(json.toByteArray(Charsets.UTF_8))
+
+            // Password is silently ignored when the file is not encrypted — auto-detect
+            // semantics mean an imported plain file just works.
+            val result =
+                repository.importBackup(
+                    inputStream,
+                    decrypt = EncryptOptions("anyPassword1".toCharArray()),
+                )
+
+            assertEquals(1, result.categoryCount)
+            assertEquals(1, result.transactionCount)
         }
 
     // Fakes

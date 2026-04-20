@@ -6,6 +6,8 @@
 - `BackupCrypto` primitive for AES-256-GCM encrypted backups with PBKDF2-HMAC-SHA256 (200k iterations) key derivation
 - `.etbackup` file format: 4-byte magic (`ETBK`) + version + salt + IV + GCM-authenticated ciphertext
 - `BackupCryptoException` sealed type: `WrongPassword`, `MalformedHeader`, `UnsupportedVersion`, `DecryptionFailed`
+- `docs/backup-format.md` — specification for the `.etbackup` container (byte layout, crypto params, version policy, threat model)
+- `BackupRepository.exportBackup` / `importBackup` accept optional `EncryptOptions(password)` — when present, export writes an `.etbackup` and import transparently decrypts; import auto-detects the `ETBK` magic and falls back to the existing plain/gzip path otherwise
 
 ## [3.8.0] - 2026-04-19
 
