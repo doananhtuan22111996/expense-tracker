@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+## [3.9.0] - 2026-04-25
+
 ### Added
 - `BackupCrypto` primitive for AES-256-GCM encrypted backups with PBKDF2-HMAC-SHA256 (200k iterations) key derivation
 - `.etbackup` file format: 4-byte magic (`ETBK`) + version + salt + IV + GCM-authenticated ciphertext
