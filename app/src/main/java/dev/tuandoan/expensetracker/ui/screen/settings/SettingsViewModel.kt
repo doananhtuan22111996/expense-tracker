@@ -435,16 +435,14 @@ class SettingsViewModel
                     } catch (e: BackupCryptoException) {
                         // MalformedHeader / UnsupportedVersion / DecryptionFailed — don't
                         // leak exception details; the file is either corrupt or from a
-                        // newer app version.
+                        // newer app version. Dedicated string avoids the trailing
+                        // ": " left by error_import_failed's %1$s placeholder.
                         _uiState.update {
                             it.copy(
                                 backupOperation = BackupOperation.Idle,
                                 backupProgress = null,
                                 errorMessage =
-                                    UiText.StringResource(
-                                        R.string.error_import_failed,
-                                        listOf(""),
-                                    ),
+                                    UiText.StringResource(R.string.error_import_file_corrupted),
                             )
                         }
                     } catch (e: Exception) {

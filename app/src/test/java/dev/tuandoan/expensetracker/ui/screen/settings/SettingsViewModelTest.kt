@@ -601,7 +601,10 @@ class SettingsViewModelTest {
             assertNull(viewModel.uiState.value.pendingImportDecryptUri)
             val err = viewModel.uiState.value.errorMessage
             assertTrue(err is UiText.StringResource)
-            assertEquals(R.string.error_import_failed, (err as UiText.StringResource).resId)
+            assertEquals(
+                R.string.error_import_file_corrupted,
+                (err as UiText.StringResource).resId,
+            )
         }
 
     @Test

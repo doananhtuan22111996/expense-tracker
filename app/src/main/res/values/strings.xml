@@ -248,6 +248,7 @@
     <string name="error_update_category">Failed to update category</string>
     <string name="error_export_failed">Export failed: %1$s</string>
     <string name="error_import_failed">Import failed: %1$s</string>
+    <string name="error_import_file_corrupted">This backup file is corrupted or from a newer app version</string>
     <string name="error_unknown">Unknown error</string>
     <string name="error_load_summary">Unable to load summary</string>
     <string name="error_load_summary_message">Failed to load financial data. Please try again.</string>
