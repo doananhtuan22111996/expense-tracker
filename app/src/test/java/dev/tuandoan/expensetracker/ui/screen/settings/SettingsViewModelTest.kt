@@ -62,6 +62,11 @@ class SettingsViewModelTest {
         fakeAnalyticsPrefs = FakeAnalyticsPreferences()
         fakeBudgetAlertPrefs = FakeBudgetAlertPreferences()
         fakeBackupEncryptionPrefs = FakeBackupEncryptionPreferences()
+        // Most tests don't care about the forgotten-password warning gate — they
+        // toggle encryption on to exercise the downstream export flow. Pre-seed
+        // "acknowledged" so setEncryptBackupsEnabled(true) persists immediately.
+        // The warning-specific tests below call seedAcknowledged(false) to opt out.
+        fakeBackupEncryptionPrefs.seedAcknowledged(true)
         mockContentResolver = Mockito.mock(ContentResolver::class.java)
         mockUri = Mockito.mock(Uri::class.java)
     }
@@ -976,6 +981,113 @@ class SettingsViewModelTest {
             assertNull(viewModel.uiState.value.backupMessage)
         }
 
+    // --- Forgotten-password warning (encrypt toggle gate) ---
+
+    @Test
+    fun setEncryptBackupsEnabled_firstTimeOn_showsWarningAndDoesNotPersist() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            // Opt out of the @Before default to simulate a never-acknowledged user.
+            fakeBackupEncryptionPrefs.seedAcknowledged(false)
+
+            val viewModel = createViewModel()
+            advanceUntilIdle()
+
+            viewModel.setEncryptBackupsEnabled(true)
+            advanceUntilIdle()
+
+            assertTrue(viewModel.uiState.value.pendingEncryptToggleAck)
+            assertEquals(false, fakeBackupEncryptionPrefs.encryptBackupsValue)
+            assertEquals(false, fakeBackupEncryptionPrefs.hasAcknowledgedPasswordWarningValue)
+        }
+
+    @Test
+    fun setEncryptBackupsEnabled_off_alwaysPersistsImmediatelyWithoutWarning() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            // Simulate a user who has acknowledged + enabled previously.
+            fakeBackupEncryptionPrefs.seedAcknowledged(true)
+            fakeBackupEncryptionPrefs.setEncryptBackups(true)
+            val viewModel = createViewModel()
+            advanceUntilIdle()
+
+            viewModel.setEncryptBackupsEnabled(false)
+            advanceUntilIdle()
+
+            assertEquals(false, viewModel.uiState.value.pendingEncryptToggleAck)
+            assertEquals(false, fakeBackupEncryptionPrefs.encryptBackupsValue)
+        }
+
+    @Test
+    fun setEncryptBackupsEnabled_afterAcknowledgement_persistsWithoutWarning() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            fakeBackupEncryptionPrefs.seedAcknowledged(true)
+            val viewModel = createViewModel()
+            advanceUntilIdle()
+
+            viewModel.setEncryptBackupsEnabled(true)
+            advanceUntilIdle()
+
+            assertEquals(false, viewModel.uiState.value.pendingEncryptToggleAck)
+            assertEquals(true, fakeBackupEncryptionPrefs.encryptBackupsValue)
+        }
+
+    @Test
+    fun confirmPasswordWarning_persistsAckAndToggleAndClearsDialog() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            fakeBackupEncryptionPrefs.seedAcknowledged(false)
+            val viewModel = createViewModel()
+            advanceUntilIdle()
+
+            viewModel.setEncryptBackupsEnabled(true)
+            advanceUntilIdle()
+            assertTrue(viewModel.uiState.value.pendingEncryptToggleAck)
+
+            viewModel.confirmPasswordWarning()
+            advanceUntilIdle()
+
+            assertEquals(false, viewModel.uiState.value.pendingEncryptToggleAck)
+            assertEquals(true, fakeBackupEncryptionPrefs.hasAcknowledgedPasswordWarningValue)
+            assertEquals(true, fakeBackupEncryptionPrefs.encryptBackupsValue)
+        }
+
+    @Test
+    fun dismissPasswordWarning_clearsDialogAndPersistsNothing() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            fakeBackupEncryptionPrefs.seedAcknowledged(false)
+            val viewModel = createViewModel()
+            advanceUntilIdle()
+
+            viewModel.setEncryptBackupsEnabled(true)
+            advanceUntilIdle()
+            assertTrue(viewModel.uiState.value.pendingEncryptToggleAck)
+
+            viewModel.dismissPasswordWarning()
+            advanceUntilIdle()
+
+            assertEquals(false, viewModel.uiState.value.pendingEncryptToggleAck)
+            assertEquals(false, fakeBackupEncryptionPrefs.encryptBackupsValue)
+            assertEquals(false, fakeBackupEncryptionPrefs.hasAcknowledgedPasswordWarningValue)
+        }
+
+    @Test
+    fun dismissThenRetry_warningReappearsUntilAcknowledged() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            fakeBackupEncryptionPrefs.seedAcknowledged(false)
+            val viewModel = createViewModel()
+            advanceUntilIdle()
+
+            viewModel.setEncryptBackupsEnabled(true)
+            advanceUntilIdle()
+            viewModel.dismissPasswordWarning()
+            advanceUntilIdle()
+
+            // Ack flag still false — second toggle attempt must re-surface dialog.
+            viewModel.setEncryptBackupsEnabled(true)
+            advanceUntilIdle()
+
+            assertTrue(viewModel.uiState.value.pendingEncryptToggleAck)
+            assertEquals(false, fakeBackupEncryptionPrefs.encryptBackupsValue)
+        }
+
     // --- Budget alerts tests ---
 
     @Test
@@ -1033,6 +1145,7 @@ class SettingsViewModelTest {
 
     private class FakeBackupEncryptionPreferences : BackupEncryptionPreferences {
         private val state = MutableStateFlow(false)
+        private val ackState = MutableStateFlow(false)
         var readError: Throwable? = null
         override val encryptBackups: Flow<Boolean> =
             kotlinx.coroutines.flow.flow {
@@ -1042,6 +1155,19 @@ class SettingsViewModelTest {
 
         override suspend fun setEncryptBackups(enabled: Boolean) {
             state.value = enabled
+        }
+
+        val encryptBackupsValue: Boolean get() = state.value
+        val hasAcknowledgedPasswordWarningValue: Boolean get() = ackState.value
+
+        override val hasAcknowledgedPasswordWarning: Flow<Boolean> = ackState
+
+        override suspend fun setHasAcknowledgedPasswordWarning(acknowledged: Boolean) {
+            ackState.value = acknowledged
+        }
+
+        fun seedAcknowledged(acknowledged: Boolean) {
+            ackState.value = acknowledged
         }
     }
 

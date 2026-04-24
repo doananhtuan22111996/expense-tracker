@@ -27,6 +27,8 @@ class BackupEncryptionPreferencesImpl
         @IoDispatcher private val ioDispatcher: CoroutineDispatcher,
     ) : BackupEncryptionPreferences {
         private val encryptBackupsKey = booleanPreferencesKey("encrypt_backups")
+        private val acknowledgedWarningKey =
+            booleanPreferencesKey("has_acknowledged_password_warning")
 
         override val encryptBackups: Flow<Boolean> =
             context.backupEncryptionDataStore.data.map { preferences ->
@@ -37,6 +39,19 @@ class BackupEncryptionPreferencesImpl
             withContext(ioDispatcher) {
                 context.backupEncryptionDataStore.edit { preferences ->
                     preferences[encryptBackupsKey] = enabled
+                }
+            }
+        }
+
+        override val hasAcknowledgedPasswordWarning: Flow<Boolean> =
+            context.backupEncryptionDataStore.data.map { preferences ->
+                preferences[acknowledgedWarningKey] ?: false
+            }
+
+        override suspend fun setHasAcknowledgedPasswordWarning(acknowledged: Boolean) {
+            withContext(ioDispatcher) {
+                context.backupEncryptionDataStore.edit { preferences ->
+                    preferences[acknowledgedWarningKey] = acknowledged
                 }
             }
         }
