@@ -79,6 +79,7 @@ import dev.tuandoan.expensetracker.core.util.AppInfo
 import dev.tuandoan.expensetracker.data.preferences.ThemePreference
 import dev.tuandoan.expensetracker.domain.model.CurrencyDefinition
 import dev.tuandoan.expensetracker.domain.model.SupportedCurrencies
+import dev.tuandoan.expensetracker.ui.component.PasswordDialog
 import dev.tuandoan.expensetracker.ui.component.SectionTitle
 import dev.tuandoan.expensetracker.ui.theme.DesignSystemElevation
 import dev.tuandoan.expensetracker.ui.theme.DesignSystemSpacing
@@ -100,6 +101,7 @@ fun SettingsScreen(
     val themePreference by viewModel.themePreference.collectAsStateWithLifecycle()
     val analyticsConsent by viewModel.analyticsConsent.collectAsStateWithLifecycle()
     val budgetAlertsEnabled by viewModel.budgetAlertsEnabled.collectAsStateWithLifecycle()
+    val encryptBackupsEnabled by viewModel.encryptBackupsEnabled.collectAsStateWithLifecycle()
     var showCurrencyDialog by remember { mutableStateOf(false) }
     var showFeedbackSheet by remember { mutableStateOf(false) }
     var showPermissionRationale by remember { mutableStateOf(false) }
@@ -125,11 +127,18 @@ fun SettingsScreen(
         onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
     }
 
-    val exportLauncher =
+    val exportJsonLauncher =
         rememberLauncherForActivityResult(
             contract = ActivityResultContracts.CreateDocument("application/json"),
         ) { uri ->
-            uri?.let { viewModel.exportBackup(it) }
+            uri?.let { viewModel.onExportUriReady(it) }
+        }
+
+    val exportEncryptedLauncher =
+        rememberLauncherForActivityResult(
+            contract = ActivityResultContracts.CreateDocument("application/octet-stream"),
+        ) { uri ->
+            uri?.let { viewModel.onExportUriReady(it) }
         }
 
     val importLauncher =
@@ -155,6 +164,18 @@ fun SettingsScreen(
                 viewModel.setBudgetAlertsEnabled(true)
             }
         }
+
+    LaunchedEffect(Unit) {
+        viewModel.exportLaunchEvents.collect { event ->
+            val date = SimpleDateFormat("yyyy-MM-dd", Locale.US).format(Date())
+            when (event) {
+                ExportLaunchEvent.Encrypted ->
+                    exportEncryptedLauncher.launch("expense-tracker-backup_$date.etbackup")
+                ExportLaunchEvent.Plain ->
+                    exportJsonLauncher.launch("expense-tracker-backup_$date.json")
+            }
+        }
+    }
 
     LaunchedEffect(uiState.errorMessage) {
         uiState.errorMessage?.let {
@@ -474,9 +495,7 @@ fun SettingsScreen(
                         Modifier
                             .fillMaxWidth()
                             .clickable(enabled = !isBusy) {
-                                val date =
-                                    SimpleDateFormat("yyyy-MM-dd", Locale.US).format(Date())
-                                exportLauncher.launch("expense-tracker-backup_$date.json")
+                                viewModel.onExportClicked()
                             }.padding(DesignSystemSpacing.large)
                             .semantics {
                                 contentDescription = exportA11y
@@ -512,6 +531,37 @@ fun SettingsScreen(
 
                 if (isExporting) {
                     BackupProgressBar(progress = uiState.backupProgress)
+                }
+
+                HorizontalDivider()
+
+                Row(
+                    modifier =
+                        Modifier
+                            .fillMaxWidth()
+                            .padding(DesignSystemSpacing.large),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = stringResource(R.string.settings_encrypt_backup),
+                            style = MaterialTheme.typography.bodyLarge,
+                            fontWeight = FontWeight.Medium,
+                            color = MaterialTheme.colorScheme.onSurface,
+                        )
+                        Text(
+                            text = stringResource(R.string.settings_encrypt_backup_subtitle),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.padding(top = DesignSystemSpacing.xs),
+                        )
+                    }
+                    Switch(
+                        checked = encryptBackupsEnabled,
+                        onCheckedChange = { viewModel.setEncryptBackupsEnabled(it) },
+                        enabled = !isBusy,
+                    )
                 }
 
                 HorizontalDivider()
@@ -830,6 +880,20 @@ fun SettingsScreen(
                     Text(stringResource(R.string.cancel))
                 }
             },
+        )
+    }
+
+    // Export Password Dialog (encrypted backups only)
+    if (uiState.pendingExportUri != null) {
+        PasswordDialog(
+            title = stringResource(R.string.settings_backup_password_title),
+            message = stringResource(R.string.settings_backup_password_message),
+            confirmLabel = stringResource(R.string.settings_backup_password_encrypt_action),
+            onConfirm = { password ->
+                viewModel.onExportPasswordConfirmed(password)
+                password.fill('\u0000')
+            },
+            onDismiss = { viewModel.dismissExportPasswordDialog() },
         )
     }
 

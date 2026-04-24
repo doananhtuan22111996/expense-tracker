@@ -6,6 +6,8 @@ import dagger.hilt.InstallIn
 import dagger.hilt.components.SingletonComponent
 import dev.tuandoan.expensetracker.data.preferences.AnalyticsPreferences
 import dev.tuandoan.expensetracker.data.preferences.AnalyticsPreferencesImpl
+import dev.tuandoan.expensetracker.data.preferences.BackupEncryptionPreferences
+import dev.tuandoan.expensetracker.data.preferences.BackupEncryptionPreferencesImpl
 import dev.tuandoan.expensetracker.data.preferences.ReviewPreferences
 import dev.tuandoan.expensetracker.data.preferences.ReviewPreferencesImpl
 import dev.tuandoan.expensetracker.domain.crash.CrashReporter
@@ -27,6 +29,9 @@ abstract class ReviewModule {
 
     @Binds
     abstract fun bindAnalyticsPreferences(impl: AnalyticsPreferencesImpl): AnalyticsPreferences
+
+    @Binds
+    abstract fun bindBackupEncryptionPreferences(impl: BackupEncryptionPreferencesImpl): BackupEncryptionPreferences
 
     @Binds
     abstract fun bindCrashReporter(impl: NoOpCrashReporter): CrashReporter

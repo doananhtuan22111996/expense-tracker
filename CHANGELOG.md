@@ -8,6 +8,7 @@
 - `BackupCryptoException` sealed type: `WrongPassword`, `MalformedHeader`, `UnsupportedVersion`, `DecryptionFailed`
 - `docs/backup-format.md` — specification for the `.etbackup` container (byte layout, crypto params, version policy, threat model)
 - `BackupRepository.exportBackup` / `importBackup` accept optional `EncryptOptions(password)` — when present, export writes an `.etbackup` and import transparently decrypts; import auto-detects the `ETBK` magic and falls back to the existing plain/gzip path otherwise
+- Settings: encrypt-backup toggle and password dialog wired into the export flow — when enabled, export writes a `.etbackup` protected by a user-supplied password (`PasswordDialog` composable with show/hide toggle, 8-char minimum, confirm-password match)
 
 ### Changed
 - Lift `ETBK` magic detection into `BackupCrypto.isEtbkHeader()` so `BackupRepositoryImpl` no longer duplicates the magic-byte constant
