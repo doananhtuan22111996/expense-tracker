@@ -7,6 +7,7 @@ import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -32,13 +33,32 @@ import dev.tuandoan.expensetracker.ui.screen.recurring.RecurringTransactionsScre
 /**
  * Main app composable with simplified, stable navigation architecture
  * Uses single NavHost with proper nested navigation for modal handling
+ *
+ * @param pendingAddTransactionTick monotonically-increasing token (nanoTime)
+ * set by `MainActivity` when the home-screen widget's "+" action fires. A
+ * new (non-zero, changed-since-last-composition) value causes an immediate
+ * navigation to the add-transaction modal route. Ignored during onboarding.
  */
 @Composable
-fun ExpenseTrackerApp(isOnboardingComplete: Boolean = true) {
+fun ExpenseTrackerApp(
+    isOnboardingComplete: Boolean = true,
+    pendingAddTransactionTick: Long = 0L,
+) {
     val navController = rememberNavController()
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentDestination = navBackStackEntry?.destination
     val startDestination = if (isOnboardingComplete) "Home" else "Onboarding"
+
+    // Widget "+" tap — navigate to add-transaction on top of whatever was
+    // showing. Keyed on the tick so repeated taps re-fire after the user
+    // cancels the add screen. Ignored while onboarding is incomplete so we
+    // don't interrupt the welcome flow.
+    LaunchedEffect(pendingAddTransactionTick, isOnboardingComplete) {
+        if (pendingAddTransactionTick != 0L && isOnboardingComplete) {
+            navController.navigate(ModalNavRoutes.addTransactionRoute())
+        }
+    }
+
     NavHost(
         navController = navController,
         startDestination = startDestination,
