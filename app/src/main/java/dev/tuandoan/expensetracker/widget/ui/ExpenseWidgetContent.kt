@@ -5,6 +5,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.glance.GlanceModifier
 import androidx.glance.GlanceTheme
+import androidx.glance.LocalContext
 import androidx.glance.appwidget.cornerRadius
 import androidx.glance.background
 import androidx.glance.layout.Alignment
@@ -17,6 +18,7 @@ import androidx.glance.layout.size
 import androidx.glance.text.FontWeight
 import androidx.glance.text.Text
 import androidx.glance.text.TextStyle
+import dev.tuandoan.expensetracker.R
 import dev.tuandoan.expensetracker.widget.ExpenseWidgetState
 
 /**
@@ -34,6 +36,8 @@ import dev.tuandoan.expensetracker.widget.ExpenseWidgetState
  */
 @Composable
 fun ExpenseWidgetContent(state: ExpenseWidgetState) {
+    val context = LocalContext.current
+    val loadingPlaceholder = context.getString(R.string.widget_amount_loading)
     Row(
         modifier =
             GlanceModifier
@@ -43,7 +47,8 @@ fun ExpenseWidgetContent(state: ExpenseWidgetState) {
         verticalAlignment = Alignment.CenterVertically,
     ) {
         TodayAmount(
-            amountFormatted = state.todayFormatted.ifEmpty { "—" },
+            todayLabel = context.getString(R.string.widget_today),
+            amountFormatted = state.todayFormatted.ifEmpty { loadingPlaceholder },
             modifier = GlanceModifier.defaultWeight(),
         )
         AddButton()
@@ -52,12 +57,13 @@ fun ExpenseWidgetContent(state: ExpenseWidgetState) {
 
 @Composable
 private fun TodayAmount(
+    todayLabel: String,
     amountFormatted: String,
     modifier: GlanceModifier = GlanceModifier,
 ) {
     Column(modifier = modifier) {
         Text(
-            text = "Today",
+            text = todayLabel,
             style =
                 TextStyle(
                     color = GlanceTheme.colors.onSurfaceVariant,
