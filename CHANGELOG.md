@@ -8,6 +8,7 @@
 - `ExpenseWidget` GlanceAppWidget shell + `ExpenseWidgetContent` small (2×1) layout — renders today's expense total and a circular "+" affordance. State fetching, click actions, receiver registration, and Material You theming land in subsequent Widget epic tasks; this PR is layout-only and consumes `ExpenseWidgetState.LOADING` as placeholder input.
 - `androidx.glance:glance-appwidget` and `androidx.glance:glance-material3` now consumed by the `:app` module (declaration landed in an earlier PR).
 - Medium (4×2) widget layout variant — renders Today + This Month totals + a budget progress bar when a monthly budget is set. `ExpenseWidget.sizeMode = SizeMode.Responsive(setOf(SMALL_SIZE, MEDIUM_SIZE))` dispatches by widget size on Android 12+, with width-threshold fallback for older versions. Over-budget progress renders in Material `error` color with a `↑` glyph in the percent label for colorblind accessibility.
+- `ExpenseWidgetReceiver` + `AndroidManifest` `<receiver>` entry + `res/xml/expense_widget_info.xml` provider metadata — makes the widget appear in the launcher picker. Sized for a 2×1 default (`targetCellWidth/Height = 2/1`) with resize up to 4×2; `updatePeriodMillis = 0` since refresh is handled by WorkManager (Task 1.8) and repository hooks (Task 1.7). Placeholder preview uses `@mipmap/ic_launcher` until Task 1.11.
 
 ## [3.9.0] - 2026-04-25
 

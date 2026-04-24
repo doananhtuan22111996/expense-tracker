@@ -37,6 +37,19 @@
                 android:value="androidx.startup"
                 tools:node="remove" />
         </provider>
+
+        <!-- Home-screen widget (v3.10.0). Small 2×1 / medium 4×2 variants
+             handled by ExpenseWidget's SizeMode.Responsive. -->
+        <receiver
+            android:name=".widget.ExpenseWidgetReceiver"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/expense_widget_info" />
+        </receiver>
     </application>
 
 </manifest>
