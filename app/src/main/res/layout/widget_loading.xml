@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Initial layout rendered by the launcher between widget placement and Glance's
+  first provideGlance() call. Typically visible for under a second, but a
+  non-null initialLayout is required by the appwidget-provider contract.
+
+  Replaced by ExpenseWidgetContent's LOADING state once Glance takes over.
+-->
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:padding="12dp">
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="center"
+        android:text="@string/widget_loading"
+        android:textAppearance="@android:style/TextAppearance.Material.Body1" />
+</FrameLayout>

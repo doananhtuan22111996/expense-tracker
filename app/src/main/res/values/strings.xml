@@ -515,4 +515,6 @@
     <string name="widget_budget_progress">%1$s / %2$s</string>
     <string name="widget_budget_percent">%1$d%%</string>
     <string name="widget_budget_over_percent">↑ %1$d%%</string>
+    <string name="widget_description">Today\'s spend, this month\'s total, and your budget progress at a glance.</string>
+    <string name="widget_loading">Loading…</string>
 </resources>
