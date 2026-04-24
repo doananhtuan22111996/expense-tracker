@@ -511,4 +511,8 @@
     <!-- Home-screen widget -->
     <string name="widget_today">Today</string>
     <string name="widget_amount_loading">—</string>
+    <string name="widget_this_month">This month</string>
+    <string name="widget_budget_progress">%1$s / %2$s</string>
+    <string name="widget_budget_percent">%1$d%%</string>
+    <string name="widget_budget_over_percent">↑ %1$d%%</string>
 </resources>
