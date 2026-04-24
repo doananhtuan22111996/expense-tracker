@@ -14,6 +14,9 @@
 - Settings: one-time forgotten-password warning dialog — first time a user enables the "Encrypt backup with password" toggle, an `AlertDialog` explains that lost passwords can't be recovered; the toggle only persists after the user taps "I understand"
 - `BackupEncryptionPreferences.hasAcknowledgedPasswordWarning` DataStore flag (key `has_acknowledged_password_warning`) — gates the first-run warning; once set, subsequent toggle changes bypass the dialog
 
+### Fixed
+- Encrypt-backup Switch no longer visually bounces back to OFF under the forgotten-password warning dialog — the Switch now renders `checked = true` optimistically while the warning is pending and only returns to OFF if the user cancels
+
 ### Changed
 - Lift `ETBK` magic detection into `BackupCrypto.isEtbkHeader()` so `BackupRepositoryImpl` no longer duplicates the magic-byte constant
 - `EncryptOptions` implements `AutoCloseable`; `close()` zeroes the password array (best-effort — JVM may have copied it already)

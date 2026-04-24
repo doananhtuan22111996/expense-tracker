@@ -558,7 +558,12 @@ fun SettingsScreen(
                         )
                     }
                     Switch(
-                        checked = encryptBackupsEnabled,
+                        // Optimistically render ON while the forgotten-password warning
+                        // dialog is up; otherwise the Switch snaps back under the dialog
+                        // (the DataStore write is gated on confirming) and users see a
+                        // confusing bounce. If the user cancels, pendingEncryptToggleAck
+                        // flips false and the Switch returns to its real (OFF) state.
+                        checked = encryptBackupsEnabled || uiState.pendingEncryptToggleAck,
                         onCheckedChange = { viewModel.setEncryptBackupsEnabled(it) },
                         enabled = !isBusy,
                     )
