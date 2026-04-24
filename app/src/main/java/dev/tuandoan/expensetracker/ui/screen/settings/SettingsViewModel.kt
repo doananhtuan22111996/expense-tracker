@@ -486,10 +486,50 @@ class SettingsViewModel
             }
         }
 
+        /**
+         * Toggles encrypted backups. Turning encryption **on** for the first time
+         * surfaces a one-time warning dialog ("If you forget this password, your
+         * data cannot be recovered") which the user must explicitly acknowledge
+         * before the toggle is persisted. Turning it off (or re-enabling after
+         * acknowledgement) writes through immediately.
+         */
         fun setEncryptBackupsEnabled(enabled: Boolean) {
             viewModelScope.launch {
-                backupEncryptionPreferences.setEncryptBackups(enabled)
+                if (!enabled) {
+                    backupEncryptionPreferences.setEncryptBackups(false)
+                    return@launch
+                }
+                val acknowledged =
+                    backupEncryptionPreferences.hasAcknowledgedPasswordWarning.first()
+                if (acknowledged) {
+                    backupEncryptionPreferences.setEncryptBackups(true)
+                } else {
+                    _uiState.update { it.copy(pendingEncryptToggleAck = true) }
+                }
             }
+        }
+
+        /**
+         * Called when the user taps "I understand" on the forgotten-password warning.
+         * Persists both the ack flag and the encrypt toggle, then clears the pending
+         * dialog state. Both writes run sequentially on [ioDispatcher] inside the
+         * preferences impl — the order guarantees a caller restarting mid-flow sees
+         * the ack before the toggle flips.
+         */
+        fun confirmPasswordWarning() {
+            viewModelScope.launch {
+                backupEncryptionPreferences.setHasAcknowledgedPasswordWarning(true)
+                backupEncryptionPreferences.setEncryptBackups(true)
+                _uiState.update { it.copy(pendingEncryptToggleAck = false) }
+            }
+        }
+
+        /**
+         * Dismisses the warning dialog without persisting anything. The toggle stays
+         * off; the ack flag remains unset so the dialog reappears on the next attempt.
+         */
+        fun dismissPasswordWarning() {
+            _uiState.update { it.copy(pendingEncryptToggleAck = false) }
         }
 
         fun setBudgetAlertsEnabled(enabled: Boolean) {
@@ -558,4 +598,5 @@ data class SettingsUiState(
     val pendingExportUri: Uri? = null,
     val pendingImportDecryptUri: Uri? = null,
     val importPasswordError: UiText? = null,
+    val pendingEncryptToggleAck: Boolean = false,
 )

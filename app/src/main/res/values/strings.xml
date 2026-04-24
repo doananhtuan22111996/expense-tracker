@@ -352,6 +352,9 @@
     <string name="settings_backup_import_password_message">This backup is encrypted. Enter the password used when it was exported.</string>
     <string name="settings_backup_import_password_decrypt_action">Decrypt and restore</string>
     <string name="settings_backup_password_wrong">Incorrect password</string>
+    <string name="settings_backup_warning_title">Don\'t forget this password</string>
+    <string name="settings_backup_warning_message">Encrypted backups can only be restored with the exact password you set. If you forget it, there is no recovery — your data in that backup is gone forever. Only turn this on if you\'re comfortable keeping a password safe.</string>
+    <string name="settings_backup_warning_confirm">I understand</string>
     <string name="settings_app_information">App Information</string>
     <string name="settings_version">Version</string>
     <string name="settings_contact_email">Contact Email</string>

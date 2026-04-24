@@ -913,6 +913,26 @@ fun SettingsScreen(
         )
     }
 
+    // Encrypt-Backup Warning Dialog (one-time, surfaced when the user first flips
+    // the encrypt toggle on — persisting the toggle is gated on confirming here).
+    if (uiState.pendingEncryptToggleAck) {
+        AlertDialog(
+            onDismissRequest = { viewModel.dismissPasswordWarning() },
+            title = { Text(stringResource(R.string.settings_backup_warning_title)) },
+            text = { Text(stringResource(R.string.settings_backup_warning_message)) },
+            confirmButton = {
+                TextButton(onClick = { viewModel.confirmPasswordWarning() }) {
+                    Text(stringResource(R.string.settings_backup_warning_confirm))
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { viewModel.dismissPasswordWarning() }) {
+                    Text(stringResource(R.string.cancel))
+                }
+            },
+        )
+    }
+
     // Permission Rationale Dialog
     if (showPermissionRationale) {
         AlertDialog(

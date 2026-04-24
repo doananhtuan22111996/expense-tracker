@@ -11,6 +11,8 @@
 - Settings: encrypt-backup toggle and password dialog wired into the export flow — when enabled, export writes a `.etbackup` protected by a user-supplied password (`PasswordDialog` composable with show/hide toggle, 8-char minimum, confirm-password match)
 - Settings: import-side password prompt — picking a `.etbackup` file auto-detects the `ETBK` magic and prompts for the decrypt password before any DB writes; wrong passwords re-surface the dialog with an inline error and preserve the picked URI so users can retry without re-picking
 - `error_import_file_corrupted` string — dedicated, placeholder-free copy for non-password crypto failures (`MalformedHeader` / `UnsupportedVersion` / `DecryptionFailed`), avoids the dangling "`: `" produced by `error_import_failed`'s `%1$s` when no detail message is safe to surface
+- Settings: one-time forgotten-password warning dialog — first time a user enables the "Encrypt backup with password" toggle, an `AlertDialog` explains that lost passwords can't be recovered; the toggle only persists after the user taps "I understand"
+- `BackupEncryptionPreferences.hasAcknowledgedPasswordWarning` DataStore flag (key `has_acknowledged_password_warning`) — gates the first-run warning; once set, subsequent toggle changes bypass the dialog
 
 ### Changed
 - Lift `ETBK` magic detection into `BackupCrypto.isEtbkHeader()` so `BackupRepositoryImpl` no longer duplicates the magic-byte constant
