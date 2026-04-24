@@ -897,6 +897,22 @@ fun SettingsScreen(
         )
     }
 
+    // Import Password Dialog (surfaced when the picked file's first 4 bytes are ETBK)
+    if (uiState.pendingImportDecryptUri != null) {
+        PasswordDialog(
+            title = stringResource(R.string.settings_backup_import_password_title),
+            message = stringResource(R.string.settings_backup_import_password_message),
+            confirmLabel = stringResource(R.string.settings_backup_import_password_decrypt_action),
+            requireConfirm = false,
+            errorMessage = uiState.importPasswordError?.asString(context),
+            onConfirm = { password ->
+                viewModel.onImportPasswordConfirmed(password)
+                password.fill(' ')
+            },
+            onDismiss = { viewModel.dismissImportPasswordDialog() },
+        )
+    }
+
     // Permission Rationale Dialog
     if (showPermissionRationale) {
         AlertDialog(

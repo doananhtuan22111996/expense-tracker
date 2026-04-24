@@ -34,12 +34,20 @@ import dev.tuandoan.expensetracker.ui.theme.DesignSystemSpacing
 private const val MIN_PASSWORD_LENGTH = 8
 
 /**
- * Material 3 password dialog with a password + confirm field and a show/hide toggle.
+ * Material 3 password dialog with a password (+ optional confirm) field and a show/hide toggle.
  *
  * The password is captured as a local [CharArray]. When the user confirms, [onConfirm]
  * is invoked with a defensive copy; this composable zeros its own buffer in the
  * `DisposableEffect.onDispose` block so the array does not linger after the dialog
  * closes. Callers are still expected to dispose of their own copy promptly.
+ *
+ * @param requireConfirm when `true` (the default, used for export), the user must type
+ * the password twice and enforce the 8-char minimum. When `false` (used for import
+ * decrypt), only a single field is shown with no minimum — the backup file itself
+ * authenticates the password via GCM.
+ * @param errorMessage optional inline error text rendered under the password field
+ * (e.g. "Incorrect password"). When present, the password field renders in the
+ * Material error color.
  */
 @Composable
 fun PasswordDialog(
@@ -48,15 +56,23 @@ fun PasswordDialog(
     confirmLabel: String,
     onConfirm: (CharArray) -> Unit,
     onDismiss: () -> Unit,
+    requireConfirm: Boolean = true,
+    errorMessage: String? = null,
 ) {
     var password by remember { mutableStateOf("") }
     var confirmPassword by remember { mutableStateOf("") }
     var passwordVisible by remember { mutableStateOf(false) }
 
-    val tooShort = password.isNotEmpty() && password.length < MIN_PASSWORD_LENGTH
-    val mismatch = confirmPassword.isNotEmpty() && password != confirmPassword
+    val tooShort =
+        requireConfirm && password.isNotEmpty() && password.length < MIN_PASSWORD_LENGTH
+    val mismatch =
+        requireConfirm && confirmPassword.isNotEmpty() && password != confirmPassword
     val canConfirm =
-        password.length >= MIN_PASSWORD_LENGTH && password == confirmPassword
+        if (requireConfirm) {
+            password.length >= MIN_PASSWORD_LENGTH && password == confirmPassword
+        } else {
+            password.isNotEmpty()
+        }
 
     DisposableEffect(Unit) {
         onDispose {
@@ -80,15 +96,19 @@ fun PasswordDialog(
                     text = message,
                     style = MaterialTheme.typography.bodyMedium,
                 )
+                val passwordContentType =
+                    if (requireConfirm) ContentType.NewPassword else ContentType.Password
                 OutlinedTextField(
                     value = password,
                     onValueChange = { password = it },
                     label = { Text(stringResource(R.string.settings_backup_password_label)) },
                     singleLine = true,
-                    isError = tooShort,
+                    isError = tooShort || errorMessage != null,
                     supportingText = {
-                        if (tooShort) {
-                            Text(stringResource(R.string.settings_backup_password_too_short))
+                        when {
+                            errorMessage != null -> Text(errorMessage)
+                            tooShort ->
+                                Text(stringResource(R.string.settings_backup_password_too_short))
                         }
                     },
                     visualTransformation = passwordVisualTransformation(passwordVisible),
@@ -99,26 +119,28 @@ fun PasswordDialog(
                     modifier =
                         Modifier
                             .fillMaxWidth()
-                            .semantics { contentType = ContentType.NewPassword },
+                            .semantics { contentType = passwordContentType },
                 )
-                OutlinedTextField(
-                    value = confirmPassword,
-                    onValueChange = { confirmPassword = it },
-                    label = { Text(stringResource(R.string.settings_backup_password_confirm_label)) },
-                    singleLine = true,
-                    isError = mismatch,
-                    supportingText = {
-                        if (mismatch) {
-                            Text(stringResource(R.string.settings_backup_password_mismatch))
-                        }
-                    },
-                    visualTransformation = passwordVisualTransformation(passwordVisible),
-                    keyboardOptions = passwordKeyboardOptions(),
-                    modifier =
-                        Modifier
-                            .fillMaxWidth()
-                            .semantics { contentType = ContentType.NewPassword },
-                )
+                if (requireConfirm) {
+                    OutlinedTextField(
+                        value = confirmPassword,
+                        onValueChange = { confirmPassword = it },
+                        label = { Text(stringResource(R.string.settings_backup_password_confirm_label)) },
+                        singleLine = true,
+                        isError = mismatch,
+                        supportingText = {
+                            if (mismatch) {
+                                Text(stringResource(R.string.settings_backup_password_mismatch))
+                            }
+                        },
+                        visualTransformation = passwordVisualTransformation(passwordVisible),
+                        keyboardOptions = passwordKeyboardOptions(),
+                        modifier =
+                            Modifier
+                                .fillMaxWidth()
+                                .semantics { contentType = ContentType.NewPassword },
+                    )
+                }
             }
         },
         confirmButton = {

@@ -4,6 +4,7 @@ import android.content.ContentResolver
 import android.net.Uri
 import dev.tuandoan.expensetracker.R
 import dev.tuandoan.expensetracker.core.util.UiText
+import dev.tuandoan.expensetracker.data.backup.BackupCryptoException
 import dev.tuandoan.expensetracker.data.backup.BackupValidationError
 import dev.tuandoan.expensetracker.data.backup.BackupValidationException
 import dev.tuandoan.expensetracker.data.preferences.AnalyticsPreferences
@@ -421,6 +422,186 @@ class SettingsViewModelTest {
             val error = viewModel.uiState.value.errorMessage
             assertTrue(error is UiText.StringResource)
             assertEquals(R.string.error_import_failed, (error as UiText.StringResource).resId)
+        }
+
+    // --- Import: encrypted (.etbackup) password prompt ---
+
+    /** Stubs the ContentResolver to return two independent input streams on
+     *  successive openInputStream(uri) calls — one for the 4-byte magic probe,
+     *  one for the actual restore read. Real SAF providers allow reopens. */
+    private fun stubReopenableStream(bytes: ByteArray) {
+        Mockito
+            .`when`(mockContentResolver.openInputStream(mockUri))
+            .thenAnswer { ByteArrayInputStream(bytes) }
+    }
+
+    private fun etbkBytes(): ByteArray =
+        // Magic "ETBK" + a version byte; enough for the probe, content beyond
+        // is irrelevant since FakeBackupRepository doesn't parse.
+        byteArrayOf(0x45, 0x54, 0x42, 0x4B, 0x01) // 'E','T','B','K',1
+
+    @Test
+    fun confirmRestore_plainFile_importsWithoutDecrypt() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            stubReopenableStream("{\"schema_version\":1}".toByteArray())
+            fakeBackupRepository.importResult = BackupRestoreResult(1, 3)
+
+            val viewModel = createViewModel()
+            advanceUntilIdle()
+
+            viewModel.onRestoreFileSelected(mockUri)
+            viewModel.confirmRestore()
+            advanceUntilIdle()
+
+            assertNull(viewModel.uiState.value.pendingImportDecryptUri)
+            assertNull(viewModel.uiState.value.importPasswordError)
+            assertEquals(BackupOperation.Idle, viewModel.uiState.value.backupOperation)
+            assertNull(fakeBackupRepository.lastDecryptOptions)
+            val msg = viewModel.uiState.value.backupMessage
+            assertTrue(msg is UiText.StringResource)
+        }
+
+    @Test
+    fun confirmRestore_encryptedFile_surfacesImportPasswordDialog() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            stubReopenableStream(etbkBytes())
+
+            val viewModel = createViewModel()
+            advanceUntilIdle()
+
+            viewModel.onRestoreFileSelected(mockUri)
+            viewModel.confirmRestore()
+            advanceUntilIdle()
+
+            assertEquals(mockUri, viewModel.uiState.value.pendingImportDecryptUri)
+            assertNull(viewModel.uiState.value.importPasswordError)
+            assertEquals(BackupOperation.Idle, viewModel.uiState.value.backupOperation)
+            // Repository should NOT have been called yet.
+            assertNull(fakeBackupRepository.lastDecryptOptions)
+        }
+
+    @Test
+    fun onImportPasswordConfirmed_correctPassword_importsAndZeroesPassword() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            stubReopenableStream(etbkBytes())
+            fakeBackupRepository.importResult = BackupRestoreResult(2, 7)
+
+            val viewModel = createViewModel()
+            advanceUntilIdle()
+
+            viewModel.onRestoreFileSelected(mockUri)
+            viewModel.confirmRestore()
+            advanceUntilIdle()
+
+            val password = "correcthorse".toCharArray()
+            viewModel.onImportPasswordConfirmed(password)
+            advanceUntilIdle()
+
+            assertNull(viewModel.uiState.value.pendingImportDecryptUri)
+            assertNull(viewModel.uiState.value.importPasswordError)
+            assertEquals(BackupOperation.Idle, viewModel.uiState.value.backupOperation)
+            val decrypt = fakeBackupRepository.lastDecryptOptions
+            assertNotNull(decrypt)
+            // Repository-owned copy must be zeroed via close() in the finally block.
+            assertTrue(decrypt!!.password.all { it == ' ' })
+            val msg = viewModel.uiState.value.backupMessage
+            assertTrue(msg is UiText.StringResource)
+        }
+
+    @Test
+    fun onImportPasswordConfirmed_wrongPassword_resurfacesDialogWithErrorAndPreservesUri() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            stubReopenableStream(etbkBytes())
+            // First attempt throws WrongPassword; second call (retry) will succeed.
+            fakeBackupRepository.importExceptionSequence.addLast(
+                BackupCryptoException.WrongPassword(),
+            )
+            fakeBackupRepository.importResult = BackupRestoreResult(0, 1)
+
+            val viewModel = createViewModel()
+            advanceUntilIdle()
+
+            viewModel.onRestoreFileSelected(mockUri)
+            viewModel.confirmRestore()
+            advanceUntilIdle()
+
+            viewModel.onImportPasswordConfirmed("wrong1234".toCharArray())
+            advanceUntilIdle()
+
+            assertEquals(mockUri, viewModel.uiState.value.pendingImportDecryptUri)
+            val err = viewModel.uiState.value.importPasswordError
+            assertTrue(err is UiText.StringResource)
+            assertEquals(
+                R.string.settings_backup_password_wrong,
+                (err as UiText.StringResource).resId,
+            )
+            assertEquals(BackupOperation.Idle, viewModel.uiState.value.backupOperation)
+
+            // Retry with correct password succeeds.
+            viewModel.onImportPasswordConfirmed("correcthorse".toCharArray())
+            advanceUntilIdle()
+
+            assertNull(viewModel.uiState.value.pendingImportDecryptUri)
+            assertNull(viewModel.uiState.value.importPasswordError)
+            val msg = viewModel.uiState.value.backupMessage
+            assertTrue(msg is UiText.StringResource)
+        }
+
+    @Test
+    fun dismissImportPasswordDialog_clearsStateAndDoesNotImport() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            stubReopenableStream(etbkBytes())
+
+            val viewModel = createViewModel()
+            advanceUntilIdle()
+
+            viewModel.onRestoreFileSelected(mockUri)
+            viewModel.confirmRestore()
+            advanceUntilIdle()
+
+            viewModel.dismissImportPasswordDialog()
+            advanceUntilIdle()
+
+            assertNull(viewModel.uiState.value.pendingImportDecryptUri)
+            assertNull(viewModel.uiState.value.importPasswordError)
+            assertNull(fakeBackupRepository.lastDecryptOptions)
+        }
+
+    @Test
+    fun onImportPasswordConfirmed_noPendingUri_doesNothing() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            val viewModel = createViewModel()
+            advanceUntilIdle()
+
+            viewModel.onImportPasswordConfirmed("anything1".toCharArray())
+            advanceUntilIdle()
+
+            assertEquals(BackupOperation.Idle, viewModel.uiState.value.backupOperation)
+            assertNull(fakeBackupRepository.lastDecryptOptions)
+        }
+
+    @Test
+    fun onImportPasswordConfirmed_malformedHeader_showsGenericErrorAndClearsDialog() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            stubReopenableStream(etbkBytes())
+            fakeBackupRepository.importExceptionSequence.addLast(
+                BackupCryptoException.MalformedHeader("truncated"),
+            )
+
+            val viewModel = createViewModel()
+            advanceUntilIdle()
+
+            viewModel.onRestoreFileSelected(mockUri)
+            viewModel.confirmRestore()
+            advanceUntilIdle()
+
+            viewModel.onImportPasswordConfirmed("doesntmatter".toCharArray())
+            advanceUntilIdle()
+
+            assertNull(viewModel.uiState.value.pendingImportDecryptUri)
+            val err = viewModel.uiState.value.errorMessage
+            assertTrue(err is UiText.StringResource)
+            assertEquals(R.string.error_import_failed, (err as UiText.StringResource).resId)
         }
 
     @Test
@@ -896,6 +1077,8 @@ class SettingsViewModelTest {
         var importException: Exception? = null
         var importResult: BackupRestoreResult = BackupRestoreResult(categoryCount = 0, transactionCount = 0)
         var lastEncryptOptions: dev.tuandoan.expensetracker.domain.repository.EncryptOptions? = null
+        var lastDecryptOptions: dev.tuandoan.expensetracker.domain.repository.EncryptOptions? = null
+        var importExceptionSequence: ArrayDeque<Exception> = ArrayDeque()
 
         override suspend fun exportBackupJson(): String {
             exportException?.let { throw it }
@@ -933,6 +1116,10 @@ class SettingsViewModelTest {
             decrypt: dev.tuandoan.expensetracker.domain.repository.EncryptOptions?,
             onProgress: suspend (dev.tuandoan.expensetracker.domain.repository.BackupProgress) -> Unit,
         ): BackupRestoreResult {
+            lastDecryptOptions = decrypt
+            if (importExceptionSequence.isNotEmpty()) {
+                throw importExceptionSequence.removeFirst()
+            }
             importException?.let { throw it }
             onProgress(
                 dev.tuandoan.expensetracker.domain.repository

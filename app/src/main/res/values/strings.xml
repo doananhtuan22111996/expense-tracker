@@ -347,6 +347,10 @@
     <string name="settings_backup_password_show">Show password</string>
     <string name="settings_backup_password_hide">Hide password</string>
     <string name="settings_backup_password_encrypt_action">Encrypt and export</string>
+    <string name="settings_backup_import_password_title">Enter backup password</string>
+    <string name="settings_backup_import_password_message">This backup is encrypted. Enter the password used when it was exported.</string>
+    <string name="settings_backup_import_password_decrypt_action">Decrypt and restore</string>
+    <string name="settings_backup_password_wrong">Incorrect password</string>
     <string name="settings_app_information">App Information</string>
     <string name="settings_version">Version</string>
     <string name="settings_contact_email">Contact Email</string>
