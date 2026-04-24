@@ -51,8 +51,11 @@ fun ExpenseTrackerApp(
 
     // Widget "+" tap — navigate to add-transaction on top of whatever was
     // showing. Keyed on the tick so repeated taps re-fire after the user
-    // cancels the add screen. Ignored while onboarding is incomplete so we
-    // don't interrupt the welcome flow.
+    // cancels the add screen. A tap arriving during onboarding is queued:
+    // the tick persists until isOnboardingComplete flips true, at which
+    // point the LaunchedEffect re-keys and fires the navigation — so the
+    // user's intent isn't dropped, just deferred until the welcome flow
+    // completes.
     LaunchedEffect(pendingAddTransactionTick, isOnboardingComplete) {
         if (pendingAddTransactionTick != 0L && isOnboardingComplete) {
             navController.navigate(ModalNavRoutes.addTransactionRoute())

@@ -63,16 +63,29 @@ class MainActivity : ComponentActivity() {
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         // Android delivers widget-tap intents here when the app is already
-        // running (singleTop + FLAG_ACTIVITY_CLEAR_TOP). Update the State
-        // backing the Compose layer so it re-navigates on the new tap.
+        // running (singleTop + FLAG_ACTIVITY_CLEAR_TOP). setIntent() updates
+        // getIntent() so any later reader of the activity's current intent
+        // sees the consumed (extra-cleared) version — must be called before
+        // consumeWidgetExtras mutates the Intent.
         setIntent(intent)
         consumeWidgetExtras(intent)
     }
 
+    /**
+     * Reads widget-origin extras off [intent], converts them into the
+     * [pendingAddTransactionTick] signal observed by [ExpenseTrackerApp],
+     * and clears the extra so a subsequent configuration change
+     * (e.g. rotation) doesn't re-trigger navigation from the same intent.
+     *
+     * A tap that arrives during onboarding is *queued*, not dropped: the
+     * tick is set now but the `LaunchedEffect` in `ExpenseTrackerApp`
+     * gates on `isOnboardingComplete`, so navigation fires as soon as the
+     * user finishes the welcome flow. Acceptable v1 behavior — the tap
+     * was intentional and should be honored when the app becomes usable.
+     */
     private fun consumeWidgetExtras(intent: Intent?) {
         if (intent?.getBooleanExtra(EXTRA_LAUNCH_ADD_TRANSACTION, false) == true) {
             pendingAddTransactionTick = System.nanoTime()
-            // Clear the extra so a configuration change doesn't replay it.
             intent.removeExtra(EXTRA_LAUNCH_ADD_TRANSACTION)
         }
     }
