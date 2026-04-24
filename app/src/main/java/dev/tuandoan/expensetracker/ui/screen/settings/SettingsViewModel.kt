@@ -7,6 +7,8 @@ import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dev.tuandoan.expensetracker.R
 import dev.tuandoan.expensetracker.core.util.UiText
+import dev.tuandoan.expensetracker.data.backup.BackupCrypto
+import dev.tuandoan.expensetracker.data.backup.BackupCryptoException
 import dev.tuandoan.expensetracker.data.preferences.AnalyticsPreferences
 import dev.tuandoan.expensetracker.data.preferences.BackupEncryptionPreferences
 import dev.tuandoan.expensetracker.data.preferences.ThemePreference
@@ -312,22 +314,88 @@ class SettingsViewModel
             _uiState.update { it.copy(pendingRestoreUri = null) }
         }
 
+        /**
+         * Called after the user confirms "Replace All" on the restore dialog.
+         *
+         * Reads the first 4 bytes of the picked URI to decide whether the file is an
+         * encrypted `.etbackup` container (ETBK magic) or a plain JSON/gzip backup.
+         * For encrypted files we stash the URI and show a decrypt password dialog;
+         * for plain files we kick off the import immediately.
+         *
+         * The probe stream is a short-lived `openInputStream` that's closed before
+         * the actual import opens a fresh stream — SAF permissions persist for the
+         * URI lifetime so reopening is safe.
+         */
         fun confirmRestore() {
             val uri = _uiState.value.pendingRestoreUri ?: return
-            _uiState.update {
-                it.copy(
-                    pendingRestoreUri = null,
-                    backupOperation = BackupOperation.Importing,
-                    backupProgress = 0f,
-                )
-            }
+            _uiState.update { it.copy(pendingRestoreUri = null) }
             backupJob =
                 viewModelScope.launch {
+                    val encrypted =
+                        try {
+                            withContext(ioDispatcher) { probeIsEncrypted(uri) }
+                        } catch (e: CancellationException) {
+                            throw e
+                        } catch (e: Exception) {
+                            _uiState.update {
+                                it.copy(
+                                    errorMessage =
+                                        UiText.StringResource(
+                                            R.string.error_import_failed,
+                                            listOf(e.message ?: ""),
+                                        ),
+                                )
+                            }
+                            return@launch
+                        }
+                    if (encrypted) {
+                        _uiState.update { it.copy(pendingImportDecryptUri = uri) }
+                    } else {
+                        runImport(uri, decrypt = null)
+                    }
+                }
+        }
+
+        /**
+         * Dismisses the import password dialog without starting a restore.
+         * The caller is expected to also zero any password input it kept locally.
+         */
+        fun dismissImportPasswordDialog() {
+            _uiState.update {
+                it.copy(pendingImportDecryptUri = null, importPasswordError = null)
+            }
+        }
+
+        /**
+         * Confirms the password typed into the import dialog and starts decryption.
+         * If the password is wrong, the dialog is re-surfaced with an inline error
+         * so the user can retry without re-picking the file.
+         */
+        fun onImportPasswordConfirmed(password: CharArray) {
+            val uri = _uiState.value.pendingImportDecryptUri ?: return
+            _uiState.update {
+                it.copy(pendingImportDecryptUri = null, importPasswordError = null)
+            }
+            runImport(uri, decrypt = EncryptOptions(password.copyOf()))
+        }
+
+        private fun runImport(
+            uri: Uri,
+            decrypt: EncryptOptions?,
+        ) {
+            backupJob =
+                viewModelScope.launch {
+                    _uiState.update {
+                        it.copy(
+                            backupOperation = BackupOperation.Importing,
+                            backupProgress = 0f,
+                        )
+                    }
                     try {
                         val result =
                             withContext(ioDispatcher) {
                                 contentResolver.openInputStream(uri)?.use { inputStream ->
-                                    backupRepository.importBackup(inputStream) { progress ->
+                                    backupRepository.importBackup(inputStream, decrypt) { progress ->
                                         val fraction =
                                             if (progress.total > 0) {
                                                 progress.current.toFloat() / progress.total
@@ -353,6 +421,30 @@ class SettingsViewModel
                             )
                         }
                         throw e
+                    } catch (e: BackupCryptoException.WrongPassword) {
+                        // Re-surface the dialog so the user can retry without re-picking.
+                        _uiState.update {
+                            it.copy(
+                                backupOperation = BackupOperation.Idle,
+                                backupProgress = null,
+                                pendingImportDecryptUri = uri,
+                                importPasswordError =
+                                    UiText.StringResource(R.string.settings_backup_password_wrong),
+                            )
+                        }
+                    } catch (e: BackupCryptoException) {
+                        // MalformedHeader / UnsupportedVersion / DecryptionFailed — don't
+                        // leak exception details; the file is either corrupt or from a
+                        // newer app version. Dedicated string avoids the trailing
+                        // ": " left by error_import_failed's %1$s placeholder.
+                        _uiState.update {
+                            it.copy(
+                                backupOperation = BackupOperation.Idle,
+                                backupProgress = null,
+                                errorMessage =
+                                    UiText.StringResource(R.string.error_import_file_corrupted),
+                            )
+                        }
                     } catch (e: Exception) {
                         _uiState.update {
                             it.copy(
@@ -367,8 +459,25 @@ class SettingsViewModel
                                     ),
                             )
                         }
+                    } finally {
+                        decrypt?.close()
                     }
                 }
+        }
+
+        /**
+         * Reads the first 4 bytes of the picked URI to decide whether it's an encrypted
+         * `.etbackup` (ETBK magic) container. Runs on [ioDispatcher]; returns `false` if
+         * the stream is unopenable or truncated, letting the existing plain-import
+         * path surface the real error when it tries again.
+         */
+        private fun probeIsEncrypted(uri: Uri): Boolean {
+            val stream = contentResolver.openInputStream(uri) ?: return false
+            return stream.use { input ->
+                val header = ByteArray(BackupCrypto.MAGIC_LENGTH)
+                val read = input.read(header)
+                BackupCrypto.isEtbkHeader(header, read)
+            }
         }
 
         fun setAnalyticsConsent(enabled: Boolean) {
@@ -447,4 +556,6 @@ data class SettingsUiState(
     val backupMessage: UiText? = null,
     val pendingRestoreUri: Uri? = null,
     val pendingExportUri: Uri? = null,
+    val pendingImportDecryptUri: Uri? = null,
+    val importPasswordError: UiText? = null,
 )

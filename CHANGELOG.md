@@ -9,10 +9,13 @@
 - `docs/backup-format.md` — specification for the `.etbackup` container (byte layout, crypto params, version policy, threat model)
 - `BackupRepository.exportBackup` / `importBackup` accept optional `EncryptOptions(password)` — when present, export writes an `.etbackup` and import transparently decrypts; import auto-detects the `ETBK` magic and falls back to the existing plain/gzip path otherwise
 - Settings: encrypt-backup toggle and password dialog wired into the export flow — when enabled, export writes a `.etbackup` protected by a user-supplied password (`PasswordDialog` composable with show/hide toggle, 8-char minimum, confirm-password match)
+- Settings: import-side password prompt — picking a `.etbackup` file auto-detects the `ETBK` magic and prompts for the decrypt password before any DB writes; wrong passwords re-surface the dialog with an inline error and preserve the picked URI so users can retry without re-picking
+- `error_import_file_corrupted` string — dedicated, placeholder-free copy for non-password crypto failures (`MalformedHeader` / `UnsupportedVersion` / `DecryptionFailed`), avoids the dangling "`: `" produced by `error_import_failed`'s `%1$s` when no detail message is safe to surface
 
 ### Changed
 - Lift `ETBK` magic detection into `BackupCrypto.isEtbkHeader()` so `BackupRepositoryImpl` no longer duplicates the magic-byte constant
 - `EncryptOptions` implements `AutoCloseable`; `close()` zeroes the password array (best-effort — JVM may have copied it already)
+- `PasswordDialog` gains a `requireConfirm` parameter (defaults to `true` for export); import decrypt mode renders a single password field with optional inline error text instead of the confirm field
 
 ## [3.8.0] - 2026-04-19
 

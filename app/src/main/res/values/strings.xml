@@ -248,6 +248,7 @@
     <string name="error_update_category">Failed to update category</string>
     <string name="error_export_failed">Export failed: %1$s</string>
     <string name="error_import_failed">Import failed: %1$s</string>
+    <string name="error_import_file_corrupted">This backup file is corrupted or from a newer app version</string>
     <string name="error_unknown">Unknown error</string>
     <string name="error_load_summary">Unable to load summary</string>
     <string name="error_load_summary_message">Failed to load financial data. Please try again.</string>
@@ -347,6 +348,10 @@
     <string name="settings_backup_password_show">Show password</string>
     <string name="settings_backup_password_hide">Hide password</string>
     <string name="settings_backup_password_encrypt_action">Encrypt and export</string>
+    <string name="settings_backup_import_password_title">Enter backup password</string>
+    <string name="settings_backup_import_password_message">This backup is encrypted. Enter the password used when it was exported.</string>
+    <string name="settings_backup_import_password_decrypt_action">Decrypt and restore</string>
+    <string name="settings_backup_password_wrong">Incorrect password</string>
     <string name="settings_app_information">App Information</string>
     <string name="settings_version">Version</string>
     <string name="settings_contact_email">Contact Email</string>
