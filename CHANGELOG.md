@@ -4,6 +4,7 @@
 
 ### Added
 - Glance + Compose widget dependencies in the version catalog (`androidx.glance:glance-appwidget` 1.1.1, `androidx.glance:glance-material3` 1.1.1) — declaration only; no widget code or manifest wiring yet
+- `ExpenseWidgetState` + `BudgetDisplay` data classes and pure-Kotlin `mapExpenseWidgetState()` — foundation for the v3.10.0 home-screen widget. Takes pre-filtered month transactions, default currency, optional budget, clock inputs, and a `CurrencyFormatter` and emits a fully-formatted widget state. Filters income and non-default-currency transactions silently per v1 scope.
 
 ## [3.9.0] - 2026-04-25
 
