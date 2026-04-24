@@ -7,6 +7,7 @@
 - `ExpenseWidgetState` + `BudgetDisplay` data classes and pure-Kotlin `mapExpenseWidgetState()` — foundation for the v3.10.0 home-screen widget. Takes pre-filtered month transactions, default currency, optional budget, clock inputs, and a `CurrencyFormatter` and emits a fully-formatted widget state. Filters income and non-default-currency transactions silently per v1 scope.
 - `ExpenseWidget` GlanceAppWidget shell + `ExpenseWidgetContent` small (2×1) layout — renders today's expense total and a circular "+" affordance. State fetching, click actions, receiver registration, and Material You theming land in subsequent Widget epic tasks; this PR is layout-only and consumes `ExpenseWidgetState.LOADING` as placeholder input.
 - `androidx.glance:glance-appwidget` and `androidx.glance:glance-material3` now consumed by the `:app` module (declaration landed in an earlier PR).
+- Medium (4×2) widget layout variant — renders Today + This Month totals + a budget progress bar when a monthly budget is set. `ExpenseWidget.sizeMode = SizeMode.Responsive(setOf(SMALL_SIZE, MEDIUM_SIZE))` dispatches by widget size on Android 12+, with width-threshold fallback for older versions. Over-budget progress renders in Material `error` color with a `↑` glyph in the percent label for colorblind accessibility.
 
 ## [3.9.0] - 2026-04-25
 
