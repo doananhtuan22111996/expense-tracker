@@ -1,0 +1,8 @@
+What's new in v3.9:
+
+• Password-protect your backups — encrypted exports use AES-256 with a password only you know
+• Import prompts for the password automatically when you pick an encrypted backup
+• Wrong passwords let you retry without re-picking the file; your existing data stays untouched
+• A one-time reminder explains that lost passwords can't be recovered — pick something you'll remember
+
+Plain JSON backups still work the same.

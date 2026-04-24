@@ -1,0 +1,8 @@
+Mới trong v3.9:
+
+• Bảo vệ bản sao lưu bằng mật khẩu — xuất mã hóa dùng AES-256 với mật khẩu chỉ bạn biết
+• Nhập khẩu tự động hỏi mật khẩu khi bạn chọn tệp sao lưu đã mã hóa
+• Sai mật khẩu có thể thử lại mà không cần chọn lại tệp; dữ liệu hiện tại không bị ảnh hưởng
+• Nhắc nhở một lần rằng mật khẩu đã mất không thể khôi phục — hãy chọn mật khẩu dễ nhớ
+
+Bản sao lưu JSON thường vẫn hoạt động như cũ.
