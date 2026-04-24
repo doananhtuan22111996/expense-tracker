@@ -507,4 +507,8 @@
     <string name="a11y_next_year">Next year</string>
     <string name="a11y_month_selected">%1$s %2$d, selected</string>
     <string name="a11y_month_unselected">%1$s %2$d</string>
+
+    <!-- Home-screen widget -->
+    <string name="widget_today">Today</string>
+    <string name="widget_amount_loading">—</string>
 </resources>
