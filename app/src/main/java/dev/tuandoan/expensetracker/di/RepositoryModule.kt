@@ -28,10 +28,12 @@ import dev.tuandoan.expensetracker.domain.repository.RecurringTransactionReposit
 import dev.tuandoan.expensetracker.domain.repository.SearchFilterPreferences
 import dev.tuandoan.expensetracker.domain.repository.SelectedMonthRepository
 import dev.tuandoan.expensetracker.domain.repository.TransactionRepository
+import dev.tuandoan.expensetracker.domain.widget.WidgetUpdater
 import dev.tuandoan.expensetracker.repository.CategoryRepositoryImpl
 import dev.tuandoan.expensetracker.repository.GoldRepositoryImpl
 import dev.tuandoan.expensetracker.repository.RecurringTransactionRepositoryImpl
 import dev.tuandoan.expensetracker.repository.TransactionRepositoryImpl
+import dev.tuandoan.expensetracker.widget.GlanceWidgetUpdater
 
 @Module
 @InstallIn(SingletonComponent::class)
@@ -87,4 +89,7 @@ abstract class RepositoryModule {
     abstract fun bindSearchFilterPreferences(
         searchFilterPreferencesImpl: SearchFilterPreferencesImpl,
     ): SearchFilterPreferences
+
+    @Binds
+    abstract fun bindWidgetUpdater(glanceWidgetUpdater: GlanceWidgetUpdater): WidgetUpdater
 }

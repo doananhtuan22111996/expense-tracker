@@ -1,6 +1,7 @@
 package dev.tuandoan.expensetracker.widget
 
 import android.content.Context
+import android.util.Log
 import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.dp
 import androidx.glance.GlanceId
@@ -9,6 +10,9 @@ import androidx.glance.appwidget.GlanceAppWidget
 import androidx.glance.appwidget.SizeMode
 import androidx.glance.appwidget.provideContent
 import dev.tuandoan.expensetracker.widget.ui.ExpenseWidgetContent
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.flow.first
+import java.time.ZoneId
 
 /**
  * Home-screen widget entry point. A thin shell whose only job is to hand
@@ -25,9 +29,11 @@ import dev.tuandoan.expensetracker.widget.ui.ExpenseWidgetContent
  * the widget is intentionally palette-neutral so it blends into whatever
  * launcher theme the user has set.
  *
- * Real data fetching is still pending — `provideGlance` hands
- * [ExpenseWidgetState.LOADING] to the composable until Task 1.7 wires a
- * Hilt `EntryPoint` analogous to Task Tracker v1.5.0's `WidgetEntryPoint`.
+ * Data is fetched via [WidgetEntryPoint] — `provideGlance` takes a snapshot
+ * of the current month's expenses, the default currency, and the budget,
+ * then maps them through [mapExpenseWidgetState]. Subsequent refreshes
+ * come from [GlanceWidgetUpdater.requestUpdate] (repository writes) and
+ * the WorkManager periodic refresh (Task 1.8).
  */
 class ExpenseWidget : GlanceAppWidget() {
     override val sizeMode: SizeMode =
@@ -37,14 +43,47 @@ class ExpenseWidget : GlanceAppWidget() {
         context: Context,
         id: GlanceId,
     ) {
+        val state = loadState(context)
         provideContent {
             GlanceTheme {
-                ExpenseWidgetContent(state = ExpenseWidgetState.LOADING)
+                ExpenseWidgetContent(state = state)
             }
         }
     }
 
+    private suspend fun loadState(context: Context): ExpenseWidgetState =
+        try {
+            val entry = WidgetEntryPoint.get(context)
+            val timeProvider = entry.timeProvider()
+            val (from, to) = timeProvider.currentMonthRange()
+            val currencyCode = entry.currencyPreferenceRepository().getDefaultCurrency()
+            val monthExpenses = entry.transactionRepository().observeTransactions(from, to).first()
+            val budgetAmount = entry.budgetPreferences().getBudget(currencyCode).first()
+            mapExpenseWidgetState(
+                monthExpenses = monthExpenses,
+                defaultCurrencyCode = currencyCode,
+                budgetAmount = budgetAmount,
+                nowMillis = timeProvider.currentTimeMillis(),
+                zoneId = ZoneId.systemDefault(),
+                formatter = entry.currencyFormatter(),
+            )
+        } catch (ce: CancellationException) {
+            // Respect coroutine cancellation — propagate so Glance can abandon this render.
+            throw ce
+        } catch (
+            @Suppress("TooGenericExceptionCaught") t: Throwable,
+        ) {
+            // DataStore read / Room mid-migration / transient IO — fall back to the
+            // neutral LOADING placeholder so the widget renders instead of throwing
+            // inside provideGlance. Only the exception class is logged; nothing from
+            // the data layer (amounts, categories, notes) is surfaced.
+            Log.e(TAG, "Failed to load widget state", t)
+            ExpenseWidgetState.LOADING
+        }
+
     companion object {
+        private const val TAG = "ExpenseWidget"
+
         /** 2×1 cells on a typical 70.dp-per-cell launcher. */
         val SMALL_SIZE: DpSize = DpSize(140.dp, 80.dp)
 

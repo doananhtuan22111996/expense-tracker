@@ -10,6 +10,7 @@ import dagger.hilt.android.qualifiers.ApplicationContext
 import dev.tuandoan.expensetracker.di.IoDispatcher
 import dev.tuandoan.expensetracker.domain.model.SupportedCurrencies
 import dev.tuandoan.expensetracker.domain.repository.CurrencyPreferenceRepository
+import dev.tuandoan.expensetracker.domain.widget.WidgetUpdater
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
@@ -25,6 +26,7 @@ class CurrencyPreferenceRepositoryImpl
     @Inject
     constructor(
         @ApplicationContext private val context: Context,
+        private val widgetUpdater: WidgetUpdater,
         @IoDispatcher private val ioDispatcher: CoroutineDispatcher,
     ) : CurrencyPreferenceRepository {
         private val defaultCurrencyKey = stringPreferencesKey("default_currency_code")
@@ -43,6 +45,7 @@ class CurrencyPreferenceRepositoryImpl
                     preferences[defaultCurrencyKey] = currencyCode
                 }
             }
+            widgetUpdater.requestUpdate()
         }
 
         override suspend fun getDefaultCurrency(): String =
