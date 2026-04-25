@@ -18,7 +18,7 @@
 
   Preview strategy:
   - previewLayout (Android 12+): the launcher picker instantiates
-    widget_preview.xml — a static RelativeLayout mock of the medium layout —
+    widget_preview.xml — a static LinearLayout mock of the medium layout —
     so users see what the widget actually looks like before placing it.
   - previewImage (Android 8–11): vector drawable fallback for older launchers
     that don't honor previewLayout. Shows a rounded surface tile; not as

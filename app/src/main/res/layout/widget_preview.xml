@@ -119,9 +119,10 @@
             android:textStyle="bold" />
     </LinearLayout>
 
-    <!-- Progress bar: hand-rolled as two stacked rectangles because a real
-         ProgressBar pulls its theme from the launcher and can look weird
-         in the picker. -->
+    <!-- Progress bar: background is widget_preview_progress_track — a gradient
+         shape with a hard color stop at ~45% that reads visually as a filled
+         bar. A live ProgressBar would inherit the launcher's theme and look
+         inconsistent across OEMs, so we hand-roll the visual instead. -->
     <View
         android:layout_width="match_parent"
         android:layout_height="4dp"
