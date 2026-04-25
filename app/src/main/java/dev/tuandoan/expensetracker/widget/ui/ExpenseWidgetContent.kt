@@ -7,6 +7,7 @@ import androidx.glance.GlanceModifier
 import androidx.glance.GlanceTheme
 import androidx.glance.LocalContext
 import androidx.glance.LocalSize
+import androidx.glance.action.clickable
 import androidx.glance.appwidget.LinearProgressIndicator
 import androidx.glance.appwidget.cornerRadius
 import androidx.glance.background
@@ -27,6 +28,8 @@ import dev.tuandoan.expensetracker.R
 import dev.tuandoan.expensetracker.widget.BudgetDisplay
 import dev.tuandoan.expensetracker.widget.ExpenseWidget
 import dev.tuandoan.expensetracker.widget.ExpenseWidgetState
+import dev.tuandoan.expensetracker.widget.openAddTransactionAction
+import dev.tuandoan.expensetracker.widget.openAppAction
 
 /**
  * Dispatches between the small (2×1) and medium (4×2) widget layouts based on
@@ -34,10 +37,14 @@ import dev.tuandoan.expensetracker.widget.ExpenseWidgetState
  * [ExpenseWidget]'s `SizeMode.Responsive`; pre-12 uses the closest-fit rule
  * with the same threshold.
  *
- * Theme colors come from `GlanceTheme`. The containing `GlanceTheme { }`
- * wrapper (Material You dynamic color + brand fallback) lands in Task 1.9.
- * Until then these render with the Glance defaults — acceptable because
- * no receiver is registered yet (Task 1.5).
+ * Click targets follow the widget PRD: tapping the "+" button opens the
+ * add-transaction screen; tapping anywhere else on the widget opens the app
+ * on its Home tab. Both routes go through `MainActivity` (see [openAppAction]
+ * / [openAddTransactionAction] in `WidgetActions`).
+ *
+ * Theme colors come from `GlanceTheme`. The wrapping `GlanceTheme { }` in
+ * [ExpenseWidget.provideGlance] picks up dynamic color on Android 12+ and
+ * falls back to Glance's neutral scheme on 8–11.
  */
 @Composable
 fun ExpenseWidgetContent(state: ExpenseWidgetState) {
@@ -59,11 +66,14 @@ fun ExpenseWidgetContent(state: ExpenseWidgetState) {
 private fun SmallLayout(state: ExpenseWidgetState) {
     val context = LocalContext.current
     val loadingPlaceholder = context.getString(R.string.widget_amount_loading)
+    // Background click = open app (Home tab). The AddButton below declares
+    // its own `clickable`, which takes precedence on its hit area.
     Row(
         modifier =
             GlanceModifier
                 .fillMaxSize()
                 .background(GlanceTheme.colors.surface)
+                .clickable(openAppAction(context))
                 .padding(12.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
@@ -82,11 +92,15 @@ private fun SmallLayout(state: ExpenseWidgetState) {
 private fun MediumLayout(state: ExpenseWidgetState) {
     val context = LocalContext.current
     val loadingPlaceholder = context.getString(R.string.widget_amount_loading)
+    // Background click = open app (Home tab). The AddButton inside the top
+    // row declares its own `clickable`, which takes precedence on its hit
+    // area so the "+" target routes to add-transaction instead.
     Column(
         modifier =
             GlanceModifier
                 .fillMaxSize()
                 .background(GlanceTheme.colors.surface)
+                .clickable(openAppAction(context))
                 .padding(horizontal = 12.dp, vertical = 10.dp),
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
@@ -229,15 +243,16 @@ private fun BudgetProgress(budget: BudgetDisplay) {
 
 @Composable
 private fun AddButton() {
+    val context = LocalContext.current
     Box(
         modifier =
             GlanceModifier
                 .size(40.dp)
                 .cornerRadius(20.dp)
-                .background(GlanceTheme.colors.primary),
+                .background(GlanceTheme.colors.primary)
+                .clickable(openAddTransactionAction(context)),
         contentAlignment = Alignment.Center,
     ) {
-        // Click action wired in Task 1.6 — deep links to AddEditTransactionScreen.
         Text(
             text = "+",
             style =

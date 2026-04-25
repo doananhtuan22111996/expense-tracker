@@ -4,6 +4,7 @@ import android.content.Context
 import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.dp
 import androidx.glance.GlanceId
+import androidx.glance.GlanceTheme
 import androidx.glance.appwidget.GlanceAppWidget
 import androidx.glance.appwidget.SizeMode
 import androidx.glance.appwidget.provideContent
@@ -18,12 +19,15 @@ import dev.tuandoan.expensetracker.widget.ui.ExpenseWidgetContent
  * budget progress). Android 12+ picks the view based on the actual widget
  * size at render time; older versions fall back to the closest fit.
  *
- * Task 1.3 landed the small layout; Task 1.4 (this change) adds medium.
+ * Wraps content in [GlanceTheme], which on Android 12+ pulls dynamic color
+ * from the user's wallpaper palette and on 8–11 falls back to Glance's
+ * built-in neutral scheme. No custom `ColorProviders` is needed for v1 —
+ * the widget is intentionally palette-neutral so it blends into whatever
+ * launcher theme the user has set.
+ *
  * Real data fetching is still pending — `provideGlance` hands
  * [ExpenseWidgetState.LOADING] to the composable until Task 1.7 wires a
  * Hilt `EntryPoint` analogous to Task Tracker v1.5.0's `WidgetEntryPoint`.
- * Receiver registration + manifest entry land in Task 1.5, so until then
- * no user sees this widget.
  */
 class ExpenseWidget : GlanceAppWidget() {
     override val sizeMode: SizeMode =
@@ -34,7 +38,9 @@ class ExpenseWidget : GlanceAppWidget() {
         id: GlanceId,
     ) {
         provideContent {
-            ExpenseWidgetContent(state = ExpenseWidgetState.LOADING)
+            GlanceTheme {
+                ExpenseWidgetContent(state = ExpenseWidgetState.LOADING)
+            }
         }
     }
 

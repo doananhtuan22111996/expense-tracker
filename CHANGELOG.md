@@ -9,6 +9,9 @@
 - `androidx.glance:glance-appwidget` and `androidx.glance:glance-material3` now consumed by the `:app` module (declaration landed in an earlier PR).
 - Medium (4×2) widget layout variant — renders Today + This Month totals + a budget progress bar when a monthly budget is set. `ExpenseWidget.sizeMode = SizeMode.Responsive(setOf(SMALL_SIZE, MEDIUM_SIZE))` dispatches by widget size on Android 12+, with width-threshold fallback for older versions. Over-budget progress renders in Material `error` color with a `↑` glyph in the percent label for colorblind accessibility.
 - `ExpenseWidgetReceiver` + `AndroidManifest` `<receiver>` entry + `res/xml/expense_widget_info.xml` provider metadata — makes the widget appear in the launcher picker. Sized for a 2×1 default (`targetCellWidth/Height = 2/1`) with resize up to 4×2; `updatePeriodMillis = 0` since refresh is handled by WorkManager (Task 1.8) and repository hooks (Task 1.7). Placeholder preview uses `@mipmap/ic_launcher` until Task 1.11.
+- Widget click actions — tapping the "+" button opens `AddEditTransactionScreen` (new transaction); tapping elsewhere on the widget opens the app's Home tab. Both routes launch `MainActivity` with `launchMode="singleTop"` + `FLAG_ACTIVITY_CLEAR_TOP` so re-tapping while the app is open reuses the existing task.
+- `MainActivity.EXTRA_LAUNCH_ADD_TRANSACTION` intent extra + `onNewIntent` handling — widget "+" action sets the extra, MainActivity forwards a monotonic tick to `ExpenseTrackerApp` which navigates to the add-transaction modal via `LaunchedEffect`. Repeated widget taps re-fire navigation (the tick changes per tap).
+- Widget wrapped in `GlanceTheme { }` — picks up Material You dynamic color on Android 12+, falls back to Glance's built-in neutral scheme on Android 8–11. Widget is intentionally palette-neutral to blend with the user's launcher theme.
 
 ## [3.9.0] - 2026-04-25
 
