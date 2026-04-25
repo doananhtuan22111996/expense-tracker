@@ -1,6 +1,7 @@
 package dev.tuandoan.expensetracker.widget
 
 import android.content.Context
+import android.util.Log
 import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.dp
 import androidx.glance.GlanceId
@@ -9,6 +10,7 @@ import androidx.glance.appwidget.GlanceAppWidget
 import androidx.glance.appwidget.SizeMode
 import androidx.glance.appwidget.provideContent
 import dev.tuandoan.expensetracker.widget.ui.ExpenseWidgetContent
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.first
 import java.time.ZoneId
 
@@ -49,24 +51,39 @@ class ExpenseWidget : GlanceAppWidget() {
         }
     }
 
-    private suspend fun loadState(context: Context): ExpenseWidgetState {
-        val entry = WidgetEntryPoint.get(context)
-        val timeProvider = entry.timeProvider()
-        val (from, to) = timeProvider.currentMonthRange()
-        val currencyCode = entry.currencyPreferenceRepository().getDefaultCurrency()
-        val monthExpenses = entry.transactionRepository().observeTransactions(from, to).first()
-        val budgetAmount = entry.budgetPreferences().getBudget(currencyCode).first()
-        return mapExpenseWidgetState(
-            monthExpenses = monthExpenses,
-            defaultCurrencyCode = currencyCode,
-            budgetAmount = budgetAmount,
-            nowMillis = timeProvider.currentTimeMillis(),
-            zoneId = ZoneId.systemDefault(),
-            formatter = entry.currencyFormatter(),
-        )
-    }
+    private suspend fun loadState(context: Context): ExpenseWidgetState =
+        try {
+            val entry = WidgetEntryPoint.get(context)
+            val timeProvider = entry.timeProvider()
+            val (from, to) = timeProvider.currentMonthRange()
+            val currencyCode = entry.currencyPreferenceRepository().getDefaultCurrency()
+            val monthExpenses = entry.transactionRepository().observeTransactions(from, to).first()
+            val budgetAmount = entry.budgetPreferences().getBudget(currencyCode).first()
+            mapExpenseWidgetState(
+                monthExpenses = monthExpenses,
+                defaultCurrencyCode = currencyCode,
+                budgetAmount = budgetAmount,
+                nowMillis = timeProvider.currentTimeMillis(),
+                zoneId = ZoneId.systemDefault(),
+                formatter = entry.currencyFormatter(),
+            )
+        } catch (ce: CancellationException) {
+            // Respect coroutine cancellation — propagate so Glance can abandon this render.
+            throw ce
+        } catch (
+            @Suppress("TooGenericExceptionCaught") t: Throwable,
+        ) {
+            // DataStore read / Room mid-migration / transient IO — fall back to the
+            // neutral LOADING placeholder so the widget renders instead of throwing
+            // inside provideGlance. Only the exception class is logged; nothing from
+            // the data layer (amounts, categories, notes) is surfaced.
+            Log.e(TAG, "Failed to load widget state", t)
+            ExpenseWidgetState.LOADING
+        }
 
     companion object {
+        private const val TAG = "ExpenseWidget"
+
         /** 2×1 cells on a typical 70.dp-per-cell launcher. */
         val SMALL_SIZE: DpSize = DpSize(140.dp, 80.dp)
 
