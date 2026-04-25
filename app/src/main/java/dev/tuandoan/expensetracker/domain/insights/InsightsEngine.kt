@@ -2,9 +2,12 @@ package dev.tuandoan.expensetracker.domain.insights
 
 import dev.tuandoan.expensetracker.core.formatter.CurrencyFormatter
 import dev.tuandoan.expensetracker.domain.model.BudgetStatus
+import dev.tuandoan.expensetracker.domain.model.SupportedCurrencies
 import dev.tuandoan.expensetracker.domain.model.Transaction
 import dev.tuandoan.expensetracker.domain.model.TransactionType
 import java.time.ZoneId
+import kotlin.math.absoluteValue
+import kotlin.math.roundToInt
 
 /**
  * Pure-Kotlin engine that turns two months of transactions + optional budget
@@ -105,17 +108,127 @@ private fun List<Transaction>.filterRelevant(defaultCurrencyCode: String): List<
 // --- Algorithm stubs — each lands in its own Task 2.2 / 2.3 / 2.4 PR. ---
 
 /**
- * Task 2.2 — biggest month-over-month category mover with the ≥2-transaction
- * threshold and the 5%-of-month-total-or-¥100k-equivalent delta floor (PRD
- * FR-06, default resolved per breakdown).
+ * Biggest month-over-month category mover (PRD FR-05 through FR-08, Task 2.2).
+ *
+ * Picks the category with the largest absolute percentage change in spend
+ * between [currentMonth] and [previousMonth]. Filters to prevent noise:
+ *
+ * 1. **≥2 transactions in BOTH months** — single-txn categories would let
+ *    outliers (one big restaurant bill) dominate the insight.
+ * 2. **Delta floor** — category's absolute spend change must satisfy at least
+ *    one of: `|delta| ≥ 5% of current month total` OR `|delta| ≥ 100k minor
+ *    units in a zero-decimal currency` / `≥ 10k minor units (≈ $100) in a
+ *    two-decimal currency`. The floor keeps a `¥10k → ¥30k` (+200%) category
+ *    from beating a `¥400k → ¥500k` (+25%) category when the latter is the
+ *    meaningful narrative.
+ *
+ * Ranking: by `|percentChange|` descending, tie-break by category id ascending
+ * for determinism.
+ *
+ * Returns `null` when no category clears both filters — the orchestrator then
+ * promotes slot 2's insight into slot 1 per PRD Open Question 1 resolution.
  */
-@Suppress("UNUSED_PARAMETER")
 private fun computeBiggestMover(
     currentMonth: List<Transaction>,
     previousMonth: List<Transaction>,
     defaultCurrencyCode: String,
     formatter: CurrencyFormatter,
-): InsightRow.BiggestMover? = null
+): InsightRow.BiggestMover? {
+    val currentByCategory = currentMonth.groupBy { it.category.id }
+    val previousByCategory = previousMonth.groupBy { it.category.id }
+
+    val currentMonthTotal = currentMonth.sumOf { it.amount }
+    val deltaFloorMinorUnits = deltaFloorMinorUnits(defaultCurrencyCode)
+
+    data class Candidate(
+        val categoryId: Long,
+        val categoryName: String,
+        val prevSum: Long,
+        val currSum: Long,
+        val percentChange: Int,
+    )
+
+    val candidates =
+        currentByCategory.keys
+            .intersect(previousByCategory.keys)
+            .mapNotNull { categoryId ->
+                val currTxns = currentByCategory.getValue(categoryId)
+                val prevTxns = previousByCategory.getValue(categoryId)
+                if (currTxns.size < MIN_TRANSACTIONS_PER_MONTH ||
+                    prevTxns.size < MIN_TRANSACTIONS_PER_MONTH
+                ) {
+                    return@mapNotNull null
+                }
+
+                val currSum = currTxns.sumOf { it.amount }
+                val prevSum = prevTxns.sumOf { it.amount }
+                if (prevSum <= 0L || currSum <= 0L) return@mapNotNull null
+
+                val delta = currSum - prevSum
+                if (!passesDeltaFloor(
+                        delta = delta,
+                        currentMonthTotal = currentMonthTotal,
+                        floorMinorUnits = deltaFloorMinorUnits,
+                    )
+                ) {
+                    return@mapNotNull null
+                }
+
+                val percentChange = (delta.toFloat() / prevSum.toFloat() * 100f).roundToInt()
+                Candidate(
+                    categoryId = categoryId,
+                    categoryName = currTxns.first().category.name,
+                    prevSum = prevSum,
+                    currSum = currSum,
+                    percentChange = percentChange,
+                )
+            }
+
+    val winner =
+        candidates
+            .sortedWith(
+                compareByDescending<Candidate> { it.percentChange.absoluteValue }
+                    .thenBy { it.categoryId },
+            ).firstOrNull()
+            ?: return null
+
+    return InsightRow.BiggestMover(
+        categoryName = winner.categoryName,
+        previousFormatted = formatter.format(winner.prevSum, defaultCurrencyCode),
+        currentFormatted = formatter.format(winner.currSum, defaultCurrencyCode),
+        percentChange = winner.percentChange,
+        direction = if (winner.percentChange >= 0) InsightRow.Direction.UP else InsightRow.Direction.DOWN,
+    )
+}
+
+/**
+ * `|delta| ≥ 5% of currentMonthTotal` OR `|delta| ≥ floorMinorUnits`.
+ * Uses integer-only arithmetic to avoid float rounding on the percentage check.
+ */
+private fun passesDeltaFloor(
+    delta: Long,
+    currentMonthTotal: Long,
+    floorMinorUnits: Long,
+): Boolean {
+    val absDelta = delta.absoluteValue
+    if (absDelta >= floorMinorUnits) return true
+    // absDelta / currentMonthTotal ≥ 0.05  ⟺  absDelta * 100 ≥ currentMonthTotal * 5
+    return absDelta * 100L >= currentMonthTotal * DELTA_FLOOR_PERCENT
+}
+
+/**
+ * "¥100k equivalent" — the breakdown's delta floor. Expressed in the default
+ * currency's minor units so a two-decimal currency uses `10_000` (~$100) while
+ * a zero-decimal currency uses `100_000` (~¥100k / ₫100k). Falls back to the
+ * loose zero-decimal value if the code is unknown.
+ */
+private fun deltaFloorMinorUnits(currencyCode: String): Long {
+    val digits = SupportedCurrencies.byCode(currencyCode)?.minorUnitDigits ?: 0
+    return if (digits >= 2) 10_000L else 100_000L
+}
+
+private const val MIN_TRANSACTIONS_PER_MONTH = 2
+private const val DELTA_FLOOR_PERCENT = 5L
 
 /**
  * Task 2.3 — daily pace vs. active monthly budget, branching ON_PACE / OVER
