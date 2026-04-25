@@ -361,4 +361,135 @@ class ExpenseWidgetStateMapperTest {
         assertEquals("4200 USD", state.budget!!.spentFormatted)
         assertEquals("100000 USD", state.budget!!.budgetFormatted)
     }
+
+    @Test
+    fun mapState_todayDatedOtherCurrency_doesNotInflateTodayBucket() {
+        // A non-default-currency expense dated for "today" must be silently
+        // filtered — it must NOT bleed into the default-currency today total.
+        // Guards against a regression where the today-vs-older partitioning
+        // runs before the currency filter.
+        val transactions =
+            listOf(
+                expense(id = 1, amount = 120_000, timestamp = nowMillis, currency = "USD"),
+            )
+
+        val state =
+            mapExpenseWidgetState(
+                monthExpenses = transactions,
+                defaultCurrencyCode = "VND",
+                budgetAmount = null,
+                nowMillis = nowMillis,
+                zoneId = zone,
+                formatter = fakeFormatter,
+            )
+
+        assertEquals("0 VND", state.todayFormatted)
+        assertEquals("0 VND", state.monthFormatted)
+    }
+
+    @Test
+    fun mapState_spentExceedsBudgetByOne_isOver() {
+        // Boundary: rawFraction = (budget + 1) / budget is > 1.0f, so isOverBudget
+        // must be true. Guards against an accidental change from ">" to ">=" in
+        // the mapper that would treat spent == budget as over-budget.
+        val transactions = listOf(expense(id = 1, amount = 1_000_001, timestamp = nowMillis))
+
+        val state =
+            mapExpenseWidgetState(
+                monthExpenses = transactions,
+                defaultCurrencyCode = "VND",
+                budgetAmount = 1_000_000,
+                nowMillis = nowMillis,
+                zoneId = zone,
+                formatter = fakeFormatter,
+            )
+
+        val budget = state.budget
+        assertNotNull(budget)
+        assertTrue(budget!!.isOverBudget)
+        assertEquals("1 VND", budget.overByFormatted)
+    }
+
+    // --- Time zone handling ---
+
+    @Test
+    fun mapState_nonUtcZone_partitionsUsingInjectedZone() {
+        // Verify the mapper reads the injected zoneId — not ZoneId.systemDefault().
+        // For America/New_York, local midnight on 2026-04-15 is 04:00Z (UTC),
+        // so a transaction stamped at 03:00Z belongs to the previous day
+        // (2026-04-14 in NY time). Must count in month total but NOT in today.
+        val nyZone = ZoneId.of("America/New_York")
+        val nyToday = LocalDate.of(2026, 4, 15)
+        val nyNow =
+            nyToday
+                .atTime(10, 0) // 10:00 NY = 14:00Z
+                .atZone(nyZone)
+                .toInstant()
+                .toEpochMilli()
+        val nyStartOfToday =
+            nyToday.atStartOfDay(nyZone).toInstant().toEpochMilli() // 04:00Z
+
+        // One millisecond before local midnight in NY → belongs to April 14 in NY time.
+        val yesterdayLateNight = nyStartOfToday - 1
+        val transactions =
+            listOf(
+                expense(id = 1, amount = 50_000, timestamp = yesterdayLateNight),
+                expense(id = 2, amount = 30_000, timestamp = nyNow),
+            )
+
+        val state =
+            mapExpenseWidgetState(
+                monthExpenses = transactions,
+                defaultCurrencyCode = "VND",
+                budgetAmount = null,
+                nowMillis = nyNow,
+                zoneId = nyZone,
+                formatter = fakeFormatter,
+            )
+
+        assertEquals("30000 VND", state.todayFormatted)
+        assertEquals("80000 VND", state.monthFormatted)
+    }
+
+    @Test
+    fun mapState_dstSpringForward_dayBoundaryStillCorrect() {
+        // 2026-03-08 is the US DST spring-forward date. NY local clocks skip
+        // from 02:00 to 03:00 EST→EDT; the day still starts at 00:00 local
+        // (which is 05:00Z, not 04:00Z as on non-DST days).
+        // A transaction at 05:30Z on 2026-03-08 is 00:30 local — "today".
+        // A transaction at 04:30Z on 2026-03-08 is 23:30 local on 2026-03-07 — NOT today.
+        val nyZone = ZoneId.of("America/New_York")
+        val dstDay = LocalDate.of(2026, 3, 8)
+        val nyNoon =
+            dstDay
+                .atTime(12, 0)
+                .atZone(nyZone)
+                .toInstant()
+                .toEpochMilli()
+
+        val localStartOfDstDay =
+            dstDay.atStartOfDay(nyZone).toInstant().toEpochMilli()
+
+        val justAfterDstMidnight = localStartOfDstDay + 30 * 60_000L // +30 min in the new day
+        val justBeforeDstMidnight = localStartOfDstDay - 30 * 60_000L // -30 min, previous day
+
+        val transactions =
+            listOf(
+                expense(id = 1, amount = 10_000, timestamp = justBeforeDstMidnight),
+                expense(id = 2, amount = 20_000, timestamp = justAfterDstMidnight),
+            )
+
+        val state =
+            mapExpenseWidgetState(
+                monthExpenses = transactions,
+                defaultCurrencyCode = "VND",
+                budgetAmount = null,
+                nowMillis = nyNoon,
+                zoneId = nyZone,
+                formatter = fakeFormatter,
+            )
+
+        assertEquals("20000 VND", state.todayFormatted)
+        assertEquals("30000 VND", state.monthFormatted)
+    }
 }
