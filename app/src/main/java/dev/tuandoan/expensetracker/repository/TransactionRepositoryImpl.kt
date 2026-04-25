@@ -17,6 +17,7 @@ import dev.tuandoan.expensetracker.domain.model.SupportedCurrencies
 import dev.tuandoan.expensetracker.domain.model.Transaction
 import dev.tuandoan.expensetracker.domain.model.TransactionType
 import dev.tuandoan.expensetracker.domain.repository.TransactionRepository
+import dev.tuandoan.expensetracker.domain.widget.WidgetUpdater
 import dev.tuandoan.expensetracker.repository.mapper.toDomain
 import dev.tuandoan.expensetracker.repository.mapper.toEntity
 import kotlinx.coroutines.CoroutineDispatcher
@@ -32,6 +33,7 @@ class TransactionRepositoryImpl
         private val transactionDao: TransactionDao,
         private val categoryDao: CategoryDao,
         private val timeProvider: TimeProvider,
+        private val widgetUpdater: WidgetUpdater,
         @IoDispatcher private val ioDispatcher: CoroutineDispatcher,
     ) : TransactionRepository {
         override fun observeTransactions(
@@ -63,33 +65,41 @@ class TransactionRepositoryImpl
             note: String?,
             timestamp: Long,
             currencyCode: String,
-        ): Long =
-            withContext(ioDispatcher) {
-                val now = timeProvider.currentTimeMillis()
-                val entity =
-                    TransactionEntity(
-                        type = type.toInt(),
-                        amount = amount,
-                        currencyCode = currencyCode,
-                        categoryId = categoryId,
-                        note = note,
-                        timestamp = timestamp,
-                        createdAt = now,
-                        updatedAt = now,
-                    )
-                transactionDao.insert(entity)
-            }
+        ): Long {
+            val insertedId =
+                withContext(ioDispatcher) {
+                    val now = timeProvider.currentTimeMillis()
+                    val entity =
+                        TransactionEntity(
+                            type = type.toInt(),
+                            amount = amount,
+                            currencyCode = currencyCode,
+                            categoryId = categoryId,
+                            note = note,
+                            timestamp = timestamp,
+                            createdAt = now,
+                            updatedAt = now,
+                        )
+                    transactionDao.insert(entity)
+                }
+            widgetUpdater.requestUpdate()
+            return insertedId
+        }
 
-        override suspend fun updateTransaction(transaction: Transaction): Unit =
+        override suspend fun updateTransaction(transaction: Transaction) {
             withContext(ioDispatcher) {
                 val updatedEntity = transaction.toEntity().copy(updatedAt = timeProvider.currentTimeMillis())
                 transactionDao.update(updatedEntity)
             }
+            widgetUpdater.requestUpdate()
+        }
 
-        override suspend fun deleteTransaction(id: Long): Unit =
+        override suspend fun deleteTransaction(id: Long) {
             withContext(ioDispatcher) {
                 transactionDao.deleteById(id)
             }
+            widgetUpdater.requestUpdate()
+        }
 
         override suspend fun getTransaction(id: Long): Transaction? =
             withContext(ioDispatcher) {

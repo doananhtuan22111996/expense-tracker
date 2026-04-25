@@ -6,6 +6,7 @@ import androidx.datastore.preferences.core.longPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import dagger.hilt.android.qualifiers.ApplicationContext
 import dev.tuandoan.expensetracker.domain.repository.BudgetPreferences
+import dev.tuandoan.expensetracker.domain.widget.WidgetUpdater
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 import javax.inject.Inject
@@ -18,6 +19,7 @@ class BudgetPreferencesImpl
     @Inject
     constructor(
         @ApplicationContext private val context: Context,
+        private val widgetUpdater: WidgetUpdater,
     ) : BudgetPreferences {
         private fun budgetKey(currencyCode: String) = longPreferencesKey("budget_$currencyCode")
 
@@ -30,10 +32,12 @@ class BudgetPreferencesImpl
         ) {
             require(amount > 0) { "Budget amount must be positive" }
             context.budgetDataStore.edit { it[budgetKey(currencyCode)] = amount }
+            widgetUpdater.requestUpdate()
         }
 
         override suspend fun clearBudget(currencyCode: String) {
             context.budgetDataStore.edit { it.remove(budgetKey(currencyCode)) }
+            widgetUpdater.requestUpdate()
         }
 
         override fun getAllBudgets(): Flow<Map<String, Long>> =

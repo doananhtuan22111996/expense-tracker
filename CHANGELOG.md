@@ -12,6 +12,8 @@
 - Widget click actions — tapping the "+" button opens `AddEditTransactionScreen` (new transaction); tapping elsewhere on the widget opens the app's Home tab. Both routes launch `MainActivity` with `launchMode="singleTop"` + `FLAG_ACTIVITY_CLEAR_TOP` so re-tapping while the app is open reuses the existing task.
 - `MainActivity.EXTRA_LAUNCH_ADD_TRANSACTION` intent extra + `onNewIntent` handling — widget "+" action sets the extra, MainActivity forwards a monotonic tick to `ExpenseTrackerApp` which navigates to the add-transaction modal via `LaunchedEffect`. Repeated widget taps re-fire navigation (the tick changes per tap).
 - Widget wrapped in `GlanceTheme { }` — picks up Material You dynamic color on Android 12+, falls back to Glance's built-in neutral scheme on Android 8–11. Widget is intentionally palette-neutral to blend with the user's launcher theme.
+- `WidgetUpdater` domain interface + `GlanceWidgetUpdater` implementation — refresh hook invoked after each transaction write, default-currency change, and budget set/clear. `TransactionRepositoryImpl`, `CurrencyPreferenceRepositoryImpl`, and `BudgetPreferencesImpl` now request a widget update (`NonCancellable + @IoDispatcher`, best-effort with logged failures) so the home-screen widget reflects changes without waiting for the periodic WorkManager refresh (Task 1.8).
+- `WidgetEntryPoint` Hilt `@EntryPoint` — provides Singleton-scoped dependencies (transaction/budget/currency repos, `CurrencyFormatter`, `TimeProvider`) to `ExpenseWidget.provideGlance`, which now fetches real current-month data on every refresh and hands the mapped `ExpenseWidgetState` to the Glance composable tree instead of `LOADING`.
 
 ## [3.9.0] - 2026-04-25
 

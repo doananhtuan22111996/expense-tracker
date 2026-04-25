@@ -11,6 +11,7 @@ import dev.tuandoan.expensetracker.data.database.entity.MonthlyTotalRow
 import dev.tuandoan.expensetracker.data.database.entity.TransactionEntity
 import dev.tuandoan.expensetracker.domain.model.MonthlyBarPoint
 import dev.tuandoan.expensetracker.domain.model.TransactionType
+import dev.tuandoan.expensetracker.domain.widget.WidgetUpdater
 import dev.tuandoan.expensetracker.testutil.FakeTimeProvider
 import dev.tuandoan.expensetracker.testutil.TestData
 import kotlinx.coroutines.flow.Flow
@@ -28,6 +29,7 @@ class TransactionRepositoryImplTest {
     private lateinit var fakeTransactionDao: FakeTransactionDao
     private lateinit var fakeCategoryDao: FakeCategoryDao
     private lateinit var fakeTimeProvider: FakeTimeProvider
+    private lateinit var fakeWidgetUpdater: FakeWidgetUpdater
     private val testDispatcher = StandardTestDispatcher()
     private lateinit var repository: TransactionRepositoryImpl
 
@@ -36,11 +38,13 @@ class TransactionRepositoryImplTest {
         fakeTransactionDao = FakeTransactionDao()
         fakeCategoryDao = FakeCategoryDao()
         fakeTimeProvider = FakeTimeProvider()
+        fakeWidgetUpdater = FakeWidgetUpdater()
         repository =
             TransactionRepositoryImpl(
                 transactionDao = fakeTransactionDao,
                 categoryDao = fakeCategoryDao,
                 timeProvider = fakeTimeProvider,
+                widgetUpdater = fakeWidgetUpdater,
                 ioDispatcher = testDispatcher,
             )
     }
@@ -184,6 +188,39 @@ class TransactionRepositoryImplTest {
             repository.deleteTransaction(42L)
 
             assertEquals(42L, fakeTransactionDao.lastDeletedId)
+        }
+
+    // Widget refresh hook — guards against regressions in the
+    // Settings → Home widget refresh trigger (Task 1.7).
+
+    @Test
+    fun addTransaction_triggersWidgetUpdate() =
+        runTest(testDispatcher) {
+            repository.addTransaction(
+                type = TransactionType.EXPENSE,
+                amount = 50000L,
+                categoryId = 1L,
+                note = null,
+                timestamp = 1700000000000L,
+            )
+
+            assertEquals(1, fakeWidgetUpdater.requestCount)
+        }
+
+    @Test
+    fun updateTransaction_triggersWidgetUpdate() =
+        runTest(testDispatcher) {
+            repository.updateTransaction(TestData.sampleExpenseTransaction)
+
+            assertEquals(1, fakeWidgetUpdater.requestCount)
+        }
+
+    @Test
+    fun deleteTransaction_triggersWidgetUpdate() =
+        runTest(testDispatcher) {
+            repository.deleteTransaction(1L)
+
+            assertEquals(1, fakeWidgetUpdater.requestCount)
         }
 
     // getTransaction tests
@@ -705,6 +742,14 @@ class TransactionRepositoryImplTest {
             type: Int?,
             categoryId: Long?,
         ): Flow<List<TransactionEntity>> = MutableStateFlow(emptyList())
+    }
+
+    private class FakeWidgetUpdater : WidgetUpdater {
+        var requestCount = 0
+
+        override suspend fun requestUpdate() {
+            requestCount++
+        }
     }
 
     private class FakeCategoryDao : CategoryDao {
