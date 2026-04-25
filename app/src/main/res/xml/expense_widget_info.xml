@@ -15,8 +15,14 @@
     (rate-limited to 30 min and can drain battery). Task 1.7 wires
     repository-hook refresh (updateAll on data change) and Task 1.8 adds a
     30-minute WorkManager top-up. 0 = disable framework auto-refresh.
-  - previewImage: mipmap/ic_launcher as a v1 placeholder. Task 1.11 replaces
-    with a proper preview drawable.
+
+  Preview strategy:
+  - previewLayout (Android 12+): the launcher picker instantiates
+    widget_preview.xml — a static LinearLayout mock of the medium layout —
+    so users see what the widget actually looks like before placing it.
+  - previewImage (Android 8–11): vector drawable fallback for older launchers
+    that don't honor previewLayout. Shows a rounded surface tile; not as
+    informative but at least doesn't reuse the app icon.
 -->
 <appwidget-provider xmlns:android="http://schemas.android.com/apk/res/android"
     android:description="@string/widget_description"
@@ -25,7 +31,8 @@
     android:minHeight="40dp"
     android:minResizeWidth="110dp"
     android:minResizeHeight="40dp"
-    android:previewImage="@mipmap/ic_launcher"
+    android:previewImage="@drawable/widget_preview_bg"
+    android:previewLayout="@layout/widget_preview"
     android:resizeMode="horizontal|vertical"
     android:targetCellWidth="2"
     android:targetCellHeight="1"

@@ -525,4 +525,12 @@
     <string name="a11y_widget_medium_over_budget">Today: %1$s. This month: %2$s. Over budget by %3$s, %4$d%% of %5$s. Tap to open Expense Tracker.</string>
     <string name="a11y_widget_add_button">Add transaction</string>
     <string name="a11y_widget_loading">Loading widget data</string>
+    <!-- Widget preview (launcher picker). Static placeholder values — not data-bound
+         and never shown with real user data. Intentionally simple numbers so the
+         preview reads clearly at thumbnail size in the picker. -->
+    <string name="widget_preview_today_amount">$12.34</string>
+    <string name="widget_preview_month_amount">$456.78</string>
+    <string name="widget_preview_budget_progress">$456 / $1,000</string>
+    <string name="widget_preview_budget_percent">45%</string>
+    <string name="widget_preview_add_button">+</string>
 </resources>
