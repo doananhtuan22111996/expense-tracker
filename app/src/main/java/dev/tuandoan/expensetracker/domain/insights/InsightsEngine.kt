@@ -5,6 +5,8 @@ import dev.tuandoan.expensetracker.domain.model.BudgetStatus
 import dev.tuandoan.expensetracker.domain.model.SupportedCurrencies
 import dev.tuandoan.expensetracker.domain.model.Transaction
 import dev.tuandoan.expensetracker.domain.model.TransactionType
+import java.time.Instant
+import java.time.YearMonth
 import java.time.ZoneId
 import kotlin.math.absoluteValue
 import kotlin.math.roundToInt
@@ -231,18 +233,83 @@ private const val MIN_TRANSACTIONS_PER_MONTH = 2
 private const val DELTA_FLOOR_PERCENT = 5L
 
 /**
- * Task 2.3 — daily pace vs. active monthly budget, branching ON_PACE / OVER
- * / UNDER (PRD FR-09 through FR-11). Only called when [budgetStatus] has a
- * positive budget amount.
+ * Daily pace vs. active monthly budget (PRD FR-09 through FR-11, Task 2.3).
+ *
+ * Projects current spend to month-end assuming a constant daily rate:
+ * `projected = spend * daysInMonth / daysElapsed`. Integer arithmetic
+ * throughout — no float rounding at the ±5% slack boundary.
+ *
+ * The three status branches are driven by the signed difference between the
+ * projected total and the budget:
+ *
+ * - **ON_PACE** — `|projected - budget| ≤ 5% of budget`. Within tolerance; the
+ *   UI copy is "pacing to spend X — right on budget", no difference amount.
+ * - **OVER** — `projected > budget * 1.05`. Copy: "pacing to exceed your X
+ *   budget by Y" with [differenceFormatted] = formatted(projected − budget).
+ * - **UNDER** — `projected < budget * 0.95`. Copy: "pacing Y under budget"
+ *   with [differenceFormatted] = formatted(budget − projected).
+ *
+ * Returns `null` only in defensive edge cases (daysInMonth == 0 which is
+ * unreachable in a valid calendar; kept as a guard against timestamp corruption).
+ *
+ * Only called by the orchestrator when [budgetStatus] has a positive budget —
+ * that guard lives in [computeInsights], not repeated here.
  */
-@Suppress("UNUSED_PARAMETER")
 private fun computeDailyPace(
     currentMonth: List<Transaction>,
     budgetStatus: BudgetStatus,
     nowMillis: Long,
     zoneId: ZoneId,
     formatter: CurrencyFormatter,
-): InsightRow.DailyPace? = null
+): InsightRow.DailyPace? {
+    val today = Instant.ofEpochMilli(nowMillis).atZone(zoneId).toLocalDate()
+    val yearMonth = YearMonth.from(today)
+    val daysInMonth = yearMonth.lengthOfMonth()
+    if (daysInMonth <= 0) return null
+
+    // Clamp to handle any drift where "today" reads outside the current month
+    // after cross-month timestamp corruption. Worst case: daysElapsed == daysInMonth
+    // means projected == spend (no extrapolation).
+    val daysElapsed = today.dayOfMonth.coerceIn(1, daysInMonth)
+
+    val spend = currentMonth.sumOf { it.amount }
+    val budget = budgetStatus.budgetAmount
+    val currencyCode = budgetStatus.currency.code
+
+    // Integer projection: spend * daysInMonth / daysElapsed.
+    // For 5,000-txn month with amounts in minor units, spend ≤ ~10^10, × 31
+    // stays well under Long.MAX_VALUE (~9.2×10^18).
+    val projected = spend * daysInMonth / daysElapsed
+    val difference = projected - budget
+
+    // Slack = 5% of budget. Integer-only; no float rounding at the boundary.
+    val slack = budget * PACE_SLACK_PERCENT / 100L
+    val status =
+        when {
+            difference.absoluteValue <= slack -> InsightRow.PaceStatus.ON_PACE
+            difference > 0 -> InsightRow.PaceStatus.OVER
+            else -> InsightRow.PaceStatus.UNDER
+        }
+
+    val projectedFormatted = formatter.format(projected, currencyCode)
+    val budgetFormatted = formatter.format(budget, currencyCode)
+    val differenceFormatted =
+        when (status) {
+            InsightRow.PaceStatus.ON_PACE -> null
+            InsightRow.PaceStatus.OVER,
+            InsightRow.PaceStatus.UNDER,
+            -> formatter.format(difference.absoluteValue, currencyCode)
+        }
+
+    return InsightRow.DailyPace(
+        status = status,
+        projectedFormatted = projectedFormatted,
+        budgetFormatted = budgetFormatted,
+        differenceFormatted = differenceFormatted,
+    )
+}
+
+private const val PACE_SLACK_PERCENT = 5L
 
 /**
  * Task 2.7 — informational fallback (Insight #2b) shown when no budget is
