@@ -14,6 +14,7 @@
 - Widget wrapped in `GlanceTheme { }` — picks up Material You dynamic color on Android 12+, falls back to Glance's built-in neutral scheme on Android 8–11. Widget is intentionally palette-neutral to blend with the user's launcher theme.
 - `WidgetUpdater` domain interface + `GlanceWidgetUpdater` implementation — refresh hook invoked after each transaction write, default-currency change, and budget set/clear. `TransactionRepositoryImpl`, `CurrencyPreferenceRepositoryImpl`, and `BudgetPreferencesImpl` now request a widget update (`NonCancellable + @IoDispatcher`, best-effort with logged failures) so the home-screen widget reflects changes without waiting for the periodic WorkManager refresh (Task 1.8).
 - `WidgetEntryPoint` Hilt `@EntryPoint` — provides Singleton-scoped dependencies (transaction/budget/currency repos, `CurrencyFormatter`, `TimeProvider`) to `ExpenseWidget.provideGlance`, which now fetches real current-month data on every refresh and hands the mapped `ExpenseWidgetState` to the Glance composable tree instead of `LOADING`.
+- `WidgetRefreshWorker` periodic WorkManager job (30-minute interval, `KEEP` policy) — backstops the repository-write refresh hooks so the widget reflects day rollovers and external state changes when the app isn't foregrounded; scheduled from `ExpenseTrackerApplication.onCreate` alongside the existing recurring-transaction and budget-alert workers.
 
 ## [3.9.0] - 2026-04-25
 

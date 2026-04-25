@@ -14,6 +14,7 @@ import dev.tuandoan.expensetracker.data.preferences.AnalyticsPreferences
 import dev.tuandoan.expensetracker.data.seed.SeedRepository
 import dev.tuandoan.expensetracker.data.worker.BudgetAlertWorker
 import dev.tuandoan.expensetracker.data.worker.RecurringTransactionWorker
+import dev.tuandoan.expensetracker.data.worker.WidgetRefreshWorker
 import dev.tuandoan.expensetracker.domain.crash.CrashReporter
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.SupervisorJob
@@ -60,6 +61,7 @@ class ExpenseTrackerApplication :
             seedRepository.seedDatabaseIfNeeded()
             scheduleRecurringWork()
             scheduleBudgetAlertWork()
+            scheduleWidgetRefreshWork()
         }
 
         // Observe analytics consent and enable/disable crash reporting accordingly.
@@ -111,5 +113,26 @@ class ExpenseTrackerApplication :
             ExistingPeriodicWorkPolicy.KEEP,
             periodicRequest,
         )
+    }
+
+    private fun scheduleWidgetRefreshWork() {
+        val workManager = WorkManager.getInstance(this)
+
+        // Periodic refresh every 30 minutes — backstops repository-write
+        // hooks so the widget reflects day rollovers (new "Today" total) and
+        // any external state changes when the app isn't foregrounded. No
+        // one-time kick needed on startup because the widget's provideGlance
+        // fetches fresh data on every render.
+        val periodicRequest =
+            PeriodicWorkRequestBuilder<WidgetRefreshWorker>(WIDGET_REFRESH_INTERVAL_MINUTES, TimeUnit.MINUTES).build()
+        workManager.enqueueUniquePeriodicWork(
+            WidgetRefreshWorker.PERIODIC_WORK_NAME,
+            ExistingPeriodicWorkPolicy.KEEP,
+            periodicRequest,
+        )
+    }
+
+    companion object {
+        private const val WIDGET_REFRESH_INTERVAL_MINUTES = 30L
     }
 }
