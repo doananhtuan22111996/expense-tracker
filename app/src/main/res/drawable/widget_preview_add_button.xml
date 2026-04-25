@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    Circular "+" affordance used in the launcher-picker preview layout. Matches
+    the rounded 40dp primary-colored AddButton rendered by ExpenseWidgetContent
+    at runtime. Static color (#6750A4 = Material 3 baseline primary) — picker
+    runs outside the app's theme context.
+-->
+<shape xmlns:android="http://schemas.android.com/apk/res/android"
+    android:shape="oval">
+    <solid android:color="#6750A4" />
+</shape>

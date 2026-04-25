@@ -16,6 +16,7 @@
 - `WidgetEntryPoint` Hilt `@EntryPoint` — provides Singleton-scoped dependencies (transaction/budget/currency repos, `CurrencyFormatter`, `TimeProvider`) to `ExpenseWidget.provideGlance`, which now fetches real current-month data on every refresh and hands the mapped `ExpenseWidgetState` to the Glance composable tree instead of `LOADING`.
 - `WidgetRefreshWorker` periodic WorkManager job (30-minute interval, `KEEP` policy) — backstops the repository-write refresh hooks so the widget reflects day rollovers and external state changes when the app isn't foregrounded; scheduled from `ExpenseTrackerApplication.onCreate` alongside the existing recurring-transaction and budget-alert workers.
 - Widget accessibility pass — each layout now carries a single coherent `contentDescription` so TalkBack announces one sentence per widget focus instead of stepping through each label/amount text node. Over-budget state spells out "Over budget by X" (backed by a new pre-formatted `BudgetDisplay.overByFormatted` field) so screen readers don't have to parse the raw `↑` glyph. Add-transaction button gets its own focused description; loading state announces "Loading widget data".
+- Widget launcher-picker preview — `android:previewLayout` (`@layout/widget_preview`) shows a static mock of the medium layout on Android 12+ (today + month + "+" button + budget progress bar), with `android:previewImage` fallback drawable for Android 8–11. Replaces the placeholder `@mipmap/ic_launcher` so users see what the widget actually looks like before placing it.
 
 ## [3.9.0] - 2026-04-25
 

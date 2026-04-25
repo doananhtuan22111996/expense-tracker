@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    Preview-only progress bar: horizontal linear gradient with hard color stops
+    at ~45% so it reads visually as a filled-to-45% bar. Static bitmap-less
+    approximation used by the launcher-picker preview layout.
+
+    The runtime widget uses Glance's LinearProgressIndicator which picks up
+    the actual theme + live budget fraction; this file only runs in the
+    launcher's picker context, which can't bind state.
+-->
+<shape xmlns:android="http://schemas.android.com/apk/res/android"
+    android:shape="rectangle">
+    <corners android:radius="2dp" />
+    <gradient
+        android:angle="0"
+        android:centerColor="#6750A4"
+        android:centerX="0.45"
+        android:endColor="#E0E0E0"
+        android:startColor="#6750A4"
+        android:type="linear" />
+</shape>
