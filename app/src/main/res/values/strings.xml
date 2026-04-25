@@ -517,4 +517,12 @@
     <string name="widget_budget_over_percent">↑ %1$d%%</string>
     <string name="widget_description">Today\'s spend, this month\'s total, and your budget progress at a glance.</string>
     <string name="widget_loading">Loading…</string>
+    <!-- Widget accessibility (TalkBack). Each string is a full, self-contained sentence
+         so the screen reader announces one coherent line per widget focus. -->
+    <string name="a11y_widget_small">Today: %1$s. Tap to open Expense Tracker.</string>
+    <string name="a11y_widget_medium_no_budget">Today: %1$s. This month: %2$s. Tap to open Expense Tracker.</string>
+    <string name="a11y_widget_medium_with_budget">Today: %1$s. This month: %2$s. Budget: %3$d%% used, %4$s of %5$s. Tap to open Expense Tracker.</string>
+    <string name="a11y_widget_medium_over_budget">Today: %1$s. This month: %2$s. Over budget by %3$s, %4$d%% of %5$s. Tap to open Expense Tracker.</string>
+    <string name="a11y_widget_add_button">Add transaction</string>
+    <string name="a11y_widget_loading">Loading widget data</string>
 </resources>
