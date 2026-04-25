@@ -50,10 +50,16 @@ data class ExpenseWidgetState(
  * so callers must not read the over-state from it.
  * @property isOverBudget `true` when the raw ratio exceeds 1.0 — drives the
  * error color + ↑ glyph per colorblind accessibility guidance.
+ * @property overByFormatted pre-formatted `spent - budget` when [isOverBudget]
+ * is `true`, else `null`. TalkBack's single-sentence announcement spells out
+ * "over by X" instead of leaving the screen reader to parse a raw ↑ glyph;
+ * populating it in the mapper keeps the "Glance layer needs no formatter"
+ * contract intact.
  */
 data class BudgetDisplay(
     val spentFormatted: String,
     val budgetFormatted: String,
     val progressFraction: Float,
     val isOverBudget: Boolean,
+    val overByFormatted: String?,
 )

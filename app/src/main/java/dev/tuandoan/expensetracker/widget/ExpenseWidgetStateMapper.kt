@@ -69,11 +69,14 @@ fun mapExpenseWidgetState(
     val budgetDisplay =
         budgetAmount?.takeIf { it > 0L }?.let { amount ->
             val rawFraction = monthTotal.toFloat() / amount.toFloat()
+            val isOver = rawFraction > 1f
             BudgetDisplay(
                 spentFormatted = formatter.format(monthTotal, defaultCurrencyCode),
                 budgetFormatted = formatter.format(amount, defaultCurrencyCode),
                 progressFraction = rawFraction.coerceIn(0f, 1f),
-                isOverBudget = rawFraction > 1f,
+                isOverBudget = isOver,
+                overByFormatted =
+                    if (isOver) formatter.format(monthTotal - amount, defaultCurrencyCode) else null,
             )
         }
 

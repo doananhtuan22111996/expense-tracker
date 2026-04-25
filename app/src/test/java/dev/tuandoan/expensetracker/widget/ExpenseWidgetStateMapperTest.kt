@@ -243,6 +243,7 @@ class ExpenseWidgetStateMapperTest {
         assertEquals("1000000 VND", budget.budgetFormatted)
         assertEquals(0.2f, budget.progressFraction, 0.0001f)
         assertFalse(budget.isOverBudget)
+        assertNull(budget.overByFormatted)
     }
 
     @Test
@@ -263,6 +264,32 @@ class ExpenseWidgetStateMapperTest {
         assertNotNull(budget)
         assertEquals(1f, budget!!.progressFraction, 0.0001f)
         assertTrue(budget.isOverBudget)
+        // TalkBack announces "Over budget by X" — must be the raw spend-minus-budget
+        // difference, pre-formatted via the injected formatter.
+        assertEquals("500000 VND", budget.overByFormatted)
+    }
+
+    @Test
+    fun mapState_exactlyAtBudget_isNotOverAndOverByIsNull() {
+        // Edge: spent == budget → rawFraction == 1.0 → isOverBudget = false.
+        // overByFormatted must be null because spend does not exceed budget.
+        val transactions = listOf(expense(id = 1, amount = 1_000_000, timestamp = nowMillis))
+
+        val state =
+            mapExpenseWidgetState(
+                monthExpenses = transactions,
+                defaultCurrencyCode = "VND",
+                budgetAmount = 1_000_000,
+                nowMillis = nowMillis,
+                zoneId = zone,
+                formatter = fakeFormatter,
+            )
+
+        val budget = state.budget
+        assertNotNull(budget)
+        assertEquals(1f, budget!!.progressFraction, 0.0001f)
+        assertFalse(budget.isOverBudget)
+        assertNull(budget.overByFormatted)
     }
 
     @Test
