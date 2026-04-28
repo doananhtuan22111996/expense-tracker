@@ -1,11 +1,14 @@
 package dev.tuandoan.expensetracker.domain.insights
 
 import dev.tuandoan.expensetracker.core.formatter.CurrencyFormatter
+import dev.tuandoan.expensetracker.domain.model.BudgetStatus
 import dev.tuandoan.expensetracker.domain.model.Category
+import dev.tuandoan.expensetracker.domain.model.SupportedCurrencies
 import dev.tuandoan.expensetracker.domain.model.Transaction
 import dev.tuandoan.expensetracker.domain.model.TransactionType
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.time.LocalDate
@@ -14,13 +17,15 @@ import java.time.ZoneId
 /**
  * Tests for [computeInsights].
  *
- * Split across three concerns:
+ * Organized by concern:
  *  - **Orchestration** — filter ordering, empty-state short-circuit, result
  *    data-class contract. Stable across algorithm tasks.
  *  - **Biggest-mover algorithm** (Task 2.2) — ≥2-txn threshold, delta floor,
  *    ranking, tie-break, direction.
- *  - **Future algorithms** (Tasks 2.3 / 2.4 / 2.7) — daily pace, day-of-month,
- *    no-budget fallback. Tests land with their PRs.
+ *  - **Daily-pace algorithm** (Task 2.3) — projection math, ±5% slack,
+ *    ON_PACE / OVER / UNDER branching.
+ *  - **Future algorithms** (Tasks 2.4 / 2.7) — day-of-month and no-budget
+ *    fallback. Tests land with their PRs.
  */
 class InsightsEngineTest {
     private val zone = ZoneId.of("UTC")
@@ -441,5 +446,143 @@ class InsightsEngineTest {
 
         val mover = result.rows.filterIsInstance<InsightRow.BiggestMover>().single()
         assertEquals(2, mover.percentChange)
+    }
+
+    // --- Daily-pace algorithm (Task 2.3) ---
+    //
+    // "today" is fixed to April 15, 2026 (UTC) → daysElapsed = 15, daysInMonth = 30.
+    // So projected = spend * 30 / 15 = 2 * spend. Easy to reason about.
+
+    private val vndBudget1M =
+        BudgetStatus(
+            currency = SupportedCurrencies.byCode("VND")!!,
+            budgetAmount = 1_000_000L,
+            spentAmount = 0L, // unused by the engine; only budgetAmount matters for pace
+        )
+
+    @Test
+    fun dailyPace_projectedExactlyMatchesBudget_isOnPace() {
+        // spend = 500k → projected = 1M = budget. ON_PACE.
+        val result =
+            computeInsights(
+                currentMonthExpenses = listOf(expense(id = 1, amount = 500_000L)),
+                previousMonthExpenses = emptyList(),
+                defaultCurrencyCode = "VND",
+                budgetStatus = vndBudget1M,
+                nowMillis = nowMillis,
+                zoneId = zone,
+                formatter = fakeFormatter,
+            )
+
+        val pace = result.rows.filterIsInstance<InsightRow.DailyPace>().single()
+        assertEquals(InsightRow.PaceStatus.ON_PACE, pace.status)
+        assertEquals("1000000 VND", pace.projectedFormatted)
+        assertEquals("1000000 VND", pace.budgetFormatted)
+        assertNull(pace.differenceFormatted)
+    }
+
+    @Test
+    fun dailyPace_projectedAboveBudgetBeyondSlack_isOver() {
+        // spend = 750k → projected = 1.5M = budget × 1.5 (well above 5% slack).
+        // difference = projected - budget = 500k.
+        val result =
+            computeInsights(
+                currentMonthExpenses = listOf(expense(id = 1, amount = 750_000L)),
+                previousMonthExpenses = emptyList(),
+                defaultCurrencyCode = "VND",
+                budgetStatus = vndBudget1M,
+                nowMillis = nowMillis,
+                zoneId = zone,
+                formatter = fakeFormatter,
+            )
+
+        val pace = result.rows.filterIsInstance<InsightRow.DailyPace>().single()
+        assertEquals(InsightRow.PaceStatus.OVER, pace.status)
+        assertEquals("1500000 VND", pace.projectedFormatted)
+        assertEquals("500000 VND", pace.differenceFormatted)
+    }
+
+    @Test
+    fun dailyPace_projectedBelowBudgetBeyondSlack_isUnder() {
+        // spend = 250k → projected = 500k = budget × 0.5.
+        // difference = 500k - 1M = -500k ; |diff| = 500k.
+        val result =
+            computeInsights(
+                currentMonthExpenses = listOf(expense(id = 1, amount = 250_000L)),
+                previousMonthExpenses = emptyList(),
+                defaultCurrencyCode = "VND",
+                budgetStatus = vndBudget1M,
+                nowMillis = nowMillis,
+                zoneId = zone,
+                formatter = fakeFormatter,
+            )
+
+        val pace = result.rows.filterIsInstance<InsightRow.DailyPace>().single()
+        assertEquals(InsightRow.PaceStatus.UNDER, pace.status)
+        assertEquals("500000 VND", pace.projectedFormatted)
+        assertEquals("500000 VND", pace.differenceFormatted) // |diff|, not signed
+    }
+
+    @Test
+    fun dailyPace_projectedWithin5PercentAboveBudget_isOnPace() {
+        // Slack is 5% of budget = 50k. Projected budget + 30k = 1.03M is inside
+        // the slack → ON_PACE. Guards against accidentally treating any delta as OVER.
+        // spend * 2 = 1.03M → spend = 515k.
+        val result =
+            computeInsights(
+                currentMonthExpenses = listOf(expense(id = 1, amount = 515_000L)),
+                previousMonthExpenses = emptyList(),
+                defaultCurrencyCode = "VND",
+                budgetStatus = vndBudget1M,
+                nowMillis = nowMillis,
+                zoneId = zone,
+                formatter = fakeFormatter,
+            )
+
+        val pace = result.rows.filterIsInstance<InsightRow.DailyPace>().single()
+        assertEquals(InsightRow.PaceStatus.ON_PACE, pace.status)
+        assertNull(pace.differenceFormatted)
+    }
+
+    @Test
+    fun dailyPace_projectedWithin5PercentBelowBudget_isOnPace() {
+        // Projected = budget - 30k = 970k. Within 50k slack → ON_PACE.
+        // spend * 2 = 970k → spend = 485k.
+        val result =
+            computeInsights(
+                currentMonthExpenses = listOf(expense(id = 1, amount = 485_000L)),
+                previousMonthExpenses = emptyList(),
+                defaultCurrencyCode = "VND",
+                budgetStatus = vndBudget1M,
+                nowMillis = nowMillis,
+                zoneId = zone,
+                formatter = fakeFormatter,
+            )
+
+        val pace = result.rows.filterIsInstance<InsightRow.DailyPace>().single()
+        assertEquals(InsightRow.PaceStatus.ON_PACE, pace.status)
+    }
+
+    @Test
+    fun dailyPace_zeroSpend_isUnderWithFullBudgetAsDifference() {
+        // User hasn't logged anything this month. Projected = 0; under by full budget.
+        // Edge case: the orchestrator's empty-data short-circuit triggers BEFORE
+        // the algorithm runs if BOTH months are empty — so we include a prev-month
+        // transaction to keep the current-month-empty path reachable.
+        val result =
+            computeInsights(
+                currentMonthExpenses = emptyList(),
+                previousMonthExpenses = listOf(expense(id = 1, amount = 100_000L)),
+                defaultCurrencyCode = "VND",
+                budgetStatus = vndBudget1M,
+                nowMillis = nowMillis,
+                zoneId = zone,
+                formatter = fakeFormatter,
+            )
+
+        val pace = result.rows.filterIsInstance<InsightRow.DailyPace>().single()
+        assertEquals(InsightRow.PaceStatus.UNDER, pace.status)
+        assertEquals("0 VND", pace.projectedFormatted)
+        assertEquals("1000000 VND", pace.differenceFormatted) // full budget unspent
     }
 }
