@@ -9,6 +9,8 @@ import java.time.Instant
 import java.time.YearMonth
 import java.time.ZoneId
 import kotlin.math.absoluteValue
+import kotlin.math.max
+import kotlin.math.min
 import kotlin.math.roundToInt
 
 /**
@@ -16,15 +18,13 @@ import kotlin.math.roundToInt
  * context into a structured [InsightsResult] for the Summary tab. No Android
  * dependencies, no repository access — the caller pre-loads the data.
  *
- * ### Scope of this skeleton (Task 2.1)
+ * ### Algorithms
  *
- * This PR establishes the data model, the orchestration rules, and the
- * currency/income filter. The three insight-specific algorithms
- * ([computeBiggestMover], [computeDailyPace], [computeDayOfMonth]) are
- * intentionally stubbed to return `null`; they land in Tasks 2.2, 2.3, and
- * 2.4 respectively. Shipping the orchestration separately keeps each
- * algorithm PR surgically reviewable and lets the UI wiring (Task 2.8+)
- * start in parallel against a stable engine signature.
+ * Each insight-specific algorithm lives in its own private function below:
+ * [computeBiggestMover] (Task 2.2), [computeDailyPace] (Task 2.3),
+ * [computeDayOfMonth] (Task 2.4), [computeNoBudgetFallback] (Task 2.7). All
+ * four are total pure functions — any null return collapses the slot rather
+ * than raising.
  *
  * ### Filter contract
  *
@@ -82,7 +82,15 @@ fun computeInsights(
         } else {
             computeNoBudgetFallback(currentRelevant, defaultCurrencyCode, nowMillis, zoneId, formatter)
         }
-    val dayOfMonth = computeDayOfMonth(currentRelevant, previousRelevant, nowMillis, zoneId, formatter)
+    val dayOfMonth =
+        computeDayOfMonth(
+            currentMonth = currentRelevant,
+            previousMonth = previousRelevant,
+            nowMillis = nowMillis,
+            zoneId = zoneId,
+            formatter = formatter,
+            defaultCurrencyCode = defaultCurrencyCode,
+        )
 
     val rows =
         buildList {
@@ -106,8 +114,6 @@ fun computeInsights(
 /** Filters expense + default-currency only. Mirrors the widget mapper. */
 private fun List<Transaction>.filterRelevant(defaultCurrencyCode: String): List<Transaction> =
     filter { it.type == TransactionType.EXPENSE && it.currencyCode == defaultCurrencyCode }
-
-// --- Algorithm stubs — each lands in its own Task 2.2 / 2.3 / 2.4 PR. ---
 
 /**
  * Biggest month-over-month category mover (PRD FR-05 through FR-08, Task 2.2).
@@ -312,28 +318,122 @@ private fun computeDailyPace(
 private const val PACE_SLACK_PERCENT = 5L
 
 /**
- * Task 2.7 — informational fallback (Insight #2b) shown when no budget is
- * set. PRD FR-12: "You've spent ¥1.2M this month, about ¥40K/day".
+ * Informational fallback (Insight #2b, Task 2.7) shown when no budget is set
+ * for the default currency. Renders current-month spend plus an implied daily
+ * average (PRD FR-12: "You've spent ¥1.2M this month, about ¥40K/day").
+ *
+ * Returns `null` when [currentMonth] has zero spend — the empty-state path in
+ * [computeInsights] already covers "user hasn't logged anything", and we don't
+ * want to emit a "spent 0 / 0/day" row that adds no value.
+ *
+ * Day counter uses the same clamp as [computeDailyPace] so the two insights
+ * stay mutually consistent: `dailyAverage = monthSpend / daysElapsed`,
+ * integer-truncated. No rounding to currency minor units — the truncation
+ * toward zero is close enough for the informational copy and avoids a hidden
+ * divergence from the pace projection that would confuse users toggling a
+ * budget on and off.
  */
-@Suppress("UNUSED_PARAMETER")
 private fun computeNoBudgetFallback(
     currentMonth: List<Transaction>,
     defaultCurrencyCode: String,
     nowMillis: Long,
     zoneId: ZoneId,
     formatter: CurrencyFormatter,
-): InsightRow.NoBudgetFallback? = null
+): InsightRow.NoBudgetFallback? {
+    val spend = currentMonth.sumOf { it.amount }
+    if (spend <= 0L) return null
+
+    val today = Instant.ofEpochMilli(nowMillis).atZone(zoneId).toLocalDate()
+    val yearMonth = YearMonth.from(today)
+    val daysInMonth = yearMonth.lengthOfMonth()
+    val daysElapsed = today.dayOfMonth.coerceIn(1, max(1, daysInMonth))
+
+    val dailyAverage = spend / daysElapsed
+
+    return InsightRow.NoBudgetFallback(
+        monthSpendFormatted = formatter.format(spend, defaultCurrencyCode),
+        dailyAverageFormatted = formatter.format(dailyAverage, defaultCurrencyCode),
+    )
+}
 
 /**
- * Task 2.4 — day-of-month comparison (PRD FR-13 through FR-15). Compares
- * current-month spend through today against previous-month spend through the
- * same day number.
+ * Day-of-month comparison (Insight #3, Task 2.4, PRD FR-13 through FR-15).
+ *
+ * Compares current-month spend from day 1 through *today* against prior-month
+ * spend from day 1 through the *same day number*. Filters on each
+ * transaction's [Transaction.timestamp] interpreted in [zoneId] so DST-edge
+ * days aren't miscounted.
+ *
+ * ### Feb-clamp rule
+ *
+ * When today is e.g. March 31 and the prior month is February, `day 31` does
+ * not exist in the prior month. The prior-month window clamps to
+ * `min(today.dayOfMonth, prevYearMonth.lengthOfMonth())` so "through the same
+ * day" means "through the same calendar position". Without this, the
+ * comparison would silently compare Mar 1–31 vs. Feb 1–28 which is unfair to
+ * the current month.
+ *
+ * ### Zero-prev-month fallback (FR-15)
+ *
+ * When `prevSpend == 0` the row still renders with `percentChange = null`
+ * and `direction = null`, driving the fallback copy "You've spent X so far
+ * this month". The row is suppressed only when *both* windows are zero —
+ * there's no narrative to tell.
+ *
+ * ### Integer-only percent
+ *
+ * `delta * 100 / prevSpend` matches the convention established by
+ * [computeBiggestMover]. For a realistic upper bound
+ * (`|delta| ≤ ~10^12 minor units`), `delta * 100` stays well under
+ * `Long.MAX_VALUE` (~9.2×10^18).
  */
-@Suppress("UNUSED_PARAMETER")
 private fun computeDayOfMonth(
     currentMonth: List<Transaction>,
     previousMonth: List<Transaction>,
     nowMillis: Long,
     zoneId: ZoneId,
     formatter: CurrencyFormatter,
-): InsightRow.DayOfMonth? = null
+    defaultCurrencyCode: String,
+): InsightRow.DayOfMonth? {
+    val today = Instant.ofEpochMilli(nowMillis).atZone(zoneId).toLocalDate()
+    val todayDayOfMonth = today.dayOfMonth
+
+    val prevYearMonth = YearMonth.from(today).minusMonths(1)
+    val prevDayCap = min(todayDayOfMonth, prevYearMonth.lengthOfMonth())
+
+    val currSpend =
+        currentMonth
+            .filter { it.timestamp.dayOfMonthIn(zoneId) <= todayDayOfMonth }
+            .sumOf { it.amount }
+    val prevSpend =
+        previousMonth
+            .filter { it.timestamp.dayOfMonthIn(zoneId) <= prevDayCap }
+            .sumOf { it.amount }
+
+    if (currSpend == 0L && prevSpend == 0L) return null
+
+    val currentFormatted = formatter.format(currSpend, defaultCurrencyCode)
+
+    if (prevSpend == 0L) {
+        return InsightRow.DayOfMonth(
+            currentFormatted = currentFormatted,
+            dayOfMonth = todayDayOfMonth,
+            percentChange = null,
+            direction = null,
+        )
+    }
+
+    val delta = currSpend - prevSpend
+    val percentChange = (delta * 100L / prevSpend).toInt()
+    val direction = if (delta >= 0L) InsightRow.Direction.UP else InsightRow.Direction.DOWN
+
+    return InsightRow.DayOfMonth(
+        currentFormatted = currentFormatted,
+        dayOfMonth = todayDayOfMonth,
+        percentChange = percentChange,
+        direction = direction,
+    )
+}
+
+/** Day-of-month of an epoch-millis timestamp, evaluated in the given zone. */
+private fun Long.dayOfMonthIn(zoneId: ZoneId): Int = Instant.ofEpochMilli(this).atZone(zoneId).dayOfMonth
