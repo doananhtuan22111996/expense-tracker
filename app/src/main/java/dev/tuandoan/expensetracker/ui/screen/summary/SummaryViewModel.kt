@@ -130,35 +130,42 @@ class SummaryViewModel
                 // Budget has to live downstream of currency: getBudget(code) takes
                 // the currency code as input, so we can't put them into the same
                 // combine without flatMapLatest-ing on currency first.
-                currencyPreferenceRepository.observeDefaultCurrency().flatMapLatest { code ->
-                    combine(
-                        currentExpenses,
-                        previousExpenses,
-                        budgetPreferences.getBudget(code),
-                        insightsCollapsePreferences.collapsed,
-                    ) { curr, prev, budgetAmount, collapsed ->
-                        val budgetStatus =
-                            budgetAmount?.let { amount ->
-                                val currencyDef = SupportedCurrencies.byCode(code) ?: return@let null
-                                BudgetStatus(
-                                    currency = currencyDef,
-                                    budgetAmount = amount,
-                                    spentAmount = curr.sumOf { it.amount },
+                // distinctUntilChanged defends against the DataStore flow re-emitting
+                // the same currency code after unrelated preference writes — without
+                // it, every such emit would cancel + re-subscribe the budget / collapse
+                // flows and force a needless engine recompute.
+                currencyPreferenceRepository
+                    .observeDefaultCurrency()
+                    .distinctUntilChanged()
+                    .flatMapLatest { code ->
+                        combine(
+                            currentExpenses,
+                            previousExpenses,
+                            budgetPreferences.getBudget(code),
+                            insightsCollapsePreferences.collapsed,
+                        ) { curr, prev, budgetAmount, collapsed ->
+                            val budgetStatus =
+                                budgetAmount?.let { amount ->
+                                    val currencyDef = SupportedCurrencies.byCode(code) ?: return@let null
+                                    BudgetStatus(
+                                        currency = currencyDef,
+                                        budgetAmount = amount,
+                                        spentAmount = curr.sumOf { it.amount },
+                                    )
+                                }
+                            val result =
+                                computeInsights(
+                                    currentMonthExpenses = curr,
+                                    previousMonthExpenses = prev,
+                                    defaultCurrencyCode = code,
+                                    budgetStatus = budgetStatus,
+                                    nowMillis = timeProvider.currentTimeMillis(),
+                                    zoneId = zoneId,
+                                    formatter = currencyFormatter,
                                 )
-                            }
-                        val result =
-                            computeInsights(
-                                currentMonthExpenses = curr,
-                                previousMonthExpenses = prev,
-                                defaultCurrencyCode = code,
-                                budgetStatus = budgetStatus,
-                                nowMillis = timeProvider.currentTimeMillis(),
-                                zoneId = zoneId,
-                                formatter = currencyFormatter,
-                            )
-                        InsightsUiState.Populated(result = result, isCollapsed = collapsed)
+                            InsightsUiState.Populated(result = result, isCollapsed = collapsed)
+                        }
                     }
-                }
             }
 
         init {

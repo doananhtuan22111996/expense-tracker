@@ -932,6 +932,64 @@ class SummaryViewModelTest {
             }
         }
 
+    @Test
+    fun insightsState_defaultCurrencySwitch_reSubscribesBudgetForNewCode() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            // Seed identical txn totals for both currencies so the only thing
+            // that changes between the two emissions is the currency-scoped
+            // budget. This pins the flatMapLatest(currency) → getBudget(code)
+            // dependency: switching currency must re-subscribe the budget flow
+            // with the new code, not reuse the prior code's budget.
+            val marchMid = 1773921600000L
+
+            val vndExpenses = listOf(vndExpense(id = 1, amount = 500_000L, timestamp = marchMid))
+            val usdExpenses =
+                listOf(
+                    Transaction(
+                        id = 2,
+                        type = TransactionType.EXPENSE,
+                        amount = 500_00L, // ≈ $500
+                        currencyCode = "USD",
+                        category = foodCategory,
+                        note = null,
+                        timestamp = marchMid,
+                        createdAt = marchMid,
+                        updatedAt = marchMid,
+                    ),
+                )
+            fakeRepository.setExpenses(marchStart, marchEnd, vndExpenses + usdExpenses)
+            // VND has no budget → no-budget fallback. USD has a budget → DailyPace.
+            fakeBudgetPreferences.setBudget("USD", 2_000_00L) // $2,000
+
+            val viewModel = createViewModel()
+
+            viewModel.insightsState.test {
+                assertEquals(InsightsUiState.Loading, awaitItem())
+                advanceTimeBy(250)
+                val vndState = awaitItem() as InsightsUiState.Populated
+                // VND path: no budget → NoBudgetFallback must appear.
+                assertTrue(
+                    vndState.result.rows.any { it is InsightRow.NoBudgetFallback },
+                )
+                assertTrue(
+                    vndState.result.rows.none { it is InsightRow.DailyPace },
+                )
+
+                fakeCurrencyPreferences.setDefaultCurrency("USD")
+                advanceTimeBy(250)
+
+                val usdState = awaitItem() as InsightsUiState.Populated
+                // USD path: budget set → DailyPace must appear; fallback must not.
+                assertTrue(
+                    usdState.result.rows.any { it is InsightRow.DailyPace },
+                )
+                assertTrue(
+                    usdState.result.rows.none { it is InsightRow.NoBudgetFallback },
+                )
+                cancelAndIgnoreRemainingEvents()
+            }
+        }
+
     private class StubCategoryRepository : CategoryRepository {
         override fun observeCategories(type: TransactionType): Flow<List<Category>> = flow { emit(emptyList()) }
 
