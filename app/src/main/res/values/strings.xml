@@ -544,10 +544,10 @@
     <string name="insights_biggest_mover_up_format">%1$s: up %2$d%% (%3$s → %4$s)</string>
     <string name="insights_biggest_mover_down_format">%1$s: down %2$d%% (%3$s → %4$s)</string>
 
-    <!-- Daily pace row. %1$s = projected total, %2$s = difference amount (on OVER/UNDER), %3$s = budget total. -->
+    <!-- Daily pace row. ON_PACE takes %1$s = projected; OVER/UNDER take %1$s = difference, %2$s = budget. -->
     <string name="insights_daily_pace_on_pace_format">Pacing to spend %1$s — right on budget</string>
-    <string name="insights_daily_pace_over_format">Pacing to exceed your %3$s budget by %2$s</string>
-    <string name="insights_daily_pace_under_format">Pacing %2$s under your %3$s budget</string>
+    <string name="insights_daily_pace_over_format">Pacing to exceed your %2$s budget by %1$s</string>
+    <string name="insights_daily_pace_under_format">Pacing %1$s under your %2$s budget</string>
 
     <!-- No-budget fallback. %1$s = month spend, %2$s = daily average. -->
     <string name="insights_no_budget_fallback_format">Spent %1$s this month, about %2$s/day</string>

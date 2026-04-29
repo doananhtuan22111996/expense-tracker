@@ -98,6 +98,8 @@ private fun SectionHeader(
             stringResource(R.string.insights_collapse_collapse)
         }
 
+    // Clickable first, padding inside — so the tap/ripple covers the entire
+    // horizontal row including the edge padding, not just the text + chevron.
     val rowModifier =
         if (canCollapse) {
             Modifier
@@ -106,19 +108,21 @@ private fun SectionHeader(
                 .semantics {
                     role = Role.Button
                     contentDescription = toggleDesc
-                }
+                }.padding(
+                    horizontal = DesignSystemSpacing.large,
+                    vertical = DesignSystemSpacing.small,
+                )
         } else {
-            Modifier.fillMaxWidth()
-        }
-
-    Row(
-        modifier =
-            modifier
-                .then(rowModifier)
+            Modifier
+                .fillMaxWidth()
                 .padding(
                     horizontal = DesignSystemSpacing.large,
                     vertical = DesignSystemSpacing.small,
-                ),
+                )
+        }
+
+    Row(
+        modifier = modifier.then(rowModifier),
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically,
     ) {

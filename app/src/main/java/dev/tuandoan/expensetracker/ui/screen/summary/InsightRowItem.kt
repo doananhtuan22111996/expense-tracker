@@ -33,15 +33,17 @@ import androidx.compose.ui.unit.dp
 import dev.tuandoan.expensetracker.R
 import dev.tuandoan.expensetracker.domain.insights.InsightRow
 import dev.tuandoan.expensetracker.ui.theme.DesignSystemSpacing
+import kotlin.math.absoluteValue
 
 /**
  * Single-row render for an [InsightRow]. Builds the headline string from the
  * engine's pre-formatted fields (amounts and percentages never formatted here
  * per PRD FR-03) and attaches an optional delta chip.
  *
- * Rows are `Role.Text` (PRD FR-04: no drill-down). A single coherent
- * contentDescription replaces the otherwise-fragmented multi-node TalkBack
- * reading — same pattern as the widget accessibility pass in PR #90.
+ * Rows are read-only (PRD FR-04: no drill-down). A single coherent
+ * `contentDescription` on the row container replaces the otherwise-fragmented
+ * multi-node TalkBack reading — same pattern as the widget accessibility pass
+ * in PR #90.
  */
 @Composable
 internal fun InsightRowItem(
@@ -92,8 +94,9 @@ private fun DeltaChip(
     percent: Int,
     direction: InsightRow.Direction,
 ) {
-    // Colors aren't part of Material 3 color scheme — using primary/error keeps the
-    // chip responsive to light/dark theme without bespoke palette work.
+    // errorContainer for up, secondaryContainer for down — keeps the chip
+    // responsive to light/dark theme without bespoke palette work. Colorblind
+    // severity carried by the ↑/↓ glyph, not the hue.
     val up = direction == InsightRow.Direction.UP
     val format =
         if (up) R.string.insights_delta_up_format else R.string.insights_delta_down_format
@@ -164,7 +167,7 @@ private fun InsightRow.headline(context: android.content.Context): String =
             context.getString(
                 format,
                 categoryName,
-                percentChange.absoluteOrZero(),
+                percentChange.absoluteValue,
                 previousFormatted,
                 currentFormatted,
             )
@@ -179,15 +182,13 @@ private fun InsightRow.headline(context: android.content.Context): String =
                 InsightRow.PaceStatus.OVER ->
                     context.getString(
                         R.string.insights_daily_pace_over_format,
-                        projectedFormatted,
-                        differenceFormatted ?: "",
+                        differenceFormatted.orEmpty(),
                         budgetFormatted,
                     )
                 InsightRow.PaceStatus.UNDER ->
                     context.getString(
                         R.string.insights_daily_pace_under_format,
-                        projectedFormatted,
-                        differenceFormatted ?: "",
+                        differenceFormatted.orEmpty(),
                         budgetFormatted,
                     )
             }
@@ -212,14 +213,14 @@ private fun InsightRow.headline(context: android.content.Context): String =
                         R.string.insights_day_of_month_up_format,
                         dayOfMonth,
                         currentFormatted,
-                        pct.absoluteOrZero(),
+                        pct.absoluteValue,
                     )
                 else ->
                     context.getString(
                         R.string.insights_day_of_month_down_format,
                         dayOfMonth,
                         currentFormatted,
-                        pct.absoluteOrZero(),
+                        pct.absoluteValue,
                     )
             }
         }
@@ -234,13 +235,13 @@ private fun InsightRow.deltaChipData(): DeltaChipData? =
     when (this) {
         is InsightRow.BiggestMover ->
             DeltaChipData(
-                absolutePercent = percentChange.absoluteOrZero(),
+                absolutePercent = percentChange.absoluteValue,
                 direction = direction,
             )
         is InsightRow.DayOfMonth -> {
             val pct = percentChange ?: return null
             val dir = direction ?: return null
-            DeltaChipData(absolutePercent = pct.absoluteOrZero(), direction = dir)
+            DeltaChipData(absolutePercent = pct.absoluteValue, direction = dir)
         }
         is InsightRow.DailyPace,
         is InsightRow.NoBudgetFallback,
@@ -248,6 +249,3 @@ private fun InsightRow.deltaChipData(): DeltaChipData? =
         InsightRow.Error,
         -> null
     }
-
-/** Percent guard — the engine emits negatives for DOWN direction; chip shows the magnitude. */
-private fun Int.absoluteOrZero(): Int = if (this < 0) -this else this
