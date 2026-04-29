@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    Vietnamese localization — currently covers the Summary tab Insights section
+    only (Task 2.12 of v3.10.0). The rest of the app falls back to values/
+    (English) until further localization tasks land.
+-->
+<resources>
+    <!-- Summary tab — Insights section. -->
+    <string name="insights_section_title">Thông tin chi tiêu</string>
+    <string name="insights_collapse_expand">Mở rộng</string>
+    <string name="insights_collapse_collapse">Thu gọn</string>
+
+    <!-- Biggest mover row. %1$s = category name, %2$s = locale-formatted percent, %3$s = previous amount, %4$s = current amount. -->
+    <string name="insights_biggest_mover_up_format">%1$s: tăng %2$s (%3$s → %4$s)</string>
+    <string name="insights_biggest_mover_down_format">%1$s: giảm %2$s (%3$s → %4$s)</string>
+
+    <!-- Daily pace row. ON_PACE takes %1$s = projected; OVER/UNDER take %1$s = difference, %2$s = budget. -->
+    <string name="insights_daily_pace_on_pace_format">Ước tính chi %1$s — đúng ngân sách</string>
+    <string name="insights_daily_pace_over_format">Ước tính vượt ngân sách %2$s thêm %1$s</string>
+    <string name="insights_daily_pace_under_format">Ước tính dưới ngân sách %2$s khoảng %1$s</string>
+
+    <!-- No-budget fallback. %1$s = month spend, %2$s = daily average. -->
+    <string name="insights_no_budget_fallback_format">Đã chi %1$s tháng này, khoảng %2$s/ngày</string>
+
+    <!-- Day-of-month row. %1$d = day number, %2$s = current spend, %3$s = locale-formatted percent. -->
+    <string name="insights_day_of_month_up_format">Đến ngày %1$d: %2$s — tăng %3$s so với tháng trước</string>
+    <string name="insights_day_of_month_down_format">Đến ngày %1$d: %2$s — giảm %3$s so với tháng trước</string>
+    <string name="insights_day_of_month_neutral_format">Đến ngày %1$d, bạn đã chi %2$s tháng này</string>
+
+    <!-- Empty / error states. -->
+    <string name="insights_empty_title">Tiếp tục ghi chép</string>
+    <string name="insights_empty_subtitle">Thông tin xuất hiện sau khoảng một tháng dữ liệu</string>
+    <string name="insights_error_title">Không có thông tin</string>
+
+    <!-- Delta chip. %1$s = locale-formatted percent. -->
+    <string name="insights_delta_up_format">↑ %1$s</string>
+    <string name="insights_delta_down_format">↓ %1$s</string>
+
+    <!-- Accessibility. -->
+    <string name="a11y_insights_row">%1$s</string>
+    <string name="a11y_insights_loading">Đang tải thông tin</string>
+</resources>
