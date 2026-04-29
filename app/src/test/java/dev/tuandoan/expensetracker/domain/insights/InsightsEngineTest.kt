@@ -585,4 +585,322 @@ class InsightsEngineTest {
         assertEquals("0 VND", pace.projectedFormatted)
         assertEquals("1000000 VND", pace.differenceFormatted) // full budget unspent
     }
+
+    // --- Day-of-month comparison algorithm (Task 2.4) ---
+    //
+    // "today" is April 15, 2026 (UTC). Day-of-month = 15.
+    // Previous month is March 2026 (31 days) → Feb/Mar clamp logic exercised
+    // separately via a March-31 "today" test.
+
+    private fun expenseOnDay(
+        id: Long,
+        amount: Long,
+        year: Int,
+        month: Int,
+        day: Int,
+    ): Transaction {
+        val ts =
+            LocalDate
+                .of(year, month, day)
+                .atTime(10, 0)
+                .atZone(zone)
+                .toInstant()
+                .toEpochMilli()
+        return expense(id = id, amount = amount, timestamp = ts)
+    }
+
+    @Test
+    fun dayOfMonth_happyPathUp_positivePercentAndUpDirection() {
+        // Curr Apr 1–15 = 300k ; Prev Mar 1–15 = 200k → +50%, UP.
+        val current =
+            listOf(
+                expenseOnDay(id = 1, amount = 150_000L, year = 2026, month = 4, day = 5),
+                expenseOnDay(id = 2, amount = 150_000L, year = 2026, month = 4, day = 10),
+            )
+        val previous =
+            listOf(
+                expenseOnDay(id = 3, amount = 100_000L, year = 2026, month = 3, day = 3),
+                expenseOnDay(id = 4, amount = 100_000L, year = 2026, month = 3, day = 12),
+            )
+
+        val result =
+            computeInsights(
+                currentMonthExpenses = current,
+                previousMonthExpenses = previous,
+                defaultCurrencyCode = "VND",
+                budgetStatus = null,
+                nowMillis = nowMillis,
+                zoneId = zone,
+                formatter = fakeFormatter,
+            )
+
+        val row = result.rows.filterIsInstance<InsightRow.DayOfMonth>().single()
+        assertEquals(15, row.dayOfMonth)
+        assertEquals("300000 VND", row.currentFormatted)
+        assertEquals(50, row.percentChange)
+        assertEquals(InsightRow.Direction.UP, row.direction)
+    }
+
+    @Test
+    fun dayOfMonth_happyPathDown_negativePercentAndDownDirection() {
+        // Curr Apr 1–15 = 100k ; Prev Mar 1–15 = 200k → -50%, DOWN.
+        val current =
+            listOf(expenseOnDay(id = 1, amount = 100_000L, year = 2026, month = 4, day = 5))
+        val previous =
+            listOf(
+                expenseOnDay(id = 2, amount = 100_000L, year = 2026, month = 3, day = 3),
+                expenseOnDay(id = 3, amount = 100_000L, year = 2026, month = 3, day = 12),
+            )
+
+        val result =
+            computeInsights(
+                currentMonthExpenses = current,
+                previousMonthExpenses = previous,
+                defaultCurrencyCode = "VND",
+                budgetStatus = null,
+                nowMillis = nowMillis,
+                zoneId = zone,
+                formatter = fakeFormatter,
+            )
+
+        val row = result.rows.filterIsInstance<InsightRow.DayOfMonth>().single()
+        assertEquals(-50, row.percentChange)
+        assertEquals(InsightRow.Direction.DOWN, row.direction)
+    }
+
+    @Test
+    fun dayOfMonth_excludesTransactionsAfterTodayDay() {
+        // today = day 15. Apr 16 and Apr 20 must be excluded from the current
+        // window; the comparison sums only Apr 1–15. Previous month has nothing
+        // → fallback path, but the assertion is specifically on currentFormatted.
+        val current =
+            listOf(
+                expenseOnDay(id = 1, amount = 100_000L, year = 2026, month = 4, day = 10),
+                // After "today" — must be filtered.
+                expenseOnDay(id = 2, amount = 500_000L, year = 2026, month = 4, day = 16),
+                expenseOnDay(id = 3, amount = 500_000L, year = 2026, month = 4, day = 20),
+            )
+        val result =
+            computeInsights(
+                currentMonthExpenses = current,
+                previousMonthExpenses = emptyList(),
+                defaultCurrencyCode = "VND",
+                budgetStatus = null,
+                nowMillis = nowMillis,
+                zoneId = zone,
+                formatter = fakeFormatter,
+            )
+
+        val row = result.rows.filterIsInstance<InsightRow.DayOfMonth>().single()
+        assertEquals("100000 VND", row.currentFormatted)
+    }
+
+    @Test
+    fun dayOfMonth_feb28Clamp_whenTodayIsMarch31() {
+        // today = Mar 31 2026 → day 31. Previous month = Feb 2026 (28 days).
+        // Prev window must clamp to Feb 1–28; a theoretical "Feb 29" txn would
+        // be impossible anyway, but the clamp makes the comparison fair
+        // (prev is "all of Feb" vs. "Mar 1–31").
+        val marchToday =
+            LocalDate
+                .of(2026, 3, 31)
+                .atTime(10, 0)
+                .atZone(zone)
+                .toInstant()
+                .toEpochMilli()
+
+        val current =
+            listOf(expenseOnDay(id = 1, amount = 310_000L, year = 2026, month = 3, day = 20))
+        val previous =
+            listOf(
+                // Feb 1 + Feb 28 = the clamp window's endpoints.
+                expenseOnDay(id = 2, amount = 100_000L, year = 2026, month = 2, day = 1),
+                expenseOnDay(id = 3, amount = 100_000L, year = 2026, month = 2, day = 28),
+            )
+
+        val result =
+            computeInsights(
+                currentMonthExpenses = current,
+                previousMonthExpenses = previous,
+                defaultCurrencyCode = "VND",
+                budgetStatus = null,
+                nowMillis = marchToday,
+                zoneId = zone,
+                formatter = fakeFormatter,
+            )
+
+        val row = result.rows.filterIsInstance<InsightRow.DayOfMonth>().single()
+        assertEquals(31, row.dayOfMonth)
+        assertEquals("310000 VND", row.currentFormatted)
+        // Prev = 200k (both Feb txns fall within clamp). Curr = 310k. Delta = +55%.
+        assertEquals(55, row.percentChange)
+        assertEquals(InsightRow.Direction.UP, row.direction)
+    }
+
+    @Test
+    fun dayOfMonth_previousMonthZeroThroughSameDay_percentAndDirectionNull() {
+        // FR-15: fallback copy path. Row still emitted but percent/direction
+        // are null so the UI can swap to "You've spent X so far this month".
+        val current =
+            listOf(expenseOnDay(id = 1, amount = 150_000L, year = 2026, month = 4, day = 10))
+        val previous =
+            listOf(
+                // Prior-month txns exist but all AFTER day 15 → prev window sum = 0.
+                expenseOnDay(id = 2, amount = 500_000L, year = 2026, month = 3, day = 20),
+            )
+
+        val result =
+            computeInsights(
+                currentMonthExpenses = current,
+                previousMonthExpenses = previous,
+                defaultCurrencyCode = "VND",
+                budgetStatus = null,
+                nowMillis = nowMillis,
+                zoneId = zone,
+                formatter = fakeFormatter,
+            )
+
+        val row = result.rows.filterIsInstance<InsightRow.DayOfMonth>().single()
+        assertEquals("150000 VND", row.currentFormatted)
+        assertEquals(15, row.dayOfMonth)
+        assertNull(row.percentChange)
+        assertNull(row.direction)
+    }
+
+    @Test
+    fun dayOfMonth_currentZeroWithPriorSpend_emitsMinus100PercentDown() {
+        // Symmetric to the previous-month-zero fallback: user hasn't spent
+        // anything yet this month, but prior month through day 15 was non-zero.
+        // Expected: delta = -prevSpend, percent = -100, direction = DOWN.
+        // This guards against a future refactor that accidentally short-circuits
+        // on currSpend == 0 and loses the "you're down 100% from last month"
+        // narrative.
+        val current =
+            listOf(
+                // After today=15 → filtered out; current window sums to 0.
+                expenseOnDay(id = 1, amount = 500_000L, year = 2026, month = 4, day = 20),
+            )
+        val previous =
+            listOf(expenseOnDay(id = 2, amount = 300_000L, year = 2026, month = 3, day = 10))
+
+        val result =
+            computeInsights(
+                currentMonthExpenses = current,
+                previousMonthExpenses = previous,
+                defaultCurrencyCode = "VND",
+                budgetStatus = null,
+                nowMillis = nowMillis,
+                zoneId = zone,
+                formatter = fakeFormatter,
+            )
+
+        val row = result.rows.filterIsInstance<InsightRow.DayOfMonth>().single()
+        assertEquals("0 VND", row.currentFormatted)
+        assertEquals(15, row.dayOfMonth)
+        assertEquals(-100, row.percentChange)
+        assertEquals(InsightRow.Direction.DOWN, row.direction)
+    }
+
+    @Test
+    fun dayOfMonth_bothWindowsZero_rowSuppressed() {
+        // Curr-month txn AFTER day 15, prev-month txn AFTER day 15 → both sums = 0.
+        // No narrative to tell. The row is suppressed (but the other slots —
+        // here, the Empty short-circuit from orchestrator — still run).
+        val current =
+            listOf(expenseOnDay(id = 1, amount = 500_000L, year = 2026, month = 4, day = 20))
+        val previous =
+            listOf(expenseOnDay(id = 2, amount = 500_000L, year = 2026, month = 3, day = 25))
+
+        val result =
+            computeInsights(
+                currentMonthExpenses = current,
+                previousMonthExpenses = previous,
+                defaultCurrencyCode = "VND",
+                budgetStatus = null,
+                nowMillis = nowMillis,
+                zoneId = zone,
+                formatter = fakeFormatter,
+            )
+
+        assertTrue(result.rows.filterIsInstance<InsightRow.DayOfMonth>().isEmpty())
+    }
+
+    // --- No-budget fallback algorithm (Task 2.7) ---
+    //
+    // Fires only when budgetStatus is null OR budgetAmount <= 0. Orchestrator
+    // guard tested below; algorithm correctness (spend + daily average) next.
+
+    @Test
+    fun noBudgetFallback_happyPath_emitsMonthSpendAndTruncatedDailyAverage() {
+        // today = day 15. spend = 600_000 → daily avg = 40_000 (600k / 15).
+        val current =
+            listOf(
+                expense(id = 1, amount = 300_000L),
+                expense(id = 2, amount = 300_000L),
+            )
+
+        val result =
+            computeInsights(
+                currentMonthExpenses = current,
+                previousMonthExpenses = emptyList(),
+                defaultCurrencyCode = "VND",
+                budgetStatus = null,
+                nowMillis = nowMillis,
+                zoneId = zone,
+                formatter = fakeFormatter,
+            )
+
+        val fallback = result.rows.filterIsInstance<InsightRow.NoBudgetFallback>().single()
+        assertEquals("600000 VND", fallback.monthSpendFormatted)
+        assertEquals("40000 VND", fallback.dailyAverageFormatted)
+        // Sanity: DailyPace row must NOT appear when budget is absent.
+        assertTrue(result.rows.filterIsInstance<InsightRow.DailyPace>().isEmpty())
+    }
+
+    @Test
+    fun noBudgetFallback_suppressedWhenCurrentMonthSpendIsZero() {
+        // No spend in current month → no narrative. Prev-month txn keeps the
+        // orchestrator's empty-data short-circuit from firing first.
+        val result =
+            computeInsights(
+                currentMonthExpenses = emptyList(),
+                previousMonthExpenses = listOf(expense(id = 1, amount = 100_000L)),
+                defaultCurrencyCode = "VND",
+                budgetStatus = null,
+                nowMillis = nowMillis,
+                zoneId = zone,
+                formatter = fakeFormatter,
+            )
+
+        assertTrue(result.rows.filterIsInstance<InsightRow.NoBudgetFallback>().isEmpty())
+    }
+
+    @Test
+    fun noBudgetFallback_firesWhenBudgetAmountIsZero() {
+        // budgetAmount == 0 should be treated as "no budget" per the
+        // orchestrator guard in computeInsights (positive budget required for
+        // pace). Ensures a user who set-then-cleared their budget doesn't see
+        // a "projected 0 / under by 0" row.
+        val zeroBudget =
+            BudgetStatus(
+                currency = SupportedCurrencies.byCode("VND")!!,
+                budgetAmount = 0L,
+                spentAmount = 0L,
+            )
+        val current = listOf(expense(id = 1, amount = 150_000L))
+
+        val result =
+            computeInsights(
+                currentMonthExpenses = current,
+                previousMonthExpenses = emptyList(),
+                defaultCurrencyCode = "VND",
+                budgetStatus = zeroBudget,
+                nowMillis = nowMillis,
+                zoneId = zone,
+                formatter = fakeFormatter,
+            )
+
+        assertTrue(result.rows.filterIsInstance<InsightRow.NoBudgetFallback>().isNotEmpty())
+        assertTrue(result.rows.filterIsInstance<InsightRow.DailyPace>().isEmpty())
+    }
 }
