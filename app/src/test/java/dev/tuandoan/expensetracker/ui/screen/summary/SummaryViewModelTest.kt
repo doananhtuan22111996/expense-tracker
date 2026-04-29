@@ -1,6 +1,10 @@
 package dev.tuandoan.expensetracker.ui.screen.summary
 
+import app.cash.turbine.test
+import dev.tuandoan.expensetracker.core.formatter.CurrencyFormatter
 import dev.tuandoan.expensetracker.core.util.DateRangeCalculator
+import dev.tuandoan.expensetracker.data.preferences.InsightsCollapsePreferences
+import dev.tuandoan.expensetracker.domain.insights.InsightRow
 import dev.tuandoan.expensetracker.domain.model.BudgetStatusLevel
 import dev.tuandoan.expensetracker.domain.model.Category
 import dev.tuandoan.expensetracker.domain.model.CategoryWithCount
@@ -12,7 +16,9 @@ import dev.tuandoan.expensetracker.domain.model.TransactionType
 import dev.tuandoan.expensetracker.domain.repository.BudgetPreferences
 import dev.tuandoan.expensetracker.domain.repository.CategoryRepository
 import dev.tuandoan.expensetracker.domain.repository.TransactionRepository
+import dev.tuandoan.expensetracker.testutil.FakeCurrencyPreferenceRepository
 import dev.tuandoan.expensetracker.testutil.FakeSelectedMonthRepository
+import dev.tuandoan.expensetracker.testutil.FakeTimeProvider
 import dev.tuandoan.expensetracker.testutil.MainDispatcherRule
 import dev.tuandoan.expensetracker.testutil.TestData
 import dev.tuandoan.expensetracker.ui.screen.home.HomeViewModel
@@ -21,6 +27,7 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.test.advanceTimeBy
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
@@ -44,6 +51,9 @@ class SummaryViewModelTest {
     private lateinit var fakeRepository: FakeTransactionRepository
     private lateinit var fakeSelectedMonth: FakeSelectedMonthRepository
     private lateinit var fakeBudgetPreferences: FakeBudgetPreferences
+    private lateinit var fakeCurrencyPreferences: FakeCurrencyPreferenceRepository
+    private lateinit var fakeInsightsCollapse: FakeInsightsCollapsePreferences
+    private lateinit var fakeTimeProvider: FakeTimeProvider
     private lateinit var dateRangeCalculator: DateRangeCalculator
 
     private val fixedZone: ZoneId = ZoneId.of("UTC")
@@ -54,11 +64,45 @@ class SummaryViewModelTest {
         fakeRepository = FakeTransactionRepository()
         fakeSelectedMonth = FakeSelectedMonthRepository()
         fakeBudgetPreferences = FakeBudgetPreferences()
+        fakeCurrencyPreferences = FakeCurrencyPreferenceRepository(initialCurrency = "VND")
+        fakeInsightsCollapse = FakeInsightsCollapsePreferences()
+        // 2026-03-15T12:00:00Z matches the fixedClock used by DateRangeCalculator.
+        fakeTimeProvider = FakeTimeProvider(currentMillis = 1773921600000L)
         dateRangeCalculator = DateRangeCalculator(fixedClock, fixedZone)
     }
 
     private fun createViewModel(): SummaryViewModel =
-        SummaryViewModel(fakeRepository, fakeSelectedMonth, dateRangeCalculator, fakeBudgetPreferences)
+        SummaryViewModel(
+            transactionRepository = fakeRepository,
+            selectedMonthRepository = fakeSelectedMonth,
+            dateRangeCalculator = dateRangeCalculator,
+            budgetPreferences = fakeBudgetPreferences,
+            currencyPreferenceRepository = fakeCurrencyPreferences,
+            insightsCollapsePreferences = fakeInsightsCollapse,
+            currencyFormatter = fakeFormatter,
+            timeProvider = fakeTimeProvider,
+            zoneId = fixedZone,
+            ioDispatcher = mainDispatcherRule.testDispatcher,
+        )
+
+    private val fakeFormatter =
+        object : CurrencyFormatter {
+            override fun format(
+                amountMinor: Long,
+                currencyCode: String,
+            ): String = "$amountMinor $currencyCode"
+
+            override fun formatWithSign(
+                amountMinor: Long,
+                currencyCode: String,
+                isIncome: Boolean,
+            ): String = (if (isIncome) "+" else "-") + format(amountMinor, currencyCode)
+
+            override fun formatBareAmount(
+                amountMinor: Long,
+                currencyCode: String,
+            ): String = amountMinor.toString()
+        }
 
     @Test
     fun init_loadsSummary() =
@@ -608,11 +652,29 @@ class SummaryViewModelTest {
         var lastFrom: Long? = null
         var lastTo: Long? = null
 
+        // Insights tests inject transactions per range; key = "from-to".
+        val expensesByRange: MutableMap<Pair<Long, Long>, MutableStateFlow<List<Transaction>>> =
+            mutableMapOf()
+        var observeTransactionsShouldThrow = false
+
         override fun observeTransactions(
             from: Long,
             to: Long,
             filterType: TransactionType?,
-        ): Flow<List<Transaction>> = flow { emit(emptyList()) }
+        ): Flow<List<Transaction>> {
+            if (observeTransactionsShouldThrow) {
+                return flow { throw RuntimeException("observeTransactions failed") }
+            }
+            return expensesByRange.getOrPut(from to to) { MutableStateFlow(emptyList()) }
+        }
+
+        fun setExpenses(
+            from: Long,
+            to: Long,
+            transactions: List<Transaction>,
+        ) {
+            expensesByRange.getOrPut(from to to) { MutableStateFlow(emptyList()) }.value = transactions
+        }
 
         override suspend fun addTransaction(
             type: TransactionType,
@@ -667,6 +729,208 @@ class SummaryViewModelTest {
             categoryId: Long?,
         ): Flow<List<Transaction>> = MutableStateFlow(emptyList())
     }
+
+    private class FakeInsightsCollapsePreferences : InsightsCollapsePreferences {
+        private val state = MutableStateFlow(false)
+
+        override val collapsed: Flow<Boolean> = state
+
+        override suspend fun setCollapsed(value: Boolean) {
+            state.value = value
+        }
+    }
+
+    // --- Task 2.8 / 2.16: insightsState pipeline ---
+
+    private val marchStart = 1772323200000L // 2026-03-01T00:00:00Z
+    private val marchEnd = 1775001600000L // 2026-04-01T00:00:00Z
+    private val februaryStart = 1769904000000L // 2026-02-01T00:00:00Z
+    private val februaryEnd = marchStart
+
+    private val foodCategory =
+        Category(
+            id = 1L,
+            name = "Food",
+            type = TransactionType.EXPENSE,
+            iconKey = "restaurant",
+            colorKey = "red",
+            isDefault = true,
+        )
+
+    private fun vndExpense(
+        id: Long,
+        amount: Long,
+        timestamp: Long,
+    ): Transaction =
+        Transaction(
+            id = id,
+            type = TransactionType.EXPENSE,
+            amount = amount,
+            currencyCode = "VND",
+            category = foodCategory,
+            note = null,
+            timestamp = timestamp,
+            createdAt = timestamp,
+            updatedAt = timestamp,
+        )
+
+    @Test
+    fun insightsState_happyPath_emitsPopulatedWithPaceAndMover() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            // Current month (March 2026) has a Food txn pair; previous month
+            // (February 2026) has smaller Food pair. With a budget set, the
+            // engine should surface BiggestMover + DailyPace.
+            val marchMid = 1773921600000L // 2026-03-15
+            val febMid = 1771588800000L // 2026-02-20
+            fakeRepository.setExpenses(
+                from = marchStart,
+                to = marchEnd,
+                transactions =
+                    listOf(
+                        vndExpense(id = 1, amount = 300_000L, timestamp = marchMid),
+                        vndExpense(id = 2, amount = 300_000L, timestamp = marchMid),
+                    ),
+            )
+            fakeRepository.setExpenses(
+                from = februaryStart,
+                to = februaryEnd,
+                transactions =
+                    listOf(
+                        vndExpense(id = 3, amount = 100_000L, timestamp = febMid),
+                        vndExpense(id = 4, amount = 100_000L, timestamp = febMid),
+                    ),
+            )
+            fakeBudgetPreferences.setBudget("VND", 2_000_000L)
+            fakeRepository.summaryToEmit = TestData.sampleMonthlySummary
+
+            val viewModel = createViewModel()
+
+            viewModel.insightsState.test {
+                // Initial Loading → eventually Populated after debounce settles.
+                assertEquals(InsightsUiState.Loading, awaitItem())
+                advanceTimeBy(250) // clear the 200ms debounce window
+                val populated = awaitItem() as InsightsUiState.Populated
+                val rows = populated.result.rows
+                assertTrue(rows.any { it is InsightRow.BiggestMover })
+                assertTrue(rows.any { it is InsightRow.DailyPace })
+                assertFalse(populated.isCollapsed)
+                cancelAndIgnoreRemainingEvents()
+            }
+        }
+
+    @Test
+    fun insightsState_collapsePreferenceFlip_propagatesAsIsCollapsedTrue() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            val marchMid = 1773921600000L
+            fakeRepository.setExpenses(
+                from = marchStart,
+                to = marchEnd,
+                transactions = listOf(vndExpense(id = 1, amount = 500_000L, timestamp = marchMid)),
+            )
+
+            val viewModel = createViewModel()
+
+            viewModel.insightsState.test {
+                assertEquals(InsightsUiState.Loading, awaitItem())
+                advanceTimeBy(250)
+                val first = awaitItem() as InsightsUiState.Populated
+                assertFalse(first.isCollapsed)
+
+                viewModel.setInsightsCollapsed(true)
+                advanceTimeBy(250)
+
+                val second = awaitItem() as InsightsUiState.Populated
+                assertTrue(second.isCollapsed)
+                // Content didn't change — only the collapse flag did.
+                assertEquals(first.result, second.result)
+                cancelAndIgnoreRemainingEvents()
+            }
+        }
+
+    @Test
+    fun insightsState_yearMode_emitsHidden() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            fakeRepository.summaryToEmit = TestData.sampleMonthlySummary
+            val viewModel = createViewModel()
+
+            viewModel.insightsState.test {
+                assertEquals(InsightsUiState.Loading, awaitItem())
+                // Switch to YEAR before the initial debounce completes.
+                viewModel.setMode(SummaryMode.YEAR)
+                advanceUntilIdle()
+                // Drain any interim emissions until we land on Hidden.
+                var latest = awaitItem()
+                while (latest !is InsightsUiState.Hidden) {
+                    latest = awaitItem()
+                }
+                assertEquals(InsightsUiState.Hidden, latest)
+                cancelAndIgnoreRemainingEvents()
+            }
+        }
+
+    @Test
+    fun insightsState_repositoryThrows_emitsError() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            fakeRepository.observeTransactionsShouldThrow = true
+            val viewModel = createViewModel()
+
+            viewModel.insightsState.test {
+                assertEquals(InsightsUiState.Loading, awaitItem())
+                advanceTimeBy(250)
+                assertEquals(InsightsUiState.Error, awaitItem())
+                cancelAndIgnoreRemainingEvents()
+            }
+        }
+
+    @Test
+    fun insightsState_bulkEmissions_debouncedToSingleResult() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            val marchMid = 1773921600000L
+            // Seed one baseline txn so the first Populated emission has real content.
+            fakeRepository.setExpenses(
+                from = marchStart,
+                to = marchEnd,
+                transactions = listOf(vndExpense(id = 1, amount = 100_000L, timestamp = marchMid)),
+            )
+
+            val viewModel = createViewModel()
+
+            viewModel.insightsState.test {
+                assertEquals(InsightsUiState.Loading, awaitItem())
+                advanceTimeBy(250)
+                awaitItem() // first Populated after baseline
+
+                // Fire 10 rapid updates within the 200ms debounce window. A
+                // naïve (un-debounced) pipeline would emit 10 times; we expect
+                // at most ONE emission after settling.
+                repeat(10) { i ->
+                    fakeRepository.setExpenses(
+                        from = marchStart,
+                        to = marchEnd,
+                        transactions =
+                            listOf(
+                                vndExpense(id = 1, amount = 100_000L + (i + 1) * 1_000L, timestamp = marchMid),
+                            ),
+                    )
+                    advanceTimeBy(10) // 10ms per update; total 100ms << 200ms debounce
+                }
+                // Settle the debounce window.
+                advanceTimeBy(300)
+
+                val coalesced = awaitItem() as InsightsUiState.Populated
+                // Only the FINAL emission should reach the downstream state.
+                // Last amount was 100_000 + 10 * 1_000 = 110_000.
+                assertEquals(
+                    110_000L,
+                    fakeRepository.expensesByRange[marchStart to marchEnd]!!
+                        .value[0]
+                        .amount,
+                )
+                assertNotNull(coalesced.result)
+                expectNoEvents()
+                cancelAndIgnoreRemainingEvents()
+            }
+        }
 
     private class StubCategoryRepository : CategoryRepository {
         override fun observeCategories(type: TransactionType): Flow<List<Category>> = flow { emit(emptyList()) }
