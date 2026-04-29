@@ -33,6 +33,8 @@ import androidx.compose.ui.unit.dp
 import dev.tuandoan.expensetracker.R
 import dev.tuandoan.expensetracker.domain.insights.InsightRow
 import dev.tuandoan.expensetracker.ui.theme.DesignSystemSpacing
+import java.text.NumberFormat
+import java.util.Locale
 import kotlin.math.absoluteValue
 
 /**
@@ -113,6 +115,8 @@ private fun DeltaChip(
             MaterialTheme.colorScheme.onSecondaryContainer
         }
 
+    val formattedPercent = formatPercent(percent, Locale.getDefault())
+
     Box(
         modifier =
             Modifier
@@ -123,7 +127,7 @@ private fun DeltaChip(
                 ),
     ) {
         Text(
-            text = stringResource(format, percent),
+            text = stringResource(format, formattedPercent),
             style = MaterialTheme.typography.labelMedium,
             color = fg,
         )
@@ -155,8 +159,9 @@ private fun InsightRow.icon(): ImageVector =
         InsightRow.Error -> Icons.Outlined.ErrorOutline
     }
 
-private fun InsightRow.headline(context: android.content.Context): String =
-    when (this) {
+private fun InsightRow.headline(context: android.content.Context): String {
+    val locale = Locale.getDefault()
+    return when (this) {
         is InsightRow.BiggestMover -> {
             val format =
                 if (direction == InsightRow.Direction.UP) {
@@ -167,7 +172,7 @@ private fun InsightRow.headline(context: android.content.Context): String =
             context.getString(
                 format,
                 categoryName,
-                percentChange.absoluteValue,
+                formatPercent(percentChange.absoluteValue, locale),
                 previousFormatted,
                 currentFormatted,
             )
@@ -213,14 +218,14 @@ private fun InsightRow.headline(context: android.content.Context): String =
                         R.string.insights_day_of_month_up_format,
                         dayOfMonth,
                         currentFormatted,
-                        pct.absoluteValue,
+                        formatPercent(pct.absoluteValue, locale),
                     )
                 else ->
                     context.getString(
                         R.string.insights_day_of_month_down_format,
                         dayOfMonth,
                         currentFormatted,
-                        pct.absoluteValue,
+                        formatPercent(pct.absoluteValue, locale),
                     )
             }
         }
@@ -230,6 +235,19 @@ private fun InsightRow.headline(context: android.content.Context): String =
                 context.getString(R.string.insights_empty_subtitle)
         InsightRow.Error -> context.getString(R.string.insights_error_title)
     }
+}
+
+/**
+ * Locale-aware percent renderer (PRD FR-03 via Task 2.12). Takes the engine's
+ * integer percent (e.g. `5` for "5%") and delegates formatting to
+ * `NumberFormat.getPercentInstance(locale)` so we get `"5%"` in en-US,
+ * `"5 %"` in some fr variants, etc. Passed as a fraction (`0.05`) because
+ * `NumberFormat`'s percent mode expects the multiplier, not the display digit.
+ */
+internal fun formatPercent(
+    percent: Int,
+    locale: Locale,
+): String = NumberFormat.getPercentInstance(locale).format(percent / 100.0)
 
 private fun InsightRow.deltaChipData(): DeltaChipData? =
     when (this) {

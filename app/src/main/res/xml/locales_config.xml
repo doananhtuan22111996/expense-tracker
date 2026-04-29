@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Supported app locales. Declared so the system language picker
+     (Android 13+, per-app language Settings) knows which locales the app
+     actually ships UI strings for. -->
+<locale-config xmlns:android="http://schemas.android.com/apk/res/android">
+    <locale android:name="en-US" />
+    <locale android:name="vi-VN" />
+</locale-config>
