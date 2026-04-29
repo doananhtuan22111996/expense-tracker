@@ -768,6 +768,40 @@ class InsightsEngineTest {
     }
 
     @Test
+    fun dayOfMonth_currentZeroWithPriorSpend_emitsMinus100PercentDown() {
+        // Symmetric to the previous-month-zero fallback: user hasn't spent
+        // anything yet this month, but prior month through day 15 was non-zero.
+        // Expected: delta = -prevSpend, percent = -100, direction = DOWN.
+        // This guards against a future refactor that accidentally short-circuits
+        // on currSpend == 0 and loses the "you're down 100% from last month"
+        // narrative.
+        val current =
+            listOf(
+                // After today=15 → filtered out; current window sums to 0.
+                expenseOnDay(id = 1, amount = 500_000L, year = 2026, month = 4, day = 20),
+            )
+        val previous =
+            listOf(expenseOnDay(id = 2, amount = 300_000L, year = 2026, month = 3, day = 10))
+
+        val result =
+            computeInsights(
+                currentMonthExpenses = current,
+                previousMonthExpenses = previous,
+                defaultCurrencyCode = "VND",
+                budgetStatus = null,
+                nowMillis = nowMillis,
+                zoneId = zone,
+                formatter = fakeFormatter,
+            )
+
+        val row = result.rows.filterIsInstance<InsightRow.DayOfMonth>().single()
+        assertEquals("0 VND", row.currentFormatted)
+        assertEquals(15, row.dayOfMonth)
+        assertEquals(-100, row.percentChange)
+        assertEquals(InsightRow.Direction.DOWN, row.direction)
+    }
+
+    @Test
     fun dayOfMonth_bothWindowsZero_rowSuppressed() {
         // Curr-month txn AFTER day 15, prev-month txn AFTER day 15 → both sums = 0.
         // No narrative to tell. The row is suppressed (but the other slots —
