@@ -533,4 +533,40 @@
     <string name="widget_preview_budget_progress">$456 / $1,000</string>
     <string name="widget_preview_budget_percent">45%</string>
     <string name="widget_preview_add_button">+</string>
+
+    <!-- Summary tab — Insights section (PRD v3.10.0 FR-01 through FR-21). Display-only
+         copy; percentages and amounts arrive pre-formatted from the InsightsEngine. -->
+    <string name="insights_section_title">Insights</string>
+    <string name="insights_collapse_expand">Expand insights</string>
+    <string name="insights_collapse_collapse">Collapse insights</string>
+
+    <!-- Biggest mover row. %1$s = category name, %2$d = absolute percent, %3$s = previous amount, %4$s = current amount. -->
+    <string name="insights_biggest_mover_up_format">%1$s: up %2$d%% (%3$s → %4$s)</string>
+    <string name="insights_biggest_mover_down_format">%1$s: down %2$d%% (%3$s → %4$s)</string>
+
+    <!-- Daily pace row. %1$s = projected total, %2$s = difference amount (on OVER/UNDER), %3$s = budget total. -->
+    <string name="insights_daily_pace_on_pace_format">Pacing to spend %1$s — right on budget</string>
+    <string name="insights_daily_pace_over_format">Pacing to exceed your %3$s budget by %2$s</string>
+    <string name="insights_daily_pace_under_format">Pacing %2$s under your %3$s budget</string>
+
+    <!-- No-budget fallback. %1$s = month spend, %2$s = daily average. -->
+    <string name="insights_no_budget_fallback_format">Spent %1$s this month, about %2$s/day</string>
+
+    <!-- Day-of-month row. %1$d = day number, %2$s = current spend, %3$d = absolute percent. -->
+    <string name="insights_day_of_month_up_format">By day %1$d: %2$s — up %3$d%% vs last month</string>
+    <string name="insights_day_of_month_down_format">By day %1$d: %2$s — down %3$d%% vs last month</string>
+    <string name="insights_day_of_month_neutral_format">By day %1$d, you\'ve spent %2$s so far this month</string>
+
+    <!-- Empty / error states. -->
+    <string name="insights_empty_title">Keep logging</string>
+    <string name="insights_empty_subtitle">Insights appear after about a month of data</string>
+    <string name="insights_error_title">Insights unavailable</string>
+
+    <!-- Delta chip. %1$d = absolute percent. -->
+    <string name="insights_delta_up_format">↑ %1$d%%</string>
+    <string name="insights_delta_down_format">↓ %1$d%%</string>
+
+    <!-- Accessibility — row container description. %1$s = full row text. -->
+    <string name="a11y_insights_row">%1$s</string>
+    <string name="a11y_insights_loading">Loading insights</string>
 </resources>

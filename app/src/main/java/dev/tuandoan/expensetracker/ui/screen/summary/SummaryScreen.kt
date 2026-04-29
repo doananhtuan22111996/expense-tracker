@@ -73,6 +73,7 @@ fun SummaryScreen(
     bottomContentPadding: Dp = 0.dp,
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val insightsState by viewModel.insightsState.collectAsStateWithLifecycle()
     var showMonthPicker by remember { mutableStateOf(false) }
     var showBudgetDialog by remember { mutableStateOf<String?>(null) }
 
@@ -179,6 +180,7 @@ fun SummaryScreen(
                         SummaryContent(
                             summary = summary,
                             uiState = uiState,
+                            insightsState = insightsState,
                             onModeChanged = viewModel::setMode,
                             onPreviousMonth = viewModel::goToPreviousMonth,
                             onNextMonth = viewModel::goToNextMonth,
@@ -192,6 +194,7 @@ fun SummaryScreen(
                                     month,
                                 )
                             },
+                            onToggleInsightsCollapse = viewModel::setInsightsCollapsed,
                             contentPadding = PaddingValues(bottom = bottomContentPadding),
                             modifier = Modifier.fillMaxSize(),
                         )
@@ -278,6 +281,7 @@ private fun PeriodSelector(
 private fun SummaryContent(
     summary: MonthlySummary,
     uiState: SummaryUiState,
+    insightsState: InsightsUiState,
     onModeChanged: (SummaryMode) -> Unit,
     onPreviousMonth: () -> Unit,
     onNextMonth: () -> Unit,
@@ -286,6 +290,7 @@ private fun SummaryContent(
     onMonthLabelClick: () -> Unit,
     onBudgetTap: (String) -> Unit,
     onMonthTapped: ((Int) -> Unit)? = null,
+    onToggleInsightsCollapse: (Boolean) -> Unit = {},
     contentPadding: PaddingValues = PaddingValues(),
     modifier: Modifier = Modifier,
 ) {
@@ -293,6 +298,7 @@ private fun SummaryContent(
     LazyColumn(
         contentPadding = contentPadding,
         modifier = modifier.padding(horizontal = DesignSystemSpacing.screenPadding),
+        verticalArrangement = Arrangement.spacedBy(DesignSystemSpacing.medium),
     ) {
         item(key = "mode_chips") {
             SummaryModeChips(
@@ -310,6 +316,15 @@ private fun SummaryContent(
                 onNextYear = onNextYear,
                 onMonthLabelClick = onMonthLabelClick,
             )
+        }
+
+        if (insightsState !is InsightsUiState.Hidden) {
+            item(key = "insights_section") {
+                InsightsSection(
+                    state = insightsState,
+                    onToggleCollapse = onToggleInsightsCollapse,
+                )
+            }
         }
 
         item(key = "disclaimer") {
