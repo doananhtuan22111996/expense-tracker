@@ -1,6 +1,6 @@
 package dev.tuandoan.expensetracker.ui.screen.onboarding
 
-import dev.tuandoan.expensetracker.data.preferences.FakeOnboardingRepository
+import dev.tuandoan.expensetracker.testutil.FakeOnboardingRepository
 import dev.tuandoan.expensetracker.testutil.MainDispatcherRule
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.first

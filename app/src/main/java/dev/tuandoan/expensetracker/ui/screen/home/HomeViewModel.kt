@@ -6,6 +6,8 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import dev.tuandoan.expensetracker.core.util.DateRangeCalculator
 import dev.tuandoan.expensetracker.core.util.ErrorUtils
 import dev.tuandoan.expensetracker.core.util.UiText
+import dev.tuandoan.expensetracker.data.preferences.AnalyticsPreferences
+import dev.tuandoan.expensetracker.data.preferences.OnboardingRepository
 import dev.tuandoan.expensetracker.domain.model.Category
 import dev.tuandoan.expensetracker.domain.model.SearchScope
 import dev.tuandoan.expensetracker.domain.model.Transaction
@@ -44,6 +46,8 @@ class HomeViewModel
         private val categoryRepository: CategoryRepository,
         private val dateRangeCalculator: DateRangeCalculator,
         private val searchFilterPreferences: SearchFilterPreferences,
+        private val analyticsPreferences: AnalyticsPreferences,
+        private val onboardingRepository: OnboardingRepository,
     ) : ViewModel() {
         private val _uiState = MutableStateFlow(HomeUiState())
         val uiState: StateFlow<HomeUiState> = _uiState.asStateFlow()
@@ -64,6 +68,44 @@ class HomeViewModel
                 .observeCategories(TransactionType.INCOME)
                 .catch { emit(emptyList()) }
                 .stateIn(viewModelScope, SharingStarted.WhileSubscribed(STOP_TIMEOUT_MS), emptyList())
+
+        /**
+         * Drives the one-shot post-onboarding crash-reporting consent dialog
+         * (v3.11.0, ADR-008). True only when onboarding has finished AND the
+         * user has not yet resolved the prompt (either accepted or declined).
+         *
+         * On cold start, `isOnboardingComplete` emits `false` first (default
+         * before DataStore resolves), then its persisted value — so this flow
+         * naturally reads `false` during the loading race and flips only once
+         * both prefs are settled. No extra `LaunchedEffect` gate needed.
+         */
+        val shouldShowConsentPrompt: StateFlow<Boolean> =
+            combine(
+                analyticsPreferences.consentPromptShown,
+                onboardingRepository.isOnboardingComplete,
+            ) { shown, onboardingDone ->
+                !shown && onboardingDone
+            }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(STOP_TIMEOUT_MS), false)
+
+        /** User tapped "Yes, share crash reports" in the consent dialog. */
+        fun onConsentAccepted() {
+            viewModelScope.launch {
+                analyticsPreferences.setAnalyticsConsent(true)
+                analyticsPreferences.setConsentPromptShown(true)
+            }
+        }
+
+        /**
+         * User tapped "No thanks", swiped back, or tapped outside the dialog.
+         * Consent stays at its default `false`; only mark the prompt shown so
+         * we don't re-ask on every launch (ADR-008: ambiguous dismissals
+         * resolve to the privacy-safe default).
+         */
+        fun onConsentDeclined() {
+            viewModelScope.launch {
+                analyticsPreferences.setConsentPromptShown(true)
+            }
+        }
 
         init {
             viewModelScope.launch {

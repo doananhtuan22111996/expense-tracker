@@ -87,6 +87,7 @@ import dev.tuandoan.expensetracker.domain.model.SearchScope
 import dev.tuandoan.expensetracker.domain.model.Transaction
 import dev.tuandoan.expensetracker.domain.model.TransactionType
 import dev.tuandoan.expensetracker.ui.component.AmountText
+import dev.tuandoan.expensetracker.ui.component.ConsentPromptDialog
 import dev.tuandoan.expensetracker.ui.component.EmptyStateMessage
 import dev.tuandoan.expensetracker.ui.component.ErrorStateMessage
 import dev.tuandoan.expensetracker.ui.component.MonthSelector
@@ -108,6 +109,7 @@ fun HomeScreen(
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val expenseCategories by viewModel.expenseCategories.collectAsStateWithLifecycle()
     val incomeCategories by viewModel.incomeCategories.collectAsStateWithLifecycle()
+    val showConsentPrompt by viewModel.shouldShowConsentPrompt.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
     var showMonthPicker by remember { mutableStateOf(false) }
     var isSearchActive by remember { mutableStateOf(false) }
@@ -148,6 +150,13 @@ fun HomeScreen(
             currentSelection = viewModel.currentSelectedMonth(),
             onMonthSelected = { viewModel.setMonth(it) },
             onDismiss = { showMonthPicker = false },
+        )
+    }
+
+    if (showConsentPrompt) {
+        ConsentPromptDialog(
+            onAccept = viewModel::onConsentAccepted,
+            onDecline = viewModel::onConsentDeclined,
         )
     }
 
