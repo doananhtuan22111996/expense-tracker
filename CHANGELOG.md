@@ -1,6 +1,6 @@
 # Changelog
 
-## [Unreleased]
+## [3.10.0] - 2026-05-02
 
 ### Added
 - Glance + Compose widget dependencies in the version catalog (`androidx.glance:glance-appwidget` 1.1.1, `androidx.glance:glance-material3` 1.1.1) — declaration only; no widget code or manifest wiring yet
