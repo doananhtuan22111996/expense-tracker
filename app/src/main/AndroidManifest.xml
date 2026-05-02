@@ -14,6 +14,14 @@
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
         android:theme="@style/Theme.ExpenseTracker">
+
+        <!-- Firebase Crashlytics: disabled at the SDK level by default (v3.11.0 / ADR-010).
+             Runtime enable happens after explicit user consent via AnalyticsPreferences
+             (Task 1.5). This covers the ~100ms init race before consent is wired. -->
+        <meta-data
+            android:name="firebase_crashlytics_collection_enabled"
+            android:value="false" />
+
         <activity
             android:name=".MainActivity"
             android:exported="true"

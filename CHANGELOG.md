@@ -1,5 +1,14 @@
 # Changelog
 
+## [Unreleased]
+
+### Added
+- Firebase BoM (`34.5.0`) + Crashlytics SDK declared in the version catalog and applied as a `releaseImplementation` in the `:app` module — foundation for v3.11.0's opt-in crash reporting. Wired behind the `google-services` (`4.4.3`) + `firebase-crashlytics` (`3.0.6`) Gradle plugins. Runtime consent wiring, real `CrashReporter` impl, and DI split land in subsequent PRs (Tasks 1.3 / 1.4 / 1.5).
+- Manifest flag `firebase_crashlytics_collection_enabled=false` as the SDK-level default — guards the ~100ms init race before runtime consent is wired, so pre-consent crashes cannot leak.
+
+### Changed
+- CI workflow (`build.yml`) now synthesises `app/google-services.json` from a base64 `GOOGLE_SERVICE_FILE` secret at build time. The file remains `.gitignore`d locally (same pattern as `keystore.jks`). Supersedes ADR-009's initial "commit to repo" recommendation — same outcome (public identifier, not secret), cleaner repo.
+
 ## [3.10.0] - 2026-05-02
 
 ### Added

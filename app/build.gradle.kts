@@ -9,6 +9,8 @@ plugins {
     alias(libs.plugins.ksp)
     alias(libs.plugins.hilt)
     alias(libs.plugins.kotlin.serialization)
+    alias(libs.plugins.google.services)
+    alias(libs.plugins.firebase.crashlytics)
 }
 
 android {
@@ -141,6 +143,13 @@ dependencies {
     // Glance (home screen widget)
     implementation(libs.androidx.glance.appwidget)
     implementation(libs.androidx.glance.material3)
+
+    // Firebase — Crashlytics (v3.11.0). BoM pins transitive versions.
+    // Runtime collection is gated by AnalyticsPreferences + FirebaseCrashReporterImpl
+    // (Tasks 1.3–1.5). Manifest flag firebase_crashlytics_collection_enabled=false is the
+    // SDK-level default for pre-consent crashes.
+    implementation(platform(libs.firebase.bom))
+    releaseImplementation(libs.firebase.crashlytics)
 
     testImplementation(libs.junit)
     testImplementation(libs.mockito.core)
