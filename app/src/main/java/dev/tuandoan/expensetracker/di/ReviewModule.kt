@@ -12,13 +12,16 @@ import dev.tuandoan.expensetracker.data.preferences.InsightsCollapsePreferences
 import dev.tuandoan.expensetracker.data.preferences.InsightsCollapsePreferencesImpl
 import dev.tuandoan.expensetracker.data.preferences.ReviewPreferences
 import dev.tuandoan.expensetracker.data.preferences.ReviewPreferencesImpl
-import dev.tuandoan.expensetracker.domain.crash.CrashReporter
-import dev.tuandoan.expensetracker.domain.crash.NoOpCrashReporter
 import dev.tuandoan.expensetracker.domain.review.InAppReviewManager
 import dev.tuandoan.expensetracker.domain.review.InAppReviewManagerImpl
 
 /**
- * Hilt module that provides bindings for review, analytics, and crash reporting.
+ * Hilt module that provides bindings for review, analytics, and backup-encryption preferences.
+ *
+ * The `CrashReporter` binding moved to source-set-specific modules (see
+ * `src/debug/di/CrashReporterModule.kt` + `src/release/di/CrashReporterModule.kt`)
+ * per ADR-010 — debug builds bind `NoOpCrashReporter`, release builds bind
+ * `FirebaseCrashReporterImpl`.
  */
 @Module
 @InstallIn(SingletonComponent::class)
@@ -37,7 +40,4 @@ abstract class ReviewModule {
 
     @Binds
     abstract fun bindInsightsCollapsePreferences(impl: InsightsCollapsePreferencesImpl): InsightsCollapsePreferences
-
-    @Binds
-    abstract fun bindCrashReporter(impl: NoOpCrashReporter): CrashReporter
 }
