@@ -1,0 +1,5 @@
+Mới trong v3.10:
+
+• Widget màn hình chính — xem chi tiêu hôm nay, tổng tháng này và tiến độ ngân sách ngay lập tức. Chạm + để mở nhanh màn hình thêm giao dịch.
+• Thông tin chi tiêu trên tab Tổng quan — danh mục thay đổi nhiều nhất, tốc độ chi so với ngân sách, so sánh tháng trước.
+• Material You cho widget; TalkBack thông báo mượt mà hơn.

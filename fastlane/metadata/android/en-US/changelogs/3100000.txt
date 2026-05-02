@@ -1,0 +1,5 @@
+What's new in v3.10:
+
+• Home-screen widget — see today's spend, this month's total, and budget progress at a glance. Tap + to jump straight into Add Transaction.
+• Spending Insights on the Summary tab — biggest category changes, daily pace vs. budget, and month-over-month trends.
+• Material You dynamic color on the widget; smoother TalkBack announcements.
