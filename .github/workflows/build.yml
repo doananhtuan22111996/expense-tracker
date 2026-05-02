@@ -39,7 +39,12 @@ jobs:
 
       - name: Create google service file from base64
         run: |
-          echo $GOOGLE_SERVICE_FILE | base64 -d > ./app/google-services.json
+          set -euo pipefail
+          if [ -z "${GOOGLE_SERVICE_FILE:-}" ]; then
+            echo "::error::GOOGLE_SERVICE_FILE secret not set"
+            exit 1
+          fi
+          printf '%s' "$GOOGLE_SERVICE_FILE" | base64 --decode > ./app/google-services.json
 
       - name: Run spotlessCheck
         run: ./gradlew spotlessCheck

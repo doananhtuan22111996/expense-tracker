@@ -145,10 +145,13 @@ dependencies {
     implementation(libs.androidx.glance.material3)
 
     // Firebase — Crashlytics (v3.11.0). BoM pins transitive versions.
-    // Runtime collection is gated by AnalyticsPreferences + FirebaseCrashReporterImpl
-    // (Tasks 1.3–1.5). Manifest flag firebase_crashlytics_collection_enabled=false is the
-    // SDK-level default for pre-consent crashes.
-    implementation(platform(libs.firebase.bom))
+    // Both BoM and SDK are releaseImplementation: debug builds never see Firebase
+    // classes in their classpath, enforcing ADR-010's "debug suppresses collection"
+    // as a physical rather than a logical guarantee. Runtime collection is further
+    // gated by AnalyticsPreferences + FirebaseCrashReporterImpl (Tasks 1.3–1.5);
+    // manifest flag firebase_crashlytics_collection_enabled=false is the SDK-level
+    // default for pre-consent crashes.
+    releaseImplementation(platform(libs.firebase.bom))
     releaseImplementation(libs.firebase.crashlytics)
 
     testImplementation(libs.junit)

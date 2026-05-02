@@ -151,3 +151,6 @@
     java.lang.Object writeReplace();
     java.lang.Object readResolve();
 }
+
+# This is generated automatically by the Android Gradle plugin.
+-dontwarn com.google.android.gms.common.annotation.NoNullnessRewrite
