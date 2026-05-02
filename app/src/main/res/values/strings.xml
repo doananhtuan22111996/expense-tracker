@@ -156,19 +156,9 @@
     <string name="debug_panel_trigger_crash">Trigger test crash</string>
     <string name="a11y_debug_panel_back">Close debug panel</string>
 
-    <!-- Post-onboarding consent prompt (v3.11.0). Shown once after the user
-         completes onboarding; resolves to either consent ON + suppress future
-         prompts, or consent OFF + suppress future prompts (back-gesture and
-         outside-tap both count as decline). See ADR-008. -->
-    <string name="consent_prompt_title">Help make the app more reliable</string>
-    <string name="consent_prompt_body">We\'d like to send anonymous crash reports when the app crashes — stack traces only, nothing else.\n\nWe never send your transactions, category names, notes, or any information that could identify you.\n\nYou can change this anytime in Settings.</string>
-    <string name="consent_prompt_yes">Yes, share crash reports</string>
-    <string name="consent_prompt_no">No thanks</string>
-
     <!-- Post-onboarding consent prompt v2 (v3.11.0 + Analytics, ADR-011).
-         Dual-checkbox variant. Replaces v1 strings above for fresh installs
-         once Task 5.6 rewires HomeScreen. v1 strings remain for the 5.6
-         transition and are removed in v3.12 per the Design doc. -->
+         Dual-checkbox variant; the single-question v1 dialog from PR #105
+         was deleted by Task 5.6 when HomeScreen swapped to the bundled flow. -->
     <string name="consent_prompt_v2_title">Help make the app better</string>
     <string name="consent_prompt_v2_intro">Expense Tracker is private by default. If you\'d like to help me fix bugs and understand which features matter, you can share these anonymously.\n\nNeither option is required.</string>
     <string name="consent_prompt_crash_title">Share anonymous crash reports</string>

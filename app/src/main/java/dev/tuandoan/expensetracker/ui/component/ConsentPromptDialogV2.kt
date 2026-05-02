@@ -32,11 +32,12 @@ import dev.tuandoan.expensetracker.ui.theme.DesignSystemSpacing
 
 /**
  * Post-onboarding consent dialog, dual-checkbox variant (v3.11.0, ADR-011).
+ * Shown on fresh installs via `HomeScreen`'s branch on
+ * [dev.tuandoan.expensetracker.ui.screen.home.ConsentPromptVariant.Main].
  *
- * Replaces the single-question [ConsentPromptDialog] from PR #105 for fresh
- * installs once Task 5.6 rewires `HomeScreen` to branch on the four-key
- * consent state. Until then this composable is defined but not yet mounted;
- * keeping the old dialog in place lets the prefs + tests land first.
+ * Replaces the single-question PR #105 `ConsentPromptDialog` that was
+ * removed by Task 5.6 when the bundled Crashlytics + Analytics consent
+ * flow landed.
  *
  * ### Resolution semantics
  *

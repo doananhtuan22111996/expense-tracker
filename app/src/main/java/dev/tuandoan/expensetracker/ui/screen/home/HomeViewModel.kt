@@ -70,40 +70,79 @@ class HomeViewModel
                 .stateIn(viewModelScope, SharingStarted.WhileSubscribed(STOP_TIMEOUT_MS), emptyList())
 
         /**
-         * Drives the one-shot post-onboarding crash-reporting consent dialog
-         * (v3.11.0, ADR-008). True only when onboarding has finished AND the
-         * user has not yet resolved the prompt (either accepted or declined).
+         * Drives the one-shot post-onboarding consent dialog (v3.11.0,
+         * ADR-008 + ADR-011). The variant depends on which prompt(s) the
+         * user has already resolved:
+         *
+         * - [ConsentPromptVariant.None] — onboarding not finished yet, OR
+         *   both `*PromptShown` flags already `true`. No dialog.
+         * - [ConsentPromptVariant.Main] — onboarding done and the Crashlytics
+         *   prompt has never been shown. Covers fresh installs (both
+         *   `*PromptShown` false); the main dual-checkbox dialog asks both
+         *   questions at once.
+         * - [ConsentPromptVariant.AnalyticsOnly] — onboarding done, the
+         *   Crashlytics prompt was already resolved in a pre-bundle v3.11.0
+         *   preview (`consentPromptShown = true`), but the Analytics
+         *   question is new (`analyticsEventsPromptShown = false`). ADR-011
+         *   says preserve prior consent, ask only the new question.
          *
          * On cold start, `isOnboardingComplete` emits `false` first (default
-         * before DataStore resolves), then its persisted value — so this flow
-         * naturally reads `false` during the loading race and flips only once
-         * both prefs are settled. No extra `LaunchedEffect` gate needed.
+         * before DataStore resolves), then its persisted value — so this
+         * flow naturally reads `None` during the loading race and flips
+         * only once all prefs are settled. No extra `LaunchedEffect` gate.
          */
-        val shouldShowConsentPrompt: StateFlow<Boolean> =
+        val consentPromptVariant: StateFlow<ConsentPromptVariant> =
             combine(
                 analyticsPreferences.consentPromptShown,
+                analyticsPreferences.analyticsEventsPromptShown,
                 onboardingRepository.isOnboardingComplete,
-            ) { shown, onboardingDone ->
-                !shown && onboardingDone
-            }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(STOP_TIMEOUT_MS), false)
+            ) { crashShown, analyticsShown, onboardingDone ->
+                when {
+                    !onboardingDone -> ConsentPromptVariant.None
+                    !crashShown -> ConsentPromptVariant.Main
+                    !analyticsShown -> ConsentPromptVariant.AnalyticsOnly
+                    else -> ConsentPromptVariant.None
+                }
+            }.stateIn(
+                viewModelScope,
+                SharingStarted.WhileSubscribed(STOP_TIMEOUT_MS),
+                ConsentPromptVariant.None,
+            )
 
-        /** User tapped "Yes, share crash reports" in the consent dialog. */
-        fun onConsentAccepted() {
+        /**
+         * Called when the main dual-checkbox dialog dismisses — either via
+         * the "Done" button or a back-gesture / outside-tap (ADR-008:
+         * ambiguous dismissal resolves to the privacy-safe default, which
+         * is whatever the user currently has checked).
+         *
+         * Writes all four keys: the two `*Consent` booleans from the caller
+         * PLUS marks both `*PromptShown` flags `true` so the dialog does
+         * not re-appear.
+         */
+        fun onConsentsResolved(
+            crashAccepted: Boolean,
+            analyticsAccepted: Boolean,
+        ) {
             viewModelScope.launch {
-                analyticsPreferences.setAnalyticsConsent(true)
+                analyticsPreferences.setAnalyticsConsent(crashAccepted)
+                analyticsPreferences.setAnalyticsEventsConsent(analyticsAccepted)
                 analyticsPreferences.setConsentPromptShown(true)
+                analyticsPreferences.setAnalyticsEventsPromptShown(true)
             }
         }
 
         /**
-         * User tapped "No thanks", swiped back, or tapped outside the dialog.
-         * Consent stays at its default `false`; only mark the prompt shown so
-         * we don't re-ask on every launch (ADR-008: ambiguous dismissals
-         * resolve to the privacy-safe default).
+         * Called when the Analytics-only upgrade dialog dismisses. Touches
+         * only the Analytics pair — the prior Crashlytics choice
+         * (`analyticsConsent`) is intentionally not re-written, preserving
+         * whatever the user answered pre-bundle. This is the privacy
+         * invariant ADR-011 pins: upgrading a beta tester must not silently
+         * re-ask or reset their prior consent.
          */
-        fun onConsentDeclined() {
+        fun onAnalyticsOnlyResolved(analyticsAccepted: Boolean) {
             viewModelScope.launch {
-                analyticsPreferences.setConsentPromptShown(true)
+                analyticsPreferences.setAnalyticsEventsConsent(analyticsAccepted)
+                analyticsPreferences.setAnalyticsEventsPromptShown(true)
             }
         }
 
@@ -391,6 +430,19 @@ class HomeViewModel
             const val STOP_TIMEOUT_MS = 5000L
         }
     }
+
+/**
+ * Which consent dialog (if any) the home screen should render right now.
+ * Computed by [HomeViewModel.consentPromptVariant] from the four-key
+ * `AnalyticsPreferences` state + onboarding completion.
+ */
+sealed interface ConsentPromptVariant {
+    data object None : ConsentPromptVariant
+
+    data object Main : ConsentPromptVariant
+
+    data object AnalyticsOnly : ConsentPromptVariant
+}
 
 data class HomeUiState(
     val transactions: List<Transaction> = emptyList(),
