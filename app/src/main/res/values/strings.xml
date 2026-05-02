@@ -165,6 +165,26 @@
     <string name="consent_prompt_yes">Yes, share crash reports</string>
     <string name="consent_prompt_no">No thanks</string>
 
+    <!-- Post-onboarding consent prompt v2 (v3.11.0 + Analytics, ADR-011).
+         Dual-checkbox variant. Replaces v1 strings above for fresh installs
+         once Task 5.6 rewires HomeScreen. v1 strings remain for the 5.6
+         transition and are removed in v3.12 per the Design doc. -->
+    <string name="consent_prompt_v2_title">Help make the app better</string>
+    <string name="consent_prompt_v2_intro">Expense Tracker is private by default. If you\'d like to help me fix bugs and understand which features matter, you can share these anonymously.\n\nNeither option is required.</string>
+    <string name="consent_prompt_crash_title">Share anonymous crash reports</string>
+    <string name="consent_prompt_crash_description">Stack traces when the app crashes. Helps me fix bugs.</string>
+    <string name="consent_prompt_analytics_title">Share anonymous usage data</string>
+    <string name="consent_prompt_analytics_description">Which features you use (not what you entered). Helps me prioritize improvements.</string>
+    <string name="consent_prompt_footer">We never send your transactions, amounts, categories, or notes — regardless of your choice above.</string>
+    <string name="consent_prompt_done">Done</string>
+
+    <!-- Analytics-only variant (upgrade path, ADR-011). Shown to beta testers
+         who already resolved Crashlytics consent pre-bundle — asks only the
+         new Analytics question, leaves the existing Crashlytics choice intact.
+         Re-uses consent_prompt_analytics_title / _description / _footer / _done. -->
+    <string name="consent_prompt_analytics_only_title">One new option</string>
+    <string name="consent_prompt_analytics_only_intro">Version 3.11 adds an optional usage-analytics feature. Your existing crash-reporting choice is unchanged.</string>
+
     <!-- Cross-Promotion -->
     <string name="settings_more_apps">More Apps</string>
     <string name="cross_promo_task_tracker_name">Task Tracker</string>
