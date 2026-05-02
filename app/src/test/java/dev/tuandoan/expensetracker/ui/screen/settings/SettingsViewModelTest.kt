@@ -7,7 +7,6 @@ import dev.tuandoan.expensetracker.core.util.UiText
 import dev.tuandoan.expensetracker.data.backup.BackupCryptoException
 import dev.tuandoan.expensetracker.data.backup.BackupValidationError
 import dev.tuandoan.expensetracker.data.backup.BackupValidationException
-import dev.tuandoan.expensetracker.data.preferences.AnalyticsPreferences
 import dev.tuandoan.expensetracker.data.preferences.BackupEncryptionPreferences
 import dev.tuandoan.expensetracker.data.preferences.FakeBudgetAlertPreferences
 import dev.tuandoan.expensetracker.data.preferences.FakeThemePreferencesRepository
@@ -18,6 +17,7 @@ import dev.tuandoan.expensetracker.domain.model.SupportedCurrencies
 import dev.tuandoan.expensetracker.domain.repository.BackupRepository
 import dev.tuandoan.expensetracker.domain.repository.BackupRestoreResult
 import dev.tuandoan.expensetracker.domain.repository.RecurringTransactionRepository
+import dev.tuandoan.expensetracker.testutil.FakeAnalyticsPreferences
 import dev.tuandoan.expensetracker.testutil.FakeCurrencyPreferenceRepository
 import dev.tuandoan.expensetracker.testutil.MainDispatcherRule
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -1168,15 +1168,6 @@ class SettingsViewModelTest {
 
         fun seedAcknowledged(acknowledged: Boolean) {
             ackState.value = acknowledged
-        }
-    }
-
-    private class FakeAnalyticsPreferences : AnalyticsPreferences {
-        private val consentState = MutableStateFlow(false)
-        override val analyticsConsent: Flow<Boolean> = consentState
-
-        override suspend fun setAnalyticsConsent(enabled: Boolean) {
-            consentState.value = enabled
         }
     }
 
