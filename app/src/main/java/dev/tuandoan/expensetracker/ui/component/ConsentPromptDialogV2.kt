@@ -1,6 +1,5 @@
 package dev.tuandoan.expensetracker.ui.component
 
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -10,6 +9,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
@@ -106,14 +106,17 @@ fun ConsentPromptDialogV2(onResolved: (shareCrashes: Boolean, shareAnalytics: Bo
 
 /**
  * Row with a leading checkbox, title, and one-line description. The entire
- * row is [clickable] (not just the checkbox widget) so the touch target is
+ * row is [toggleable] (not just the checkbox widget) so the touch target is
  * a full 56dp-tall band — matches Material 3 list-item guidance and doubles
  * the hit area at font-scale 200%.
  *
- * `Role.Checkbox` on the row's clickable semantics means TalkBack announces
- * "{title}, {description}, checkbox, checked/unchecked. Double-tap to toggle."
- * The trailing [Checkbox] widget itself intentionally has no independent
- * click handler — the row owns the gesture so state stays in one place.
+ * [Modifier.toggleable] (over [androidx.compose.foundation.clickable] with
+ * `Role.Checkbox`) sets both `Role.Checkbox` AND `toggleableState`, so
+ * TalkBack announces "{title}, {description}, checkbox, checked/not checked.
+ * Double-tap to toggle." — with the toggle verb, not the actuation verb
+ * "activate." The trailing [Checkbox] widget itself has
+ * `onCheckedChange = null` — the row owns the gesture so state stays in
+ * one place and TalkBack merges the row's semantics cleanly.
  */
 @Composable
 internal fun ConsentCheckboxRow(
@@ -127,9 +130,10 @@ internal fun ConsentCheckboxRow(
             Modifier
                 .fillMaxWidth()
                 .defaultMinSize(minHeight = 56.dp)
-                .clickable(
+                .toggleable(
+                    value = checked,
                     role = Role.Checkbox,
-                    onClick = { onCheckedChange(!checked) },
+                    onValueChange = onCheckedChange,
                 ).padding(vertical = DesignSystemSpacing.xs),
         verticalAlignment = Alignment.CenterVertically,
     ) {
@@ -137,8 +141,8 @@ internal fun ConsentCheckboxRow(
             checked = checked,
             onCheckedChange = null,
         )
-        Spacer(modifier = Modifier.width(DesignSystemSpacing.small))
-        Column(modifier = Modifier.fillMaxWidth()) {
+        Spacer(modifier = Modifier.width(DesignSystemSpacing.medium))
+        Column(modifier = Modifier.weight(1f)) {
             Text(
                 text = title,
                 style = MaterialTheme.typography.bodyLarge,
