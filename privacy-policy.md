@@ -75,7 +75,7 @@ Any optional system access (such as file access for manual backup or export, if 
 
 Expense Tracker does not knowingly collect data from children under the age of 13.
 
-Since the app does not collect or transmit any personal data, there is no risk of children’s data exposure.
+The app has no sign-in flow, asks for no identifying information, and collects no personal data by default. The optional crash reporting described in Section 2 is **off by default**, contains **no user identifiers**, and cannot be tied back to a specific individual — adult or child. No child-specific data is ever collected or retained.
 
 ---
 
