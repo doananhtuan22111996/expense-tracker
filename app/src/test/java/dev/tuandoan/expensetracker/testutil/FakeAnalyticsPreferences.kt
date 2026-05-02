@@ -18,9 +18,13 @@ import kotlinx.coroutines.flow.MutableStateFlow
 class FakeAnalyticsPreferences : AnalyticsPreferences {
     private val _analyticsConsent = MutableStateFlow(false)
     private val _consentPromptShown = MutableStateFlow(false)
+    private val _analyticsEventsConsent = MutableStateFlow(false)
+    private val _analyticsEventsPromptShown = MutableStateFlow(false)
 
     override val analyticsConsent: Flow<Boolean> = _analyticsConsent
     override val consentPromptShown: Flow<Boolean> = _consentPromptShown
+    override val analyticsEventsConsent: Flow<Boolean> = _analyticsEventsConsent
+    override val analyticsEventsPromptShown: Flow<Boolean> = _analyticsEventsPromptShown
 
     override suspend fun setAnalyticsConsent(enabled: Boolean) {
         _analyticsConsent.value = enabled
@@ -28,5 +32,13 @@ class FakeAnalyticsPreferences : AnalyticsPreferences {
 
     override suspend fun setConsentPromptShown(shown: Boolean) {
         _consentPromptShown.value = shown
+    }
+
+    override suspend fun setAnalyticsEventsConsent(enabled: Boolean) {
+        _analyticsEventsConsent.value = enabled
+    }
+
+    override suspend fun setAnalyticsEventsPromptShown(shown: Boolean) {
+        _analyticsEventsPromptShown.value = shown
     }
 }
