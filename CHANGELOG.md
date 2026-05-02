@@ -21,6 +21,7 @@
 ### Changed
 - CI workflow (`build.yml`) now synthesises `app/google-services.json` from a base64 `GOOGLE_SERVICE_FILE` secret at build time. The file remains `.gitignore`d locally (same pattern as `keystore.jks`). Supersedes ADR-009's initial "commit to repo" recommendation — same outcome (public identifier, not secret), cleaner repo.
 - `ReviewModule` no longer binds `CrashReporter` — moved to source-set-specific modules per ADR-010.
+- `privacy-policy.md` updated to disclose optional anonymous Firebase Crashlytics crash reporting — off by default, toggleable in Settings, 90-day retention, no PII. Removes the `do not use analytics or tracking SDKs` claim that v3.11.0 renders inaccurate. Fastlane store descriptions were already worded correctly ("Anonymous crash reports are opt-in only") and need no change.
 
 ### Security
 - Audited all 5 existing `CrashReporter.recordException` call sites (`SettingsViewModel.observeDefaultCurrency`, `BackupRepositoryImpl.importBackup` + `exportCsv`, `RecurringTransactionWorker.doWork`, `WidgetRefreshWorker.doWork`, `BudgetAlertWorker.doWork`): all pass caught `Exception` objects directly with no user data concatenated into messages. PRD FR-10 invariant holds.
