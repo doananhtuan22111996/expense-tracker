@@ -30,8 +30,14 @@ class AnalyticsPreferencesImpl
         @ApplicationContext private val context: Context,
         @IoDispatcher private val ioDispatcher: CoroutineDispatcher,
     ) : AnalyticsPreferences {
+        // Crashlytics consent (historical — key name predates Analytics; see interface KDoc).
         private val consentKey = booleanPreferencesKey("analytics_consent")
         private val consentPromptShownKey = booleanPreferencesKey("consent_prompt_shown")
+
+        // Analytics event collection consent (new in v3.11.0 per ADR-011).
+        private val analyticsEventsConsentKey = booleanPreferencesKey("analytics_events_consent")
+        private val analyticsEventsPromptShownKey =
+            booleanPreferencesKey("analytics_events_prompt_shown")
 
         override val analyticsConsent: Flow<Boolean> =
             context.analyticsDataStore.data.map { preferences ->
@@ -41,6 +47,16 @@ class AnalyticsPreferencesImpl
         override val consentPromptShown: Flow<Boolean> =
             context.analyticsDataStore.data.map { preferences ->
                 preferences[consentPromptShownKey] ?: false
+            }
+
+        override val analyticsEventsConsent: Flow<Boolean> =
+            context.analyticsDataStore.data.map { preferences ->
+                preferences[analyticsEventsConsentKey] ?: false
+            }
+
+        override val analyticsEventsPromptShown: Flow<Boolean> =
+            context.analyticsDataStore.data.map { preferences ->
+                preferences[analyticsEventsPromptShownKey] ?: false
             }
 
         override suspend fun setAnalyticsConsent(enabled: Boolean) {
@@ -55,6 +71,22 @@ class AnalyticsPreferencesImpl
             withContext(ioDispatcher) {
                 context.analyticsDataStore.edit { preferences ->
                     preferences[consentPromptShownKey] = shown
+                }
+            }
+        }
+
+        override suspend fun setAnalyticsEventsConsent(enabled: Boolean) {
+            withContext(ioDispatcher) {
+                context.analyticsDataStore.edit { preferences ->
+                    preferences[analyticsEventsConsentKey] = enabled
+                }
+            }
+        }
+
+        override suspend fun setAnalyticsEventsPromptShown(shown: Boolean) {
+            withContext(ioDispatcher) {
+                context.analyticsDataStore.edit { preferences ->
+                    preferences[analyticsEventsPromptShownKey] = shown
                 }
             }
         }
