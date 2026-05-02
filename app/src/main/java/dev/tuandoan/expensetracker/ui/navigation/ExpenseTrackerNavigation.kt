@@ -28,6 +28,7 @@ fun ExpenseTrackerNavigation(
     onNavigateToRecurring: () -> Unit = {},
     onNavigateToAddGoldHolding: () -> Unit = {},
     onNavigateToEditGoldHolding: (holdingId: Long) -> Unit = {},
+    onNavigateToDebugPanel: () -> Unit = {},
 ) {
     NavHost(
         navController = navController,
@@ -63,6 +64,7 @@ fun ExpenseTrackerNavigation(
             SettingsScreen(
                 onNavigateToCategories = onNavigateToCategories,
                 onNavigateToRecurring = onNavigateToRecurring,
+                onNavigateToDebugPanel = onNavigateToDebugPanel,
                 bottomContentPadding = bottomContentPadding,
             )
         }

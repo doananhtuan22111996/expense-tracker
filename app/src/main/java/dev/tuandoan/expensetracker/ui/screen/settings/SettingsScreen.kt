@@ -76,6 +76,7 @@ import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import dev.tuandoan.expensetracker.R
 import dev.tuandoan.expensetracker.core.util.AppInfo
+import dev.tuandoan.expensetracker.core.util.TapCounter
 import dev.tuandoan.expensetracker.data.preferences.ThemePreference
 import dev.tuandoan.expensetracker.domain.model.CurrencyDefinition
 import dev.tuandoan.expensetracker.domain.model.SupportedCurrencies
@@ -93,6 +94,7 @@ fun SettingsScreen(
     modifier: Modifier = Modifier,
     onNavigateToCategories: () -> Unit = {},
     onNavigateToRecurring: () -> Unit = {},
+    onNavigateToDebugPanel: () -> Unit = {},
     bottomContentPadding: Dp = 0.dp,
     viewModel: SettingsViewModel = hiltViewModel(),
 ) {
@@ -752,9 +754,17 @@ fun SettingsScreen(
 
             // App Information Section
             SettingsSection(title = stringResource(R.string.settings_app_information)) {
+                // Hidden Easter-egg gesture: 7 taps on the version row within 3s
+                // unlocks the developer debug panel (v3.11.0 / ADR-010 / PRD FR-13).
+                // Unmarked on purpose — normal users don't trigger it.
+                val debugTapCounter = remember { TapCounter() }
                 SettingsItem(
                     title = stringResource(R.string.settings_version),
                     subtitle = AppInfo.getFullVersionInfo(),
+                    modifier =
+                        Modifier.clickable {
+                            if (debugTapCounter.tap()) onNavigateToDebugPanel()
+                        },
                 )
 
                 HorizontalDivider()

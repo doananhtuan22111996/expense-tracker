@@ -62,6 +62,13 @@ sealed class ModalDestination(
 
     data object AddEditGoldHolding : ModalDestination("modal/add_edit_gold_holding")
 
+    /**
+     * Developer-only debug panel (v3.11.0, ADR-010). Reachable only via the
+     * 7-tap Easter-egg gesture on the Settings version text; not linked from
+     * any normal user surface.
+     */
+    data object DebugPanel : ModalDestination("modal/debug_panel")
+
     companion object {
         const val MODAL_GRAPH_ROUTE = "modal_graph"
     }
