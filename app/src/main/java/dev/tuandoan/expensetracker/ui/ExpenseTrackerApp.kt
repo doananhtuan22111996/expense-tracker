@@ -25,6 +25,7 @@ import dev.tuandoan.expensetracker.ui.navigation.ModalDestination
 import dev.tuandoan.expensetracker.ui.navigation.ModalNavRoutes
 import dev.tuandoan.expensetracker.ui.screen.addedit.AddEditTransactionScreen
 import dev.tuandoan.expensetracker.ui.screen.categories.CategoriesScreen
+import dev.tuandoan.expensetracker.ui.screen.debug.DebugPanelScreen
 import dev.tuandoan.expensetracker.ui.screen.gold.AddEditGoldHoldingScreen
 import dev.tuandoan.expensetracker.ui.screen.onboarding.OnboardingScreen
 import dev.tuandoan.expensetracker.ui.screen.recurring.AddEditRecurringTransactionScreen
@@ -97,6 +98,9 @@ fun ExpenseTrackerApp(
                 onNavigateToEditGoldHolding = { holdingId ->
                     navController.navigate(ModalNavRoutes.editGoldHoldingRoute(holdingId))
                 },
+                onNavigateToDebugPanel = {
+                    navController.navigate(ModalDestination.DebugPanel.route)
+                },
             )
         }
 
@@ -151,6 +155,18 @@ fun ExpenseTrackerApp(
                     }
                 },
                 viewModel = hiltViewModel(),
+            )
+        }
+
+        composable(ModalDestination.DebugPanel.route) {
+            DebugPanelScreen(
+                onNavigateBack = {
+                    if (!navController.popBackStack()) {
+                        navController.navigate("Home") {
+                            popUpTo(0) { inclusive = true }
+                        }
+                    }
+                },
             )
         }
 
@@ -212,6 +228,7 @@ private fun Home(
     onNavigateToRecurring: () -> Unit = {},
     onNavigateToAddGoldHolding: () -> Unit = {},
     onNavigateToEditGoldHolding: (holdingId: Long) -> Unit = {},
+    onNavigateToDebugPanel: () -> Unit = {},
 ) {
     val navController = rememberNavController()
     val navBackStackEntry by navController.currentBackStackEntryAsState()
@@ -246,6 +263,7 @@ private fun Home(
             onNavigateToRecurring = onNavigateToRecurring,
             onNavigateToAddGoldHolding = onNavigateToAddGoldHolding,
             onNavigateToEditGoldHolding = onNavigateToEditGoldHolding,
+            onNavigateToDebugPanel = onNavigateToDebugPanel,
         )
     }
 }

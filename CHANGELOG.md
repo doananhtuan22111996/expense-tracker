@@ -3,6 +3,8 @@
 ## [Unreleased]
 
 ### Added
+- Developer-only debug panel reachable via a 7-tap Easter-egg gesture on the Settings version text (v3.11.0 / ADR-010 / PRD FR-13). Contains a single "Trigger test crash" button that throws a `RuntimeException` — release builds forward to Firebase Crashlytics, debug builds forward to `NoOpCrashReporter` (the crash still happens, no data leaves). Panel is intentionally unmarked and unlocalized so normal users don't find it.
+- `TapCounter` helper in `core/util/` — pure-Kotlin threshold tracker for the Easter-egg gesture (N taps within a rolling window). 6 unit tests cover threshold-hit, window expiry, post-success reset, and the `>` vs `>=` boundary semantics.
 - Firebase BoM (`34.5.0`) + Crashlytics SDK declared in the version catalog and applied as a `releaseImplementation` in the `:app` module — foundation for v3.11.0's opt-in crash reporting. Wired behind the `google-services` (`4.4.3`) + `firebase-crashlytics` (`3.0.6`) Gradle plugins.
 - Manifest flag `firebase_crashlytics_collection_enabled=false` as the SDK-level default — guards the ~100ms init race before runtime consent is wired, so pre-consent crashes cannot leak.
 - `FirebaseCrashlyticsWrapper` interface + `FirebaseCrashlyticsWrapperImpl` in the release source set — thin pass-through around `FirebaseCrashlytics.getInstance()` that serves as a test seam so `FirebaseCrashReporterImpl` stays unit-testable without Robolectric.
