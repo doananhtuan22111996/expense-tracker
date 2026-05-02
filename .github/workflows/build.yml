@@ -16,6 +16,7 @@ jobs:
       GH_REPO_NAME: ${{ secrets.GH_REPO_NAME }}
       SECRET_PROPERTIES: ${{ secrets.SECRET_PROPERTIES }}
       KEYSTORE_FILE: ${{ secrets.KEYSTORE_FILE }}
+      GOOGLE_SERVICE_FILE: ${{ secrets.GOOGLE_SERVICE_FILE }}
     steps:
       - uses: actions/checkout@v4
       - name: Set up JDK 17
@@ -35,6 +36,15 @@ jobs:
       - name: Create keystore file from base64
         run: |
           echo $KEYSTORE_FILE | base64 -d > keystore.jks
+
+      - name: Create google service file from base64
+        run: |
+          set -euo pipefail
+          if [ -z "${GOOGLE_SERVICE_FILE:-}" ]; then
+            echo "::error::GOOGLE_SERVICE_FILE secret not set"
+            exit 1
+          fi
+          printf '%s' "$GOOGLE_SERVICE_FILE" | base64 --decode > ./app/google-services.json
 
       - name: Run spotlessCheck
         run: ./gradlew spotlessCheck

@@ -1,5 +1,22 @@
 # Changelog
 
+## [Unreleased]
+
+### Added
+- Firebase BoM (`34.5.0`) + Crashlytics SDK declared in the version catalog and applied as a `releaseImplementation` in the `:app` module — foundation for v3.11.0's opt-in crash reporting. Wired behind the `google-services` (`4.4.3`) + `firebase-crashlytics` (`3.0.6`) Gradle plugins.
+- Manifest flag `firebase_crashlytics_collection_enabled=false` as the SDK-level default — guards the ~100ms init race before runtime consent is wired, so pre-consent crashes cannot leak.
+- `FirebaseCrashlyticsWrapper` interface + `FirebaseCrashlyticsWrapperImpl` in the release source set — thin pass-through around `FirebaseCrashlytics.getInstance()` that serves as a test seam so `FirebaseCrashReporterImpl` stays unit-testable without Robolectric.
+- `FirebaseCrashReporterImpl` in the release source set — real `CrashReporter` implementation that forwards `recordException` and `setCollectionEnabled` to the wrapper. No custom keys, no `setUserId`, no user data leakage (PRD FR-10 / FR-11). Consent observation already lives in `ExpenseTrackerApplication.onCreate` (collects `AnalyticsPreferences.analyticsConsent` and calls `setCollectionEnabled` on each emission); the impl stays policy-free.
+- Source-set DI split for `CrashReporter` (ADR-010): `src/debug/.../di/CrashReporterModule.kt` binds `NoOpCrashReporter`; `src/release/.../di/CrashReporterModule.kt` binds `FirebaseCrashReporterImpl` + `FirebaseCrashlyticsWrapperImpl`. Debug builds have zero Firebase classes on classpath — collection suppression is a physical rather than a logical guarantee.
+- `FirebaseCrashReporterImplTest` under `src/testRelease/` — 4 Mockito-kotlin tests pin the pass-through contract: `recordException` forwards unchanged, `setCollectionEnabled` forwards both `true` and `false`, and toggle ordering is preserved.
+
+### Changed
+- CI workflow (`build.yml`) now synthesises `app/google-services.json` from a base64 `GOOGLE_SERVICE_FILE` secret at build time. The file remains `.gitignore`d locally (same pattern as `keystore.jks`). Supersedes ADR-009's initial "commit to repo" recommendation — same outcome (public identifier, not secret), cleaner repo.
+- `ReviewModule` no longer binds `CrashReporter` — moved to source-set-specific modules per ADR-010.
+
+### Security
+- Audited all 5 existing `CrashReporter.recordException` call sites (`SettingsViewModel.observeDefaultCurrency`, `BackupRepositoryImpl.importBackup` + `exportCsv`, `RecurringTransactionWorker.doWork`, `WidgetRefreshWorker.doWork`, `BudgetAlertWorker.doWork`): all pass caught `Exception` objects directly with no user data concatenated into messages. PRD FR-10 invariant holds.
+
 ## [3.10.0] - 2026-05-02
 
 ### Added
