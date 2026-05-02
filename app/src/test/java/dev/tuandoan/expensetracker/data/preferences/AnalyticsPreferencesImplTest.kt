@@ -1,7 +1,6 @@
 package dev.tuandoan.expensetracker.data.preferences
 
-import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.MutableStateFlow
+import dev.tuandoan.expensetracker.testutil.FakeAnalyticsPreferences
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertFalse
@@ -113,20 +112,4 @@ class AnalyticsPreferencesImplTest {
             assertTrue(preferences.analyticsConsent.first())
             assertTrue(preferences.consentPromptShown.first())
         }
-}
-
-class FakeAnalyticsPreferences : AnalyticsPreferences {
-    private val _analyticsConsent = MutableStateFlow(false)
-    private val _consentPromptShown = MutableStateFlow(false)
-
-    override val analyticsConsent: Flow<Boolean> = _analyticsConsent
-    override val consentPromptShown: Flow<Boolean> = _consentPromptShown
-
-    override suspend fun setAnalyticsConsent(enabled: Boolean) {
-        _analyticsConsent.value = enabled
-    }
-
-    override suspend fun setConsentPromptShown(shown: Boolean) {
-        _consentPromptShown.value = shown
-    }
 }
