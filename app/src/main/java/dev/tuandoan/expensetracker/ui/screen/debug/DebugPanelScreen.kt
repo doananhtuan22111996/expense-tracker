@@ -1,5 +1,7 @@
 package dev.tuandoan.expensetracker.ui.screen.debug
 
+import android.os.Handler
+import android.os.Looper
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
@@ -29,11 +31,18 @@ import dev.tuandoan.expensetracker.ui.theme.DesignSystemSpacing
  * gesture is intentional so normal users don't trigger it. No TalkBack or
  * discoverability help; this screen is only for release-verification workflows.
  *
- * The "Trigger test crash" button throws a [RuntimeException] on the main
- * thread. The default JVM `UncaughtExceptionHandler` catches it and forwards
- * to the bound [dev.tuandoan.expensetracker.domain.crash.CrashReporter]:
- * release builds → Firebase Crashlytics; debug builds → NoOp (crash still
- * happens, no data leaves the device).
+ * The "Trigger test crash" button posts a [RuntimeException] through
+ * [Handler] so the throw happens on the main looper's next pass, **outside**
+ * Compose's input-callback boundary. Throwing directly inside the `onClick`
+ * lambda would be caught by Compose's gesture dispatcher and never reach the
+ * default `UncaughtExceptionHandler` — which means Crashlytics would not
+ * receive the crash. The `Handler.post` escape is mandatory for
+ * release-verification to work.
+ *
+ * Once the throw escapes, the default JVM `UncaughtExceptionHandler` picks
+ * it up and Firebase Crashlytics's installed handler (release builds only,
+ * per ADR-010) forwards it to the dashboard as a fatal. Debug builds have
+ * no Firebase on classpath, so the process simply dies locally.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -78,7 +87,15 @@ private fun DebugPanelContent(innerPadding: PaddingValues) {
         )
 
         Button(
-            onClick = { throw RuntimeException("ADR-010 test crash") },
+            onClick = {
+                // Post to main looper so the throw escapes Compose's
+                // onClick boundary — Crashlytics only hooks the platform
+                // UncaughtExceptionHandler, which Compose would otherwise
+                // shield us from.
+                Handler(Looper.getMainLooper()).post {
+                    throw RuntimeException("ADR-010 test crash")
+                }
+            },
             modifier =
                 Modifier
                     .fillMaxWidth()
