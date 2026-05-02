@@ -997,115 +997,198 @@ class HomeViewModelTest {
             job.cancel()
         }
 
-    // ─── Consent prompt (v3.11.0 / ADR-008) ─────────────────────────────
+    // ─── Consent prompt (v3.11.0 / ADR-008 + ADR-011) ───────────────────
 
     @Test
-    fun shouldShowConsentPrompt_defaultState_emitsFalse() =
+    fun consentPromptVariant_defaultState_isNone() =
         runTest(mainDispatcherRule.testDispatcher) {
-            // Fresh install: onboarding incomplete, prompt not shown → don't show.
+            // Fresh install before onboarding finishes: no dialog yet.
             val viewModel = createViewModel()
             val job =
                 backgroundScope.launch(mainDispatcherRule.testDispatcher) {
-                    viewModel.shouldShowConsentPrompt.collect {}
+                    viewModel.consentPromptVariant.collect {}
                 }
             advanceUntilIdle()
 
-            assertFalse(viewModel.shouldShowConsentPrompt.value)
+            assertEquals(ConsentPromptVariant.None, viewModel.consentPromptVariant.value)
             job.cancel()
         }
 
     @Test
-    fun shouldShowConsentPrompt_onboardingComplete_promptNotShown_emitsTrue() =
+    fun consentPromptVariant_onboardingComplete_bothNotShown_isMain() =
         runTest(mainDispatcherRule.testDispatcher) {
-            // Happy path: user finished onboarding, hasn't seen the dialog → show it.
+            // Fresh install happy path: ask both questions at once.
             fakeOnboardingRepository.setOnboardingComplete(true)
             val viewModel = createViewModel()
             val job =
                 backgroundScope.launch(mainDispatcherRule.testDispatcher) {
-                    viewModel.shouldShowConsentPrompt.collect {}
+                    viewModel.consentPromptVariant.collect {}
                 }
             advanceUntilIdle()
 
-            assertTrue(viewModel.shouldShowConsentPrompt.value)
+            assertEquals(ConsentPromptVariant.Main, viewModel.consentPromptVariant.value)
             job.cancel()
         }
 
     @Test
-    fun shouldShowConsentPrompt_onboardingComplete_promptShown_emitsFalse() =
+    fun consentPromptVariant_crashShown_analyticsNotShown_isAnalyticsOnly() =
         runTest(mainDispatcherRule.testDispatcher) {
-            // Already asked: don't re-ask on subsequent launches.
+            // Beta-tester upgrade path: Crashlytics already resolved pre-bundle,
+            // Analytics question is new. ADR-011: preserve prior consent, ask
+            // only the new question.
             fakeOnboardingRepository.setOnboardingComplete(true)
             fakeAnalyticsPreferences.setConsentPromptShown(true)
             val viewModel = createViewModel()
             val job =
                 backgroundScope.launch(mainDispatcherRule.testDispatcher) {
-                    viewModel.shouldShowConsentPrompt.collect {}
+                    viewModel.consentPromptVariant.collect {}
                 }
             advanceUntilIdle()
 
-            assertFalse(viewModel.shouldShowConsentPrompt.value)
+            assertEquals(
+                ConsentPromptVariant.AnalyticsOnly,
+                viewModel.consentPromptVariant.value,
+            )
             job.cancel()
         }
 
     @Test
-    fun shouldShowConsentPrompt_onboardingNotComplete_promptNotShown_emitsFalse() =
+    fun consentPromptVariant_bothShown_isNone() =
         runTest(mainDispatcherRule.testDispatcher) {
-            // Can't prompt before onboarding finishes — don't race the onboarding flow.
+            // Both prompts already resolved: don't re-ask on subsequent launches.
+            fakeOnboardingRepository.setOnboardingComplete(true)
+            fakeAnalyticsPreferences.setConsentPromptShown(true)
+            fakeAnalyticsPreferences.setAnalyticsEventsPromptShown(true)
             val viewModel = createViewModel()
             val job =
                 backgroundScope.launch(mainDispatcherRule.testDispatcher) {
-                    viewModel.shouldShowConsentPrompt.collect {}
+                    viewModel.consentPromptVariant.collect {}
                 }
             advanceUntilIdle()
 
-            assertFalse(viewModel.shouldShowConsentPrompt.value)
+            assertEquals(ConsentPromptVariant.None, viewModel.consentPromptVariant.value)
             job.cancel()
         }
 
     @Test
-    fun onConsentAccepted_setsBothAnalyticsConsentAndPromptShown() =
+    fun consentPromptVariant_onboardingNotComplete_isNone_evenIfAnalyticsPending() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            // Onboarding gate: never race the onboarding flow, even if a
+            // *PromptShown flag somehow ended up true mid-migration.
+            fakeAnalyticsPreferences.setConsentPromptShown(true)
+            val viewModel = createViewModel()
+            val job =
+                backgroundScope.launch(mainDispatcherRule.testDispatcher) {
+                    viewModel.consentPromptVariant.collect {}
+                }
+            advanceUntilIdle()
+
+            assertEquals(ConsentPromptVariant.None, viewModel.consentPromptVariant.value)
+            job.cancel()
+        }
+
+    @Test
+    fun onConsentsResolved_acceptBoth_flipsAllFourKeys() =
         runTest(mainDispatcherRule.testDispatcher) {
             val viewModel = createViewModel()
 
-            viewModel.onConsentAccepted()
+            viewModel.onConsentsResolved(crashAccepted = true, analyticsAccepted = true)
             advanceUntilIdle()
 
             assertTrue(fakeAnalyticsPreferences.analyticsConsent.first())
+            assertTrue(fakeAnalyticsPreferences.analyticsEventsConsent.first())
             assertTrue(fakeAnalyticsPreferences.consentPromptShown.first())
+            assertTrue(fakeAnalyticsPreferences.analyticsEventsPromptShown.first())
         }
 
     @Test
-    fun onConsentDeclined_setsOnlyPromptShown_consentStaysFalse() =
+    fun onConsentsResolved_declineBoth_setsOnlyBothPromptShownFlags() =
         runTest(mainDispatcherRule.testDispatcher) {
-            // Privacy-critical: decline must NOT flip analyticsConsent.
+            // Privacy-critical: declining must NOT flip either consent.
             val viewModel = createViewModel()
 
-            viewModel.onConsentDeclined()
+            viewModel.onConsentsResolved(crashAccepted = false, analyticsAccepted = false)
             advanceUntilIdle()
 
             assertFalse(fakeAnalyticsPreferences.analyticsConsent.first())
+            assertFalse(fakeAnalyticsPreferences.analyticsEventsConsent.first())
             assertTrue(fakeAnalyticsPreferences.consentPromptShown.first())
+            assertTrue(fakeAnalyticsPreferences.analyticsEventsPromptShown.first())
         }
 
     @Test
-    fun onConsentDeclined_thenShouldShowConsentPrompt_isFalse() =
+    fun onConsentsResolved_acceptCrashOnly_flipsCrashAndBothShown() =
         runTest(mainDispatcherRule.testDispatcher) {
-            // After decline, dialog must not re-appear.
+            // Granular split choice (Design doc happy-path B): opt into
+            // Crashlytics but not Analytics. Both dialogs are resolved so
+            // both PromptShown flags flip.
+            val viewModel = createViewModel()
+
+            viewModel.onConsentsResolved(crashAccepted = true, analyticsAccepted = false)
+            advanceUntilIdle()
+
+            assertTrue(fakeAnalyticsPreferences.analyticsConsent.first())
+            assertFalse(fakeAnalyticsPreferences.analyticsEventsConsent.first())
+            assertTrue(fakeAnalyticsPreferences.consentPromptShown.first())
+            assertTrue(fakeAnalyticsPreferences.analyticsEventsPromptShown.first())
+        }
+
+    @Test
+    fun onConsentsResolved_thenVariant_flipsToNone() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            // After resolving the main dialog, the variant must flip to None
+            // so the dialog does not re-appear on the next recomposition.
             fakeOnboardingRepository.setOnboardingComplete(true)
             val viewModel = createViewModel()
             val job =
                 backgroundScope.launch(mainDispatcherRule.testDispatcher) {
-                    viewModel.shouldShowConsentPrompt.collect {}
+                    viewModel.consentPromptVariant.collect {}
                 }
             advanceUntilIdle()
-            // Sanity: initially the dialog should show.
-            assertTrue(viewModel.shouldShowConsentPrompt.value)
+            assertEquals(ConsentPromptVariant.Main, viewModel.consentPromptVariant.value)
 
-            viewModel.onConsentDeclined()
+            viewModel.onConsentsResolved(crashAccepted = false, analyticsAccepted = false)
             advanceUntilIdle()
 
-            assertFalse(viewModel.shouldShowConsentPrompt.value)
+            assertEquals(ConsentPromptVariant.None, viewModel.consentPromptVariant.value)
             job.cancel()
+        }
+
+    @Test
+    fun onAnalyticsOnlyResolved_accept_flipsOnlyAnalyticsPair_crashKeysUnchanged() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            // Upgrade-path privacy invariant: the user's prior Crashlytics
+            // consent (here: true) must not be overwritten, and the
+            // Crashlytics PromptShown flag must not be touched.
+            fakeAnalyticsPreferences.setAnalyticsConsent(true)
+            fakeAnalyticsPreferences.setConsentPromptShown(true)
+            val viewModel = createViewModel()
+
+            viewModel.onAnalyticsOnlyResolved(analyticsAccepted = true)
+            advanceUntilIdle()
+
+            assertTrue(fakeAnalyticsPreferences.analyticsConsent.first())
+            assertTrue(fakeAnalyticsPreferences.consentPromptShown.first())
+            assertTrue(fakeAnalyticsPreferences.analyticsEventsConsent.first())
+            assertTrue(fakeAnalyticsPreferences.analyticsEventsPromptShown.first())
+        }
+
+    @Test
+    fun onAnalyticsOnlyResolved_decline_setsOnlyAnalyticsShown_noConsents() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            // Prior Crashlytics decline case: both crash keys stay at their
+            // pre-bundle state (consent=false, shown=true), Analytics
+            // consent stays false, Analytics shown flips true.
+            fakeAnalyticsPreferences.setConsentPromptShown(true)
+            val viewModel = createViewModel()
+
+            viewModel.onAnalyticsOnlyResolved(analyticsAccepted = false)
+            advanceUntilIdle()
+
+            assertFalse(fakeAnalyticsPreferences.analyticsConsent.first())
+            assertTrue(fakeAnalyticsPreferences.consentPromptShown.first())
+            assertFalse(fakeAnalyticsPreferences.analyticsEventsConsent.first())
+            assertTrue(fakeAnalyticsPreferences.analyticsEventsPromptShown.first())
         }
 
     private class FakeTransactionRepository : TransactionRepository {
