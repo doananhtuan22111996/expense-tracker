@@ -539,6 +539,10 @@ class SummaryViewModelTest {
                     dateRangeCalculator,
                     dev.tuandoan.expensetracker.testutil
                         .FakeSearchFilterPreferences(),
+                    dev.tuandoan.expensetracker.testutil
+                        .FakeAnalyticsPreferences(),
+                    dev.tuandoan.expensetracker.testutil
+                        .FakeOnboardingRepository(),
                 )
             val summaryVm = createViewModel()
             advanceUntilIdle()

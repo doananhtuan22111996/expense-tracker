@@ -1,7 +1,6 @@
 package dev.tuandoan.expensetracker.data.preferences
 
-import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.MutableStateFlow
+import dev.tuandoan.expensetracker.testutil.FakeOnboardingRepository
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertFalse
@@ -41,13 +40,4 @@ class OnboardingRepositoryImplTest {
             assertTrue(repository.isOnboardingComplete.first())
             assertTrue(repository.isOnboardingComplete.first())
         }
-}
-
-class FakeOnboardingRepository : OnboardingRepository {
-    private val _isOnboardingComplete = MutableStateFlow(false)
-    override val isOnboardingComplete: Flow<Boolean> = _isOnboardingComplete
-
-    override suspend fun markOnboardingComplete() {
-        _isOnboardingComplete.value = true
-    }
 }

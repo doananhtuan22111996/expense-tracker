@@ -10,12 +10,15 @@ import dev.tuandoan.expensetracker.domain.model.Transaction
 import dev.tuandoan.expensetracker.domain.model.TransactionType
 import dev.tuandoan.expensetracker.domain.repository.CategoryRepository
 import dev.tuandoan.expensetracker.domain.repository.TransactionRepository
+import dev.tuandoan.expensetracker.testutil.FakeAnalyticsPreferences
+import dev.tuandoan.expensetracker.testutil.FakeOnboardingRepository
 import dev.tuandoan.expensetracker.testutil.FakeSearchFilterPreferences
 import dev.tuandoan.expensetracker.testutil.FakeSelectedMonthRepository
 import dev.tuandoan.expensetracker.testutil.MainDispatcherRule
 import dev.tuandoan.expensetracker.testutil.TestData
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.advanceTimeBy
@@ -44,6 +47,8 @@ class HomeViewModelTest {
     private lateinit var fakeCategoryRepository: FakeCategoryRepository
     private lateinit var fakeSelectedMonth: FakeSelectedMonthRepository
     private lateinit var fakeSearchFilterPreferences: FakeSearchFilterPreferences
+    private lateinit var fakeAnalyticsPreferences: FakeAnalyticsPreferences
+    private lateinit var fakeOnboardingRepository: FakeOnboardingRepository
     private lateinit var dateRangeCalculator: DateRangeCalculator
 
     private val fixedZone: ZoneId = ZoneId.of("UTC")
@@ -57,6 +62,8 @@ class HomeViewModelTest {
         fakeCategoryRepository = FakeCategoryRepository()
         fakeSelectedMonth = FakeSelectedMonthRepository()
         fakeSearchFilterPreferences = FakeSearchFilterPreferences()
+        fakeAnalyticsPreferences = FakeAnalyticsPreferences()
+        fakeOnboardingRepository = FakeOnboardingRepository()
         dateRangeCalculator = DateRangeCalculator(fixedClock, fixedZone)
     }
 
@@ -67,6 +74,8 @@ class HomeViewModelTest {
             fakeCategoryRepository,
             dateRangeCalculator,
             fakeSearchFilterPreferences,
+            fakeAnalyticsPreferences,
+            fakeOnboardingRepository,
         )
 
     @Test
@@ -985,6 +994,117 @@ class HomeViewModelTest {
             val categories = viewModel.expenseCategories.value
             assertEquals(2, categories.size)
             assertEquals("Food", categories[0].name)
+            job.cancel()
+        }
+
+    // ─── Consent prompt (v3.11.0 / ADR-008) ─────────────────────────────
+
+    @Test
+    fun shouldShowConsentPrompt_defaultState_emitsFalse() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            // Fresh install: onboarding incomplete, prompt not shown → don't show.
+            val viewModel = createViewModel()
+            val job =
+                backgroundScope.launch(mainDispatcherRule.testDispatcher) {
+                    viewModel.shouldShowConsentPrompt.collect {}
+                }
+            advanceUntilIdle()
+
+            assertFalse(viewModel.shouldShowConsentPrompt.value)
+            job.cancel()
+        }
+
+    @Test
+    fun shouldShowConsentPrompt_onboardingComplete_promptNotShown_emitsTrue() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            // Happy path: user finished onboarding, hasn't seen the dialog → show it.
+            fakeOnboardingRepository.setOnboardingComplete(true)
+            val viewModel = createViewModel()
+            val job =
+                backgroundScope.launch(mainDispatcherRule.testDispatcher) {
+                    viewModel.shouldShowConsentPrompt.collect {}
+                }
+            advanceUntilIdle()
+
+            assertTrue(viewModel.shouldShowConsentPrompt.value)
+            job.cancel()
+        }
+
+    @Test
+    fun shouldShowConsentPrompt_onboardingComplete_promptShown_emitsFalse() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            // Already asked: don't re-ask on subsequent launches.
+            fakeOnboardingRepository.setOnboardingComplete(true)
+            fakeAnalyticsPreferences.setConsentPromptShown(true)
+            val viewModel = createViewModel()
+            val job =
+                backgroundScope.launch(mainDispatcherRule.testDispatcher) {
+                    viewModel.shouldShowConsentPrompt.collect {}
+                }
+            advanceUntilIdle()
+
+            assertFalse(viewModel.shouldShowConsentPrompt.value)
+            job.cancel()
+        }
+
+    @Test
+    fun shouldShowConsentPrompt_onboardingNotComplete_promptNotShown_emitsFalse() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            // Can't prompt before onboarding finishes — don't race the onboarding flow.
+            val viewModel = createViewModel()
+            val job =
+                backgroundScope.launch(mainDispatcherRule.testDispatcher) {
+                    viewModel.shouldShowConsentPrompt.collect {}
+                }
+            advanceUntilIdle()
+
+            assertFalse(viewModel.shouldShowConsentPrompt.value)
+            job.cancel()
+        }
+
+    @Test
+    fun onConsentAccepted_setsBothAnalyticsConsentAndPromptShown() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            val viewModel = createViewModel()
+
+            viewModel.onConsentAccepted()
+            advanceUntilIdle()
+
+            assertTrue(fakeAnalyticsPreferences.analyticsConsent.first())
+            assertTrue(fakeAnalyticsPreferences.consentPromptShown.first())
+        }
+
+    @Test
+    fun onConsentDeclined_setsOnlyPromptShown_consentStaysFalse() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            // Privacy-critical: decline must NOT flip analyticsConsent.
+            val viewModel = createViewModel()
+
+            viewModel.onConsentDeclined()
+            advanceUntilIdle()
+
+            assertFalse(fakeAnalyticsPreferences.analyticsConsent.first())
+            assertTrue(fakeAnalyticsPreferences.consentPromptShown.first())
+        }
+
+    @Test
+    fun onConsentDeclined_thenShouldShowConsentPrompt_isFalse() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            // After decline, dialog must not re-appear.
+            fakeOnboardingRepository.setOnboardingComplete(true)
+            val viewModel = createViewModel()
+            val job =
+                backgroundScope.launch(mainDispatcherRule.testDispatcher) {
+                    viewModel.shouldShowConsentPrompt.collect {}
+                }
+            advanceUntilIdle()
+            // Sanity: initially the dialog should show.
+            assertTrue(viewModel.shouldShowConsentPrompt.value)
+
+            viewModel.onConsentDeclined()
+            advanceUntilIdle()
+
+            assertFalse(viewModel.shouldShowConsentPrompt.value)
             job.cancel()
         }
 
