@@ -10,6 +10,7 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.time.LocalDate
 import java.time.ZoneId
+import java.util.Locale
 import kotlin.random.Random
 import kotlin.system.measureNanoTime
 
@@ -59,18 +60,20 @@ class InsightsEngineBenchmarkTest {
 
     @Test
     fun computeInsights_fiveThousandTransactionsPerMonth_stayWithinBudget() {
-        val seed = 42L // deterministic dataset; avoid CI flakes from RNG churn.
         val categories = buildCategories(count = 12)
         val currentMonthStart = LocalDate.of(2026, 4, 1)
         val previousMonthStart = LocalDate.of(2026, 3, 1)
 
+        // Two unrelated seeds (not seed + 1) — sequential seeds can produce
+        // correlated RNG streams on some generators; deterministic but
+        // independent is the target.
         val currentMonth =
             buildMonth(
                 size = 5_000,
                 monthStart = currentMonthStart,
                 categories = categories,
                 idOffset = 0L,
-                seed = seed,
+                seed = 42L,
             )
         val previousMonth =
             buildMonth(
@@ -78,12 +81,15 @@ class InsightsEngineBenchmarkTest {
                 monthStart = previousMonthStart,
                 categories = categories,
                 idOffset = 1_000_000L,
-                seed = seed + 1,
+                seed = 8675309L,
             )
 
         val budget =
             BudgetStatus(
-                currency = SupportedCurrencies.byCode("VND")!!,
+                currency =
+                    checkNotNull(SupportedCurrencies.byCode("VND")) {
+                        "VND must exist in SupportedCurrencies — benchmark fixture invariant"
+                    },
                 budgetAmount = 50_000_000L,
                 spentAmount = currentMonth.sumOf { it.amount },
             )
@@ -119,8 +125,9 @@ class InsightsEngineBenchmarkTest {
         val averageMs = totalNanos / MEASURED_ITERATIONS / 1_000_000.0
 
         assertTrue(
-            "computeInsights averaged ${"%.2f".format(averageMs)}ms over $MEASURED_ITERATIONS runs; " +
-                "CI budget is ${CI_BUDGET_MS}ms (PRD target 50ms on-device, 4× headroom for CI)",
+            "computeInsights averaged ${String.format(Locale.ROOT, "%.2f", averageMs)}ms " +
+                "over $MEASURED_ITERATIONS runs; CI budget is ${CI_BUDGET_MS}ms " +
+                "(PRD target 50ms on-device, 4× headroom for CI)",
             averageMs <= CI_BUDGET_MS,
         )
     }
