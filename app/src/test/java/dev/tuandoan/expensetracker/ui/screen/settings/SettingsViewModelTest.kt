@@ -1173,10 +1173,16 @@ class SettingsViewModelTest {
 
     private class FakeAnalyticsPreferences : AnalyticsPreferences {
         private val consentState = MutableStateFlow(false)
+        private val promptShownState = MutableStateFlow(false)
         override val analyticsConsent: Flow<Boolean> = consentState
+        override val consentPromptShown: Flow<Boolean> = promptShownState
 
         override suspend fun setAnalyticsConsent(enabled: Boolean) {
             consentState.value = enabled
+        }
+
+        override suspend fun setConsentPromptShown(shown: Boolean) {
+            promptShownState.value = shown
         }
     }
 

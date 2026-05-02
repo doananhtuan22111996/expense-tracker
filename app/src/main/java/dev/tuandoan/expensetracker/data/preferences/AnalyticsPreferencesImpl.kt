@@ -31,16 +31,30 @@ class AnalyticsPreferencesImpl
         @IoDispatcher private val ioDispatcher: CoroutineDispatcher,
     ) : AnalyticsPreferences {
         private val consentKey = booleanPreferencesKey("analytics_consent")
+        private val consentPromptShownKey = booleanPreferencesKey("consent_prompt_shown")
 
         override val analyticsConsent: Flow<Boolean> =
             context.analyticsDataStore.data.map { preferences ->
                 preferences[consentKey] ?: false
             }
 
+        override val consentPromptShown: Flow<Boolean> =
+            context.analyticsDataStore.data.map { preferences ->
+                preferences[consentPromptShownKey] ?: false
+            }
+
         override suspend fun setAnalyticsConsent(enabled: Boolean) {
             withContext(ioDispatcher) {
                 context.analyticsDataStore.edit { preferences ->
                     preferences[consentKey] = enabled
+                }
+            }
+        }
+
+        override suspend fun setConsentPromptShown(shown: Boolean) {
+            withContext(ioDispatcher) {
+                context.analyticsDataStore.edit { preferences ->
+                    preferences[consentPromptShownKey] = shown
                 }
             }
         }
