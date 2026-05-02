@@ -230,9 +230,11 @@ private fun InsightRow.headline(context: android.content.Context): String {
             }
         }
         InsightRow.Empty ->
-            context.getString(R.string.insights_empty_title) +
-                " — " +
-                context.getString(R.string.insights_empty_subtitle)
+            context.getString(
+                R.string.insights_empty_combined,
+                context.getString(R.string.insights_empty_title),
+                context.getString(R.string.insights_empty_subtitle),
+            )
         InsightRow.Error -> context.getString(R.string.insights_error_title)
     }
 }

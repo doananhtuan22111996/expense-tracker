@@ -560,6 +560,9 @@
     <!-- Empty / error states. -->
     <string name="insights_empty_title">Keep logging</string>
     <string name="insights_empty_subtitle">Insights appear after about a month of data</string>
+    <!-- Combined empty row = title + subtitle, joined by a locale-appropriate separator.
+         Externalised so translators can swap the em-dash for colons, fullwidth stops, etc. -->
+    <string name="insights_empty_combined">%1$s — %2$s</string>
     <string name="insights_error_title">Insights unavailable</string>
 
     <!-- Delta chip. %1$s = locale-formatted percent. -->

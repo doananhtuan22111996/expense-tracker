@@ -7,8 +7,8 @@
 <resources>
     <!-- Summary tab — Insights section. -->
     <string name="insights_section_title">Thông tin chi tiêu</string>
-    <string name="insights_collapse_expand">Mở rộng</string>
-    <string name="insights_collapse_collapse">Thu gọn</string>
+    <string name="insights_collapse_expand">Mở rộng thông tin</string>
+    <string name="insights_collapse_collapse">Thu gọn thông tin</string>
 
     <!-- Biggest mover row. %1$s = category name, %2$s = locale-formatted percent, %3$s = previous amount, %4$s = current amount. -->
     <string name="insights_biggest_mover_up_format">%1$s: tăng %2$s (%3$s → %4$s)</string>
@@ -30,7 +30,8 @@
     <!-- Empty / error states. -->
     <string name="insights_empty_title">Tiếp tục ghi chép</string>
     <string name="insights_empty_subtitle">Thông tin xuất hiện sau khoảng một tháng dữ liệu</string>
-    <string name="insights_error_title">Không có thông tin</string>
+    <string name="insights_empty_combined">%1$s — %2$s</string>
+    <string name="insights_error_title">Không thể tải thông tin</string>
 
     <!-- Delta chip. %1$s = locale-formatted percent. -->
     <string name="insights_delta_up_format">↑ %1$s</string>
