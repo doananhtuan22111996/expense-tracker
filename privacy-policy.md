@@ -24,7 +24,7 @@ Specifically, the app does **not** collect:
 
 The app does **not** display advertisements and does **not** share data with advertisers.
 
-Starting with version 3.11.0, the app includes two **independent, opt-in** Firebase features: crash reporting and anonymous usage analytics. Both are **off by default** and only activate if you explicitly opt in to each one. Opting in to one does **not** imply opting in to the other.
+Starting with version 3.11.0, the app includes two **independent, opt-in** Firebase features: crash reporting and anonymous usage analytics. Both are **off by default** and only activate if you explicitly opt in to each one. Opting in to one does **not** imply opting in to the other. The subsections below describe these features' v3.11.0 configuration; before you install v3.11.0, neither feature is present.
 
 ### Optional anonymous crash reporting
 
