@@ -85,6 +85,14 @@ class SettingsViewModel
             analyticsPreferences.analyticsConsent
                 .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000L), false)
 
+        /**
+         * Whether the user has opted in to anonymous usage-analytics event
+         * collection. Independent of [analyticsConsent] per ADR-011.
+         */
+        val analyticsEventsConsent: StateFlow<Boolean> =
+            analyticsPreferences.analyticsEventsConsent
+                .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000L), false)
+
         /** Whether budget alerts are enabled. */
         val budgetAlertsEnabled: StateFlow<Boolean> =
             budgetAlertPreferences.alertsEnabled
@@ -483,6 +491,17 @@ class SettingsViewModel
         fun setAnalyticsConsent(enabled: Boolean) {
             viewModelScope.launch {
                 analyticsPreferences.setAnalyticsConsent(enabled)
+            }
+        }
+
+        /**
+         * Persists the Analytics events-collection consent preference.
+         * Independent of [setAnalyticsConsent] per ADR-011 — flipping this
+         * does not touch `analyticsConsent` or any `*PromptShown` flags.
+         */
+        fun setAnalyticsEventsConsent(enabled: Boolean) {
+            viewModelScope.launch {
+                analyticsPreferences.setAnalyticsEventsConsent(enabled)
             }
         }
 

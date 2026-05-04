@@ -777,6 +777,105 @@ class SettingsViewModelTest {
             collectJob.cancel()
         }
 
+    // --- Analytics events consent tests (v3.11.0 / ADR-011) ---
+
+    @Test
+    fun analyticsEventsConsent_defaultsToFalse() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            val viewModel = createViewModel()
+
+            val collectJob =
+                backgroundScope.launch {
+                    viewModel.analyticsEventsConsent.collect {}
+                }
+            advanceUntilIdle()
+
+            assertEquals(false, viewModel.analyticsEventsConsent.value)
+            collectJob.cancel()
+        }
+
+    @Test
+    fun setAnalyticsEventsConsent_true_reflectsInStateFlow() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            val viewModel = createViewModel()
+
+            val collectJob =
+                backgroundScope.launch {
+                    viewModel.analyticsEventsConsent.collect {}
+                }
+            advanceUntilIdle()
+
+            viewModel.setAnalyticsEventsConsent(true)
+            advanceUntilIdle()
+
+            assertEquals(true, viewModel.analyticsEventsConsent.value)
+            collectJob.cancel()
+        }
+
+    @Test
+    fun setAnalyticsEventsConsent_false_reflectsInStateFlow() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            val viewModel = createViewModel()
+
+            val collectJob =
+                backgroundScope.launch {
+                    viewModel.analyticsEventsConsent.collect {}
+                }
+            advanceUntilIdle()
+
+            viewModel.setAnalyticsEventsConsent(true)
+            advanceUntilIdle()
+            viewModel.setAnalyticsEventsConsent(false)
+            advanceUntilIdle()
+
+            assertEquals(false, viewModel.analyticsEventsConsent.value)
+            collectJob.cancel()
+        }
+
+    @Test
+    fun setAnalyticsEventsConsent_doesNotFlipCrashConsent() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            // Privacy-critical invariant (ADR-011): the Analytics toggle is
+            // independent of Crashlytics. Flipping it must NOT change the
+            // crash toggle in either direction.
+            val viewModel = createViewModel()
+
+            val crashJob =
+                backgroundScope.launch { viewModel.analyticsConsent.collect {} }
+            val analyticsJob =
+                backgroundScope.launch { viewModel.analyticsEventsConsent.collect {} }
+            advanceUntilIdle()
+
+            viewModel.setAnalyticsEventsConsent(true)
+            advanceUntilIdle()
+
+            assertEquals(true, viewModel.analyticsEventsConsent.value)
+            assertEquals(false, viewModel.analyticsConsent.value)
+            crashJob.cancel()
+            analyticsJob.cancel()
+        }
+
+    @Test
+    fun setAnalyticsConsent_doesNotFlipEventsConsent() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            // Reverse direction: flipping Crashlytics must NOT flip Analytics.
+            val viewModel = createViewModel()
+
+            val crashJob =
+                backgroundScope.launch { viewModel.analyticsConsent.collect {} }
+            val analyticsJob =
+                backgroundScope.launch { viewModel.analyticsEventsConsent.collect {} }
+            advanceUntilIdle()
+
+            viewModel.setAnalyticsConsent(true)
+            advanceUntilIdle()
+
+            assertEquals(true, viewModel.analyticsConsent.value)
+            assertEquals(false, viewModel.analyticsEventsConsent.value)
+            crashJob.cancel()
+            analyticsJob.cancel()
+        }
+
     // --- Encrypt backup tests ---
 
     @Test
