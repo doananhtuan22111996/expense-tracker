@@ -102,6 +102,7 @@ fun SettingsScreen(
     val activeRecurringCount by viewModel.activeRecurringCount.collectAsStateWithLifecycle()
     val themePreference by viewModel.themePreference.collectAsStateWithLifecycle()
     val analyticsConsent by viewModel.analyticsConsent.collectAsStateWithLifecycle()
+    val analyticsEventsConsent by viewModel.analyticsEventsConsent.collectAsStateWithLifecycle()
     val budgetAlertsEnabled by viewModel.budgetAlertsEnabled.collectAsStateWithLifecycle()
     val encryptBackupsEnabled by viewModel.encryptBackupsEnabled.collectAsStateWithLifecycle()
     var showCurrencyDialog by remember { mutableStateOf(false) }
@@ -777,7 +778,7 @@ fun SettingsScreen(
 
             // Privacy Section
             SettingsSection(title = stringResource(R.string.settings_privacy)) {
-                // Anonymous crash reporting toggle
+                // Anonymous crash reporting toggle (Firebase Crashlytics)
                 Row(
                     modifier =
                         Modifier
@@ -803,6 +804,38 @@ fun SettingsScreen(
                     Switch(
                         checked = analyticsConsent,
                         onCheckedChange = { viewModel.setAnalyticsConsent(it) },
+                    )
+                }
+
+                HorizontalDivider()
+
+                // Anonymous usage analytics toggle (Firebase Analytics events).
+                // Independent of the Crashlytics toggle above per ADR-011.
+                Row(
+                    modifier =
+                        Modifier
+                            .fillMaxWidth()
+                            .padding(DesignSystemSpacing.large),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = stringResource(R.string.settings_analytics_events_title),
+                            style = MaterialTheme.typography.bodyLarge,
+                            fontWeight = FontWeight.Medium,
+                            color = MaterialTheme.colorScheme.onSurface,
+                        )
+                        Text(
+                            text = stringResource(R.string.settings_analytics_events_subtitle),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.padding(top = DesignSystemSpacing.xs),
+                        )
+                    }
+                    Switch(
+                        checked = analyticsEventsConsent,
+                        onCheckedChange = { viewModel.setAnalyticsEventsConsent(it) },
                     )
                 }
 
