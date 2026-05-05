@@ -26,7 +26,7 @@ Sao lưu toàn bộ dữ liệu (chi tiêu, danh mục, vàng) sang JSON. Xuất
 
 🔒 QUYỀN RIÊNG TƯ LÀ ƯU TIÊN
 ━━━━━━━━━━━━━━━━━━━━━━━━━
-Dữ liệu tài chính nằm trên thiết bị của bạn. Không cần tài khoản. Không quảng cáo. Không theo dõi. Báo cáo lỗi ẩn danh chỉ khi bạn đồng ý.
+Dữ liệu tài chính nằm trên thiết bị của bạn. Không cần tài khoản. Không quảng cáo. Không theo dõi. Báo cáo lỗi và dữ liệu sử dụng ẩn danh chỉ khi bạn đồng ý.
 
 🎨 GIAO DIỆN ĐẸP & DỄ TIẾP CẬN
 ━━━━━━━━━━━━━━━━━━━━━━━━━
