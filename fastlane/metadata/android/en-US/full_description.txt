@@ -26,7 +26,7 @@ Back up all data (expenses, categories, gold holdings) to JSON. Export transacti
 
 🔒 PRIVACY FIRST
 ━━━━━━━━━━━━━━━━━━━━━━━━━
-Your financial data stays on your device. No account required. No ads. No tracking. Anonymous crash reports are opt-in only.
+Your financial data stays on your device. No account required. No ads. No tracking. Anonymous crash reports and usage data are opt-in only.
 
 🎨 BEAUTIFUL & ACCESSIBLE
 ━━━━━━━━━━━━━━━━━━━━━━━━━
