@@ -1,5 +1,6 @@
 package dev.tuandoan.expensetracker.ui.screen.onboarding
 
+import dev.tuandoan.expensetracker.domain.analytics.NoOpAnalytics
 import dev.tuandoan.expensetracker.testutil.FakeOnboardingRepository
 import dev.tuandoan.expensetracker.testutil.MainDispatcherRule
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -26,7 +27,7 @@ class OnboardingViewModelTest {
     @Test
     fun completeOnboarding_callsMarkOnboardingComplete() =
         runTest(mainDispatcherRule.testDispatcher) {
-            val viewModel = OnboardingViewModel(fakeOnboardingRepo)
+            val viewModel = OnboardingViewModel(fakeOnboardingRepo, NoOpAnalytics())
 
             viewModel.completeOnboarding()
             advanceUntilIdle()

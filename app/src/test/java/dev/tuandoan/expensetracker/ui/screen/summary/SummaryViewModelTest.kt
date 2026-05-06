@@ -4,6 +4,7 @@ import app.cash.turbine.test
 import dev.tuandoan.expensetracker.core.formatter.CurrencyFormatter
 import dev.tuandoan.expensetracker.core.util.DateRangeCalculator
 import dev.tuandoan.expensetracker.data.preferences.InsightsCollapsePreferences
+import dev.tuandoan.expensetracker.domain.analytics.NoOpAnalytics
 import dev.tuandoan.expensetracker.domain.insights.InsightRow
 import dev.tuandoan.expensetracker.domain.model.BudgetStatusLevel
 import dev.tuandoan.expensetracker.domain.model.Category
@@ -82,6 +83,7 @@ class SummaryViewModelTest {
             currencyFormatter = fakeFormatter,
             timeProvider = fakeTimeProvider,
             zoneId = fixedZone,
+            analytics = NoOpAnalytics(),
             ioDispatcher = mainDispatcherRule.testDispatcher,
         )
 

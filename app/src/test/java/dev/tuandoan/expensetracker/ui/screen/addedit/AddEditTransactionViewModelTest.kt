@@ -3,6 +3,7 @@ package dev.tuandoan.expensetracker.ui.screen.addedit
 import androidx.lifecycle.SavedStateHandle
 import dev.tuandoan.expensetracker.R
 import dev.tuandoan.expensetracker.core.util.UiText
+import dev.tuandoan.expensetracker.domain.analytics.NoOpAnalytics
 import dev.tuandoan.expensetracker.domain.model.Category
 import dev.tuandoan.expensetracker.domain.model.CategoryWithCount
 import dev.tuandoan.expensetracker.domain.model.MonthlyBarPoint
@@ -58,6 +59,7 @@ class AddEditTransactionViewModelTest {
             fakeTimeProvider,
             fakeCurrencyPreferenceRepo,
             fakeBudgetAlertScheduler,
+            NoOpAnalytics(),
             savedStateHandle,
         )
     }

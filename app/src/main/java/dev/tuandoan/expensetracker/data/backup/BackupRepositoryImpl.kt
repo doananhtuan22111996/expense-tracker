@@ -18,6 +18,9 @@ import dev.tuandoan.expensetracker.data.database.dao.RecurringTransactionDao
 import dev.tuandoan.expensetracker.data.database.dao.TransactionDao
 import dev.tuandoan.expensetracker.data.export.CsvExporter
 import dev.tuandoan.expensetracker.data.export.TransactionWithCategory
+import dev.tuandoan.expensetracker.domain.analytics.Analytics
+import dev.tuandoan.expensetracker.domain.analytics.AnalyticsEvent
+import dev.tuandoan.expensetracker.domain.analytics.BackupFormat
 import dev.tuandoan.expensetracker.domain.crash.CrashReporter
 import dev.tuandoan.expensetracker.domain.model.SupportedCurrencies
 import dev.tuandoan.expensetracker.domain.repository.BackupProgress
@@ -54,6 +57,7 @@ class BackupRepositoryImpl
         private val csvExporter: CsvExporter,
         private val crashReporter: CrashReporter,
         private val backupCrypto: BackupCrypto,
+        private val analytics: Analytics,
     ) : BackupRepository {
         override suspend fun exportBackupJson(): String {
             val document = buildExportDocument()
@@ -84,6 +88,15 @@ class BackupRepositoryImpl
                 backupSerializer.encodeToStream(document, outputStream)
             }
             onProgress(BackupProgress(current = total, total = total))
+            // PRD FR-A6: log backup_exported only after the write completes.
+            // On exception the caller propagates without reaching this line,
+            // which is the correct semantic — a failed export isn't an export.
+            // Format is derived from the encrypt option, per FR-A6 param list.
+            analytics.logEvent(
+                AnalyticsEvent.BackupExported(
+                    format = if (encrypt != null) BackupFormat.ENCRYPTED else BackupFormat.JSON,
+                ),
+            )
         }
 
         override suspend fun importBackup(
@@ -98,7 +111,16 @@ class BackupRepositoryImpl
                 val document =
                     backupSerializer.decodeFromStream(decompressed)
                         ?: throw IllegalArgumentException("Invalid backup file format")
-                performImport(document, onProgress)
+                val result = performImport(document, onProgress)
+                // PRD FR-A6: log backup_imported only after the DB write
+                // completes. Failed imports (bad file, crypto error, DB error)
+                // fall through to the catch arms without reaching this line.
+                analytics.logEvent(
+                    AnalyticsEvent.BackupImported(
+                        format = if (decrypt != null) BackupFormat.ENCRYPTED else BackupFormat.JSON,
+                    ),
+                )
+                result
             } catch (e: kotlin.coroutines.cancellation.CancellationException) {
                 throw e
             } catch (e: BackupCryptoException) {
