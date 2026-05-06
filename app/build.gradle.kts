@@ -153,6 +153,10 @@ dependencies {
     // default for pre-consent crashes.
     releaseImplementation(platform(libs.firebase.bom))
     releaseImplementation(libs.firebase.crashlytics)
+    // Analytics SDK is releaseImplementation only — same ADR-010 guarantee as
+    // Crashlytics. Automatic events (screen_view, first_open, session_start)
+    // are disabled via manifest flags in the release source set per FR-A8.
+    releaseImplementation(libs.firebase.analytics)
 
     testImplementation(libs.junit)
     testImplementation(libs.mockito.core)

@@ -96,9 +96,10 @@ androidx-compose-material-icons-extended = { group = "androidx.compose.material"
 androidx-glance-appwidget = { group = "androidx.glance", name = "glance-appwidget", version.ref = "glance" }
 androidx-glance-material3 = { group = "androidx.glance", name = "glance-material3", version.ref = "glance" }
 
-# Firebase (Crashlytics — v3.11.0)
+# Firebase (Crashlytics + Analytics — v3.11.0)
 firebase-bom = { group = "com.google.firebase", name = "firebase-bom", version.ref = "firebaseBom" }
 firebase-crashlytics = { group = "com.google.firebase", name = "firebase-crashlytics" }
+firebase-analytics = { group = "com.google.firebase", name = "firebase-analytics" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }
