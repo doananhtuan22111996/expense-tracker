@@ -7,6 +7,7 @@ import dagger.hilt.android.EntryPointAccessors
 import dagger.hilt.components.SingletonComponent
 import dev.tuandoan.expensetracker.core.formatter.CurrencyFormatter
 import dev.tuandoan.expensetracker.core.util.TimeProvider
+import dev.tuandoan.expensetracker.domain.analytics.Analytics
 import dev.tuandoan.expensetracker.domain.repository.BudgetPreferences
 import dev.tuandoan.expensetracker.domain.repository.CurrencyPreferenceRepository
 import dev.tuandoan.expensetracker.domain.repository.TransactionRepository
@@ -34,6 +35,8 @@ interface WidgetEntryPoint {
     fun currencyFormatter(): CurrencyFormatter
 
     fun timeProvider(): TimeProvider
+
+    fun analytics(): Analytics
 
     companion object {
         fun get(context: Context): WidgetEntryPoint =
