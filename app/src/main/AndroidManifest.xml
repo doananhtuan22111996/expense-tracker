@@ -22,6 +22,34 @@
             android:name="firebase_crashlytics_collection_enabled"
             android:value="false" />
 
+        <!-- Firebase Analytics: master gate disabled at the SDK level by default
+             (v3.11.0 / ADR-010 / ADR-011 / PRD FR-A8). Runtime enable happens
+             after explicit user consent via AnalyticsPreferences.analyticsEventsConsent
+             (Task 5.4). Covers the ~100ms init race before the observer runs. -->
+        <meta-data
+            android:name="firebase_analytics_collection_enabled"
+            android:value="false" />
+
+        <!-- FR-A8: suppress the SDK's automatic `screen_view` events so only
+             the explicit FR-A6 event list can ever fire. `session_start` and
+             `first_open` are not individually disableable but are gated by
+             the master collection flag above until consent unlocks them. -->
+        <meta-data
+            android:name="google_analytics_automatic_screen_reporting_enabled"
+            android:value="false" />
+
+        <!-- FR-A7 defense-in-depth: never collect advertising IDs or SSAID
+             even if a future contributor accidentally re-enables collection.
+             The app is already ad-free; these flags make the SDK honour that
+             at its boundary rather than relying on us not calling specific
+             APIs. -->
+        <meta-data
+            android:name="google_analytics_adid_collection_enabled"
+            android:value="false" />
+        <meta-data
+            android:name="google_analytics_ssaid_collection_enabled"
+            android:value="false" />
+
         <activity
             android:name=".MainActivity"
             android:exported="true"
