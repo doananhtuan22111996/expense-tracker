@@ -14,6 +14,9 @@ import dagger.hilt.android.AndroidEntryPoint
 import dev.tuandoan.expensetracker.data.preferences.OnboardingRepository
 import dev.tuandoan.expensetracker.data.preferences.ThemePreference
 import dev.tuandoan.expensetracker.data.preferences.ThemePreferencesRepository
+import dev.tuandoan.expensetracker.domain.analytics.Analytics
+import dev.tuandoan.expensetracker.domain.analytics.AnalyticsEvent
+import dev.tuandoan.expensetracker.domain.analytics.BuildType
 import dev.tuandoan.expensetracker.ui.ExpenseTrackerApp
 import dev.tuandoan.expensetracker.ui.theme.ExpenseTrackerTheme
 import javax.inject.Inject
@@ -26,6 +29,9 @@ class MainActivity : ComponentActivity() {
     @Inject
     lateinit var onboardingRepository: OnboardingRepository
 
+    @Inject
+    lateinit var analytics: Analytics
+
     // Widget-action signal. We use a simple monotonically-increasing token
     // so that the Compose layer can react to *repeated* taps (e.g. user taps
     // the widget's "+" again after already cancelling the add screen). The
@@ -35,6 +41,21 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        // PRD FR-A6: log AppOpen once per user-perceptible launch. Gating on
+        // savedInstanceState == null means cold starts + process-death
+        // recreations fire the event, but Activity recreation from config
+        // changes (rotation, dark mode, font scale) does NOT — avoids
+        // overcounting an "open" that the user never initiated. A no-op on
+        // debug via the NoOpAnalytics binding; a no-op on release too until
+        // the user opts in via analyticsEventsConsent (manifest master gate
+        // + ExpenseTrackerApplication observer keep collection off).
+        if (savedInstanceState == null) {
+            analytics.logEvent(
+                AnalyticsEvent.AppOpen(
+                    buildType = if (BuildConfig.DEBUG) BuildType.DEBUG else BuildType.RELEASE,
+                ),
+            )
+        }
         enableEdgeToEdge()
         consumeWidgetExtras(intent)
         setContent {
