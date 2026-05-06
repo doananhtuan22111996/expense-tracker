@@ -15,6 +15,7 @@ import dev.tuandoan.expensetracker.data.seed.SeedRepository
 import dev.tuandoan.expensetracker.data.worker.BudgetAlertWorker
 import dev.tuandoan.expensetracker.data.worker.RecurringTransactionWorker
 import dev.tuandoan.expensetracker.data.worker.WidgetRefreshWorker
+import dev.tuandoan.expensetracker.domain.analytics.Analytics
 import dev.tuandoan.expensetracker.domain.crash.CrashReporter
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.SupervisorJob
@@ -37,6 +38,9 @@ class ExpenseTrackerApplication :
 
     @Inject
     lateinit var crashReporter: CrashReporter
+
+    @Inject
+    lateinit var analytics: Analytics
 
     @Inject
     lateinit var notificationHelper: NotificationHelper
@@ -64,11 +68,23 @@ class ExpenseTrackerApplication :
             scheduleWidgetRefreshWork()
         }
 
-        // Observe analytics consent and enable/disable crash reporting accordingly.
-        // Crash reporting is disabled by default until the user explicitly opts in.
+        // Observe Crashlytics consent and enable/disable crash reporting
+        // accordingly. Off by default until the user explicitly opts in.
         applicationScope.launch {
             analyticsPreferences.analyticsConsent.collect { consent ->
                 crashReporter.setCollectionEnabled(consent)
+            }
+        }
+
+        // Observe Analytics events consent (v3.11.0, ADR-011 / PRD FR-A5).
+        // Independent observer so one flow's pause can't block the other —
+        // a stuck DataStore read on the crash key won't starve the analytics
+        // key or vice versa. Off by default: the manifest master gate
+        // (firebase_analytics_collection_enabled=false, PR #116) keeps SDK
+        // collection off until this observer flips it after user opt-in.
+        applicationScope.launch {
+            analyticsPreferences.analyticsEventsConsent.collect { consent ->
+                analytics.setCollectionEnabled(consent)
             }
         }
     }
