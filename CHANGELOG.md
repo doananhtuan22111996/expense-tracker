@@ -1,6 +1,6 @@
 # Changelog
 
-## [Unreleased]
+## [3.11.0] - 2026-05-07
 
 ### Added
 - `AnalyticsPreferences.analyticsEventsConsent` + `analyticsEventsPromptShown` flags (both default `false`) — second consent channel for Firebase Analytics event collection, fully independent of the existing Crashlytics `analyticsConsent` per ADR-011's two-toggle decision. Historical-naming note added in interface KDoc: the original `analyticsConsent` key predates v3.11.0's Analytics work and remains Crashlytics-only despite the generic-sounding name; renaming would reset beta-tester consent. Four keys now live in the existing `analytics_preferences` DataStore (no new store, no migration). `FakeAnalyticsPreferences` in `testutil/` extended to match.
