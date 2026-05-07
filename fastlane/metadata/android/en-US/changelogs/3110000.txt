@@ -1,0 +1,5 @@
+What's new in v3.11:
+
+• Optional crash reporting — opt in once, toggle anytime in Settings. Off by default, no personal data ever leaves your device.
+• Optional anonymous usage analytics — separate toggle from crash reporting. Helps prioritize features; no amounts, categories, or notes are ever sent.
+• Dev-panel triggered test crashes for power users.

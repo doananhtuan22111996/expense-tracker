@@ -1,0 +1,5 @@
+Mới trong v3.11:
+
+• Báo cáo lỗi tùy chọn — bật một lần, đổi bất kỳ lúc nào trong Cài đặt. Mặc định tắt, không có dữ liệu cá nhân rời khỏi thiết bị.
+• Dữ liệu sử dụng ẩn danh tùy chọn — công tắc riêng so với báo cáo lỗi. Giúp ưu tiên tính năng; không bao giờ gửi số tiền, danh mục hay ghi chú.
+• Kích hoạt thử nghiệm sự cố trong bảng dành cho nhà phát triển.
