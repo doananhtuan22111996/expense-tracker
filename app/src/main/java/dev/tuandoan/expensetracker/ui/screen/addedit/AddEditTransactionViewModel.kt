@@ -9,6 +9,9 @@ import dev.tuandoan.expensetracker.core.formatter.AmountFormatter
 import dev.tuandoan.expensetracker.core.util.ErrorUtils
 import dev.tuandoan.expensetracker.core.util.TimeProvider
 import dev.tuandoan.expensetracker.core.util.UiText
+import dev.tuandoan.expensetracker.domain.analytics.Analytics
+import dev.tuandoan.expensetracker.domain.analytics.AnalyticsEvent
+import dev.tuandoan.expensetracker.domain.analytics.toAnalyticsKind
 import dev.tuandoan.expensetracker.domain.model.Category
 import dev.tuandoan.expensetracker.domain.model.SupportedCurrencies
 import dev.tuandoan.expensetracker.domain.model.Transaction
@@ -34,6 +37,7 @@ class AddEditTransactionViewModel
         private val timeProvider: TimeProvider,
         private val currencyPreferenceRepository: CurrencyPreferenceRepository,
         private val budgetAlertScheduler: BudgetAlertScheduler,
+        private val analytics: Analytics,
         savedStateHandle: SavedStateHandle,
     ) : ViewModel() {
         private val transactionId: Long = savedStateHandle.get<Long>("transactionId") ?: 0L
@@ -154,6 +158,14 @@ class AddEditTransactionViewModel
                             note = state.note.ifBlank { null },
                             timestamp = state.timestamp,
                             currencyCode = state.currencyCode,
+                        )
+                        // PRD FR-A6: fire transaction_added only for the add path,
+                        // not for updates — edits don't create new transactions.
+                        // The event carries ONLY expense-vs-income per FR-A7; the
+                        // sealed AnalyticsEvent hierarchy (PR #115) statically
+                        // enforces that amount/category/note cannot leak.
+                        analytics.logEvent(
+                            AnalyticsEvent.TransactionAdded(type = state.type.toAnalyticsKind()),
                         )
                     }
                     budgetAlertScheduler.scheduleImmediateCheck()

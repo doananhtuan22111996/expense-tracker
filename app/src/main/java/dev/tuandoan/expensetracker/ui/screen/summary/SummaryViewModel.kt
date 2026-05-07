@@ -10,6 +10,9 @@ import dev.tuandoan.expensetracker.core.util.TimeProvider
 import dev.tuandoan.expensetracker.core.util.UiText
 import dev.tuandoan.expensetracker.data.preferences.InsightsCollapsePreferences
 import dev.tuandoan.expensetracker.di.IoDispatcher
+import dev.tuandoan.expensetracker.domain.analytics.Analytics
+import dev.tuandoan.expensetracker.domain.analytics.AnalyticsEvent
+import dev.tuandoan.expensetracker.domain.analytics.toAnalyticsRowType
 import dev.tuandoan.expensetracker.domain.insights.computeInsights
 import dev.tuandoan.expensetracker.domain.model.BudgetStatus
 import dev.tuandoan.expensetracker.domain.model.MonthlyBarPoint
@@ -38,7 +41,9 @@ import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.mapNotNull
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.flow.take
 import kotlinx.coroutines.launch
 import java.time.YearMonth
 import java.time.ZoneId
@@ -59,6 +64,7 @@ class SummaryViewModel
         private val currencyFormatter: CurrencyFormatter,
         private val timeProvider: TimeProvider,
         private val zoneId: ZoneId,
+        private val analytics: Analytics,
         @IoDispatcher private val ioDispatcher: CoroutineDispatcher,
     ) : ViewModel() {
         private val _uiState = MutableStateFlow(SummaryUiState())
@@ -175,6 +181,28 @@ class SummaryViewModel
                         loadSummary()
                     }
                 }
+            }
+
+            // PRD FR-A6: fire insight_shown on the first populated emission
+            // per Summary visit (per VM instance). Emit one event per
+            // concrete row type shown (1-3 events total). Empty/Error rows
+            // opt out via toAnalyticsRowType() returning null, so an
+            // Empty-only Populated state consumes no take() slot and we
+            // keep waiting for a real insights emission.
+            viewModelScope.launch {
+                insightsState
+                    .mapNotNull { state ->
+                        (state as? InsightsUiState.Populated)
+                            ?.result
+                            ?.rows
+                            ?.mapNotNull { it.toAnalyticsRowType() }
+                            ?.takeIf { it.isNotEmpty() }
+                    }.take(1)
+                    .collect { rowTypes ->
+                        rowTypes.forEach { rowType ->
+                            analytics.logEvent(AnalyticsEvent.InsightShown(rowType = rowType))
+                        }
+                    }
             }
         }
 
