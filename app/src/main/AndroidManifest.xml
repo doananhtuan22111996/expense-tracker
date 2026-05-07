@@ -4,6 +4,14 @@
 
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
 
+    <!-- Explicitly remove AD_ID permission merged in by firebase-analytics SDK.
+         This app never uses advertising ID — collection is disabled via
+         google_analytics_adid_collection_enabled=false. Removing the permission
+         here keeps the merged manifest clean so Play Console declaration = No. -->
+    <uses-permission
+        android:name="com.google.android.gms.permission.AD_ID"
+        tools:node="remove" />
+
     <application
         android:name=".ExpenseTrackerApplication"
         android:allowBackup="true"
