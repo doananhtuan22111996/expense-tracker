@@ -181,15 +181,13 @@ private fun QuickAddTileStrip(pinnedCategories: List<PinnedCategorySlot>) {
  */
 @Composable
 private fun TileSlotPlaceholder(
-    slot: PinnedCategorySlot?,
+    @Suppress("UNUSED_PARAMETER") slot: PinnedCategorySlot?,
     modifier: GlanceModifier = GlanceModifier,
 ) {
-    // `slot` is carried into the stub now so T2.4/T2.5 can wire tile behavior
-    // to the pinned content without touching `QuickAddTileStrip`. For T2.3 the
-    // visual is intentionally identical regardless of Filled vs. Empty —
-    // layout-only scope.
-    @Suppress("UNUSED_PARAMETER")
-    slot
+    // `slot` is carried into the signature now so T2.4/T2.5 can wire tile
+    // behavior to the pinned content without touching `QuickAddTileStrip`.
+    // For T2.3 the visual is intentionally identical regardless of Filled
+    // vs. Empty — layout-only scope.
     Box(
         modifier =
             modifier
