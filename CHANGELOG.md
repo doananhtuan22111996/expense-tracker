@@ -5,6 +5,8 @@
 ### Added
 - `WidgetCategoryPreferences` interface + DataStore-backed impl in `data/preferences/` — persists up to 3 ordered EXPENSE-category IDs for the upcoming v3.12.0 widget quick-add tile strip. New `widget_category_preferences` store with three fixed `pinned_category_id_1/2/3` long keys; `setPinnedCategoryIds` atomically rewrites the set and fires `WidgetUpdater.requestUpdate()` so the widget reflects changes within ~1s. Mirrors the `InsightsCollapsePreferences` + `BudgetPreferencesImpl` patterns. Bound in `ReviewModule`.
 - 7 fake-based contract tests in `WidgetCategoryPreferencesImplTest` — default empty list, round-trip of 3 IDs, partial set, clear-all, over-3 truncation, reorder preservation, and trailing-slot clearing on shrink.
+- `PinnedCategorySlot` sealed interface + `PinnedCategoriesUseCase` in `domain/widget/` — pure-Kotlin layer over `WidgetCategoryPreferences` + `CategoryRepository` that resolves raw pinned IDs against the live EXPENSE-category list and always emits exactly three ordered slots (Filled or Empty). Deleted-category pins silently collapse to `Empty` at the same index (FR-07) so the widget layout stays stable.
+- 8 unit tests in `PinnedCategoriesUseCaseTest` — no-pins, no-categories, full set, partial set, deleted mid-slot, all deleted, reorder, index stability invariant.
 
 ## [3.11.0] - 2026-05-07
 
