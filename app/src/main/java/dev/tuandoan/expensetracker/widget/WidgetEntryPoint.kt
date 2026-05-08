@@ -11,6 +11,7 @@ import dev.tuandoan.expensetracker.domain.analytics.Analytics
 import dev.tuandoan.expensetracker.domain.repository.BudgetPreferences
 import dev.tuandoan.expensetracker.domain.repository.CurrencyPreferenceRepository
 import dev.tuandoan.expensetracker.domain.repository.TransactionRepository
+import dev.tuandoan.expensetracker.domain.widget.PinnedCategoriesUseCase
 
 /**
  * Hilt `@EntryPoint` for the home-screen widget.
@@ -37,6 +38,8 @@ interface WidgetEntryPoint {
     fun timeProvider(): TimeProvider
 
     fun analytics(): Analytics
+
+    fun pinnedCategoriesUseCase(): PinnedCategoriesUseCase
 
     companion object {
         fun get(context: Context): WidgetEntryPoint =

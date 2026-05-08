@@ -3,6 +3,7 @@ package dev.tuandoan.expensetracker.widget
 import dev.tuandoan.expensetracker.core.formatter.CurrencyFormatter
 import dev.tuandoan.expensetracker.domain.model.Transaction
 import dev.tuandoan.expensetracker.domain.model.TransactionType
+import dev.tuandoan.expensetracker.domain.widget.PinnedCategorySlot
 import java.time.Instant
 import java.time.ZoneId
 
@@ -39,6 +40,11 @@ import java.time.ZoneId
  * app, which uses `ZoneId.systemDefault()` via `DateTimeUtil`.
  * @param formatter produces the display strings; must match what the rest of
  * the app renders so the widget can't drift from the Home/Summary tabs.
+ * @param pinnedCategories the resolved quick-add tile list produced by
+ * `PinnedCategoriesUseCase`. The caller (widget entry point) takes a snapshot
+ * via `.first()`; this mapper simply carries it onto the state. Empty by
+ * default so existing callers + tests that don't care about tiles don't need
+ * to supply it.
  */
 fun mapExpenseWidgetState(
     monthExpenses: List<Transaction>,
@@ -47,6 +53,7 @@ fun mapExpenseWidgetState(
     nowMillis: Long,
     zoneId: ZoneId,
     formatter: CurrencyFormatter,
+    pinnedCategories: List<PinnedCategorySlot> = emptyList(),
 ): ExpenseWidgetState {
     val relevant =
         monthExpenses.filter {
@@ -85,5 +92,6 @@ fun mapExpenseWidgetState(
         todayFormatted = formatter.format(todayTotal, defaultCurrencyCode),
         monthFormatted = formatter.format(monthTotal, defaultCurrencyCode),
         budget = budgetDisplay,
+        pinnedCategories = pinnedCategories,
     )
 }

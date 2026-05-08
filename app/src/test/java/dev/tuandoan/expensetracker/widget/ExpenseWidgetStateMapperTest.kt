@@ -4,6 +4,7 @@ import dev.tuandoan.expensetracker.core.formatter.CurrencyFormatter
 import dev.tuandoan.expensetracker.domain.model.Category
 import dev.tuandoan.expensetracker.domain.model.Transaction
 import dev.tuandoan.expensetracker.domain.model.TransactionType
+import dev.tuandoan.expensetracker.domain.widget.PinnedCategorySlot
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
@@ -337,6 +338,11 @@ class ExpenseWidgetStateMapperTest {
         assertEquals("", loading.todayFormatted)
         assertEquals("", loading.monthFormatted)
         assertNull(loading.budget)
+        // Pinned slots pre-populated so the medium layout never reflows
+        // between the loading tile strip and the first real emission.
+        assertEquals(3, loading.pinnedCategories.size)
+        assertTrue(loading.pinnedCategories.all { it is PinnedCategorySlot.Empty })
+        assertEquals(listOf(1, 2, 3), loading.pinnedCategories.map { it.index })
     }
 
     // --- Currency plumbing ---
@@ -491,5 +497,161 @@ class ExpenseWidgetStateMapperTest {
 
         assertEquals("20000 VND", state.todayFormatted)
         assertEquals("30000 VND", state.monthFormatted)
+    }
+
+    // --- Pinned categories pass-through (T2.2) ---
+    //
+    // The mapper doesn't compute pins — `PinnedCategoriesUseCase` already
+    // padded the list to 3 slots + filtered deleted IDs. These cases pin
+    // the pass-through contract so a future refactor can't silently drop
+    // the list or mutate slot order.
+
+    private val groceriesCategory =
+        Category(
+            id = 10L,
+            name = "Groceries",
+            type = TransactionType.EXPENSE,
+            iconKey = "restaurant",
+            colorKey = "green",
+            isDefault = false,
+        )
+    private val coffeeCategory =
+        Category(
+            id = 11L,
+            name = "Coffee",
+            type = TransactionType.EXPENSE,
+            iconKey = "coffee",
+            colorKey = "blue",
+            isDefault = false,
+        )
+    private val transitCategory =
+        Category(
+            id = 12L,
+            name = "Transit",
+            type = TransactionType.EXPENSE,
+            iconKey = "directions_bus",
+            colorKey = "yellow",
+            isDefault = false,
+        )
+
+    @Test
+    fun mapState_threeFilledPins_passesThroughUnchanged() {
+        val pins =
+            listOf(
+                PinnedCategorySlot.Filled(index = 1, category = groceriesCategory),
+                PinnedCategorySlot.Filled(index = 2, category = coffeeCategory),
+                PinnedCategorySlot.Filled(index = 3, category = transitCategory),
+            )
+
+        val state =
+            mapExpenseWidgetState(
+                monthExpenses = emptyList(),
+                defaultCurrencyCode = "VND",
+                budgetAmount = null,
+                nowMillis = nowMillis,
+                zoneId = zone,
+                formatter = fakeFormatter,
+                pinnedCategories = pins,
+            )
+
+        assertEquals(pins, state.pinnedCategories)
+    }
+
+    @Test
+    fun mapState_partialPins_preservesEmptySlotAtCorrectIndex() {
+        // Upstream use case guarantees: two filled + one empty in slot 3.
+        // Mapper must not reorder or drop the empty.
+        val pins =
+            listOf(
+                PinnedCategorySlot.Filled(index = 1, category = groceriesCategory),
+                PinnedCategorySlot.Filled(index = 2, category = coffeeCategory),
+                PinnedCategorySlot.Empty(index = 3),
+            )
+
+        val state =
+            mapExpenseWidgetState(
+                monthExpenses = emptyList(),
+                defaultCurrencyCode = "VND",
+                budgetAmount = null,
+                nowMillis = nowMillis,
+                zoneId = zone,
+                formatter = fakeFormatter,
+                pinnedCategories = pins,
+            )
+
+        assertEquals(pins, state.pinnedCategories)
+        assertTrue(state.pinnedCategories[2] is PinnedCategorySlot.Empty)
+    }
+
+    @Test
+    fun mapState_allEmptyPins_passesThroughAsThreeEmpty() {
+        val pins =
+            listOf(
+                PinnedCategorySlot.Empty(index = 1),
+                PinnedCategorySlot.Empty(index = 2),
+                PinnedCategorySlot.Empty(index = 3),
+            )
+
+        val state =
+            mapExpenseWidgetState(
+                monthExpenses = emptyList(),
+                defaultCurrencyCode = "VND",
+                budgetAmount = null,
+                nowMillis = nowMillis,
+                zoneId = zone,
+                formatter = fakeFormatter,
+                pinnedCategories = pins,
+            )
+
+        assertEquals(pins, state.pinnedCategories)
+        assertTrue(state.pinnedCategories.all { it is PinnedCategorySlot.Empty })
+    }
+
+    @Test
+    fun mapState_deletedPinFallback_keepsEmptyAtOriginalIndex() {
+        // Simulates FR-07: use case emitted Empty(2) because the pinned ID
+        // for slot 2 no longer resolves to a category. Mapper must not
+        // "compact" the list or treat the empty as an error.
+        val pins =
+            listOf(
+                PinnedCategorySlot.Filled(index = 1, category = groceriesCategory),
+                PinnedCategorySlot.Empty(index = 2),
+                PinnedCategorySlot.Filled(index = 3, category = transitCategory),
+            )
+
+        val state =
+            mapExpenseWidgetState(
+                monthExpenses = emptyList(),
+                defaultCurrencyCode = "VND",
+                budgetAmount = null,
+                nowMillis = nowMillis,
+                zoneId = zone,
+                formatter = fakeFormatter,
+                pinnedCategories = pins,
+            )
+
+        assertEquals(pins, state.pinnedCategories)
+        assertEquals(
+            PinnedCategorySlot.Filled(index = 3, category = transitCategory),
+            state.pinnedCategories[2],
+        )
+    }
+
+    @Test
+    fun mapState_pinnedCategoriesOmitted_defaultsToEmptyList() {
+        // Callers that don't care about tiles (e.g. existing small-widget
+        // tests) can skip the parameter — the mapper uses an empty list
+        // rather than throwing.
+        val state =
+            mapExpenseWidgetState(
+                monthExpenses = emptyList(),
+                defaultCurrencyCode = "VND",
+                budgetAmount = null,
+                nowMillis = nowMillis,
+                zoneId = zone,
+                formatter = fakeFormatter,
+            )
+
+        assertEquals(emptyList<PinnedCategorySlot>(), state.pinnedCategories)
     }
 }
