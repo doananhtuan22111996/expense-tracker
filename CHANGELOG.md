@@ -1,5 +1,11 @@
 # Changelog
 
+## [Unreleased]
+
+### Added
+- `WidgetCategoryPreferences` interface + DataStore-backed impl in `data/preferences/` — persists up to 3 ordered EXPENSE-category IDs for the upcoming v3.12.0 widget quick-add tile strip. New `widget_category_preferences` store with three fixed `pinned_category_id_1/2/3` long keys; `setPinnedCategoryIds` atomically rewrites the set and fires `WidgetUpdater.requestUpdate()` so the widget reflects changes within ~1s. Mirrors the `InsightsCollapsePreferences` + `BudgetPreferencesImpl` patterns. Bound in `ReviewModule`.
+- 7 fake-based contract tests in `WidgetCategoryPreferencesImplTest` — default empty list, round-trip of 3 IDs, partial set, clear-all, over-3 truncation, reorder preservation, and trailing-slot clearing on shrink.
+
 ## [3.11.0] - 2026-05-07
 
 ### Added

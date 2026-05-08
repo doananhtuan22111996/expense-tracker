@@ -12,6 +12,8 @@ import dev.tuandoan.expensetracker.data.preferences.InsightsCollapsePreferences
 import dev.tuandoan.expensetracker.data.preferences.InsightsCollapsePreferencesImpl
 import dev.tuandoan.expensetracker.data.preferences.ReviewPreferences
 import dev.tuandoan.expensetracker.data.preferences.ReviewPreferencesImpl
+import dev.tuandoan.expensetracker.data.preferences.WidgetCategoryPreferences
+import dev.tuandoan.expensetracker.data.preferences.WidgetCategoryPreferencesImpl
 import dev.tuandoan.expensetracker.domain.review.InAppReviewManager
 import dev.tuandoan.expensetracker.domain.review.InAppReviewManagerImpl
 
@@ -40,4 +42,7 @@ abstract class ReviewModule {
 
     @Binds
     abstract fun bindInsightsCollapsePreferences(impl: InsightsCollapsePreferencesImpl): InsightsCollapsePreferences
+
+    @Binds
+    abstract fun bindWidgetCategoryPreferences(impl: WidgetCategoryPreferencesImpl): WidgetCategoryPreferences
 }
