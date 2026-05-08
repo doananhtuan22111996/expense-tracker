@@ -59,6 +59,7 @@ class ExpenseWidget : GlanceAppWidget() {
             val currencyCode = entry.currencyPreferenceRepository().getDefaultCurrency()
             val monthExpenses = entry.transactionRepository().observeTransactions(from, to).first()
             val budgetAmount = entry.budgetPreferences().getBudget(currencyCode).first()
+            val pinnedCategories = entry.pinnedCategoriesUseCase().invoke().first()
             mapExpenseWidgetState(
                 monthExpenses = monthExpenses,
                 defaultCurrencyCode = currencyCode,
@@ -66,6 +67,7 @@ class ExpenseWidget : GlanceAppWidget() {
                 nowMillis = timeProvider.currentTimeMillis(),
                 zoneId = ZoneId.systemDefault(),
                 formatter = entry.currencyFormatter(),
+                pinnedCategories = pinnedCategories,
             )
         } catch (ce: CancellationException) {
             // Respect coroutine cancellation — propagate so Glance can abandon this render.

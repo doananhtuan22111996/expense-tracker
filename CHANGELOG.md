@@ -7,6 +7,10 @@
 - 7 fake-based contract tests in `WidgetCategoryPreferencesImplTest` — default empty list, round-trip of 3 IDs, partial set, clear-all, over-3 truncation, reorder preservation, and trailing-slot clearing on shrink.
 - `PinnedCategorySlot` sealed interface + `PinnedCategoriesUseCase` in `domain/widget/` — pure-Kotlin layer over `WidgetCategoryPreferences` + `CategoryRepository` that resolves raw pinned IDs against the live EXPENSE-category list and always emits exactly three ordered slots (Filled or Empty). Deleted-category pins silently collapse to `Empty` at the same index (FR-07) so the widget layout stays stable.
 - 8 unit tests in `PinnedCategoriesUseCaseTest` — no-pins, no-categories, full set, partial set, deleted mid-slot, all deleted, reorder, index stability invariant.
+- `ExpenseWidgetState.pinnedCategories: List<PinnedCategorySlot>` — new state field carried by `mapExpenseWidgetState` and snapshot via `PinnedCategoriesUseCase` in `ExpenseWidget.loadState`. `ExpenseWidgetState.LOADING` now seeds three `Empty` slots so the medium layout renders the placeholder tile strip without reflowing on the first real emission. `WidgetEntryPoint` exposes the new use case. Defaults to `emptyList()` on the mapper param so existing callers (small-widget paths, existing tests) compile unchanged.
+
+### Changed
+- `ExpenseWidgetStateMapperTest` — extended `loading_isEmptyPlaceholder` to pin the 3-empty-slots invariant + 5 new T2.2 cases (all-filled pass-through, partial slot with empty-in-position-3, all-empty pass-through, deleted-pin fallback in mid slot, pinnedCategories parameter omission defaults to empty list).
 
 ## [3.11.0] - 2026-05-07
 

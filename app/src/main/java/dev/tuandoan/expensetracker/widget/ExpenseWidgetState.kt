@@ -1,5 +1,7 @@
 package dev.tuandoan.expensetracker.widget
 
+import dev.tuandoan.expensetracker.domain.widget.PinnedCategorySlot
+
 /**
  * Immutable snapshot of what the home-screen widget should render.
  *
@@ -15,18 +17,26 @@ package dev.tuandoan.expensetracker.widget
  * @property monthFormatted this calendar month's expense total, same formatting.
  * @property budget the budget block — `null` when the user hasn't set a monthly
  * budget for [currencyCode], in which case the medium widget hides the row.
+ * @property pinnedCategories the three quick-add tile slots for the medium
+ * widget. Always exactly three entries in ascending index order (1..3) so the
+ * tile layout stays stable across emissions. Filled slots become tappable
+ * category tiles; empty slots render as dashed "+ Set up" placeholders.
  */
 data class ExpenseWidgetState(
     val currencyCode: String,
     val todayFormatted: String,
     val monthFormatted: String,
     val budget: BudgetDisplay?,
+    val pinnedCategories: List<PinnedCategorySlot> = emptyList(),
 ) {
     companion object {
         /**
          * Neutral placeholder used before the repository emits and in the
          * loading path. Currency symbol is unknown at this point so we
-         * leave the amount strings blank rather than guessing.
+         * leave the amount strings blank rather than guessing. Pinned
+         * slots are pre-populated as three [PinnedCategorySlot.Empty] so
+         * the medium layout renders the placeholder tile strip rather
+         * than an empty row — no reflow when the first real emission lands.
          */
         val LOADING: ExpenseWidgetState =
             ExpenseWidgetState(
@@ -34,6 +44,12 @@ data class ExpenseWidgetState(
                 todayFormatted = "",
                 monthFormatted = "",
                 budget = null,
+                pinnedCategories =
+                    listOf(
+                        PinnedCategorySlot.Empty(index = 1),
+                        PinnedCategorySlot.Empty(index = 2),
+                        PinnedCategorySlot.Empty(index = 3),
+                    ),
             )
     }
 }
