@@ -28,6 +28,7 @@ import androidx.glance.text.FontWeight
 import androidx.glance.text.Text
 import androidx.glance.text.TextStyle
 import dev.tuandoan.expensetracker.R
+import dev.tuandoan.expensetracker.domain.widget.PinnedCategorySlot
 import dev.tuandoan.expensetracker.widget.BudgetDisplay
 import dev.tuandoan.expensetracker.widget.ExpenseWidget
 import dev.tuandoan.expensetracker.widget.ExpenseWidgetState
@@ -107,13 +108,14 @@ private fun MediumLayout(state: ExpenseWidgetState) {
     val context = LocalContext.current
     val loadingPlaceholder = context.getString(R.string.widget_amount_loading)
     val columnDescription = mediumA11yDescription(context, state)
-    // Background click = open app (Home tab). The AddButton inside the top
-    // row declares its own `clickable`, which takes precedence on its hit
-    // area so the "+" target routes to add-transaction instead.
+    // Variant A layout: today/month/budget information occupies the top, then
+    // the quick-add tile strip (3 tiles + "+" button) spans the bottom row.
     //
-    // The whole column carries a single `contentDescription` so TalkBack
-    // announces a coherent sentence (today + month + budget status) in one
-    // pass instead of stepping through each label/amount text node.
+    // Background click = open app (Home tab). AddButton and the tiles declare
+    // their own `clickable`s, which take precedence on their hit areas.
+    //
+    // The outer Column carries one `contentDescription` covering the info
+    // section; tile-level content descriptions live on each tile composable.
     Column(
         modifier =
             GlanceModifier
@@ -123,14 +125,10 @@ private fun MediumLayout(state: ExpenseWidgetState) {
                 .semantics { contentDescription = columnDescription }
                 .padding(horizontal = 12.dp, vertical = 10.dp),
     ) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            AmountRow(
-                label = context.getString(R.string.widget_today),
-                amountFormatted = state.todayFormatted.ifEmpty { loadingPlaceholder },
-                modifier = GlanceModifier.defaultWeight(),
-            )
-            AddButton()
-        }
+        AmountRow(
+            label = context.getString(R.string.widget_today),
+            amountFormatted = state.todayFormatted.ifEmpty { loadingPlaceholder },
+        )
         Spacer(modifier = GlanceModifier.height(8.dp))
         AmountRow(
             label = context.getString(R.string.widget_this_month),
@@ -140,6 +138,65 @@ private fun MediumLayout(state: ExpenseWidgetState) {
             Spacer(modifier = GlanceModifier.height(10.dp))
             BudgetProgress(budget = state.budget)
         }
+        Spacer(modifier = GlanceModifier.defaultWeight())
+        QuickAddTileStrip(pinnedCategories = state.pinnedCategories)
+    }
+}
+
+/**
+ * Bottom 4-column strip: 3 quick-add category tiles + the existing "+" button.
+ *
+ * Tile content is rendered by [TileSlotPlaceholder] for now — T2.4 replaces the
+ * filled branch with the real `CategoryTile`, T2.5 replaces the empty branch
+ * with the dashed "+ Set up" placeholder. Keeping both branches behind a
+ * single internal composable means T2.3 only owns layout proportions.
+ *
+ * Uses `defaultWeight` on each slot so the four columns share width equally
+ * and adapt to medium-widget cell-width drift across launchers.
+ */
+@Composable
+private fun QuickAddTileStrip(pinnedCategories: List<PinnedCategorySlot>) {
+    Row(
+        modifier = GlanceModifier.fillMaxWidth(),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        val slots = pinnedCategories.take(3)
+        // Always render three slot positions, even if the upstream list is
+        // shorter — keeps the four-column grid stable across emissions.
+        for (i in 0 until 3) {
+            TileSlotPlaceholder(
+                slot = slots.getOrNull(i),
+                modifier = GlanceModifier.defaultWeight().padding(horizontal = 2.dp),
+            )
+        }
+        AddButton()
+    }
+}
+
+/**
+ * Temporary visual stub for a tile slot. Renders a neutral rounded container
+ * so the bottom strip has the correct visual weight + tap target size; the
+ * real tile composables (T2.4 filled, T2.5 empty placeholder) will replace
+ * this in follow-up PRs without changing the surrounding row geometry.
+ */
+@Composable
+private fun TileSlotPlaceholder(
+    @Suppress("UNUSED_PARAMETER") slot: PinnedCategorySlot?,
+    modifier: GlanceModifier = GlanceModifier,
+) {
+    // `slot` is carried into the signature now so T2.4/T2.5 can wire tile
+    // behavior to the pinned content without touching `QuickAddTileStrip`.
+    // For T2.3 the visual is intentionally identical regardless of Filled
+    // vs. Empty — layout-only scope.
+    Box(
+        modifier =
+            modifier
+                .height(40.dp)
+                .cornerRadius(12.dp)
+                .background(GlanceTheme.colors.surfaceVariant),
+        contentAlignment = Alignment.Center,
+    ) {
+        // Deliberately empty — the real tile content arrives in T2.4/T2.5.
     }
 }
 
