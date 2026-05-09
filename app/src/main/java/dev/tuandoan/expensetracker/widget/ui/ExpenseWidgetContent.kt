@@ -6,6 +6,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.glance.GlanceModifier
 import androidx.glance.GlanceTheme
+import androidx.glance.ImageProvider
 import androidx.glance.LocalContext
 import androidx.glance.LocalSize
 import androidx.glance.action.clickable
@@ -27,6 +28,7 @@ import androidx.glance.semantics.semantics
 import androidx.glance.text.FontWeight
 import androidx.glance.text.Text
 import androidx.glance.text.TextStyle
+import androidx.glance.unit.ColorProvider
 import dev.tuandoan.expensetracker.R
 import dev.tuandoan.expensetracker.domain.widget.PinnedCategorySlot
 import dev.tuandoan.expensetracker.widget.BudgetDisplay
@@ -146,10 +148,11 @@ private fun MediumLayout(state: ExpenseWidgetState) {
 /**
  * Bottom 4-column strip: 3 quick-add category tiles + the existing "+" button.
  *
- * Tile content is rendered by [TileSlotPlaceholder] for now — T2.4 replaces the
- * filled branch with the real `CategoryTile`, T2.5 replaces the empty branch
- * with the dashed "+ Set up" placeholder. Keeping both branches behind a
- * single internal composable means T2.3 only owns layout proportions.
+ * Branches on the slot type: [PinnedCategorySlot.Filled] renders a [CategoryTile]
+ * with the pinned category's name + color swatch; [PinnedCategorySlot.Empty]
+ * (or a null slot if the upstream list is short) renders [EmptyTilePlaceholder]
+ * with a dashed outline + "+ Set up" affordance. Click routing on both is
+ * temporarily wired to `openAppAction` until T2.6 lands tile-specific routing.
  *
  * Uses `defaultWeight` on each slot so the four columns share width equally
  * and adapt to medium-widget cell-width drift across launchers.
@@ -164,41 +167,121 @@ private fun QuickAddTileStrip(pinnedCategories: List<PinnedCategorySlot>) {
         // Always render three slot positions, even if the upstream list is
         // shorter — keeps the four-column grid stable across emissions.
         for (i in 0 until 3) {
-            TileSlotPlaceholder(
-                slot = slots.getOrNull(i),
-                modifier = GlanceModifier.defaultWeight().padding(horizontal = 2.dp),
-            )
+            val slotModifier = GlanceModifier.defaultWeight().padding(horizontal = 2.dp)
+            when (val slot = slots.getOrNull(i)) {
+                is PinnedCategorySlot.Filled -> CategoryTile(slot = slot, modifier = slotModifier)
+                is PinnedCategorySlot.Empty, null -> EmptyTilePlaceholder(modifier = slotModifier)
+            }
         }
         AddButton()
     }
 }
 
 /**
- * Temporary visual stub for a tile slot. Renders a neutral rounded container
- * so the bottom strip has the correct visual weight + tap target size; the
- * real tile composables (T2.4 filled, T2.5 empty placeholder) will replace
- * this in follow-up PRs without changing the surrounding row geometry.
+ * A single quick-add tile rendering a pinned category. The tile background is
+ * a tonal color derived from the category's `colorKey` (falls back to theme
+ * primary if the key is unknown). The category name is drawn centered and
+ * single-line ellipsized to fit the ~1/4 row slot width.
+ *
+ * Click is currently routed through `openAppAction` as a stub; T2.6 replaces
+ * this with an action that carries the `categoryId` to the quick-add sheet.
+ *
+ * `contentDescription` follows the "Quick-add <Category>" pattern so TalkBack
+ * reads a single sentence per tile. Touch target is the full 40dp rounded
+ * container — well above WCAG AA's 48dp minimum when combined with the 2dp
+ * horizontal padding from [QuickAddTileStrip].
  */
 @Composable
-private fun TileSlotPlaceholder(
-    @Suppress("UNUSED_PARAMETER") slot: PinnedCategorySlot?,
+private fun CategoryTile(
+    slot: PinnedCategorySlot.Filled,
     modifier: GlanceModifier = GlanceModifier,
 ) {
-    // `slot` is carried into the signature now so T2.4/T2.5 can wire tile
-    // behavior to the pinned content without touching `QuickAddTileStrip`.
-    // For T2.3 the visual is intentionally identical regardless of Filled
-    // vs. Empty — layout-only scope.
+    val context = LocalContext.current
+    val tileColor = widgetCategoryColor(slot.category.colorKey)
+    val tileDescription =
+        context.getString(R.string.a11y_widget_quick_add_tile, slot.category.name)
     Box(
         modifier =
             modifier
                 .height(40.dp)
                 .cornerRadius(12.dp)
-                .background(GlanceTheme.colors.surfaceVariant),
+                .background(tileColor)
+                .clickable(openAppAction(context))
+                .semantics { contentDescription = tileDescription },
         contentAlignment = Alignment.Center,
     ) {
-        // Deliberately empty — the real tile content arrives in T2.4/T2.5.
+        Text(
+            text = slot.category.name,
+            style =
+                TextStyle(
+                    color = GlanceTheme.colors.onPrimary,
+                    fontWeight = FontWeight.Medium,
+                    fontSize = 11.sp,
+                ),
+            maxLines = 1,
+        )
     }
 }
+
+/**
+ * Placeholder for an unset or deleted-category pin slot. Rendered as a dashed
+ * rounded rectangle (via [R.drawable.widget_tile_empty_bg]) with a small
+ * "+ Set up" label so users understand the slot is actionable. Tapping
+ * currently routes through `openAppAction` (T2.6 will open Settings →
+ * Widget Categories directly).
+ *
+ * Glance doesn't support dashed borders natively, so the drawable is declared
+ * as a static XML resource with a neutral outline color that reads acceptably
+ * on both light and dark launcher backgrounds.
+ */
+@Composable
+private fun EmptyTilePlaceholder(modifier: GlanceModifier = GlanceModifier) {
+    val context = LocalContext.current
+    val tileDescription = context.getString(R.string.a11y_widget_empty_pin)
+    val label = context.getString(R.string.widget_empty_pin_label)
+    Box(
+        modifier =
+            modifier
+                .height(40.dp)
+                .background(ImageProvider(R.drawable.widget_tile_empty_bg))
+                .clickable(openAppAction(context))
+                .semantics { contentDescription = tileDescription },
+        contentAlignment = Alignment.Center,
+    ) {
+        Text(
+            text = label,
+            style =
+                TextStyle(
+                    color = GlanceTheme.colors.onSurfaceVariant,
+                    fontSize = 11.sp,
+                ),
+            maxLines = 1,
+        )
+    }
+}
+
+/**
+ * Maps a category's [colorKey] to a Glance-native color provider. Mirrors the
+ * logic in `ChartColors.categoryColor` but sourced from [GlanceTheme.colors]
+ * because `MaterialTheme.colorScheme` isn't available in a Glance composable
+ * (widgets run in the launcher process, not the app's Compose tree).
+ *
+ * Callers should use the returned provider as a tile background; the on-tile
+ * text color stays `onPrimary` for legibility against tonal fills.
+ */
+@Composable
+private fun widgetCategoryColor(colorKey: String?): ColorProvider =
+    when (colorKey) {
+        "red" -> GlanceTheme.colors.error
+        "blue" -> GlanceTheme.colors.primary
+        "green" -> GlanceTheme.colors.onPrimaryContainer
+        "orange" -> GlanceTheme.colors.secondary
+        "purple" -> GlanceTheme.colors.inversePrimary
+        "teal" -> GlanceTheme.colors.tertiary
+        "pink" -> GlanceTheme.colors.onTertiaryContainer
+        "gray" -> GlanceTheme.colors.outline
+        else -> GlanceTheme.colors.primary
+    }
 
 // --- Shared row primitives ---
 

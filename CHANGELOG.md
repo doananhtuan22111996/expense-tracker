@@ -12,6 +12,7 @@
 ### Changed
 - `ExpenseWidgetStateMapperTest` — extended `loading_isEmptyPlaceholder` to pin the 3-empty-slots invariant + 5 new T2.2 cases (all-filled pass-through, partial slot with empty-in-position-3, all-empty pass-through, deleted-pin fallback in mid slot, pinnedCategories parameter omission defaults to empty list).
 - Medium widget layout refactored to the Variant A shape per the v3.12.0 design — today/month/budget info now stacks at the top, a new bottom 4-column strip hosts three quick-add tile slots + the existing "+" button. The `AddButton` moved out of the top row into the bottom strip. Tile composables are temporary placeholders in this PR; T2.4 replaces the filled branch with the real `CategoryTile` and T2.5 replaces the empty branch with the dashed "+ Set up" placeholder. Small widget layout is unchanged.
+- Medium widget tile composables — `CategoryTile` renders a pinned category with a tonal color swatch + single-line ellipsized name; `EmptyTilePlaceholder` renders a dashed rounded rectangle + "+ Set up" label for unset or deleted-category pins. Both composables replace the temporary `TileSlotPlaceholder` stub. Click routing is stubbed via `openAppAction` until T2.6 lands tile-specific routing. New `widgetCategoryColor` helper mirrors `ChartColors.categoryColor` against Glance tokens since `MaterialTheme.colorScheme` isn't available to Glance. Adds `widget_tile_empty_bg` dashed drawable + three new strings (`a11y_widget_quick_add_tile`, `a11y_widget_empty_pin`, `widget_empty_pin_label`).
 
 ## [3.11.0] - 2026-05-07
 
