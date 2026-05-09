@@ -2,7 +2,7 @@
 <!--
     Dashed rounded-rectangle background for the empty-pin placeholder tile on
     the medium widget. Communicates "slot is actionable, not yet configured"
-    without shouting. Neutral outline color uses #4D808080 (50% alpha gray)
+    without shouting. Neutral outline color uses #80808080 (50% alpha gray)
     which reads as ~3:1 against both light and dark launcher surfaces per the
     WCAG AA non-text contrast threshold. Runs outside the app's theme context
     so we can't resolve GlanceTheme tokens here; color picked to work on both

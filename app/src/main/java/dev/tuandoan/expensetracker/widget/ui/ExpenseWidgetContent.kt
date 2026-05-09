@@ -187,9 +187,11 @@ private fun QuickAddTileStrip(pinnedCategories: List<PinnedCategorySlot>) {
  * this with an action that carries the `categoryId` to the quick-add sheet.
  *
  * `contentDescription` follows the "Quick-add <Category>" pattern so TalkBack
- * reads a single sentence per tile. Touch target is the full 40dp rounded
- * container — well above WCAG AA's 48dp minimum when combined with the 2dp
- * horizontal padding from [QuickAddTileStrip].
+ * reads a single sentence per tile. Tile height is 40dp — consistent with
+ * the existing `AddButton` convention for widget chrome. This is slightly
+ * under WCAG AA's 48dp guideline, accepted because widget row space is
+ * tight and the target matches user expectations set by `AddButton` on
+ * the same strip.
  */
 @Composable
 private fun CategoryTile(
