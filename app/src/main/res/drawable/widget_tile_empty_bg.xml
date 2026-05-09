@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    Dashed rounded-rectangle background for the empty-pin placeholder tile on
+    the medium widget. Communicates "slot is actionable, not yet configured"
+    without shouting. Neutral outline color uses #80808080 (50% alpha gray)
+    which reads as ~3:1 against both light and dark launcher surfaces per the
+    WCAG AA non-text contrast threshold. Runs outside the app's theme context
+    so we can't resolve GlanceTheme tokens here; color picked to work on both
+    themes.
+-->
+<shape xmlns:android="http://schemas.android.com/apk/res/android"
+    android:shape="rectangle">
+    <corners android:radius="12dp" />
+    <stroke
+        android:width="1.5dp"
+        android:color="#80808080"
+        android:dashWidth="3dp"
+        android:dashGap="2dp" />
+</shape>

@@ -558,6 +558,12 @@
     <string name="a11y_widget_medium_over_budget">Today: %1$s. This month: %2$s. Over budget by %3$s, %4$d%% of %5$s. Tap to open Expense Tracker.</string>
     <string name="a11y_widget_add_button">Add transaction</string>
     <string name="a11y_widget_loading">Loading widget data</string>
+    <!-- Quick-add tiles (v3.12.0). %1$s is the pinned category name. -->
+    <string name="a11y_widget_quick_add_tile">Quick-add %1$s</string>
+    <string name="a11y_widget_empty_pin">Set up widget category</string>
+    <!-- Visible label on an empty-pin placeholder tile. Short because the
+         medium widget only has ~1/4 of a 4-cell row for each tile. -->
+    <string name="widget_empty_pin_label">+ Set up</string>
     <!-- Widget preview (launcher picker). Static placeholder values — not data-bound
          and never shown with real user data. Intentionally simple numbers so the
          preview reads clearly at thumbnail size in the picker. -->
