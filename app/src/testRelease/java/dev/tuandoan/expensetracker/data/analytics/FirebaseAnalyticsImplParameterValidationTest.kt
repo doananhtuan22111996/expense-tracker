@@ -6,6 +6,7 @@ import dev.tuandoan.expensetracker.domain.analytics.BackupFormat
 import dev.tuandoan.expensetracker.domain.analytics.BuildType
 import dev.tuandoan.expensetracker.domain.analytics.InsightRowType
 import dev.tuandoan.expensetracker.domain.analytics.TransactionKind
+import dev.tuandoan.expensetracker.domain.analytics.TransactionSource
 import dev.tuandoan.expensetracker.domain.analytics.WidgetSize
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -69,8 +70,15 @@ class FirebaseAnalyticsImplParameterValidationTest {
             AnalyticsEvent.WidgetAdded(WidgetSize.SMALL),
             AnalyticsEvent.WidgetAdded(WidgetSize.MEDIUM),
             AnalyticsEvent.WidgetRemoved,
-            AnalyticsEvent.TransactionAdded(TransactionKind.EXPENSE),
-            AnalyticsEvent.TransactionAdded(TransactionKind.INCOME),
+            // Cartesian product: every TransactionKind × every TransactionSource.
+            // Ensures the per-subtype `toWire` mapping emits exhaustively correct
+            // params regardless of which (kind, source) pair the caller constructs.
+            AnalyticsEvent.TransactionAdded(TransactionKind.EXPENSE, TransactionSource.MANUAL),
+            AnalyticsEvent.TransactionAdded(TransactionKind.EXPENSE, TransactionSource.WIDGET),
+            AnalyticsEvent.TransactionAdded(TransactionKind.EXPENSE, TransactionSource.RECURRING),
+            AnalyticsEvent.TransactionAdded(TransactionKind.INCOME, TransactionSource.MANUAL),
+            AnalyticsEvent.TransactionAdded(TransactionKind.INCOME, TransactionSource.WIDGET),
+            AnalyticsEvent.TransactionAdded(TransactionKind.INCOME, TransactionSource.RECURRING),
             AnalyticsEvent.BackupExported(BackupFormat.JSON),
             AnalyticsEvent.BackupExported(BackupFormat.ENCRYPTED),
             AnalyticsEvent.BackupImported(BackupFormat.JSON),
@@ -107,6 +115,7 @@ class FirebaseAnalyticsImplParameterValidationTest {
             FirebaseAnalyticsImpl.PARAM_BUILD_TYPE,
             FirebaseAnalyticsImpl.PARAM_WIDGET_SIZE,
             FirebaseAnalyticsImpl.PARAM_TYPE,
+            FirebaseAnalyticsImpl.PARAM_SOURCE,
             FirebaseAnalyticsImpl.PARAM_FORMAT,
             FirebaseAnalyticsImpl.PARAM_ROW_TYPE,
         )
@@ -123,6 +132,7 @@ class FirebaseAnalyticsImplParameterValidationTest {
             BuildType.entries +
                 WidgetSize.entries +
                 TransactionKind.entries +
+                TransactionSource.entries +
                 BackupFormat.entries +
                 InsightRowType.entries
         ).map { it.wireValue }.toSet()
@@ -196,22 +206,40 @@ class FirebaseAnalyticsImplParameterValidationTest {
         }
     }
 
+    /**
+     * Per-event parameter-count cap. Default is 1 (matches the original
+     * FR-A6 "at most one param" constraint). `transaction_added` is the
+     * single documented exception — v3.12.0 added `source` alongside the
+     * pre-existing `type` because understanding the event requires two
+     * orthogonal facets (money direction + entry point). Both params are
+     * enum-valued and individually allowlisted above; the cap relaxation
+     * is carefully scoped.
+     *
+     * Any future event that needs >1 param must be added here AND to the
+     * privacy-policy disclosure in lockstep.
+     */
+    private val maxParamsByEventName: Map<String, Int> =
+        mapOf(
+            FirebaseAnalyticsImpl.EVENT_TRANSACTION_ADDED to 2,
+        )
+
     @Test
-    fun everyLoggedEvent_carriesAtMostOneParameter() {
-        // PRD FR-A6 pins each event to at most one parameter. A future
-        // `putString`-style bypass that added a second key would violate
-        // the privacy-policy disclosure even if both keys+values were
-        // individually allowlisted.
+    fun everyLoggedEvent_carriesAllowedParameterCount() {
+        // A `putString`-style bypass that added an undeclared key on any
+        // event would violate the privacy-policy disclosure even if both
+        // keys+values were individually allowlisted. Default cap = 1;
+        // only the events named in [maxParamsByEventName] may exceed.
         val wrapper = RecordingFirebaseAnalyticsWrapper()
         val impl = FirebaseAnalyticsImpl(wrapper)
 
         exhaustiveEventInstances.forEach { event -> impl.logEvent(event) }
 
         wrapper.recordedCalls.forEach { (name, params) ->
+            val cap = maxParamsByEventName[name] ?: 1
             assertTrue(
-                "Event '$name' emitted ${params.size} params; FR-A6 limits each " +
-                    "event to at most one param. params=$params",
-                params.size <= 1,
+                "Event '$name' emitted ${params.size} params; cap is $cap. " +
+                    "To raise the cap, update maxParamsByEventName AND privacy-policy.md §2. params=$params",
+                params.size <= cap,
             )
         }
     }

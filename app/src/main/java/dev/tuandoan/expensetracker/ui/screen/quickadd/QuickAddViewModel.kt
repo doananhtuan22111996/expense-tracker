@@ -11,6 +11,7 @@ import dev.tuandoan.expensetracker.core.util.TimeProvider
 import dev.tuandoan.expensetracker.core.util.UiText
 import dev.tuandoan.expensetracker.domain.analytics.Analytics
 import dev.tuandoan.expensetracker.domain.analytics.AnalyticsEvent
+import dev.tuandoan.expensetracker.domain.analytics.TransactionSource
 import dev.tuandoan.expensetracker.domain.analytics.toAnalyticsKind
 import dev.tuandoan.expensetracker.domain.model.TransactionType
 import dev.tuandoan.expensetracker.domain.repository.BudgetAlertScheduler
@@ -128,8 +129,14 @@ class QuickAddViewModel
                         timestamp = timeProvider.currentTimeMillis(),
                         currencyCode = state.currencyCode,
                     )
+                    // Quick-add only produces expenses (FR-11); `source = WIDGET`
+                    // attributes the save to the v3.12.0 widget quick-add flow so
+                    // product can split adoption vs the full add-edit screen.
                     analytics.logEvent(
-                        AnalyticsEvent.TransactionAdded(type = TransactionType.EXPENSE.toAnalyticsKind()),
+                        AnalyticsEvent.TransactionAdded(
+                            type = TransactionType.EXPENSE.toAnalyticsKind(),
+                            source = TransactionSource.WIDGET,
+                        ),
                     )
                     budgetAlertScheduler.scheduleImmediateCheck()
                     _uiState.value = _uiState.value.copy(isSaving = false, saved = true)

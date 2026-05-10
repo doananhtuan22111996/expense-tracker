@@ -58,7 +58,11 @@ class FirebaseAnalyticsImpl
                 AnalyticsEvent.WidgetRemoved ->
                     EVENT_WIDGET_REMOVED to emptyMap()
                 is AnalyticsEvent.TransactionAdded ->
-                    EVENT_TRANSACTION_ADDED to mapOf(PARAM_TYPE to type.wireValue)
+                    EVENT_TRANSACTION_ADDED to
+                        mapOf(
+                            PARAM_TYPE to type.wireValue,
+                            PARAM_SOURCE to source.wireValue,
+                        )
                 is AnalyticsEvent.BackupExported ->
                     EVENT_BACKUP_EXPORTED to mapOf(PARAM_FORMAT to format.wireValue)
                 is AnalyticsEvent.BackupImported ->
@@ -84,6 +88,7 @@ class FirebaseAnalyticsImpl
             const val PARAM_BUILD_TYPE = "build_type"
             const val PARAM_WIDGET_SIZE = "widget_size"
             const val PARAM_TYPE = "type"
+            const val PARAM_SOURCE = "source"
             const val PARAM_FORMAT = "format"
             const val PARAM_ROW_TYPE = "row_type"
         }
