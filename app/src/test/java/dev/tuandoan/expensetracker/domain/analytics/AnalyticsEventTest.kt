@@ -144,6 +144,7 @@ class AnalyticsEventTest {
             listOf(
                 AnalyticsEvent.OnboardingCompleted,
                 AnalyticsEvent.WidgetRemoved,
+                AnalyticsEvent.TransactionUndone,
             )
         parameterless.forEach { event ->
             assertSame(
