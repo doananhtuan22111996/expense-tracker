@@ -13,6 +13,7 @@ import dev.tuandoan.expensetracker.domain.analytics.Analytics
 import dev.tuandoan.expensetracker.domain.analytics.AnalyticsEvent
 import dev.tuandoan.expensetracker.domain.analytics.TransactionSource
 import dev.tuandoan.expensetracker.domain.analytics.toAnalyticsKind
+import dev.tuandoan.expensetracker.domain.crash.CrashReporter
 import dev.tuandoan.expensetracker.domain.model.TransactionType
 import dev.tuandoan.expensetracker.domain.notification.QuickAddConfirmationNotifier
 import dev.tuandoan.expensetracker.domain.repository.BudgetAlertScheduler
@@ -79,6 +80,7 @@ class QuickAddViewModel
         private val quickAddConfirmationNotifier: QuickAddConfirmationNotifier,
         private val timeProvider: TimeProvider,
         private val analytics: Analytics,
+        private val crashReporter: CrashReporter,
         savedStateHandle: SavedStateHandle,
     ) : ViewModel() {
         private val categoryId: Long = savedStateHandle.get<Long>(KEY_CATEGORY_ID) ?: 0L
@@ -122,8 +124,9 @@ class QuickAddViewModel
             _uiState.value = state.copy(isSaving = true, errorMessage = null)
 
             viewModelScope.launch {
+                val transactionId: Long
                 try {
-                    val transactionId =
+                    transactionId =
                         transactionRepository.addTransaction(
                             type = TransactionType.EXPENSE,
                             amount = amount,
@@ -142,19 +145,6 @@ class QuickAddViewModel
                         ),
                     )
                     budgetAlertScheduler.scheduleImmediateCheck()
-                    // Post the v3.12.0 confirmation notification + schedule
-                    // its 10s expiry + 30s auto-dismiss workers per ADR-012.
-                    // Fire-and-forget relative to the UI flip below — the
-                    // notifier returns quickly (enqueue is synchronous; the
-                    // actual work runs off-thread) so blocking isSaving on
-                    // it would delay the sheet dismissal by tens of ms for
-                    // no user-visible benefit.
-                    quickAddConfirmationNotifier.post(
-                        transactionId = transactionId,
-                        amountMinor = amount,
-                        currencyCode = state.currencyCode,
-                        categoryName = category.name,
-                    )
                     _uiState.value = _uiState.value.copy(isSaving = false, saved = true)
                 } catch (e: Exception) {
                     _uiState.value =
@@ -162,6 +152,28 @@ class QuickAddViewModel
                             isSaving = false,
                             errorMessage = ErrorUtils.getErrorMessage(e),
                         )
+                    return@launch
+                }
+
+                // Post the v3.12.0 confirmation notification + schedule the
+                // 10s expiry + 30s auto-dismiss workers per ADR-012. Runs
+                // AFTER the saved-true state flip AND in its own try/catch
+                // so a notifier failure (WorkManager IPC edge case, etc.)
+                // can't surface as a fake save-error to the user — the
+                // transaction IS committed by this point. Worst case: the
+                // user saves successfully, sheet dismisses, no confirmation
+                // notification appears. Silent failure is the right UX
+                // here — surfacing it would contradict the visible save.
+                @Suppress("TooGenericExceptionCaught")
+                try {
+                    quickAddConfirmationNotifier.post(
+                        transactionId = transactionId,
+                        amountMinor = amount,
+                        currencyCode = state.currencyCode,
+                        categoryName = category.name,
+                    )
+                } catch (e: Exception) {
+                    crashReporter.recordException(e)
                 }
             }
         }

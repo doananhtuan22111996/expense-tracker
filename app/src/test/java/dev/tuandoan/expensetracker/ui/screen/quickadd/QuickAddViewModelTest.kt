@@ -6,6 +6,7 @@ import dev.tuandoan.expensetracker.core.util.UiText
 import dev.tuandoan.expensetracker.domain.analytics.Analytics
 import dev.tuandoan.expensetracker.domain.analytics.AnalyticsEvent
 import dev.tuandoan.expensetracker.domain.analytics.TransactionSource
+import dev.tuandoan.expensetracker.domain.crash.CrashReporter
 import dev.tuandoan.expensetracker.domain.model.Category
 import dev.tuandoan.expensetracker.domain.model.CategoryWithCount
 import dev.tuandoan.expensetracker.domain.model.MonthlyBarPoint
@@ -45,6 +46,7 @@ class QuickAddViewModelTest {
     private lateinit var currencyRepo: FakeCurrencyPreferenceRepository
     private lateinit var scheduler: FakeBudgetAlertScheduler
     private lateinit var notifier: RecordingQuickAddNotifier
+    private lateinit var crashReporter: RecordingCrashReporter
     private lateinit var timeProvider: FakeTimeProvider
     private lateinit var analytics: RecordingAnalytics
 
@@ -55,6 +57,7 @@ class QuickAddViewModelTest {
         currencyRepo = FakeCurrencyPreferenceRepository(initialCurrency = "VND")
         scheduler = FakeBudgetAlertScheduler()
         notifier = RecordingQuickAddNotifier()
+        crashReporter = RecordingCrashReporter()
         timeProvider = FakeTimeProvider(currentMillis = TestData.FIXED_TIME)
         analytics = RecordingAnalytics()
     }
@@ -69,6 +72,7 @@ class QuickAddViewModelTest {
             notifier,
             timeProvider,
             analytics,
+            crashReporter,
             savedState,
         )
     }
@@ -279,6 +283,34 @@ class QuickAddViewModelTest {
             assertEquals(100L, call.amountMinor)
             assertEquals("VND", call.currencyCode)
             assertEquals(TestData.expenseCategory.name, call.categoryName)
+        }
+
+    @Test
+    fun save_notifierThrows_doesNotSurfaceAsSaveError() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            // Production correctness: if the notifier throws (e.g. exotic
+            // WorkManager IPC failure), the transaction is already committed
+            // at that point — surfacing a save error would contradict the
+            // actual state and mislead the user. The VM must report success
+            // and route the notifier failure to CrashReporter silently.
+            categoryRepo.categoriesById[TestData.expenseCategory.id] = TestData.expenseCategory
+            notifier.throwOnPost = IllegalStateException("WorkManager unavailable")
+            val vm = createViewModel()
+            advanceUntilIdle()
+
+            vm.onAmountChanged("100")
+            vm.saveTransaction()
+            advanceUntilIdle()
+
+            val state = vm.uiState.value
+            // Save must be reported as successful — the transaction IS in the DB.
+            assertTrue(state.saved)
+            assertFalse(state.isSaving)
+            assertNull(state.errorMessage)
+            // The notifier failure must be logged for ops visibility, but
+            // never leak to the UI.
+            assertEquals(1, crashReporter.recordedExceptions.size)
+            assertTrue(crashReporter.recordedExceptions.single() is IllegalStateException)
         }
 
     // --- save failure ---
@@ -493,6 +525,13 @@ private class RecordingQuickAddNotifier : QuickAddConfirmationNotifier {
 
     val calls: MutableList<PostCall> = mutableListOf()
 
+    /**
+     * If non-null, `post` throws this value after recording the call.
+     * Lets tests exercise the VM's "notifier failure must not surface as
+     * a save error" branch.
+     */
+    var throwOnPost: Throwable? = null
+
     override suspend fun post(
         transactionId: Long,
         amountMinor: Long,
@@ -500,5 +539,16 @@ private class RecordingQuickAddNotifier : QuickAddConfirmationNotifier {
         categoryName: String,
     ) {
         calls += PostCall(transactionId, amountMinor, currencyCode, categoryName)
+        throwOnPost?.let { throw it }
     }
+}
+
+private class RecordingCrashReporter : CrashReporter {
+    val recordedExceptions: MutableList<Exception> = mutableListOf()
+
+    override fun recordException(e: Exception) {
+        recordedExceptions += e
+    }
+
+    override fun setCollectionEnabled(enabled: Boolean) = Unit
 }
