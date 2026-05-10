@@ -50,6 +50,7 @@ class AnalyticsEventTest {
             BuildType.entries.toList(),
             WidgetSize.entries.toList(),
             TransactionKind.entries.toList(),
+            TransactionSource.entries.toList(),
             BackupFormat.entries.toList(),
             InsightRowType.entries.toList(),
         ).forEach { group ->
@@ -77,6 +78,18 @@ class AnalyticsEventTest {
         assertEquals(
             setOf("expense", "income"),
             TransactionKind.entries.map { it.wireValue }.toSet(),
+        )
+    }
+
+    @Test
+    fun transactionSource_hasExactlyManualWidgetAndRecurring() {
+        // Pinning the exact set so adding/removing/renaming a source
+        // breaks this test loudly. Driven by privacy-policy disclosure —
+        // a drift between the enum and the published list is exactly the
+        // failure mode this test catches.
+        assertEquals(
+            setOf("manual", "widget", "recurring"),
+            TransactionSource.entries.map { it.wireValue }.toSet(),
         )
     }
 
@@ -139,6 +152,7 @@ class AnalyticsEventTest {
         BuildType.entries +
             WidgetSize.entries +
             TransactionKind.entries +
+            TransactionSource.entries +
             BackupFormat.entries +
             InsightRowType.entries
 }

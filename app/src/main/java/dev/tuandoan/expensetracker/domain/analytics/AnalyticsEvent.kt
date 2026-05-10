@@ -101,6 +101,33 @@ enum class TransactionKind(
     INCOME("income"),
 }
 
+/**
+ * Which entry point produced a [AnalyticsEvent.TransactionAdded] event
+ * (v3.12.0, PRD FR-A6). Three values covering every code path that
+ * persists a transaction:
+ * - [MANUAL] — the user saved via the full add-edit screen (default).
+ * - [WIDGET] — the user saved via the quick-add sheet launched from a
+ *   pinned widget tile. v3.12.0's one-tap entry point.
+ * - [RECURRING] — the `RecurringTransactionWorker` materialised the
+ *   transaction on schedule (no user action).
+ *
+ * **FR-A7 invariant**: like every other [AnalyticsEventParam] subtype,
+ * values are enum-typed — this cannot be used to smuggle a free-text
+ * label or an account identifier through analytics. Any new source added
+ * later must be added here (one-line change) and reflected in the
+ * privacy-policy disclosure + `AnalyticsEventTest`.
+ *
+ * Wired into `AnalyticsEvent.TransactionAdded` in T5.2; this PR (T5.1)
+ * adds the enum only so the subsequent wire-up is a smaller review.
+ */
+enum class TransactionSource(
+    override val wireValue: String,
+) : AnalyticsEventParam {
+    MANUAL("manual"),
+    WIDGET("widget"),
+    RECURRING("recurring"),
+}
+
 enum class BackupFormat(
     override val wireValue: String,
 ) : AnalyticsEventParam {
