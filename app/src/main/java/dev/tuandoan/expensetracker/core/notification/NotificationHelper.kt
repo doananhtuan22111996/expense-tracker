@@ -191,6 +191,37 @@ class NotificationHelper
         }
 
         /**
+         * Replaces the quick-add confirmation notification with an "Undone"
+         * acknowledgment (v3.12.0 T4.3). Posted on the same `notificationId`
+         * as the original "Expense added" post, so the OS treats this as
+         * update-in-place rather than a second notification.
+         *
+         * Body is static copy ("Transaction removed") — no PendingIntent,
+         * no action buttons, no category name. A separate 3-second dismiss
+         * worker clears it from the shade automatically.
+         *
+         * Silent-by-design for the same reasons as the original post:
+         * `setSilent(true)` + `setVisibility(VISIBILITY_PRIVATE)` keep the
+         * update quiet and lock-screen-safe even if the user manually
+         * promoted the channel's importance.
+         */
+        fun updateQuickAddConfirmationToUndone(notificationId: Int) {
+            if (!hasNotificationPermission()) return
+            val notification =
+                NotificationCompat
+                    .Builder(context, CHANNEL_QUICK_ADD_CONFIRMATION)
+                    .setSmallIcon(R.drawable.ic_launcher_foreground)
+                    .setContentTitle(context.getString(R.string.notification_quick_add_undone_title))
+                    .setContentText(context.getString(R.string.notification_quick_add_undone_body))
+                    .setPriority(NotificationCompat.PRIORITY_LOW)
+                    .setVisibility(NotificationCompat.VISIBILITY_PRIVATE)
+                    .setAutoCancel(true)
+                    .setSilent(true)
+                    .build()
+            NotificationManagerCompat.from(context).notify(notificationId, notification)
+        }
+
+        /**
          * Build the `NotificationCompat.Builder` used by both the initial
          * post and the T+10s no-undo update. Extracted so the two call
          * sites stay byte-identical except for the Undo action presence.

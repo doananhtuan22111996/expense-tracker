@@ -145,6 +145,13 @@
     <string name="notification_quick_add_title">Expense added</string>
     <string name="notification_quick_add_body">%1$s · %2$s</string>
     <string name="notification_quick_add_undo_action">Undo</string>
+    <!-- v3.12.0 undo-state notification (T4.3). Posted on the same
+         notification id as the original "Expense added" confirmation, so
+         the OS treats it as update-in-place. Auto-dismisses after 3s via
+         a WorkManager OneTimeWorkRequest. Title stays short since the
+         shade collapses long lines. -->
+    <string name="notification_quick_add_undone_title">Undone</string>
+    <string name="notification_quick_add_undone_body">Transaction removed</string>
     <string name="alert_rationale_title">Allow notifications?</string>
     <string name="alert_rationale_body">Budget alerts notify you when your spending reaches 80% of your budget or goes over. You can turn them off anytime.</string>
     <string name="alert_rationale_open_settings">Open Settings</string>
