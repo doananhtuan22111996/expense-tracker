@@ -172,6 +172,12 @@ class QuickAddViewModel
                         currencyCode = state.currencyCode,
                         categoryName = category.name,
                     )
+                } catch (e: kotlinx.coroutines.CancellationException) {
+                    // Propagate cancellation so structured concurrency is
+                    // preserved — `viewModelScope` being cancelled mid-post
+                    // (Activity tearing down) shouldn't pollute CrashReporter
+                    // with a fake "crash" and shouldn't be silently swallowed.
+                    throw e
                 } catch (e: Exception) {
                     crashReporter.recordException(e)
                 }
