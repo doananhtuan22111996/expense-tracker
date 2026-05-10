@@ -566,9 +566,14 @@
     <string name="widget_empty_pin_label">+ Set up</string>
 
     <!-- Quick-add bottom sheet (v3.12.0). Opened from a pinned widget tile;
-         T3.1 ships the scaffold, T3.2/T3.4 wire the real amount field + save. -->
+         T3.1 shipped the scaffold, T3.2 the ViewModel, T3.4 the real UI. -->
     <string name="quick_add_cancel">Cancel</string>
     <string name="quick_add_save">Save</string>
+    <!-- %1$s is the currency code (e.g. "VND", "USD"). -->
+    <string name="quick_add_amount_label">Amount (%1$s)</string>
+    <!-- Shown when the pinned category no longer exists (deleted between widget
+         snapshot and sheet open — FR-07). -->
+    <string name="quick_add_category_missing">Category no longer exists. Open the app to pick another.</string>
     <!-- Widget preview (launcher picker). Static placeholder values — not data-bound
          and never shown with real user data. Intentionally simple numbers so the
          preview reads clearly at thumbnail size in the picker. -->
