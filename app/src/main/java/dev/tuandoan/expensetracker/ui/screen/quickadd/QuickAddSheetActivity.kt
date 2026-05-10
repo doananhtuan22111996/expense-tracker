@@ -14,6 +14,7 @@ import dev.tuandoan.expensetracker.data.preferences.OnboardingRepository
 import dev.tuandoan.expensetracker.data.preferences.ThemePreference
 import dev.tuandoan.expensetracker.data.preferences.ThemePreferencesRepository
 import dev.tuandoan.expensetracker.ui.theme.ExpenseTrackerTheme
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import javax.inject.Inject
@@ -52,20 +53,48 @@ class QuickAddSheetActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        handleIntent(intent)
+    }
 
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        // `singleTop` delivers subsequent widget taps here instead of
+        // recreating the Activity. Without this override, a user tapping a
+        // different pinned tile while the sheet is already open would see the
+        // *previous* categoryId rendered. `setIntent(intent)` updates
+        // `getIntent()` so any later reader (including config-change
+        // recreations) sees the fresh extras.
+        setIntent(intent)
+        handleIntent(intent)
+    }
+
+    private fun handleIntent(intent: Intent?) {
         val categoryId = readCategoryIdExtra(intent)
         if (categoryId == null) {
             finish()
             return
         }
 
-        // FR-19: Onboarding gate is evaluated once here — a widget tap during
+        // FR-19: Onboarding gate is evaluated here — a widget tap during
         // onboarding routes the user to the welcome flow rather than silently
         // writing a transaction in the wrong currency. Reading the flow
         // inside `lifecycleScope` keeps this off the main-thread critical
         // path; we finish the Activity before any Compose content renders.
+        // Any failure reading the flow is treated as a hard stop — the
+        // user sees the Activity briefly and it dismisses rather than
+        // getting stuck on a blank transparent screen.
         lifecycleScope.launch {
-            val onboardingComplete = onboardingRepository.isOnboardingComplete.first()
+            val onboardingComplete =
+                try {
+                    onboardingRepository.isOnboardingComplete.first()
+                } catch (ce: CancellationException) {
+                    throw ce
+                } catch (
+                    @Suppress("TooGenericExceptionCaught") _: Throwable,
+                ) {
+                    finish()
+                    return@launch
+                }
             if (!onboardingComplete) {
                 startActivity(
                     Intent(this@QuickAddSheetActivity, MainActivity::class.java).apply {
