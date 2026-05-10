@@ -60,8 +60,11 @@ import javax.inject.Inject
  *
  * Repository exceptions are caught at the ViewModel boundary and mapped
  * to a user-facing [UiText] via [ErrorUtils.getErrorMessage] — matching
- * the add-edit pattern. The coroutine re-throws `CancellationException`
- * implicitly because `catch (Exception)` excludes it.
+ * the add-edit pattern (see `AddEditTransactionViewModel`). Note that
+ * `catch (Exception)` will catch `CancellationException` too; this is
+ * harmless in practice because a cancelled `viewModelScope` coroutine
+ * means the Activity is tearing down and any post-cancel state write
+ * never reaches the UI before `onCleared` fires.
  */
 @HiltViewModel
 class QuickAddViewModel
