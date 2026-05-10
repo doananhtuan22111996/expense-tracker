@@ -11,12 +11,14 @@ import dev.tuandoan.expensetracker.core.util.TimeProvider
 import dev.tuandoan.expensetracker.data.backup.BackupRepositoryImpl
 import dev.tuandoan.expensetracker.data.database.RoomTransactionRunner
 import dev.tuandoan.expensetracker.data.database.TransactionRunner
+import dev.tuandoan.expensetracker.data.notification.QuickAddConfirmationNotifierImpl
 import dev.tuandoan.expensetracker.data.preferences.BudgetAlertPreferencesImpl
 import dev.tuandoan.expensetracker.data.preferences.BudgetPreferencesImpl
 import dev.tuandoan.expensetracker.data.preferences.CurrencyPreferenceRepositoryImpl
 import dev.tuandoan.expensetracker.data.preferences.SearchFilterPreferencesImpl
 import dev.tuandoan.expensetracker.data.preferences.SelectedMonthRepositoryImpl
 import dev.tuandoan.expensetracker.data.worker.BudgetAlertSchedulerImpl
+import dev.tuandoan.expensetracker.domain.notification.QuickAddConfirmationNotifier
 import dev.tuandoan.expensetracker.domain.repository.BackupRepository
 import dev.tuandoan.expensetracker.domain.repository.BudgetAlertPreferences
 import dev.tuandoan.expensetracker.domain.repository.BudgetAlertScheduler
@@ -92,4 +94,9 @@ abstract class RepositoryModule {
 
     @Binds
     abstract fun bindWidgetUpdater(glanceWidgetUpdater: GlanceWidgetUpdater): WidgetUpdater
+
+    @Binds
+    abstract fun bindQuickAddConfirmationNotifier(
+        quickAddConfirmationNotifierImpl: QuickAddConfirmationNotifierImpl,
+    ): QuickAddConfirmationNotifier
 }

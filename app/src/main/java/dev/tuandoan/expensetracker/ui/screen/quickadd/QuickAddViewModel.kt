@@ -13,7 +13,9 @@ import dev.tuandoan.expensetracker.domain.analytics.Analytics
 import dev.tuandoan.expensetracker.domain.analytics.AnalyticsEvent
 import dev.tuandoan.expensetracker.domain.analytics.TransactionSource
 import dev.tuandoan.expensetracker.domain.analytics.toAnalyticsKind
+import dev.tuandoan.expensetracker.domain.crash.CrashReporter
 import dev.tuandoan.expensetracker.domain.model.TransactionType
+import dev.tuandoan.expensetracker.domain.notification.QuickAddConfirmationNotifier
 import dev.tuandoan.expensetracker.domain.repository.BudgetAlertScheduler
 import dev.tuandoan.expensetracker.domain.repository.CategoryRepository
 import dev.tuandoan.expensetracker.domain.repository.CurrencyPreferenceRepository
@@ -75,8 +77,10 @@ class QuickAddViewModel
         private val categoryRepository: CategoryRepository,
         private val currencyPreferenceRepository: CurrencyPreferenceRepository,
         private val budgetAlertScheduler: BudgetAlertScheduler,
+        private val quickAddConfirmationNotifier: QuickAddConfirmationNotifier,
         private val timeProvider: TimeProvider,
         private val analytics: Analytics,
+        private val crashReporter: CrashReporter,
         savedStateHandle: SavedStateHandle,
     ) : ViewModel() {
         private val categoryId: Long = savedStateHandle.get<Long>(KEY_CATEGORY_ID) ?: 0L
@@ -120,15 +124,17 @@ class QuickAddViewModel
             _uiState.value = state.copy(isSaving = true, errorMessage = null)
 
             viewModelScope.launch {
+                val transactionId: Long
                 try {
-                    transactionRepository.addTransaction(
-                        type = TransactionType.EXPENSE,
-                        amount = amount,
-                        categoryId = category.id,
-                        note = null,
-                        timestamp = timeProvider.currentTimeMillis(),
-                        currencyCode = state.currencyCode,
-                    )
+                    transactionId =
+                        transactionRepository.addTransaction(
+                            type = TransactionType.EXPENSE,
+                            amount = amount,
+                            categoryId = category.id,
+                            note = null,
+                            timestamp = timeProvider.currentTimeMillis(),
+                            currencyCode = state.currencyCode,
+                        )
                     // Quick-add only produces expenses (FR-11); `source = WIDGET`
                     // attributes the save to the v3.12.0 widget quick-add flow so
                     // product can split adoption vs the full add-edit screen.
@@ -146,6 +152,34 @@ class QuickAddViewModel
                             isSaving = false,
                             errorMessage = ErrorUtils.getErrorMessage(e),
                         )
+                    return@launch
+                }
+
+                // Post the v3.12.0 confirmation notification + schedule the
+                // 10s expiry + 30s auto-dismiss workers per ADR-012. Runs
+                // AFTER the saved-true state flip AND in its own try/catch
+                // so a notifier failure (WorkManager IPC edge case, etc.)
+                // can't surface as a fake save-error to the user — the
+                // transaction IS committed by this point. Worst case: the
+                // user saves successfully, sheet dismisses, no confirmation
+                // notification appears. Silent failure is the right UX
+                // here — surfacing it would contradict the visible save.
+                @Suppress("TooGenericExceptionCaught")
+                try {
+                    quickAddConfirmationNotifier.post(
+                        transactionId = transactionId,
+                        amountMinor = amount,
+                        currencyCode = state.currencyCode,
+                        categoryName = category.name,
+                    )
+                } catch (e: kotlinx.coroutines.CancellationException) {
+                    // Propagate cancellation so structured concurrency is
+                    // preserved — `viewModelScope` being cancelled mid-post
+                    // (Activity tearing down) shouldn't pollute CrashReporter
+                    // with a fake "crash" and shouldn't be silently swallowed.
+                    throw e
+                } catch (e: Exception) {
+                    crashReporter.recordException(e)
                 }
             }
         }

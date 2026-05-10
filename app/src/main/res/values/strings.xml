@@ -138,6 +138,13 @@
          silent by design, with a 10-second Undo action. -->
     <string name="notification_channel_quick_add_confirmation">Quick-add Confirmation</string>
     <string name="notification_channel_quick_add_confirmation_description">Silent confirmations when you log an expense from the widget quick-add tile, with a 10-second Undo option.</string>
+    <!-- Content of the quick-add confirmation notification (T4.2).
+         Title is a plain "Expense added" line; body is "{amount} · {category}"
+         using a middle-dot separator that matches iOS/Google Keep quick-add
+         notification conventions. Undo action is a single word, title-case. -->
+    <string name="notification_quick_add_title">Expense added</string>
+    <string name="notification_quick_add_body">%1$s · %2$s</string>
+    <string name="notification_quick_add_undo_action">Undo</string>
     <string name="alert_rationale_title">Allow notifications?</string>
     <string name="alert_rationale_body">Budget alerts notify you when your spending reaches 80% of your budget or goes over. You can turn them off anytime.</string>
     <string name="alert_rationale_open_settings">Open Settings</string>
