@@ -6,8 +6,8 @@ import androidx.work.CoroutineWorker
 import androidx.work.WorkerParameters
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedInject
-import dev.tuandoan.expensetracker.core.notification.NotificationHelper
 import dev.tuandoan.expensetracker.domain.crash.CrashReporter
+import dev.tuandoan.expensetracker.domain.notification.QuickAddNotificationSurface
 import kotlin.coroutines.cancellation.CancellationException
 
 /**
@@ -30,6 +30,12 @@ import kotlin.coroutines.cancellation.CancellationException
  * WorkManager chosen over `Handler.postDelayed` (dies on process death,
  * fails the 10s correctness bar) and over `AlarmManager.setExact`
  * (overshoots precision need, requires `SCHEDULE_EXACT_ALARM` permission).
+ *
+ * ### Testability
+ * Interesting dispatch logic lives in [Dispatcher] — a pure-Kotlin class
+ * that takes a [QuickAddNotificationSurface] interface. Unit tests in
+ * `QuickAddNotifierWorkerDispatcherTest` exercise that directly without
+ * instantiating the Worker.
  */
 @HiltWorker
 class QuickAddNotifierWorker
@@ -37,13 +43,18 @@ class QuickAddNotifierWorker
     constructor(
         @Assisted appContext: Context,
         @Assisted workerParams: WorkerParameters,
-        private val notificationHelper: NotificationHelper,
+        private val notificationSurface: QuickAddNotificationSurface,
         private val crashReporter: CrashReporter,
     ) : CoroutineWorker(appContext, workerParams) {
         override suspend fun doWork(): Result =
             @Suppress("TooGenericExceptionCaught")
             try {
-                runMode()
+                Dispatcher(notificationSurface).dispatch(
+                    notificationId = inputData.getInt(KEY_NOTIFICATION_ID, INVALID_ID),
+                    rawMode = inputData.getString(KEY_MODE),
+                    amountFormatted = inputData.getString(KEY_AMOUNT_FORMATTED),
+                    categoryName = inputData.getString(KEY_CATEGORY_NAME),
+                )
                 Result.success()
             } catch (e: CancellationException) {
                 throw e
@@ -55,24 +66,35 @@ class QuickAddNotifierWorker
                 Result.failure()
             }
 
-        private fun runMode() {
-            val notificationId = inputData.getInt(KEY_NOTIFICATION_ID, INVALID_ID)
-            if (notificationId == INVALID_ID) return
-            val mode = Mode.parse(inputData.getString(KEY_MODE)) ?: return
-
-            when (mode) {
-                Mode.EXPIRE -> {
-                    val amountFormatted = inputData.getString(KEY_AMOUNT_FORMATTED).orEmpty()
-                    val categoryName = inputData.getString(KEY_CATEGORY_NAME).orEmpty()
-                    if (amountFormatted.isBlank() || categoryName.isBlank()) return
-                    notificationHelper.updateQuickAddConfirmationWithoutUndo(
-                        notificationId = notificationId,
-                        amountFormatted = amountFormatted,
-                        categoryName = categoryName,
-                    )
-                }
-                Mode.DISMISS -> {
-                    notificationHelper.cancelQuickAddConfirmation(notificationId)
+        /**
+         * Pure-Kotlin dispatcher for the worker's two modes. Extracted so
+         * unit tests can exercise the validation + branching logic against
+         * a fake [QuickAddNotificationSurface] without instantiating a
+         * WorkManager-backed worker.
+         */
+        internal class Dispatcher(
+            private val notificationSurface: QuickAddNotificationSurface,
+        ) {
+            fun dispatch(
+                notificationId: Int,
+                rawMode: String?,
+                amountFormatted: String?,
+                categoryName: String?,
+            ) {
+                if (notificationId == INVALID_ID) return
+                val mode = Mode.parse(rawMode) ?: return
+                when (mode) {
+                    Mode.EXPIRE -> {
+                        if (amountFormatted.isNullOrBlank() || categoryName.isNullOrBlank()) return
+                        notificationSurface.updateQuickAddConfirmationWithoutUndo(
+                            notificationId = notificationId,
+                            amountFormatted = amountFormatted,
+                            categoryName = categoryName,
+                        )
+                    }
+                    Mode.DISMISS -> {
+                        notificationSurface.cancelQuickAddConfirmation(notificationId)
+                    }
                 }
             }
         }
@@ -97,7 +119,7 @@ class QuickAddNotifierWorker
             const val KEY_MODE = "mode"
             const val KEY_AMOUNT_FORMATTED = "amount_formatted"
             const val KEY_CATEGORY_NAME = "category_name"
-            private const val INVALID_ID = -1
+            internal const val INVALID_ID = -1
 
             /**
              * Shared tag for both expiry + dismiss work items scheduled against

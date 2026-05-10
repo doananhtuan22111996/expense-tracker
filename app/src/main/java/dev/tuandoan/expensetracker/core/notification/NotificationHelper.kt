@@ -14,6 +14,7 @@ import androidx.core.content.ContextCompat
 import dagger.hilt.android.qualifiers.ApplicationContext
 import dev.tuandoan.expensetracker.MainActivity
 import dev.tuandoan.expensetracker.R
+import dev.tuandoan.expensetracker.domain.notification.QuickAddNotificationSurface
 import dev.tuandoan.expensetracker.ui.screen.quickadd.UndoQuickAddReceiver
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -23,7 +24,7 @@ class NotificationHelper
     @Inject
     constructor(
         @ApplicationContext private val context: Context,
-    ) {
+    ) : QuickAddNotificationSurface {
         /**
          * Registers all notification channels owned by the app. Safe to call
          * multiple times — the OS treats re-registration of the same channel
@@ -135,7 +136,7 @@ class NotificationHelper
          * of the app — category + amount together could infer activity
          * patterns an observer shouldn't see.
          */
-        fun showQuickAddConfirmation(
+        override fun showQuickAddConfirmation(
             transactionId: Long,
             amountFormatted: String,
             categoryName: String,
@@ -165,7 +166,7 @@ class NotificationHelper
          * in v3.12.0's Design doc as the cost of the low-infrastructure
          * 10-second window. Documented in T7.1 manual QA.
          */
-        fun updateQuickAddConfirmationWithoutUndo(
+        override fun updateQuickAddConfirmationWithoutUndo(
             notificationId: Int,
             amountFormatted: String,
             categoryName: String,
@@ -186,7 +187,7 @@ class NotificationHelper
          * [QuickAddNotifierWorker] at T+30s for auto-dismiss, and by T4.3's
          * Undo receiver immediately before it posts the "Undone" update.
          */
-        fun cancelQuickAddConfirmation(notificationId: Int) {
+        override fun cancelQuickAddConfirmation(notificationId: Int) {
             NotificationManagerCompat.from(context).cancel(notificationId)
         }
 
@@ -205,7 +206,7 @@ class NotificationHelper
          * update quiet and lock-screen-safe even if the user manually
          * promoted the channel's importance.
          */
-        fun updateQuickAddConfirmationToUndone(notificationId: Int) {
+        override fun updateQuickAddConfirmationToUndone(notificationId: Int) {
             if (!hasNotificationPermission()) return
             val notification =
                 NotificationCompat
