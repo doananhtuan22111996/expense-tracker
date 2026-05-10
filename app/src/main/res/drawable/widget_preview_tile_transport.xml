@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    Rounded tile background for the "Transport" preview tile. Hard-coded
+    Material 3 light-scheme `primaryContainer` tone — same family as the
+    live `CategoryTile`'s `colorKey="blue"` path, which resolves to
+    `GlanceTheme.colors.primary` in the real widget.
+-->
+<shape xmlns:android="http://schemas.android.com/apk/res/android"
+    android:shape="rectangle">
+    <corners android:radius="12dp" />
+    <solid android:color="#D6E3FF" />
+</shape>

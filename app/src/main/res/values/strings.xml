@@ -582,6 +582,12 @@
     <string name="widget_preview_budget_progress">$456 / $1,000</string>
     <string name="widget_preview_budget_percent">45%</string>
     <string name="widget_preview_add_button">+</string>
+    <!-- Tile labels for the quick-add strip on the medium widget picker preview
+         (PRD v3.12.0). English-only; locale files not yet added for this feature.
+         Kept short so they fit a ~1/4-row slot at thumbnail size in the picker. -->
+    <string name="widget_preview_tile_food">Food</string>
+    <string name="widget_preview_tile_transport">Transport</string>
+    <string name="widget_preview_tile_groceries">Groceries</string>
 
     <!-- Summary tab — Insights section (PRD v3.10.0 FR-01 through FR-21). Display-only
          copy; percentages and amounts arrive pre-formatted from the InsightsEngine. -->
