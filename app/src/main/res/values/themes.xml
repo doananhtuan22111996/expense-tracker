@@ -2,4 +2,20 @@
 <resources>
 
     <style name="Theme.ExpenseTracker" parent="android:Theme.Material.Light.NoActionBar" />
+
+    <!-- Transparent theme for the quick-add bottom sheet Activity (v3.12.0 T3.1).
+         The Activity is launched from the home-screen widget and should render
+         as a translucent overlay with the launcher wallpaper visible behind
+         the dim scrim, not a full-screen opaque activity. `windowIsTranslucent`
+         lets whatever is behind the Activity show through; `windowNoTitle`
+         suppresses the action bar; `windowBackground=@android:color/transparent`
+         removes the default opaque background so Compose's own scrim shows
+         through; `backgroundDimEnabled=false` hands scrim control to the
+         ModalBottomSheet composable. -->
+    <style name="Theme.ExpenseTracker.Transparent" parent="Theme.ExpenseTracker">
+        <item name="android:windowIsTranslucent">true</item>
+        <item name="android:windowBackground">@android:color/transparent</item>
+        <item name="android:windowNoTitle">true</item>
+        <item name="android:backgroundDimEnabled">false</item>
+    </style>
 </resources>
