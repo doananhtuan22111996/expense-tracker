@@ -7,10 +7,9 @@ import dev.tuandoan.expensetracker.domain.notification.QuickAddUndoWorkScheduler
  * tests can assert on tag naming, invocation order, and argument
  * correctness.
  *
- * `cancelExpiryAndDismissResult` controls the Boolean returned by
- * [cancelExpiryAndDismiss] — defaults to `true` (cancel succeeded
- * within the timeout). Setting `false` lets tests exercise the
- * receiver's "timeout, proceed anyway" path.
+ * `throwOnCancelExpiryAndDismiss` lets tests exercise the
+ * `UndoFlowRunner`'s best-effort per-step catch — a cancel failure
+ * should log via `CrashReporter` but not abort the remaining 5 steps.
  */
 class FakeQuickAddUndoWorkScheduler : QuickAddUndoWorkScheduler {
     data class ScheduleExpiryAndDismissCall(
@@ -29,8 +28,6 @@ class FakeQuickAddUndoWorkScheduler : QuickAddUndoWorkScheduler {
     val cancelExpiryAndDismissCalls: MutableList<Long> = mutableListOf()
     val scheduleUndoneDismissCalls: MutableList<ScheduleUndoneDismissCall> = mutableListOf()
 
-    var cancelExpiryAndDismissResult: Boolean = true
-
     var throwOnScheduleExpiryAndDismiss: Throwable? = null
     var throwOnCancelExpiryAndDismiss: Throwable? = null
     var throwOnScheduleUndoneDismiss: Throwable? = null
@@ -46,10 +43,9 @@ class FakeQuickAddUndoWorkScheduler : QuickAddUndoWorkScheduler {
         throwOnScheduleExpiryAndDismiss?.let { throw it }
     }
 
-    override suspend fun cancelExpiryAndDismiss(transactionId: Long): Boolean {
+    override suspend fun cancelExpiryAndDismiss(transactionId: Long) {
         cancelExpiryAndDismissCalls += transactionId
         throwOnCancelExpiryAndDismiss?.let { throw it }
-        return cancelExpiryAndDismissResult
     }
 
     override fun scheduleUndoneDismiss(

@@ -69,20 +69,24 @@ class QuickAddUndoWorkSchedulerImpl
             workManager.enqueue(listOf(expireWork, dismissWork))
         }
 
-        override suspend fun cancelExpiryAndDismiss(transactionId: Long): Boolean =
-            @Suppress("TooGenericExceptionCaught")
+        override suspend fun cancelExpiryAndDismiss(transactionId: Long) {
             try {
                 workManager
                     .cancelAllWorkByTag(QuickAddNotifierWorker.tag(transactionId))
                     .result
                     .get(CANCEL_TIMEOUT_MS, TimeUnit.MILLISECONDS)
-                true
             } catch (e: TimeoutException) {
                 // Bounded-wait timeout — caller proceeds anyway (the in-memory
                 // scheduler cancel takes effect even if the SQLite commit
-                // hasn't finished).
-                false
+                // hasn't finished). Silent swallow because "didn't commit in
+                // time" isn't a bug — it's the documented fallback per the
+                // method's best-effort contract.
             }
+            // Other Future exceptions (InterruptedException, ExecutionException)
+            // propagate up to the caller's per-step try/catch in UndoFlowRunner,
+            // where they're logged via CrashReporter. CancellationException
+            // propagates too, as required by structured concurrency.
+        }
 
         override fun scheduleUndoneDismiss(
             transactionId: Long,

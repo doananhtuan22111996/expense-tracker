@@ -36,11 +36,14 @@ interface QuickAddUndoWorkScheduler {
      * (~2s) to avoid blocking through `goAsync`'s 10-second ANR window
      * on the undo receiver's hot path.
      *
-     * @return `true` if the cancel completed within the timeout, `false`
-     * on timeout (caller proceeds anyway — the in-memory scheduler cancel
-     * takes effect immediately even if the SQLite commit hasn't finished).
+     * Best-effort: if the bounded wait times out, the impl returns
+     * normally — the in-memory scheduler cancel takes effect immediately
+     * even if the SQLite commit hasn't finished, so caller-side "the
+     * cancel happened" assumptions still hold. `CancellationException`
+     * propagates to respect structured concurrency; other exceptions
+     * propagate to the caller's best-effort per-step catch.
      */
-    suspend fun cancelExpiryAndDismiss(transactionId: Long): Boolean
+    suspend fun cancelExpiryAndDismiss(transactionId: Long)
 
     /**
      * Schedules the 3-second auto-dismiss for an "Undone" notification
