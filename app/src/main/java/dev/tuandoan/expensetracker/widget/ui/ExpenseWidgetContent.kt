@@ -36,6 +36,8 @@ import dev.tuandoan.expensetracker.widget.ExpenseWidget
 import dev.tuandoan.expensetracker.widget.ExpenseWidgetState
 import dev.tuandoan.expensetracker.widget.openAddTransactionAction
 import dev.tuandoan.expensetracker.widget.openAppAction
+import dev.tuandoan.expensetracker.widget.openQuickAddAction
+import dev.tuandoan.expensetracker.widget.openSettingsAction
 
 /**
  * Dispatches between the small (2×1) and medium (4×2) widget layouts based on
@@ -183,8 +185,11 @@ private fun QuickAddTileStrip(pinnedCategories: List<PinnedCategorySlot>) {
  * primary if the key is unknown). The category name is drawn centered and
  * single-line ellipsized to fit the ~1/4 row slot width.
  *
- * Click is currently routed through `openAppAction` as a stub; T2.6 replaces
- * this with an action that carries the `categoryId` to the quick-add sheet.
+Click launches `QuickAddSheetActivity` for this pinned category via
+ * `openQuickAddAction(context, slot.category.id)`. The Activity reads the
+ * `categoryId` extra, gates on onboarding completion, and opens the
+ * quick-add bottom sheet — bypassing the full add-transaction screen
+ * entirely for the one-tap logging flow.
  *
  * `contentDescription` follows the "Quick-add <Category>" pattern so TalkBack
  * reads a single sentence per tile. Tile height is 40dp — consistent with
@@ -208,7 +213,7 @@ private fun CategoryTile(
                 .height(40.dp)
                 .cornerRadius(12.dp)
                 .background(tileColor)
-                .clickable(openAppAction(context))
+                .clickable(openQuickAddAction(context, slot.category.id))
                 .semantics { contentDescription = tileDescription },
         contentAlignment = Alignment.Center,
     ) {
@@ -229,8 +234,11 @@ private fun CategoryTile(
  * Placeholder for an unset or deleted-category pin slot. Rendered as a dashed
  * rounded rectangle (via [R.drawable.widget_tile_empty_bg]) with a small
  * "+ Set up" label so users understand the slot is actionable. Tapping
- * currently routes through `openAppAction` (T2.6 will open Settings →
- * Widget Categories directly).
+ * routes through `openSettingsAction` — MainActivity consumes the
+ * `EXTRA_LAUNCH_SETTINGS` flag and navigates to the Settings tab. Once
+ * T6.4 lands the Widget Categories row there, users land close to the
+ * pin-configuration UI; until then, Settings is still the correct
+ * destination.
  *
  * Glance doesn't support dashed borders natively, so the drawable is declared
  * as a static XML resource with a neutral outline color that reads acceptably
@@ -246,7 +254,7 @@ private fun EmptyTilePlaceholder(modifier: GlanceModifier = GlanceModifier) {
             modifier
                 .height(40.dp)
                 .background(ImageProvider(R.drawable.widget_tile_empty_bg))
-                .clickable(openAppAction(context))
+                .clickable(openSettingsAction(context))
                 .semantics { contentDescription = tileDescription },
         contentAlignment = Alignment.Center,
     ) {
