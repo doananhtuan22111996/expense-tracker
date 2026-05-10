@@ -63,6 +63,8 @@ class FirebaseAnalyticsImpl
                             PARAM_TYPE to type.wireValue,
                             PARAM_SOURCE to source.wireValue,
                         )
+                AnalyticsEvent.TransactionUndone ->
+                    EVENT_TRANSACTION_UNDONE to emptyMap()
                 is AnalyticsEvent.BackupExported ->
                     EVENT_BACKUP_EXPORTED to mapOf(PARAM_FORMAT to format.wireValue)
                 is AnalyticsEvent.BackupImported ->
@@ -80,6 +82,7 @@ class FirebaseAnalyticsImpl
             const val EVENT_WIDGET_ADDED = "widget_added"
             const val EVENT_WIDGET_REMOVED = "widget_removed"
             const val EVENT_TRANSACTION_ADDED = "transaction_added"
+            const val EVENT_TRANSACTION_UNDONE = "transaction_undone"
             const val EVENT_BACKUP_EXPORTED = "backup_exported"
             const val EVENT_BACKUP_IMPORTED = "backup_imported"
             const val EVENT_INSIGHT_SHOWN = "insight_shown"

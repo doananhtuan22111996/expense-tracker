@@ -24,6 +24,7 @@ class NoOpAnalyticsTest {
             AnalyticsEvent.TransactionAdded(TransactionKind.EXPENSE, TransactionSource.MANUAL),
             AnalyticsEvent.TransactionAdded(TransactionKind.INCOME, TransactionSource.WIDGET),
             AnalyticsEvent.TransactionAdded(TransactionKind.EXPENSE, TransactionSource.RECURRING),
+            AnalyticsEvent.TransactionUndone,
             AnalyticsEvent.BackupExported(BackupFormat.JSON),
             AnalyticsEvent.BackupExported(BackupFormat.ENCRYPTED),
             AnalyticsEvent.BackupImported(BackupFormat.JSON),

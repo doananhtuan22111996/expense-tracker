@@ -48,6 +48,7 @@ The app also includes **Firebase Analytics** to help me understand which feature
   - `onboarding_completed`
   - `widget_added` (size: small or medium), `widget_removed`
   - `transaction_added` (type: expense or income; source: manual, widget, or recurring — **no amount, no category, no note**)
+  - `transaction_undone` (no parameters — fired when you undo a just-saved transaction)
   - `backup_exported` / `backup_imported` (format: json or encrypted)
   - `insight_shown` (which Insights row surfaced: biggest mover / daily pace / no-budget fallback / day-of-month)
 - **What is never collected, regardless of your choice:** transaction amounts, category names, note text, dates of activity, currency codes that could correlate to your location, or any free-text you've entered. Firebase Analytics' automatic events (`screen_view`, `first_open`, `session_start`) are also **disabled** — only the events listed above ever fire. No user ID is ever set.

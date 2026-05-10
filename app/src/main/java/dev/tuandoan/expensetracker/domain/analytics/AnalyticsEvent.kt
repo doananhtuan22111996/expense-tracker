@@ -57,6 +57,20 @@ sealed interface AnalyticsEvent {
         val source: TransactionSource,
     ) : AnalyticsEvent
 
+    /**
+     * Fired when the user undoes a just-saved transaction via the v3.12.0
+     * Undo affordance (notification button from the quick-add flow, or the
+     * in-app undo snackbar). Pairs with [TransactionAdded] — product can
+     * compute net-adds as `TransactionAdded count − TransactionUndone count`
+     * to measure "accidental save" rates.
+     *
+     * Parameterless on purpose: the event captures *that* an undo happened,
+     * not *what* was undone. Entry-point attribution (widget vs manual
+     * undo) can be added later as an enum param without privacy-policy
+     * churn. Callers land with Epic 4 (Notification + Undo).
+     */
+    data object TransactionUndone : AnalyticsEvent
+
     /** Fired on a successful backup export. Captures only the format. */
     data class BackupExported(
         val format: BackupFormat,

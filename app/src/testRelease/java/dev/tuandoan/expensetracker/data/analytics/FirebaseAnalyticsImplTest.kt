@@ -158,6 +158,22 @@ class FirebaseAnalyticsImplTest {
     }
 
     @Test
+    fun logEvent_transactionUndone_emitsNamedEventWithNoParams() {
+        // Parameterless event — the sealed `data object` shape is what
+        // guarantees we never accidentally smuggle a parameter here. This
+        // test pins the wire-boundary shape (event name + empty params map).
+        val wrapper: FirebaseAnalyticsWrapper = mock()
+        val impl = FirebaseAnalyticsImpl(wrapper)
+
+        impl.logEvent(AnalyticsEvent.TransactionUndone)
+
+        verify(wrapper).logEvent(
+            name = "transaction_undone",
+            params = emptyMap(),
+        )
+    }
+
+    @Test
     fun logEvent_backupExported_json_mapsToFormatParam() {
         val wrapper: FirebaseAnalyticsWrapper = mock()
         val impl = FirebaseAnalyticsImpl(wrapper)
