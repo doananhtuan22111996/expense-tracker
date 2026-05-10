@@ -23,18 +23,43 @@ class NotificationHelper
     constructor(
         @ApplicationContext private val context: Context,
     ) {
+        /**
+         * Registers all notification channels owned by the app. Safe to call
+         * multiple times — the OS treats re-registration of the same channel
+         * ID as a no-op, so a fresh install and an upgrade run through the
+         * same path without branching.
+         */
         fun createChannels() {
-            val channel =
-                NotificationChannel(
-                    CHANNEL_BUDGET_ALERTS,
-                    context.getString(R.string.notification_channel_budget_alerts),
-                    NotificationManager.IMPORTANCE_DEFAULT,
-                ).apply {
-                    description = context.getString(R.string.notification_channel_budget_alerts_description)
-                }
             val manager = context.getSystemService(NotificationManager::class.java)
-            manager.createNotificationChannel(channel)
+            manager.createNotificationChannel(budgetAlertsChannel())
+            manager.createNotificationChannel(quickAddConfirmationChannel())
         }
+
+        private fun budgetAlertsChannel(): NotificationChannel =
+            NotificationChannel(
+                CHANNEL_BUDGET_ALERTS,
+                context.getString(R.string.notification_channel_budget_alerts),
+                NotificationManager.IMPORTANCE_DEFAULT,
+            ).apply {
+                description = context.getString(R.string.notification_channel_budget_alerts_description)
+            }
+
+        /**
+         * Channel for the v3.12.0 widget quick-add confirmation notification.
+         * `IMPORTANCE_LOW` by design: the confirmation is a quiet "expense
+         * added" reassurance with a 10-second Undo action — no sound, no
+         * heads-up, visible only in the shade. Matches the Design doc's
+         * decision table (LOW over MIN because MIN would hide the Undo
+         * affordance from the shade).
+         */
+        private fun quickAddConfirmationChannel(): NotificationChannel =
+            NotificationChannel(
+                CHANNEL_QUICK_ADD_CONFIRMATION,
+                context.getString(R.string.notification_channel_quick_add_confirmation),
+                NotificationManager.IMPORTANCE_LOW,
+            ).apply {
+                description = context.getString(R.string.notification_channel_quick_add_confirmation_description)
+            }
 
         fun showBudgetAlert(
             title: String,
@@ -82,6 +107,7 @@ class NotificationHelper
 
         companion object {
             const val CHANNEL_BUDGET_ALERTS = "budget_alerts"
+            const val CHANNEL_QUICK_ADD_CONFIRMATION = "quick_add_confirmation"
             const val NOTIFICATION_ID_BUDGET_WARNING = 1001
             const val NOTIFICATION_ID_BUDGET_EXCEEDED = 1002
         }

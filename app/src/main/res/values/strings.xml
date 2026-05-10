@@ -133,6 +133,11 @@
     <string name="settings_budget_alerts_permission">Notification permission required. Tap to enable.</string>
     <string name="notification_channel_budget_alerts">Budget Alerts</string>
     <string name="notification_channel_budget_alerts_description">Notifications when spending approaches or exceeds your budget</string>
+    <!-- v3.12.0 quick-add confirmation channel. IMPORTANCE_LOW in
+         NotificationHelper, so no sound or heads-up; the confirmation is
+         silent by design, with a 10-second Undo action. -->
+    <string name="notification_channel_quick_add_confirmation">Quick-add Confirmation</string>
+    <string name="notification_channel_quick_add_confirmation_description">Silent confirmations when you log an expense from the widget quick-add tile, with a 10-second Undo option.</string>
     <string name="alert_rationale_title">Allow notifications?</string>
     <string name="alert_rationale_body">Budget alerts notify you when your spending reaches 80% of your budget or goes over. You can turn them off anytime.</string>
     <string name="alert_rationale_open_settings">Open Settings</string>
