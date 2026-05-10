@@ -110,15 +110,20 @@ class UndoQuickAddReceiver : BroadcastReceiver() {
 
         // 1. Cancel the pending expiry + dismiss workers from the original
         //    post. Awaited so the 10s expiry can't race with the "Undone"
-        //    update we post in step 4.
+        //    update we post in step 4. Bounded timeout: `ListenableFuture.get`
+        //    with no timeout would block until `goAsync`'s 10s ANR window
+        //    fires. 2s is well below that and leaves >7s for remaining steps.
         try {
             workManager
                 .cancelAllWorkByTag(QuickAddNotifierWorker.tag(transactionId))
                 .result
-                .get()
+                .get(CANCEL_TIMEOUT_MS, TimeUnit.MILLISECONDS)
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {
+            // Includes TimeoutException — in that case we proceed anyway:
+            // the cancel's in-memory effect is immediate even if the DB
+            // commit hasn't finished, so step 4's update will usually win.
             entry.crashReporter().recordException(e)
         }
 
@@ -208,6 +213,15 @@ class UndoQuickAddReceiver : BroadcastReceiver() {
 
         private const val INVALID_TX_ID = -1L
         private const val UNDONE_DISMISS_SECONDS: Long = 3L
+
+        /**
+         * Maximum time to wait for [WorkManager.cancelAllWorkByTag] to commit
+         * its cancel to SQLite. Set well below `goAsync`'s 10-second ANR
+         * budget. If the cancel times out, the in-memory scheduler cancel
+         * still takes effect immediately — the persist is just eventually
+         * consistent.
+         */
+        private const val CANCEL_TIMEOUT_MS: Long = 2_000L
 
         /**
          * Tag for the 3-second dismiss worker scheduled after the "Undone"
