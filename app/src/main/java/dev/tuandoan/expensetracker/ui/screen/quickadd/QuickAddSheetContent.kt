@@ -62,7 +62,6 @@ import dev.tuandoan.expensetracker.ui.theme.DesignSystemSpacing
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 internal fun QuickAddSheetContent(
-    categoryId: Long,
     onDismiss: () -> Unit,
     viewModel: QuickAddViewModel = hiltViewModel(),
 ) {
@@ -95,7 +94,6 @@ internal fun QuickAddSheetContent(
                 else ->
                     QuickAddBody(
                         state = state,
-                        categoryId = categoryId,
                         onAmountChanged = viewModel::onAmountChanged,
                         onSave = viewModel::saveTransaction,
                         onDismiss = onDismiss,
@@ -113,7 +111,6 @@ internal fun QuickAddSheetContent(
 @Composable
 private fun QuickAddBody(
     state: QuickAddUiState,
-    @Suppress("UNUSED_PARAMETER") categoryId: Long,
     onAmountChanged: (String) -> Unit,
     onSave: () -> Unit,
     onDismiss: () -> Unit,

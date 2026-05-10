@@ -104,11 +104,11 @@ class QuickAddSheetActivity : ComponentActivity() {
                 finish()
                 return@launch
             }
-            renderSheet(categoryId = categoryId)
+            renderSheet()
         }
     }
 
-    private fun renderSheet(categoryId: Long) {
+    private fun renderSheet() {
         setContent {
             val themePreference by themePreferencesRepository.themePreference
                 .collectAsStateWithLifecycle(initialValue = ThemePreference.SYSTEM)
@@ -119,8 +119,11 @@ class QuickAddSheetActivity : ComponentActivity() {
                     ThemePreference.SYSTEM -> isSystemInDarkTheme()
                 }
             ExpenseTrackerTheme(darkTheme = darkTheme) {
+                // categoryId is not passed here explicitly — it flows into
+                // QuickAddViewModel's SavedStateHandle automatically because
+                // Hilt seeds the handle from this Activity's intent extras,
+                // and EXTRA_CATEGORY_ID matches QuickAddViewModel.KEY_CATEGORY_ID.
                 QuickAddSheetContent(
-                    categoryId = categoryId,
                     onDismiss = { finish() },
                 )
             }
