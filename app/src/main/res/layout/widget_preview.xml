@@ -6,9 +6,12 @@
   every value here is a frozen placeholder.
 
   Mirrors the medium (4×2) Glance layout in widget/ui/ExpenseWidgetContent.kt
-  so the preview matches what the user actually gets after placement. If the
-  Glance layout changes meaningfully, update this file to match — there is no
-  automatic sync.
+  (Variant A from v3.12.0 — today/month/budget stacked on top, 3 quick-add
+  category tiles + "+" button strip at the bottom). If the Glance layout
+  changes meaningfully, update this file to match — there is no automatic
+  sync. The preview deliberately shows the happy-path "after pins are
+  configured" state because that's the value proposition the picker sells;
+  empty-pin placeholders are a post-install onboarding concern.
 
   Colors are hard-coded Material 3 light-surface tones rather than theme
   references because the launcher picker runs outside the app's theme context.
@@ -21,43 +24,25 @@
     android:paddingHorizontal="12dp"
     android:paddingVertical="10dp">
 
-    <!-- Today row: label + amount + "+" button -->
+    <!-- Today row -->
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:gravity="center_vertical"
-        android:orientation="horizontal">
-
-        <LinearLayout
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:orientation="vertical">
-
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="@string/widget_today"
-                android:textColor="#666666"
-                android:textSize="11sp" />
-
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="@string/widget_preview_today_amount"
-                android:textColor="#1C1B1F"
-                android:textSize="18sp"
-                android:textStyle="bold" />
-        </LinearLayout>
+        android:orientation="vertical">
 
         <TextView
-            android:layout_width="40dp"
-            android:layout_height="40dp"
-            android:background="@drawable/widget_preview_add_button"
-            android:gravity="center"
-            android:text="@string/widget_preview_add_button"
-            android:textColor="#FFFFFF"
-            android:textSize="20sp"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/widget_today"
+            android:textColor="#666666"
+            android:textSize="11sp" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/widget_preview_today_amount"
+            android:textColor="#1C1B1F"
+            android:textSize="18sp"
             android:textStyle="bold" />
     </LinearLayout>
 
@@ -128,4 +113,75 @@
         android:layout_height="4dp"
         android:layout_marginTop="4dp"
         android:background="@drawable/widget_preview_progress_track" />
+
+    <!-- Flex spacer pushes the tile strip to the bottom edge of the preview. -->
+    <Space
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1" />
+
+    <!-- Quick-add tile strip: 3 preview category tiles + "+" button. Mirrors
+         QuickAddTileStrip in ExpenseWidgetContent.kt. Tile heights are 40dp
+         to match the real CategoryTile / AddButton; labels are `maxLines=1`
+         + `ellipsize=end` so the preview doesn't blow out on narrow picker
+         thumbnails. -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="40dp"
+        android:gravity="center_vertical"
+        android:orientation="horizontal">
+
+        <TextView
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:layout_marginHorizontal="2dp"
+            android:layout_weight="1"
+            android:background="@drawable/widget_preview_tile_food"
+            android:ellipsize="end"
+            android:gravity="center"
+            android:maxLines="1"
+            android:text="@string/widget_preview_tile_food"
+            android:textColor="#410002"
+            android:textSize="11sp"
+            android:textStyle="bold" />
+
+        <TextView
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:layout_marginHorizontal="2dp"
+            android:layout_weight="1"
+            android:background="@drawable/widget_preview_tile_transport"
+            android:ellipsize="end"
+            android:gravity="center"
+            android:maxLines="1"
+            android:text="@string/widget_preview_tile_transport"
+            android:textColor="#001A41"
+            android:textSize="11sp"
+            android:textStyle="bold" />
+
+        <TextView
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:layout_marginHorizontal="2dp"
+            android:layout_weight="1"
+            android:background="@drawable/widget_preview_tile_groceries"
+            android:ellipsize="end"
+            android:gravity="center"
+            android:maxLines="1"
+            android:text="@string/widget_preview_tile_groceries"
+            android:textColor="#131F0A"
+            android:textSize="11sp"
+            android:textStyle="bold" />
+
+        <TextView
+            android:layout_width="40dp"
+            android:layout_height="40dp"
+            android:layout_marginStart="4dp"
+            android:background="@drawable/widget_preview_add_button"
+            android:gravity="center"
+            android:text="@string/widget_preview_add_button"
+            android:textColor="#FFFFFF"
+            android:textSize="20sp"
+            android:textStyle="bold" />
+    </LinearLayout>
 </LinearLayout>
