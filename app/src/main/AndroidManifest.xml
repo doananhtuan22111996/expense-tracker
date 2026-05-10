@@ -71,6 +71,17 @@
             </intent-filter>
         </activity>
 
+        <!-- Quick-add bottom sheet (v3.12.0 T3.1). Launched from a pinned
+             widget tile's PendingIntent; never discoverable to other apps
+             (exported=false). Transparent theme so the sheet floats over
+             the launcher wallpaper rather than opening a full-screen
+             activity shell. -->
+        <activity
+            android:name=".ui.screen.quickadd.QuickAddSheetActivity"
+            android:exported="false"
+            android:launchMode="singleTop"
+            android:theme="@style/Theme.ExpenseTracker.Transparent" />
+
         <!-- Disable WorkManager auto-initialization; custom Configuration.Provider is used -->
         <provider
             android:name="androidx.startup.InitializationProvider"

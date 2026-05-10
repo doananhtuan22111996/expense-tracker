@@ -564,6 +564,11 @@
     <!-- Visible label on an empty-pin placeholder tile. Short because the
          medium widget only has ~1/4 of a 4-cell row for each tile. -->
     <string name="widget_empty_pin_label">+ Set up</string>
+
+    <!-- Quick-add bottom sheet (v3.12.0). Opened from a pinned widget tile;
+         T3.1 ships the scaffold, T3.2/T3.4 wire the real amount field + save. -->
+    <string name="quick_add_cancel">Cancel</string>
+    <string name="quick_add_save">Save</string>
     <!-- Widget preview (launcher picker). Static placeholder values — not data-bound
          and never shown with real user data. Intentionally simple numbers so the
          preview reads clearly at thumbnail size in the picker. -->
