@@ -14,6 +14,7 @@ import androidx.core.content.ContextCompat
 import dagger.hilt.android.qualifiers.ApplicationContext
 import dev.tuandoan.expensetracker.MainActivity
 import dev.tuandoan.expensetracker.R
+import dev.tuandoan.expensetracker.ui.screen.quickadd.UndoQuickAddReceiver
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -105,10 +106,162 @@ class NotificationHelper
                 true
             }
 
+        // ------------------------------------------------------------------
+        // v3.12.0 quick-add confirmation (T4.2)
+        //
+        // Three-step lifecycle per ADR-012:
+        //   1. showQuickAddConfirmation(...)                — immediate post with Undo action
+        //   2. updateQuickAddConfirmationWithoutUndo(...)   — T+10s worker drops the Undo button
+        //   3. cancelQuickAddConfirmation(...)              — T+30s worker removes the notification
+        // All three operate on the SAME notification id (derived from the
+        // transaction id via [quickAddNotificationId]) so the OS treats the
+        // expiry update as update-in-place, not a second notification.
+        // ------------------------------------------------------------------
+
+        /**
+         * Posts the quick-add confirmation notification with an Undo action
+         * on `CHANNEL_QUICK_ADD_CONFIRMATION`. Returns the notification id
+         * used; callers schedule expiry/dismiss workers against this id.
+         *
+         * If the user has denied `POST_NOTIFICATIONS` on A33+, silently
+         * no-ops — the transaction is still saved; the user just doesn't
+         * see the confirmation or Undo path. Matches the existing budget-
+         * alerts policy; a permission-rationale surface is deliberately
+         * out of scope for v3.12.0.
+         *
+         * Lock-screen visibility is `VISIBILITY_PRIVATE`: the OS redacts the
+         * body (category name + amount) on a locked screen, showing only
+         * the app name + "Notification". Matches the privacy-forward posture
+         * of the app — category + amount together could infer activity
+         * patterns an observer shouldn't see.
+         */
+        fun showQuickAddConfirmation(
+            transactionId: Long,
+            amountFormatted: String,
+            categoryName: String,
+        ): Int {
+            val notificationId = quickAddNotificationId(transactionId)
+            if (!hasNotificationPermission()) return notificationId
+
+            val notification =
+                buildQuickAddConfirmation(
+                    transactionId = transactionId,
+                    amountFormatted = amountFormatted,
+                    categoryName = categoryName,
+                    withUndo = true,
+                )
+            NotificationManagerCompat.from(context).notify(notificationId, notification)
+            return notificationId
+        }
+
+        /**
+         * Re-posts the quick-add confirmation notification with the Undo
+         * action removed. Called by [QuickAddNotifierWorker] at T+10s once
+         * the Undo window has closed.
+         *
+         * Same notification id as the original post → OS update-in-place.
+         * If the user has already swiped the notification away, this
+         * effectively re-shows it without Undo — a rare edge case accepted
+         * in v3.12.0's Design doc as the cost of the low-infrastructure
+         * 10-second window. Documented in T7.1 manual QA.
+         */
+        fun updateQuickAddConfirmationWithoutUndo(
+            notificationId: Int,
+            amountFormatted: String,
+            categoryName: String,
+        ) {
+            if (!hasNotificationPermission()) return
+            val notification =
+                buildQuickAddConfirmation(
+                    transactionId = 0L, // not used on the no-undo path
+                    amountFormatted = amountFormatted,
+                    categoryName = categoryName,
+                    withUndo = false,
+                )
+            NotificationManagerCompat.from(context).notify(notificationId, notification)
+        }
+
+        /**
+         * Cancels the quick-add confirmation notification. Called by
+         * [QuickAddNotifierWorker] at T+30s for auto-dismiss, and by T4.3's
+         * Undo receiver immediately before it posts the "Undone" update.
+         */
+        fun cancelQuickAddConfirmation(notificationId: Int) {
+            NotificationManagerCompat.from(context).cancel(notificationId)
+        }
+
+        /**
+         * Build the `NotificationCompat.Builder` used by both the initial
+         * post and the T+10s no-undo update. Extracted so the two call
+         * sites stay byte-identical except for the Undo action presence.
+         */
+        private fun buildQuickAddConfirmation(
+            transactionId: Long,
+            amountFormatted: String,
+            categoryName: String,
+            withUndo: Boolean,
+        ): android.app.Notification {
+            val bodyText =
+                context.getString(
+                    R.string.notification_quick_add_body,
+                    amountFormatted,
+                    categoryName,
+                )
+            val titleText = context.getString(R.string.notification_quick_add_title)
+
+            val builder =
+                NotificationCompat
+                    .Builder(context, CHANNEL_QUICK_ADD_CONFIRMATION)
+                    .setSmallIcon(R.drawable.ic_launcher_foreground)
+                    .setContentTitle(titleText)
+                    .setContentText(bodyText)
+                    .setPriority(NotificationCompat.PRIORITY_LOW)
+                    .setVisibility(NotificationCompat.VISIBILITY_PRIVATE)
+                    .setAutoCancel(true)
+                    // Suppress sound/vibration even if the user manually
+                    // promoted the channel's importance — the confirmation
+                    // is silent by design.
+                    .setSilent(true)
+
+            if (withUndo) {
+                val undoIntent =
+                    Intent(context, UndoQuickAddReceiver::class.java).apply {
+                        action = UndoQuickAddReceiver.ACTION_UNDO
+                        putExtra(UndoQuickAddReceiver.EXTRA_TRANSACTION_ID, transactionId)
+                    }
+                // Request code = notification id so each in-flight undo has
+                // its own PendingIntent; FLAG_UPDATE_CURRENT ensures the
+                // latest extras win if a collision somehow occurs.
+                val undoPendingIntent =
+                    PendingIntent.getBroadcast(
+                        context,
+                        quickAddNotificationId(transactionId),
+                        undoIntent,
+                        PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
+                    )
+                builder.addAction(
+                    0,
+                    context.getString(R.string.notification_quick_add_undo_action),
+                    undoPendingIntent,
+                )
+            }
+
+            return builder.build()
+        }
+
         companion object {
             const val CHANNEL_BUDGET_ALERTS = "budget_alerts"
             const val CHANNEL_QUICK_ADD_CONFIRMATION = "quick_add_confirmation"
             const val NOTIFICATION_ID_BUDGET_WARNING = 1001
             const val NOTIFICATION_ID_BUDGET_EXCEEDED = 1002
+
+            /**
+             * Maps an auto-increment transaction id (Long) to a notification
+             * id (Int) for the quick-add confirmation. Uses the low 31 bits
+             * so every reasonable primary-key value stays positive and
+             * unique. Values could theoretically collide after ~2 billion
+             * inserts; users in that regime have bigger problems.
+             */
+            fun quickAddNotificationId(transactionId: Long): Int = transactionId.and(Int.MAX_VALUE.toLong()).toInt()
         }
     }

@@ -12,6 +12,7 @@ import dev.tuandoan.expensetracker.domain.model.MonthlyBarPoint
 import dev.tuandoan.expensetracker.domain.model.MonthlySummary
 import dev.tuandoan.expensetracker.domain.model.Transaction
 import dev.tuandoan.expensetracker.domain.model.TransactionType
+import dev.tuandoan.expensetracker.domain.notification.QuickAddConfirmationNotifier
 import dev.tuandoan.expensetracker.domain.repository.BudgetAlertScheduler
 import dev.tuandoan.expensetracker.domain.repository.CategoryRepository
 import dev.tuandoan.expensetracker.domain.repository.TransactionRepository
@@ -43,6 +44,7 @@ class QuickAddViewModelTest {
     private lateinit var categoryRepo: FakeCategoryRepository
     private lateinit var currencyRepo: FakeCurrencyPreferenceRepository
     private lateinit var scheduler: FakeBudgetAlertScheduler
+    private lateinit var notifier: RecordingQuickAddNotifier
     private lateinit var timeProvider: FakeTimeProvider
     private lateinit var analytics: RecordingAnalytics
 
@@ -52,6 +54,7 @@ class QuickAddViewModelTest {
         categoryRepo = FakeCategoryRepository()
         currencyRepo = FakeCurrencyPreferenceRepository(initialCurrency = "VND")
         scheduler = FakeBudgetAlertScheduler()
+        notifier = RecordingQuickAddNotifier()
         timeProvider = FakeTimeProvider(currentMillis = TestData.FIXED_TIME)
         analytics = RecordingAnalytics()
     }
@@ -63,6 +66,7 @@ class QuickAddViewModelTest {
             categoryRepo,
             currencyRepo,
             scheduler,
+            notifier,
             timeProvider,
             analytics,
             savedState,
@@ -250,6 +254,33 @@ class QuickAddViewModelTest {
             assertEquals(1, scheduler.scheduleCount)
         }
 
+    @Test
+    fun save_success_invokesConfirmationNotifierWithCorrectArgs() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            // v3.12.0 T4.2: on successful save, the VM must invoke the
+            // confirmation notifier with the returned transactionId + the
+            // exact amount, currency, and category used for the save. The
+            // notifier then posts the notification + schedules the expiry
+            // and auto-dismiss workers per ADR-012.
+            categoryRepo.categoriesById[TestData.expenseCategory.id] = TestData.expenseCategory
+            val vm = createViewModel()
+            advanceUntilIdle()
+
+            vm.onAmountChanged("100")
+            vm.saveTransaction()
+            advanceUntilIdle()
+
+            assertEquals(1, notifier.calls.size)
+            val call = notifier.calls.single()
+            // FakeTransactionRepository returns 1L from addTransaction; the VM
+            // must pass that through untouched so the notifier can stamp it
+            // onto the Undo PendingIntent + worker unique tag.
+            assertEquals(1L, call.transactionId)
+            assertEquals(100L, call.amountMinor)
+            assertEquals("VND", call.currencyCode)
+            assertEquals(TestData.expenseCategory.name, call.categoryName)
+        }
+
     // --- save failure ---
 
     @Test
@@ -271,6 +302,10 @@ class QuickAddViewModelTest {
             // Analytics must NOT fire on a failed save — defense-in-depth for
             // the "no phantom events" property.
             assertTrue(analytics.events.filterIsInstance<AnalyticsEvent.TransactionAdded>().isEmpty())
+            // Confirmation notifier must NOT fire on a failed save either —
+            // otherwise the user sees an Undo notification for a transaction
+            // that never landed.
+            assertTrue(notifier.calls.isEmpty())
         }
 
     @Test
@@ -441,4 +476,29 @@ private class RecordingAnalytics : Analytics {
     }
 
     override fun setCollectionEnabled(enabled: Boolean) = Unit
+}
+
+/**
+ * Fake [QuickAddConfirmationNotifier] that records every post call so tests
+ * can assert the notifier was invoked with the right (transactionId, amount,
+ * currency, category) tuple after a successful save.
+ */
+private class RecordingQuickAddNotifier : QuickAddConfirmationNotifier {
+    data class PostCall(
+        val transactionId: Long,
+        val amountMinor: Long,
+        val currencyCode: String,
+        val categoryName: String,
+    )
+
+    val calls: MutableList<PostCall> = mutableListOf()
+
+    override suspend fun post(
+        transactionId: Long,
+        amountMinor: Long,
+        currencyCode: String,
+        categoryName: String,
+    ) {
+        calls += PostCall(transactionId, amountMinor, currencyCode, categoryName)
+    }
 }

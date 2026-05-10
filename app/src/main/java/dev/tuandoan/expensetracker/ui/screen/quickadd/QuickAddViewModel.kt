@@ -14,6 +14,7 @@ import dev.tuandoan.expensetracker.domain.analytics.AnalyticsEvent
 import dev.tuandoan.expensetracker.domain.analytics.TransactionSource
 import dev.tuandoan.expensetracker.domain.analytics.toAnalyticsKind
 import dev.tuandoan.expensetracker.domain.model.TransactionType
+import dev.tuandoan.expensetracker.domain.notification.QuickAddConfirmationNotifier
 import dev.tuandoan.expensetracker.domain.repository.BudgetAlertScheduler
 import dev.tuandoan.expensetracker.domain.repository.CategoryRepository
 import dev.tuandoan.expensetracker.domain.repository.CurrencyPreferenceRepository
@@ -75,6 +76,7 @@ class QuickAddViewModel
         private val categoryRepository: CategoryRepository,
         private val currencyPreferenceRepository: CurrencyPreferenceRepository,
         private val budgetAlertScheduler: BudgetAlertScheduler,
+        private val quickAddConfirmationNotifier: QuickAddConfirmationNotifier,
         private val timeProvider: TimeProvider,
         private val analytics: Analytics,
         savedStateHandle: SavedStateHandle,
@@ -121,14 +123,15 @@ class QuickAddViewModel
 
             viewModelScope.launch {
                 try {
-                    transactionRepository.addTransaction(
-                        type = TransactionType.EXPENSE,
-                        amount = amount,
-                        categoryId = category.id,
-                        note = null,
-                        timestamp = timeProvider.currentTimeMillis(),
-                        currencyCode = state.currencyCode,
-                    )
+                    val transactionId =
+                        transactionRepository.addTransaction(
+                            type = TransactionType.EXPENSE,
+                            amount = amount,
+                            categoryId = category.id,
+                            note = null,
+                            timestamp = timeProvider.currentTimeMillis(),
+                            currencyCode = state.currencyCode,
+                        )
                     // Quick-add only produces expenses (FR-11); `source = WIDGET`
                     // attributes the save to the v3.12.0 widget quick-add flow so
                     // product can split adoption vs the full add-edit screen.
@@ -139,6 +142,19 @@ class QuickAddViewModel
                         ),
                     )
                     budgetAlertScheduler.scheduleImmediateCheck()
+                    // Post the v3.12.0 confirmation notification + schedule
+                    // its 10s expiry + 30s auto-dismiss workers per ADR-012.
+                    // Fire-and-forget relative to the UI flip below — the
+                    // notifier returns quickly (enqueue is synchronous; the
+                    // actual work runs off-thread) so blocking isSaving on
+                    // it would delay the sheet dismissal by tens of ms for
+                    // no user-visible benefit.
+                    quickAddConfirmationNotifier.post(
+                        transactionId = transactionId,
+                        amountMinor = amount,
+                        currencyCode = state.currencyCode,
+                        categoryName = category.name,
+                    )
                     _uiState.value = _uiState.value.copy(isSaving = false, saved = true)
                 } catch (e: Exception) {
                     _uiState.value =

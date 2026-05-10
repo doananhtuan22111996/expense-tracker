@@ -82,6 +82,21 @@
             android:launchMode="singleTop"
             android:theme="@style/Theme.ExpenseTracker.Transparent" />
 
+        <!-- v3.12.0 Undo broadcast target for the quick-add confirmation
+             notification's Undo action. Reachable only via the in-process
+             PendingIntent built by QuickAddConfirmationNotifier
+             (exported=false). T4.2 ships the stub receiver; T4.3 fills in
+             the Undo body (cancel scheduled workers, delete transaction,
+             post "Undone" update). Intent-filter matches the explicit
+             action constant used when building the PendingIntent. -->
+        <receiver
+            android:name=".ui.screen.quickadd.UndoQuickAddReceiver"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="dev.tuandoan.expensetracker.action.UNDO_QUICK_ADD" />
+            </intent-filter>
+        </receiver>
+
         <!-- Disable WorkManager auto-initialization; custom Configuration.Provider is used -->
         <provider
             android:name="androidx.startup.InitializationProvider"
