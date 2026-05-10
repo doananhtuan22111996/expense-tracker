@@ -41,12 +41,20 @@ sealed interface AnalyticsEvent {
     data object WidgetRemoved : AnalyticsEvent
 
     /**
-     * Fired on a successful transaction save. **Only the type** (expense
-     * vs. income) is captured — never the amount, category, note, or
-     * currency. FR-A7 invariant.
+     * Fired on a successful transaction save. Captures two orthogonal
+     * facets of the action: [type] (expense vs. income) and [source]
+     * (which entry point produced the save — manual / widget / recurring).
+     * **Never** the amount, category, note, or currency. FR-A7 invariant.
+     *
+     * [source] was added in v3.12.0 when the widget quick-add flow
+     * introduced a second user-facing save path; understanding
+     * widget-flow adoption requires splitting the existing [type]
+     * metric across entry points. The privacy-policy disclosure
+     * (`privacy-policy.md` §2) lists both parameters explicitly.
      */
     data class TransactionAdded(
         val type: TransactionKind,
+        val source: TransactionSource,
     ) : AnalyticsEvent
 
     /** Fired on a successful backup export. Captures only the format. */
@@ -117,8 +125,9 @@ enum class TransactionKind(
  * later must be added here (one-line change) and reflected in the
  * privacy-policy disclosure + `AnalyticsEventTest`.
  *
- * Wired into `AnalyticsEvent.TransactionAdded` in T5.2; this PR (T5.1)
- * adds the enum only so the subsequent wire-up is a smaller review.
+ * Wired into [AnalyticsEvent.TransactionAdded] as the `source` parameter
+ * alongside the existing `type` (expense/income) — the two parameters
+ * together capture what happened + how the user got there.
  */
 enum class TransactionSource(
     override val wireValue: String,

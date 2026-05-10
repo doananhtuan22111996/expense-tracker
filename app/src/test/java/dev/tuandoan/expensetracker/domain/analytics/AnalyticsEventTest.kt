@@ -119,13 +119,19 @@ class AnalyticsEventTest {
     }
 
     @Test
-    fun transactionAddedEvent_carriesOnlyKind_notAmountOrCategoryOrNote() {
+    fun transactionAddedEvent_carriesOnlyKindAndSource_notAmountOrCategoryOrNote() {
         // Privacy-critical structural assertion: the ONLY payload of a
-        // transaction event is expense-vs-income. A future contributor
-        // tempted to add `amount: Long` or `categoryName: String` would
-        // have to rewrite this test — which is the point.
-        val event = AnalyticsEvent.TransactionAdded(TransactionKind.EXPENSE)
+        // transaction event is expense-vs-income AND the entry-point
+        // source (v3.12.0 — see TransactionSource KDoc). A future
+        // contributor tempted to add `amount: Long` or `categoryName:
+        // String` would have to rewrite this test — which is the point.
+        val event =
+            AnalyticsEvent.TransactionAdded(
+                type = TransactionKind.EXPENSE,
+                source = TransactionSource.WIDGET,
+            )
         assertEquals(TransactionKind.EXPENSE, event.type)
+        assertEquals(TransactionSource.WIDGET, event.source)
     }
 
     @Test

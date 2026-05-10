@@ -11,6 +11,7 @@ import dev.tuandoan.expensetracker.core.util.TimeProvider
 import dev.tuandoan.expensetracker.core.util.UiText
 import dev.tuandoan.expensetracker.domain.analytics.Analytics
 import dev.tuandoan.expensetracker.domain.analytics.AnalyticsEvent
+import dev.tuandoan.expensetracker.domain.analytics.TransactionSource
 import dev.tuandoan.expensetracker.domain.analytics.toAnalyticsKind
 import dev.tuandoan.expensetracker.domain.model.Category
 import dev.tuandoan.expensetracker.domain.model.SupportedCurrencies
@@ -161,11 +162,16 @@ class AddEditTransactionViewModel
                         )
                         // PRD FR-A6: fire transaction_added only for the add path,
                         // not for updates — edits don't create new transactions.
-                        // The event carries ONLY expense-vs-income per FR-A7; the
-                        // sealed AnalyticsEvent hierarchy (PR #115) statically
-                        // enforces that amount/category/note cannot leak.
+                        // The event carries ONLY expense-vs-income + the entry-point
+                        // source per FR-A7; the sealed AnalyticsEvent hierarchy
+                        // (PR #115) statically enforces that amount/category/note
+                        // cannot leak. `source = MANUAL` because this VM backs the
+                        // full add-edit screen.
                         analytics.logEvent(
-                            AnalyticsEvent.TransactionAdded(type = state.type.toAnalyticsKind()),
+                            AnalyticsEvent.TransactionAdded(
+                                type = state.type.toAnalyticsKind(),
+                                source = TransactionSource.MANUAL,
+                            ),
                         )
                     }
                     budgetAlertScheduler.scheduleImmediateCheck()

@@ -5,6 +5,7 @@ import dev.tuandoan.expensetracker.domain.analytics.BackupFormat
 import dev.tuandoan.expensetracker.domain.analytics.BuildType
 import dev.tuandoan.expensetracker.domain.analytics.InsightRowType
 import dev.tuandoan.expensetracker.domain.analytics.TransactionKind
+import dev.tuandoan.expensetracker.domain.analytics.TransactionSource
 import dev.tuandoan.expensetracker.domain.analytics.WidgetSize
 import org.junit.Test
 import org.mockito.Mockito.inOrder
@@ -110,32 +111,49 @@ class FirebaseAnalyticsImplTest {
     }
 
     @Test
-    fun logEvent_transactionAdded_expense_mapsToTypeParam_noAmountOrCategoryName() {
+    fun logEvent_transactionAdded_expenseManual_mapsToTypeAndSourceParams_noAmountOrCategoryName() {
         // Privacy-critical regression guard: TransactionAdded must emit
-        // ONLY `type`, never leak into an `amount`, `currency`, or
-        // `category_name` parameter. The sealed hierarchy makes this
-        // structural; this test makes it visible at the wire boundary.
+        // ONLY `type` + `source` (v3.12.0), never leak into an `amount`,
+        // `currency`, or `category_name` parameter. The sealed hierarchy
+        // makes this structural; this test makes it visible at the wire
+        // boundary.
         val wrapper: FirebaseAnalyticsWrapper = mock()
         val impl = FirebaseAnalyticsImpl(wrapper)
 
-        impl.logEvent(AnalyticsEvent.TransactionAdded(TransactionKind.EXPENSE))
+        impl.logEvent(AnalyticsEvent.TransactionAdded(TransactionKind.EXPENSE, TransactionSource.MANUAL))
 
         verify(wrapper).logEvent(
             name = "transaction_added",
-            params = mapOf("type" to "expense"),
+            params = mapOf("type" to "expense", "source" to "manual"),
         )
     }
 
     @Test
-    fun logEvent_transactionAdded_income_mapsToTypeParam() {
+    fun logEvent_transactionAdded_incomeWidget_mapsToTypeAndSourceParams() {
         val wrapper: FirebaseAnalyticsWrapper = mock()
         val impl = FirebaseAnalyticsImpl(wrapper)
 
-        impl.logEvent(AnalyticsEvent.TransactionAdded(TransactionKind.INCOME))
+        impl.logEvent(AnalyticsEvent.TransactionAdded(TransactionKind.INCOME, TransactionSource.WIDGET))
 
         verify(wrapper).logEvent(
             name = "transaction_added",
-            params = mapOf("type" to "income"),
+            params = mapOf("type" to "income", "source" to "widget"),
+        )
+    }
+
+    @Test
+    fun logEvent_transactionAdded_recurringSource_emitsRecurringWireValue() {
+        // RECURRING has no existing call site today (RecurringTransactionWorker
+        // doesn't fire analytics); this test pins the mapping so a future
+        // wire-up lands cleanly without a surprise at the wire boundary.
+        val wrapper: FirebaseAnalyticsWrapper = mock()
+        val impl = FirebaseAnalyticsImpl(wrapper)
+
+        impl.logEvent(AnalyticsEvent.TransactionAdded(TransactionKind.EXPENSE, TransactionSource.RECURRING))
+
+        verify(wrapper).logEvent(
+            name = "transaction_added",
+            params = mapOf("type" to "expense", "source" to "recurring"),
         )
     }
 

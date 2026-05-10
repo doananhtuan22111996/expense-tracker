@@ -5,6 +5,7 @@ import dev.tuandoan.expensetracker.R
 import dev.tuandoan.expensetracker.core.util.UiText
 import dev.tuandoan.expensetracker.domain.analytics.Analytics
 import dev.tuandoan.expensetracker.domain.analytics.AnalyticsEvent
+import dev.tuandoan.expensetracker.domain.analytics.TransactionSource
 import dev.tuandoan.expensetracker.domain.model.Category
 import dev.tuandoan.expensetracker.domain.model.CategoryWithCount
 import dev.tuandoan.expensetracker.domain.model.MonthlyBarPoint
@@ -229,6 +230,10 @@ class QuickAddViewModelTest {
 
             val expense = analytics.events.filterIsInstance<AnalyticsEvent.TransactionAdded>()
             assertEquals(1, expense.size)
+            // v3.12.0: the quick-add flow must attribute its event to the widget
+            // entry point. If a future refactor accidentally defaults source to
+            // MANUAL, product adoption numbers would under-count the widget flow.
+            assertEquals(TransactionSource.WIDGET, expense.single().source)
         }
 
     @Test
