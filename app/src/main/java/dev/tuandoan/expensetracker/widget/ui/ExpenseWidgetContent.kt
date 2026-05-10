@@ -185,7 +185,7 @@ private fun QuickAddTileStrip(pinnedCategories: List<PinnedCategorySlot>) {
  * primary if the key is unknown). The category name is drawn centered and
  * single-line ellipsized to fit the ~1/4 row slot width.
  *
-Click launches `QuickAddSheetActivity` for this pinned category via
+ * Click launches `QuickAddSheetActivity` for this pinned category via
  * `openQuickAddAction(context, slot.category.id)`. The Activity reads the
  * `categoryId` extra, gates on onboarding completion, and opens the
  * quick-add bottom sheet — bypassing the full add-transaction screen
