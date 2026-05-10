@@ -39,11 +39,15 @@ import dev.tuandoan.expensetracker.ui.screen.recurring.RecurringTransactionsScre
  * set by `MainActivity` when the home-screen widget's "+" action fires. A
  * new (non-zero, changed-since-last-composition) value causes an immediate
  * navigation to the add-transaction modal route. Ignored during onboarding.
+ * @param pendingOpenSettingsTick mirror of the above for the widget's
+ * empty-pin placeholder tap (v3.12.0 T2.6). Routes to the Settings tab
+ * so users can configure pinned categories.
  */
 @Composable
 fun ExpenseTrackerApp(
     isOnboardingComplete: Boolean = true,
     pendingAddTransactionTick: Long = 0L,
+    pendingOpenSettingsTick: Long = 0L,
 ) {
     val navController = rememberNavController()
     val navBackStackEntry by navController.currentBackStackEntryAsState()
@@ -60,6 +64,22 @@ fun ExpenseTrackerApp(
     LaunchedEffect(pendingAddTransactionTick, isOnboardingComplete) {
         if (pendingAddTransactionTick != 0L && isOnboardingComplete) {
             navController.navigate(ModalNavRoutes.addTransactionRoute())
+        }
+    }
+
+    // Widget empty-pin placeholder tap — navigate to Settings so the user
+    // can pick categories to pin. Same queuing semantics as above: a tap
+    // during onboarding waits until the welcome flow completes.
+    LaunchedEffect(pendingOpenSettingsTick, isOnboardingComplete) {
+        if (pendingOpenSettingsTick != 0L && isOnboardingComplete) {
+            navController.navigate("main/settings") {
+                launchSingleTop = true
+                // Avoid stacking multiple Settings entries on repeated taps.
+                popUpTo(navController.graph.startDestinationId) {
+                    saveState = true
+                }
+                restoreState = true
+            }
         }
     }
 

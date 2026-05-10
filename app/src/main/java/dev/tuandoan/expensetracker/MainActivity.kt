@@ -39,6 +39,11 @@ class MainActivity : ComponentActivity() {
     // without needing a Channel or SharedFlow on the Activity boundary.
     private var pendingAddTransactionTick by mutableStateOf(0L)
 
+    // Mirrors [pendingAddTransactionTick] for the empty-pin placeholder's
+    // "open Settings" action (v3.12.0 T2.6). Same pattern: nanoTime per tap
+    // causes a LaunchedEffect in [ExpenseTrackerApp] to navigate to Settings.
+    private var pendingOpenSettingsTick by mutableStateOf(0L)
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         // PRD FR-A6: log AppOpen once per user-perceptible launch. Gating on
@@ -76,6 +81,7 @@ class MainActivity : ComponentActivity() {
                 ExpenseTrackerApp(
                     isOnboardingComplete = isOnboardingComplete,
                     pendingAddTransactionTick = pendingAddTransactionTick,
+                    pendingOpenSettingsTick = pendingOpenSettingsTick,
                 )
             }
         }
@@ -109,6 +115,10 @@ class MainActivity : ComponentActivity() {
             pendingAddTransactionTick = System.nanoTime()
             intent.removeExtra(EXTRA_LAUNCH_ADD_TRANSACTION)
         }
+        if (intent?.getBooleanExtra(EXTRA_LAUNCH_SETTINGS, false) == true) {
+            pendingOpenSettingsTick = System.nanoTime()
+            intent.removeExtra(EXTRA_LAUNCH_SETTINGS)
+        }
     }
 
     companion object {
@@ -118,5 +128,13 @@ class MainActivity : ComponentActivity() {
          * add-transaction modal on top of whatever was showing.
          */
         const val EXTRA_LAUNCH_ADD_TRANSACTION: String = "launch_add_transaction"
+
+        /**
+         * Intent extra set by an empty-pin placeholder tap on the widget's
+         * quick-add strip (v3.12.0 T2.6). When true, MainActivity signals
+         * the Compose layer to navigate to the Settings tab so the user can
+         * configure which categories should appear as pinned tiles.
+         */
+        const val EXTRA_LAUNCH_SETTINGS: String = "launch_settings"
     }
 }
