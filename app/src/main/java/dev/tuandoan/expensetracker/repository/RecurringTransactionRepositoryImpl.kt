@@ -7,6 +7,10 @@ import dev.tuandoan.expensetracker.data.database.dao.CategoryDao
 import dev.tuandoan.expensetracker.data.database.dao.RecurringTransactionDao
 import dev.tuandoan.expensetracker.data.database.dao.TransactionDao
 import dev.tuandoan.expensetracker.data.database.entity.RecurringTransactionEntity
+import dev.tuandoan.expensetracker.domain.analytics.Analytics
+import dev.tuandoan.expensetracker.domain.analytics.AnalyticsEvent
+import dev.tuandoan.expensetracker.domain.analytics.TransactionSource
+import dev.tuandoan.expensetracker.domain.analytics.toAnalyticsKind
 import dev.tuandoan.expensetracker.domain.model.RecurrenceFrequency
 import dev.tuandoan.expensetracker.domain.model.RecurringTransaction
 import dev.tuandoan.expensetracker.domain.model.TransactionType
@@ -28,6 +32,7 @@ class RecurringTransactionRepositoryImpl
         private val recurrenceScheduler: RecurrenceScheduler,
         private val timeProvider: TimeProvider,
         private val zoneId: ZoneId,
+        private val analytics: Analytics,
     ) : RecurringTransactionRepository {
         override fun observeAll(): Flow<List<RecurringTransaction>> =
             recurringDao.getAll().map { entities ->
@@ -95,12 +100,27 @@ class RecurringTransactionRepositoryImpl
         }
 
         override suspend fun processDueRecurring() {
-            recurrenceScheduler.processDueRecurring(
-                recurringDao = recurringDao,
-                transactionDao = transactionDao,
-                transactionRunner = transactionRunner,
-                zoneId = zoneId,
-            )
+            // T5.4: emit one `transaction_added` analytics event per materialized
+            // transaction with `source = RECURRING` so the dashboard can compare
+            // adoption across MANUAL (add-edit screen) / WIDGET (quick-add sheet)
+            // / RECURRING (this worker path). The event is fired AFTER the DB
+            // transaction commits — matches the PR #121 pattern used by the
+            // AddEdit and QuickAdd VMs (analytics never bypass rollback).
+            val insertedTypes =
+                recurrenceScheduler.processDueRecurring(
+                    recurringDao = recurringDao,
+                    transactionDao = transactionDao,
+                    transactionRunner = transactionRunner,
+                    zoneId = zoneId,
+                )
+            for (type in insertedTypes) {
+                analytics.logEvent(
+                    AnalyticsEvent.TransactionAdded(
+                        type = type.toAnalyticsKind(),
+                        source = TransactionSource.RECURRING,
+                    ),
+                )
+            }
         }
 
         private fun RecurringTransactionEntity.toDomain(categoryMap: Map<Long, String>): RecurringTransaction {
