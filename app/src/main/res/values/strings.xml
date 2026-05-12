@@ -651,6 +651,7 @@
     <string name="settings_widget">Widget</string>
     <string name="settings_widget_categories_title">Quick-add categories</string>
     <string name="settings_widget_categories_subtitle">Pin up to 3 categories for one-tap logging from the home-screen widget</string>
+    <string name="settings_widget_categories_count">%1$d of 3 pinned</string>
     <string name="settings_widget_categories_none_set">None set</string>
 
     <!-- Widget Categories screen (Settings → Widget → Pinned Categories) — T6.1 / T6.3 -->

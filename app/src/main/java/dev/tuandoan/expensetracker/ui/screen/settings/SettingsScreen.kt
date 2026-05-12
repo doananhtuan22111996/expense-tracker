@@ -486,11 +486,20 @@ fun SettingsScreen(
             // Widget Section (T6.4) — home-screen widget customisation entry point.
             SettingsSection(title = stringResource(R.string.settings_widget)) {
                 val widgetTitle = stringResource(R.string.settings_widget_categories_title)
+                // Subtitle intentionally shows COUNT only, not the joined names.
+                // Matches the Recurring row's "N active" precedent above and
+                // reduces shoulder-surf surface for users with personally-
+                // identifying category names (e.g. medical, legal). The widget
+                // tile strip and the Widget Categories screen are the right
+                // surfaces for the actual names.
                 val pinnedSubtitle =
                     if (pinnedCategoryNames.isEmpty()) {
                         stringResource(R.string.settings_widget_categories_none_set)
                     } else {
-                        pinnedCategoryNames.joinToString(separator = ", ")
+                        stringResource(
+                            R.string.settings_widget_categories_count,
+                            pinnedCategoryNames.size,
+                        )
                     }
                 Row(
                     modifier =
