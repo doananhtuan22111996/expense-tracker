@@ -9,14 +9,14 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.TrendingDown
-import androidx.compose.material.icons.filled.TrendingUp
+import androidx.compose.material.icons.automirrored.filled.TrendingDown
+import androidx.compose.material.icons.automirrored.filled.TrendingUp
+import androidx.compose.material.icons.automirrored.outlined.TrendingDown
+import androidx.compose.material.icons.automirrored.outlined.TrendingUp
 import androidx.compose.material.icons.outlined.ErrorOutline
 import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material.icons.outlined.Schedule
 import androidx.compose.material.icons.outlined.Speed
-import androidx.compose.material.icons.outlined.TrendingDown
-import androidx.compose.material.icons.outlined.TrendingUp
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -143,16 +143,16 @@ private fun InsightRow.icon(): ImageVector =
     when (this) {
         is InsightRow.BiggestMover ->
             if (direction == InsightRow.Direction.UP) {
-                Icons.Filled.TrendingUp
+                Icons.AutoMirrored.Filled.TrendingUp
             } else {
-                Icons.Filled.TrendingDown
+                Icons.AutoMirrored.Filled.TrendingDown
             }
         is InsightRow.DailyPace -> Icons.Outlined.Speed
         is InsightRow.NoBudgetFallback -> Icons.Outlined.Speed
         is InsightRow.DayOfMonth ->
             when (direction) {
-                InsightRow.Direction.UP -> Icons.Outlined.TrendingUp
-                InsightRow.Direction.DOWN -> Icons.Outlined.TrendingDown
+                InsightRow.Direction.UP -> Icons.AutoMirrored.Outlined.TrendingUp
+                InsightRow.Direction.DOWN -> Icons.AutoMirrored.Outlined.TrendingDown
                 null -> Icons.Outlined.Schedule
             }
         InsightRow.Empty -> Icons.Outlined.Info
