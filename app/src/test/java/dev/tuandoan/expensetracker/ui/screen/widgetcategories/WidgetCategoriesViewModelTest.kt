@@ -202,6 +202,22 @@ class WidgetCategoriesViewModelTest {
         }
 
     @Test
+    fun onTogglePin_unknownCategoryId_isSilentNoOp_doesNotCreateOrphan() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            preferences.setPinnedCategoryIds(listOf(food.id))
+            val vm = newViewModel()
+            advanceUntilIdle()
+            val writeCountBefore = preferences.writeCount
+
+            // 9999 isn't in availableCategories — defence against stale/leaked IDs.
+            vm.onTogglePin(categoryId = 9999L)
+            advanceUntilIdle()
+
+            assertEquals(writeCountBefore, preferences.writeCount)
+            assertNull(vm.uiState.value.overLimitMessage)
+        }
+
+    @Test
     fun onTogglePin_addingWhenOrphanExists_compactsOrphanOutOfPersistedList() =
         runTest(mainDispatcherRule.testDispatcher) {
             // Orphan present: groceries is in raw pin list but not in live category list.

@@ -135,6 +135,11 @@ class WidgetCategoriesViewModel
                 when {
                     categoryId in snapshot ->
                         snapshot.filterNot { it == categoryId || it !in live }
+                    // Defence-in-depth: silently drop taps for IDs the VM doesn't
+                    // recognise as live EXPENSE categories. Stale Compose state,
+                    // config-change races, or future misuse shouldn't be able to
+                    // plant a new orphan in the persisted list.
+                    categoryId !in live -> return
                     liveCount >= MAX_PINS -> {
                         _uiState.update {
                             it.copy(overLimitMessage = UiText.StringResource(R.string.widget_categories_over_limit))
