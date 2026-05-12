@@ -35,3 +35,6 @@ google-services.json
 *.hprof
 .kotlin
 .claude
+
+# Local code-intelligence tooling (per-developer, 70+ MB SQLite + WAL)
+.tokensave/

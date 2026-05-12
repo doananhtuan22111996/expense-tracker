@@ -208,7 +208,7 @@ private fun WidgetCategoriesBody(
                 isPinned = isPinned,
                 isAtMaxPins = uiState.isAtMaxPins,
                 canMoveUp = isPinned && livePinIndex > 0,
-                canMoveDown = isPinned && livePinIndex in 0 until (livePinnedIds.size - 1),
+                canMoveDown = isPinned && livePinIndex < livePinnedIds.size - 1,
                 onTogglePin = { onTogglePin(category.id) },
                 onMoveUp = { onMove(livePinIndex, livePinIndex - 1) },
                 onMoveDown = { onMove(livePinIndex, livePinIndex + 1) },
