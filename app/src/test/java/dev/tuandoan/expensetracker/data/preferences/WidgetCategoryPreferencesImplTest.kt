@@ -89,7 +89,29 @@ class FakeWidgetCategoryPreferences : WidgetCategoryPreferences {
     private val _pinnedCategoryIds = MutableStateFlow<List<Long>>(emptyList())
     override val pinnedCategoryIds: Flow<List<Long>> = _pinnedCategoryIds
 
+    /** Last list written to the preferences (post-truncation). `null` until first write. */
+    var latestWrite: List<Long>? = null
+        private set
+
+    /** Number of times `setPinnedCategoryIds` has been called (across writes + constructor-time seeds). */
+    var writeCount: Int = 0
+        private set
+
+    /**
+     * When true, the NEXT call to [setPinnedCategoryIds] throws. Auto-resets to false
+     * after it fires so tests don't have to clear it by hand. Used by VM tests to
+     * exercise the persistence-failure branch.
+     */
+    var throwOnNextWrite: Boolean = false
+
     override suspend fun setPinnedCategoryIds(ids: List<Long>) {
-        _pinnedCategoryIds.value = ids.take(3)
+        if (throwOnNextWrite) {
+            throwOnNextWrite = false
+            throw RuntimeException("Simulated persistence failure")
+        }
+        val truncated = ids.take(3)
+        _pinnedCategoryIds.value = truncated
+        latestWrite = truncated
+        writeCount++
     }
 }

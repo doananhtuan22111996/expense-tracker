@@ -646,4 +646,8 @@
     <!-- Accessibility — row container description. %1$s = full row text. -->
     <string name="a11y_insights_row">%1$s</string>
     <string name="a11y_insights_loading">Loading insights</string>
+
+    <!-- Widget Categories screen (Settings → Widget → Pinned Categories) — T6.1 -->
+    <string name="widget_categories_over_limit">You can only pin up to 3 categories</string>
+    <string name="error_save_widget_categories">Couldn\'t save widget pins</string>
 </resources>
