@@ -114,17 +114,21 @@ class SettingsViewModel
                 .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000L), 0)
 
         /**
-         * Live-pinned category names for the Settings → Widget section subtitle
+         * Count of *live* pins for the Settings → Widget section subtitle
          * (T6.4). Derived from [PinnedCategoriesUseCase] so orphan pins (IDs
-         * whose category was deleted) are omitted — the subtitle shows only
-         * what the user would see on the widget. Emits an empty list when no
-         * slots are filled; the UI renders "None set" in that case.
+         * whose category was deleted) are excluded — the count shows only
+         * what the user would see on the widget. 0 renders as "None set";
+         * 1..3 renders as "N of 3 pinned".
+         *
+         * Exposes a count (not the joined names) by design — deliberate
+         * privacy tradeoff so user-defined category names don't render on
+         * the Settings top level where they're more shoulder-surf-exposed.
+         * Names stay visible on the Widget Categories screen itself.
          */
-        val pinnedCategoryNames: StateFlow<List<String>> =
+        val pinnedLiveCategoryCount: StateFlow<Int> =
             pinnedCategoriesUseCase()
-                .map { slots ->
-                    slots.filterIsInstance<PinnedCategorySlot.Filled>().map { it.category.name }
-                }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000L), emptyList())
+                .map { slots -> slots.count { it is PinnedCategorySlot.Filled } }
+                .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000L), 0)
 
         init {
             observeDefaultCurrency()

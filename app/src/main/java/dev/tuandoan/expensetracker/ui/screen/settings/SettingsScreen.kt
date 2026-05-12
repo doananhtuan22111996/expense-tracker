@@ -101,7 +101,7 @@ fun SettingsScreen(
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val activeRecurringCount by viewModel.activeRecurringCount.collectAsStateWithLifecycle()
-    val pinnedCategoryNames by viewModel.pinnedCategoryNames.collectAsStateWithLifecycle()
+    val pinnedLiveCategoryCount by viewModel.pinnedLiveCategoryCount.collectAsStateWithLifecycle()
     val themePreference by viewModel.themePreference.collectAsStateWithLifecycle()
     val analyticsConsent by viewModel.analyticsConsent.collectAsStateWithLifecycle()
     val analyticsEventsConsent by viewModel.analyticsEventsConsent.collectAsStateWithLifecycle()
@@ -493,12 +493,12 @@ fun SettingsScreen(
                 // tile strip and the Widget Categories screen are the right
                 // surfaces for the actual names.
                 val pinnedSubtitle =
-                    if (pinnedCategoryNames.isEmpty()) {
+                    if (pinnedLiveCategoryCount == 0) {
                         stringResource(R.string.settings_widget_categories_none_set)
                     } else {
                         stringResource(
                             R.string.settings_widget_categories_count,
-                            pinnedCategoryNames.size,
+                            pinnedLiveCategoryCount,
                         )
                     }
                 Row(
@@ -528,7 +528,7 @@ fun SettingsScreen(
                             text = pinnedSubtitle,
                             style = MaterialTheme.typography.bodySmall,
                             color =
-                                if (pinnedCategoryNames.isEmpty()) {
+                                if (pinnedLiveCategoryCount == 0) {
                                     MaterialTheme.colorScheme.onSurfaceVariant
                                 } else {
                                     MaterialTheme.colorScheme.primary
