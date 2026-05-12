@@ -9,6 +9,7 @@ import dev.tuandoan.expensetracker.data.database.entity.MonthlyTotalRow
 import dev.tuandoan.expensetracker.data.database.entity.RecurringTransactionEntity
 import dev.tuandoan.expensetracker.data.database.entity.TransactionEntity
 import dev.tuandoan.expensetracker.domain.model.RecurrenceFrequency
+import dev.tuandoan.expensetracker.domain.model.TransactionType
 import dev.tuandoan.expensetracker.testutil.FakeTimeProvider
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -251,6 +252,119 @@ class RecurrenceSchedulerTest {
             assertEquals(2, fakeTransactionDao.inserted.size)
             assertEquals(2, fakeRecurringDao.updatedNextDues.size)
         }
+
+    // -- T5.4: return-value contract tests --
+    //
+    // `processDueRecurring` returns the list of materialised [TransactionType]s
+    // in insertion order. The repository impl (T5.4) loops over the return
+    // value to emit one analytics `transaction_added` event per inserted tx
+    // with `source = RECURRING`. These tests pin the ordering + filtering
+    // invariants so future changes to scheduler can't silently drop or
+    // reshuffle events.
+
+    @Test
+    fun processDueRecurring_returnsEmptyList_whenNoDueItems() =
+        runTest {
+            fakeTimeProvider.setCurrentMillis(1700000000000L)
+            val fakeRecurringDao = FakeRecurringTransactionDao()
+            val fakeTransactionDao = FakeTransactionDao()
+            val fakeRunner = FakeTransactionRunner()
+
+            val result =
+                scheduler.processDueRecurring(
+                    fakeRecurringDao,
+                    fakeTransactionDao,
+                    fakeRunner,
+                    zoneId,
+                )
+
+            assertEquals(emptyList<TransactionType>(), result)
+        }
+
+    @Test
+    fun processDueRecurring_returnsTypesInInsertionOrder_mixedExpenseAndIncome() =
+        runTest {
+            val now = 1700000000000L
+            fakeTimeProvider.setCurrentMillis(now)
+            val fakeRecurringDao = FakeRecurringTransactionDao()
+            val fakeTransactionDao = FakeTransactionDao()
+            val fakeRunner = FakeTransactionRunner()
+
+            // Expense (type=0), Income (type=1), Expense — order preserved through the DB transaction.
+            fakeRecurringDao.dueItems.addAll(
+                listOf(
+                    sampleDue(id = 1L, type = 0, due = now - 3000L),
+                    sampleDue(id = 2L, type = 1, due = now - 2000L),
+                    sampleDue(id = 3L, type = 0, due = now - 1000L),
+                ),
+            )
+
+            val result =
+                scheduler.processDueRecurring(
+                    fakeRecurringDao,
+                    fakeTransactionDao,
+                    fakeRunner,
+                    zoneId,
+                )
+
+            assertEquals(
+                listOf(TransactionType.EXPENSE, TransactionType.INCOME, TransactionType.EXPENSE),
+                result,
+            )
+        }
+
+    @Test
+    fun processDueRecurring_orphanedItems_areOmittedFromReturnedTypes() =
+        runTest {
+            val now = 1700000000000L
+            fakeTimeProvider.setCurrentMillis(now)
+            val fakeRecurringDao = FakeRecurringTransactionDao()
+            val fakeTransactionDao = FakeTransactionDao()
+            val fakeRunner = FakeTransactionRunner()
+
+            // One orphan (categoryId = null) + one normal. Only the normal one inserts
+            // and surfaces in the returned list, but BOTH advance their nextDueMillis
+            // (existing invariant preserved — asserted below).
+            fakeRecurringDao.dueItems.addAll(
+                listOf(
+                    sampleDue(id = 1L, type = 1, due = now - 2000L, categoryId = null),
+                    sampleDue(id = 2L, type = 0, due = now - 1000L, categoryId = 5L),
+                ),
+            )
+
+            val result =
+                scheduler.processDueRecurring(
+                    fakeRecurringDao,
+                    fakeTransactionDao,
+                    fakeRunner,
+                    zoneId,
+                )
+
+            assertEquals(listOf(TransactionType.EXPENSE), result)
+            assertEquals(1, fakeTransactionDao.inserted.size)
+            assertEquals(2, fakeRecurringDao.updatedNextDues.size)
+        }
+
+    private fun sampleDue(
+        id: Long,
+        type: Int,
+        due: Long,
+        categoryId: Long? = 1L,
+    ) = RecurringTransactionEntity(
+        id = id,
+        type = type,
+        amount = 10_000L,
+        currencyCode = "VND",
+        categoryId = categoryId,
+        note = null,
+        frequency = RecurrenceFrequency.MONTHLY.toInt(),
+        dayOfMonth = 1,
+        dayOfWeek = null,
+        nextDueMillis = due,
+        isActive = true,
+        createdAt = due,
+        updatedAt = due,
+    )
 
     // -- Fakes --
 
