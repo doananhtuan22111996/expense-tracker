@@ -158,6 +158,23 @@ class WidgetCategoriesViewModelTest {
         }
 
     @Test
+    fun onMove_withOrphanPresent_reordersLiveListAndStripsOrphan() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            // Raw persisted: [food, groceries-orphan, transport]
+            // Live view: [food, transport] (orphan hidden)
+            preferences.setPinnedCategoryIds(listOf(food.id, groceries.id, transport.id))
+            categoryRepository.expenseCategories.value = listOf(food, transport, coffee)
+            val vm = newViewModel()
+            advanceUntilIdle()
+
+            // Reorder fromIndex=0 toIndex=1 operates on the LIVE view: [food,transport] → [transport,food]
+            vm.onMove(fromIndex = 0, toIndex = 1)
+            advanceUntilIdle()
+
+            assertEquals(listOf(transport.id, food.id), preferences.latestWrite)
+        }
+
+    @Test
     fun onMove_sameIndex_isNoOp() =
         runTest(mainDispatcherRule.testDispatcher) {
             preferences.setPinnedCategoryIds(listOf(food.id, transport.id))
