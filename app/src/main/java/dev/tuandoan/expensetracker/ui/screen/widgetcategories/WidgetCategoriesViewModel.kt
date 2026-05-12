@@ -44,17 +44,23 @@ private const val MAX_PINS = 3
  * threaded from the main dispatcher) and the preferences flow is cold, so
  * toggle/reorder callers see a consistent snapshot.
  *
- * ### Max-3 rule
+ * ### Max-3 rule & orphan pins
  *
- * FR-05: pin at most 3 categories. When the user taps a not-yet-pinned
- * row and [currentPinnedIds] already has 3 entries, we emit a one-shot
- * [UiText] to [WidgetCategoriesUiState.overLimitMessage]; the UI shows a
- * snackbar and clears via [onOverLimitMessageShown]. No DataStore write
- * happens in that path — the rule is enforced in-memory at the VM
- * boundary, not at the persistence boundary (which also enforces it via
- * `ids.take(3)`, but the helper snackbar only fires on user tap, not on
- * e.g. a programmatic setAll-4 call — nothing in-app actually does that
- * today).
+ * FR-05: pin at most 3 categories. The cap is computed against *live*
+ * pins only — raw IDs that still resolve to an existing [Category].
+ * Orphan pins (IDs whose category was deleted elsewhere in the app) are
+ * excluded from the count so the user isn't locked out of pinning new
+ * categories by dead slots they can't see. `PinnedCategoriesUseCase`'s
+ * FR-07 positional-fallback means orphans stay in the raw list as Empty
+ * slots for widget layout stability; in the Settings screen we prefer
+ * the leaner semantics.
+ *
+ * When the user triggers any mutation (toggle-pin, reorder), the VM
+ * writes a *compacted* list with orphans stripped — so a single user
+ * interaction heals the raw list persistently. A tap on a 4th category
+ * while at the live cap emits a one-shot [UiText] to
+ * [WidgetCategoriesUiState.overLimitMessage]; no DataStore write
+ * happens in that path.
  */
 @HiltViewModel
 class WidgetCategoriesViewModel
@@ -76,6 +82,14 @@ class WidgetCategoriesViewModel
         @Volatile
         private var currentPinnedIds: List<Long> = emptyList()
 
+        /**
+         * Latest known set of live EXPENSE category IDs. Used to strip
+         * orphaned entries from [currentPinnedIds] on mutation and to
+         * compute the live-pin count for the cap.
+         */
+        @Volatile
+        private var liveCategoryIds: Set<Long> = emptySet()
+
         init {
             viewModelScope.launch {
                 combine(
@@ -84,11 +98,13 @@ class WidgetCategoriesViewModel
                     widgetCategoryPreferences.pinnedCategoryIds,
                 ) { slots, categories, rawPinnedIds ->
                     currentPinnedIds = rawPinnedIds
+                    liveCategoryIds = categories.mapTo(mutableSetOf()) { it.id }
+                    val livePinnedCount = rawPinnedIds.count { it in liveCategoryIds }
                     WidgetCategoriesUiState(
                         pinnedSlots = slots,
                         availableCategories = categories,
-                        pinnedCount = rawPinnedIds.size,
-                        isAtMaxPins = rawPinnedIds.size >= MAX_PINS,
+                        pinnedCount = livePinnedCount,
+                        isAtMaxPins = livePinnedCount >= MAX_PINS,
                         overLimitMessage = _uiState.value.overLimitMessage,
                         error = _uiState.value.error,
                         isLoading = false,
@@ -102,42 +118,54 @@ class WidgetCategoriesViewModel
         /**
          * Toggle pin state for [categoryId]. If the ID is already pinned,
          * remove it (collapses following slots up by one index). If it
-         * isn't pinned and we're under the 3-pin cap, append it. Otherwise
-         * emit the over-limit hint and make no write.
+         * isn't pinned and we're under the 3-pin cap (measured against
+         * *live* pins only), append it. Otherwise emit the over-limit
+         * hint and make no write.
+         *
+         * Any toggle write strips orphaned pins (IDs whose category was
+         * deleted elsewhere) from the persisted list — one user
+         * interaction heals the raw list so future reads match what the
+         * Settings UI shows.
          */
         fun onTogglePin(categoryId: Long) {
             val snapshot = currentPinnedIds
+            val live = liveCategoryIds
+            val liveCount = snapshot.count { it in live }
             val next =
                 when {
-                    categoryId in snapshot -> snapshot.filterNot { it == categoryId }
-                    snapshot.size >= MAX_PINS -> {
+                    categoryId in snapshot ->
+                        snapshot.filterNot { it == categoryId || it !in live }
+                    liveCount >= MAX_PINS -> {
                         _uiState.update {
                             it.copy(overLimitMessage = UiText.StringResource(R.string.widget_categories_over_limit))
                         }
                         return
                     }
-                    else -> snapshot + categoryId
+                    else -> snapshot.filter { it in live } + categoryId
                 }
             persist(next)
         }
 
         /**
          * Reorder the pinned list: take the entry at [fromIndex] and drop
-         * it at [toIndex]. Both are zero-based positions within the raw
-         * pinned-IDs list (not the 1-based slot index). Out-of-range
-         * inputs are dropped silently — defensive guard for future drag
-         * gestures that could report phantom positions during teardown.
+         * it at [toIndex]. Both are zero-based positions within the
+         * *live* pinned list (orphans excluded), matching what the UI
+         * renders. Out-of-range inputs are dropped silently — defensive
+         * guard for future drag gestures that could report phantom
+         * positions during teardown. Like [onTogglePin], a reorder write
+         * compacts orphans out of the persisted list.
          */
         fun onMove(
             fromIndex: Int,
             toIndex: Int,
         ) {
-            val snapshot = currentPinnedIds
             if (fromIndex == toIndex) return
-            if (fromIndex !in snapshot.indices) return
-            if (toIndex !in snapshot.indices) return
+            val live = liveCategoryIds
+            val compacted = currentPinnedIds.filter { it in live }
+            if (fromIndex !in compacted.indices) return
+            if (toIndex !in compacted.indices) return
             val reordered =
-                snapshot.toMutableList().apply {
+                compacted.toMutableList().apply {
                     add(toIndex, removeAt(fromIndex))
                 }
             persist(reordered)

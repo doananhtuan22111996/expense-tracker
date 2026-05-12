@@ -18,18 +18,21 @@ import dev.tuandoan.expensetracker.domain.widget.PinnedCategorySlot
  * @property availableCategories every EXPENSE [Category] the user could
  *   pick, ordered by name. Rendered as the pickable list below the
  *   preview; rows already pinned are decorated with a "pinned" affordance.
- * @property pinnedCount count of filled slots; drives the "N of 3 pinned"
- *   label and the [isAtMaxPins] check. Derived (not a separate source of
- *   truth) so it can't drift from [pinnedSlots].
- * @property isAtMaxPins true when [pinnedCount] == 3; UI uses this to
+ * @property pinnedCount count of *live* filled slots — raw pin IDs that
+ *   still resolve to an existing [Category]. Orphan pins (IDs whose
+ *   category was deleted from elsewhere in the app) are excluded so the
+ *   cap count matches what the user sees. Drives the "N of 3 pinned"
+ *   label and the [isAtMaxPins] check.
+ * @property isAtMaxPins true when [pinnedCount] == 3. UI uses this to
  *   grey out the "pin" affordance on not-yet-pinned rows. The VM also
  *   guards every mutation against this.
  * @property overLimitMessage one-shot user-facing hint emitted when the
- *   user taps to pin a 4th category. UI clears via [onMessageShown] after
- *   rendering the snackbar — one-shot semantics keep the message from
- *   re-firing on config change.
+ *   user taps to pin a 4th category. UI clears via
+ *   `WidgetCategoriesViewModel.onOverLimitMessageShown` after rendering
+ *   the snackbar — one-shot semantics keep the message from re-firing on
+ *   config change.
  * @property error one-shot user-facing error from a failed persistence
- *   write. Same one-shot pattern as [overLimitMessage].
+ *   write. Cleared via `WidgetCategoriesViewModel.onErrorShown`.
  * @property isLoading true until the first emission of both the prefs
  *   flow and the categories flow lands.
  */

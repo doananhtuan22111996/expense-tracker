@@ -188,6 +188,37 @@ class WidgetCategoriesViewModelTest {
         }
 
     @Test
+    fun orphanedPin_isExcludedFromLivePinCount_andCapStaysUnderMax() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            // 3 pins, then delete one category upstream — orphan remains in raw list.
+            preferences.setPinnedCategoryIds(listOf(food.id, transport.id, groceries.id))
+            categoryRepository.expenseCategories.value = listOf(food, transport, coffee) // groceries deleted
+            val vm = newViewModel()
+            advanceUntilIdle()
+
+            // Live pin count should exclude the orphan (groceries), so UI is NOT at cap.
+            assertEquals(2, vm.uiState.value.pinnedCount)
+            assertFalse(vm.uiState.value.isAtMaxPins)
+        }
+
+    @Test
+    fun onTogglePin_addingWhenOrphanExists_compactsOrphanOutOfPersistedList() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            // Orphan present: groceries is in raw pin list but not in live category list.
+            preferences.setPinnedCategoryIds(listOf(food.id, transport.id, groceries.id))
+            categoryRepository.expenseCategories.value = listOf(food, transport, coffee)
+            val vm = newViewModel()
+            advanceUntilIdle()
+
+            vm.onTogglePin(coffee.id)
+            advanceUntilIdle()
+
+            // Persisted list should now be 3 live entries — orphan silently stripped.
+            assertEquals(listOf(food.id, transport.id, coffee.id), preferences.latestWrite)
+            assertNull(vm.uiState.value.overLimitMessage)
+        }
+
+    @Test
     fun onOverLimitMessageShown_clearsMessage() =
         runTest(mainDispatcherRule.testDispatcher) {
             preferences.setPinnedCategoryIds(listOf(food.id, transport.id, groceries.id))
