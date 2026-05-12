@@ -40,6 +40,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.clearAndSetSemantics
@@ -139,7 +141,17 @@ private fun WidgetCategoriesBody(
     modifier: Modifier = Modifier,
     bottomContentPadding: androidx.compose.ui.unit.Dp = 0.dp,
 ) {
-    if (!uiState.isLoading && uiState.availableCategories.isEmpty()) {
+    // isLoading: first frame before the combine() emits. Render nothing
+    // rather than a half-configured strip + empty list (pinnedSlots default
+    // is emptyList(), which would render a zero-tile strip). Upstream emits
+    // within a single Main-dispatcher turn, so the loading frame is
+    // short-lived and not worth a skeleton.
+    if (uiState.isLoading) {
+        Box(modifier = modifier)
+        return
+    }
+
+    if (uiState.availableCategories.isEmpty()) {
         EmptyCategoriesState(onNavigateToCategories = onNavigateToCategories, modifier = modifier)
         return
     }
@@ -249,7 +261,13 @@ private fun PreviewTile(
                 Text(
                     text = slot.category.name,
                     style = MaterialTheme.typography.labelLarge,
-                    color = MaterialTheme.colorScheme.onPrimary,
+                    // ChartColors.categoryColor returns 8 different scheme tokens
+                    // (primary, error, secondary, tertiary, inversePrimary, outline,
+                    // onPrimaryContainer, onTertiaryContainer) — no single `onX`
+                    // color is readable on all of them. Pick black or white by
+                    // luminance so contrast stays above WCAG AA regardless of
+                    // which colorKey the category carries.
+                    color = contrastingTextColor(color),
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                     textAlign = TextAlign.Center,
@@ -292,18 +310,15 @@ private fun CategoryPinRow(
     modifier: Modifier = Modifier,
 ) {
     val color = ChartColors.categoryColor(category.colorKey, MaterialTheme.colorScheme)
-    val rowA11y =
-        if (isPinned) {
-            stringResource(R.string.a11y_widget_categories_row_pinned, category.name)
-        } else {
-            stringResource(R.string.a11y_widget_categories_row_unpinned, category.name)
-        }
 
     Card(
-        modifier =
-            modifier
-                .fillMaxWidth()
-                .semantics(mergeDescendants = true) { contentDescription = rowA11y },
+        // Intentionally NOT using semantics(mergeDescendants = true). Merging
+        // collapses the up/down/pin IconButtons into a single row-level a11y
+        // node, which makes the per-action buttons unreachable for TalkBack
+        // users. Each IconButton already carries its own contentDescription,
+        // so leaving the row unmerged preserves discoverability of the
+        // reorder + pin/unpin actions.
+        modifier = modifier.fillMaxWidth(),
         elevation = CardDefaults.cardElevation(defaultElevation = DesignSystemElevation.low),
     ) {
         Row(
@@ -397,3 +412,12 @@ private fun EmptyCategoriesState(
         }
     }
 }
+
+/**
+ * Returns black or white depending on the background's relative luminance
+ * so the label stays above WCAG AA contrast regardless of which scheme
+ * token [ChartColors.categoryColor] happens to map to. Threshold 0.5 is
+ * the standard Material heuristic for "pick the contrasting monochrome".
+ */
+private fun contrastingTextColor(background: Color): Color =
+    if (background.luminance() > 0.5f) Color.Black else Color.White

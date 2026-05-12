@@ -665,6 +665,4 @@
     <string name="widget_categories_empty_cta">Go to Categories</string>
     <string name="a11y_widget_categories_preview_filled">Pinned slot %1$d: %2$s</string>
     <string name="a11y_widget_categories_preview_empty">Pinned slot %1$d: empty</string>
-    <string name="a11y_widget_categories_row_pinned">%1$s, pinned</string>
-    <string name="a11y_widget_categories_row_unpinned">%1$s, not pinned</string>
 </resources>
