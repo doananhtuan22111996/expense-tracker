@@ -23,6 +23,8 @@ import dev.tuandoan.expensetracker.domain.repository.BudgetAlertPreferences
 import dev.tuandoan.expensetracker.domain.repository.CurrencyPreferenceRepository
 import dev.tuandoan.expensetracker.domain.repository.EncryptOptions
 import dev.tuandoan.expensetracker.domain.repository.RecurringTransactionRepository
+import dev.tuandoan.expensetracker.domain.widget.PinnedCategoriesUseCase
+import dev.tuandoan.expensetracker.domain.widget.PinnedCategorySlot
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Job
@@ -56,6 +58,7 @@ class SettingsViewModel
         private val backupEncryptionPreferences: BackupEncryptionPreferences,
         private val crashReporter: CrashReporter,
         @IoDispatcher private val ioDispatcher: CoroutineDispatcher,
+        pinnedCategoriesUseCase: PinnedCategoriesUseCase,
     ) : ViewModel() {
         private val _uiState = MutableStateFlow(SettingsUiState())
         val uiState: StateFlow<SettingsUiState> = _uiState.asStateFlow()
@@ -108,6 +111,23 @@ class SettingsViewModel
             recurringTransactionRepository
                 .observeAll()
                 .map { items -> items.count { it.isActive } }
+                .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000L), 0)
+
+        /**
+         * Count of *live* pins for the Settings → Widget section subtitle
+         * (T6.4). Derived from [PinnedCategoriesUseCase] so orphan pins (IDs
+         * whose category was deleted) are excluded — the count shows only
+         * what the user would see on the widget. 0 renders as "None set";
+         * 1..3 renders as "N of 3 pinned".
+         *
+         * Exposes a count (not the joined names) by design — deliberate
+         * privacy tradeoff so user-defined category names don't render on
+         * the Settings top level where they're more shoulder-surf-exposed.
+         * Names stay visible on the Widget Categories screen itself.
+         */
+        val pinnedLiveCategoryCount: StateFlow<Int> =
+            pinnedCategoriesUseCase()
+                .map { slots -> slots.count { it is PinnedCategorySlot.Filled } }
                 .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000L), 0)
 
         init {

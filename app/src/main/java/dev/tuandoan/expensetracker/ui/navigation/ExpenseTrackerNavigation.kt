@@ -26,6 +26,7 @@ fun ExpenseTrackerNavigation(
     onNavigateToEditTransaction: (transactionId: Long) -> Unit,
     onNavigateToCategories: () -> Unit = {},
     onNavigateToRecurring: () -> Unit = {},
+    onNavigateToWidgetCategories: () -> Unit = {},
     onNavigateToAddGoldHolding: () -> Unit = {},
     onNavigateToEditGoldHolding: (holdingId: Long) -> Unit = {},
     onNavigateToDebugPanel: () -> Unit = {},
@@ -64,6 +65,7 @@ fun ExpenseTrackerNavigation(
             SettingsScreen(
                 onNavigateToCategories = onNavigateToCategories,
                 onNavigateToRecurring = onNavigateToRecurring,
+                onNavigateToWidgetCategories = onNavigateToWidgetCategories,
                 onNavigateToDebugPanel = onNavigateToDebugPanel,
                 bottomContentPadding = bottomContentPadding,
             )

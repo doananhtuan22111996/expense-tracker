@@ -10,13 +10,18 @@ import dev.tuandoan.expensetracker.data.backup.BackupValidationException
 import dev.tuandoan.expensetracker.data.preferences.BackupEncryptionPreferences
 import dev.tuandoan.expensetracker.data.preferences.FakeBudgetAlertPreferences
 import dev.tuandoan.expensetracker.data.preferences.FakeThemePreferencesRepository
+import dev.tuandoan.expensetracker.data.preferences.FakeWidgetCategoryPreferences
 import dev.tuandoan.expensetracker.data.preferences.ThemePreference
 import dev.tuandoan.expensetracker.domain.crash.NoOpCrashReporter
+import dev.tuandoan.expensetracker.domain.model.Category
 import dev.tuandoan.expensetracker.domain.model.RecurringTransaction
 import dev.tuandoan.expensetracker.domain.model.SupportedCurrencies
+import dev.tuandoan.expensetracker.domain.model.TransactionType
 import dev.tuandoan.expensetracker.domain.repository.BackupRepository
 import dev.tuandoan.expensetracker.domain.repository.BackupRestoreResult
+import dev.tuandoan.expensetracker.domain.repository.CategoryRepository
 import dev.tuandoan.expensetracker.domain.repository.RecurringTransactionRepository
+import dev.tuandoan.expensetracker.domain.widget.PinnedCategoriesUseCase
 import dev.tuandoan.expensetracker.testutil.FakeAnalyticsPreferences
 import dev.tuandoan.expensetracker.testutil.FakeCurrencyPreferenceRepository
 import dev.tuandoan.expensetracker.testutil.MainDispatcherRule
@@ -71,8 +76,14 @@ class SettingsViewModelTest {
         mockUri = Mockito.mock(Uri::class.java)
     }
 
-    private fun createViewModel(): SettingsViewModel =
-        SettingsViewModel(
+    private fun createViewModel(): SettingsViewModel {
+        // T6.4: SettingsViewModel now exposes pinnedCategoryNames via a
+        // PinnedCategoriesUseCase. Construct a real use case over empty
+        // prefs + empty EXPENSE categories — the existing tests don't
+        // exercise pin state, so an empty use case is the zero-fixture.
+        val widgetPrefs = FakeWidgetCategoryPreferences()
+        val emptyCategoryRepo = EmptyExpenseCategoryRepository()
+        return SettingsViewModel(
             fakeCurrencyPreferenceRepo,
             fakeBackupRepository,
             mockContentResolver,
@@ -83,7 +94,9 @@ class SettingsViewModelTest {
             fakeBackupEncryptionPrefs,
             NoOpCrashReporter(),
             mainDispatcherRule.testDispatcher,
+            PinnedCategoriesUseCase(widgetPrefs, emptyCategoryRepo),
         )
+    }
 
     // --- Theme tests ---
 
@@ -1357,5 +1370,37 @@ class SettingsViewModelTest {
             exportException?.let { throw it }
             outputStream.write("Date,Type,Amount,Currency,Category,Note\n".toByteArray(Charsets.UTF_8))
         }
+    }
+
+    /**
+     * Zero-fixture CategoryRepository for SettingsViewModel's
+     * PinnedCategoriesUseCase wiring (T6.4). No existing tests exercise
+     * pinnedCategoryNames state, so an empty EXPENSE category list is the
+     * right default. If a future test asserts the subtitle, swap in a
+     * recording fake then.
+     */
+    private class EmptyExpenseCategoryRepository : CategoryRepository {
+        override fun observeCategories(type: TransactionType): Flow<List<Category>> = MutableStateFlow(emptyList())
+
+        override suspend fun getCategory(id: Long): Category? = null
+
+        override suspend fun createCategory(
+            name: String,
+            type: TransactionType,
+            iconKey: String?,
+            colorKey: String?,
+        ): Long = 0L
+
+        override suspend fun updateCategory(
+            id: Long,
+            name: String,
+            iconKey: String?,
+            colorKey: String?,
+        ) = Unit
+
+        override suspend fun deleteCategory(id: Long) = Unit
+
+        override fun getCategoriesWithTransactionCount() =
+            MutableStateFlow(emptyList<dev.tuandoan.expensetracker.domain.model.CategoryWithCount>())
     }
 }
