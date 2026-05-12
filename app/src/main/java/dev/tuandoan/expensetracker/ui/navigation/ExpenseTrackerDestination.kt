@@ -63,6 +63,13 @@ sealed class ModalDestination(
     data object AddEditGoldHolding : ModalDestination("modal/add_edit_gold_holding")
 
     /**
+     * Settings → Widget Categories (v3.12.0, T6.3 / T6.4). Lets the user pick
+     * up to 3 EXPENSE categories to pin as quick-add tiles on the home-screen
+     * widget. Reached from Settings's "Widget" section row.
+     */
+    data object WidgetCategories : ModalDestination("modal/widget_categories")
+
+    /**
      * Developer-only debug panel (v3.11.0, ADR-010). Reachable only via the
      * 7-tap Easter-egg gesture on the Settings version text; not linked from
      * any normal user surface.

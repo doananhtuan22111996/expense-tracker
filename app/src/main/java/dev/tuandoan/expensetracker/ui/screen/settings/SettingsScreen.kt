@@ -94,12 +94,14 @@ fun SettingsScreen(
     modifier: Modifier = Modifier,
     onNavigateToCategories: () -> Unit = {},
     onNavigateToRecurring: () -> Unit = {},
+    onNavigateToWidgetCategories: () -> Unit = {},
     onNavigateToDebugPanel: () -> Unit = {},
     bottomContentPadding: Dp = 0.dp,
     viewModel: SettingsViewModel = hiltViewModel(),
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val activeRecurringCount by viewModel.activeRecurringCount.collectAsStateWithLifecycle()
+    val pinnedCategoryNames by viewModel.pinnedCategoryNames.collectAsStateWithLifecycle()
     val themePreference by viewModel.themePreference.collectAsStateWithLifecycle()
     val analyticsConsent by viewModel.analyticsConsent.collectAsStateWithLifecycle()
     val analyticsEventsConsent by viewModel.analyticsEventsConsent.collectAsStateWithLifecycle()
@@ -477,6 +479,58 @@ fun SettingsScreen(
                                 viewModel.setBudgetAlertsEnabled(false)
                             }
                         },
+                    )
+                }
+            }
+
+            // Widget Section (T6.4) — home-screen widget customisation entry point.
+            SettingsSection(title = stringResource(R.string.settings_widget)) {
+                val widgetTitle = stringResource(R.string.settings_widget_categories_title)
+                val pinnedSubtitle =
+                    if (pinnedCategoryNames.isEmpty()) {
+                        stringResource(R.string.settings_widget_categories_none_set)
+                    } else {
+                        pinnedCategoryNames.joinToString(separator = ", ")
+                    }
+                Row(
+                    modifier =
+                        Modifier
+                            .fillMaxWidth()
+                            .clickable { onNavigateToWidgetCategories() }
+                            .padding(DesignSystemSpacing.large)
+                            .semantics { contentDescription = widgetTitle },
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = widgetTitle,
+                            style = MaterialTheme.typography.bodyLarge,
+                            fontWeight = FontWeight.Medium,
+                            color = MaterialTheme.colorScheme.onSurface,
+                        )
+                        Text(
+                            text = stringResource(R.string.settings_widget_categories_subtitle),
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.padding(top = DesignSystemSpacing.xs),
+                        )
+                        Text(
+                            text = pinnedSubtitle,
+                            style = MaterialTheme.typography.bodySmall,
+                            color =
+                                if (pinnedCategoryNames.isEmpty()) {
+                                    MaterialTheme.colorScheme.onSurfaceVariant
+                                } else {
+                                    MaterialTheme.colorScheme.primary
+                                },
+                            modifier = Modifier.padding(top = DesignSystemSpacing.xs),
+                        )
+                    }
+                    Icon(
+                        Icons.AutoMirrored.Filled.KeyboardArrowRight,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 }
             }

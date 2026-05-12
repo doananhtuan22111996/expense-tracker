@@ -30,6 +30,7 @@ import dev.tuandoan.expensetracker.ui.screen.gold.AddEditGoldHoldingScreen
 import dev.tuandoan.expensetracker.ui.screen.onboarding.OnboardingScreen
 import dev.tuandoan.expensetracker.ui.screen.recurring.AddEditRecurringTransactionScreen
 import dev.tuandoan.expensetracker.ui.screen.recurring.RecurringTransactionsScreen
+import dev.tuandoan.expensetracker.ui.screen.widgetcategories.WidgetCategoriesScreen
 
 /**
  * Main app composable with simplified, stable navigation architecture
@@ -112,6 +113,9 @@ fun ExpenseTrackerApp(
                 onNavigateToRecurring = {
                     navController.navigate(ModalDestination.Recurring.route)
                 },
+                onNavigateToWidgetCategories = {
+                    navController.navigate(ModalDestination.WidgetCategories.route)
+                },
                 onNavigateToAddGoldHolding = {
                     navController.navigate(ModalNavRoutes.addGoldHoldingRoute())
                 },
@@ -172,6 +176,28 @@ fun ExpenseTrackerApp(
                         navController.navigate("Home") {
                             popUpTo(0) { inclusive = true }
                         }
+                    }
+                },
+                viewModel = hiltViewModel(),
+            )
+        }
+
+        composable(ModalDestination.WidgetCategories.route) {
+            WidgetCategoriesScreen(
+                onNavigateBack = {
+                    if (!navController.popBackStack()) {
+                        navController.navigate("Home") {
+                            popUpTo(0) { inclusive = true }
+                        }
+                    }
+                },
+                onNavigateToCategories = {
+                    // Empty-state CTA on the Widget Categories screen routes to
+                    // the Categories manager so the user can create EXPENSE
+                    // categories before pinning. Replace the current entry so
+                    // back returns to Settings, not to the empty widget screen.
+                    navController.navigate(ModalDestination.Categories.route) {
+                        popUpTo(ModalDestination.WidgetCategories.route) { inclusive = true }
                     }
                 },
                 viewModel = hiltViewModel(),
@@ -246,6 +272,7 @@ private fun Home(
     onNavigateToEditTransaction: (transactionId: Long) -> Unit,
     onNavigateToCategories: () -> Unit,
     onNavigateToRecurring: () -> Unit = {},
+    onNavigateToWidgetCategories: () -> Unit = {},
     onNavigateToAddGoldHolding: () -> Unit = {},
     onNavigateToEditGoldHolding: (holdingId: Long) -> Unit = {},
     onNavigateToDebugPanel: () -> Unit = {},
@@ -281,6 +308,7 @@ private fun Home(
             onNavigateToEditTransaction = onNavigateToEditTransaction,
             onNavigateToCategories = onNavigateToCategories,
             onNavigateToRecurring = onNavigateToRecurring,
+            onNavigateToWidgetCategories = onNavigateToWidgetCategories,
             onNavigateToAddGoldHolding = onNavigateToAddGoldHolding,
             onNavigateToEditGoldHolding = onNavigateToEditGoldHolding,
             onNavigateToDebugPanel = onNavigateToDebugPanel,

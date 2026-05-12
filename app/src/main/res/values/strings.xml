@@ -647,6 +647,12 @@
     <string name="a11y_insights_row">%1$s</string>
     <string name="a11y_insights_loading">Loading insights</string>
 
+    <!-- Settings → Widget section (T6.4) -->
+    <string name="settings_widget">Widget</string>
+    <string name="settings_widget_categories_title">Quick-add categories</string>
+    <string name="settings_widget_categories_subtitle">Pin up to 3 categories for one-tap logging from the home-screen widget</string>
+    <string name="settings_widget_categories_none_set">None set</string>
+
     <!-- Widget Categories screen (Settings → Widget → Pinned Categories) — T6.1 / T6.3 -->
     <string name="widget_categories_over_limit">You can only pin up to 3 categories</string>
     <string name="error_save_widget_categories">Couldn\'t save widget pins</string>

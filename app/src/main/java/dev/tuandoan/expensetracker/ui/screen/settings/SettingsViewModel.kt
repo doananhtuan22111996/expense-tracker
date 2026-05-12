@@ -23,6 +23,8 @@ import dev.tuandoan.expensetracker.domain.repository.BudgetAlertPreferences
 import dev.tuandoan.expensetracker.domain.repository.CurrencyPreferenceRepository
 import dev.tuandoan.expensetracker.domain.repository.EncryptOptions
 import dev.tuandoan.expensetracker.domain.repository.RecurringTransactionRepository
+import dev.tuandoan.expensetracker.domain.widget.PinnedCategoriesUseCase
+import dev.tuandoan.expensetracker.domain.widget.PinnedCategorySlot
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Job
@@ -56,6 +58,7 @@ class SettingsViewModel
         private val backupEncryptionPreferences: BackupEncryptionPreferences,
         private val crashReporter: CrashReporter,
         @IoDispatcher private val ioDispatcher: CoroutineDispatcher,
+        pinnedCategoriesUseCase: PinnedCategoriesUseCase,
     ) : ViewModel() {
         private val _uiState = MutableStateFlow(SettingsUiState())
         val uiState: StateFlow<SettingsUiState> = _uiState.asStateFlow()
@@ -109,6 +112,19 @@ class SettingsViewModel
                 .observeAll()
                 .map { items -> items.count { it.isActive } }
                 .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000L), 0)
+
+        /**
+         * Live-pinned category names for the Settings → Widget section subtitle
+         * (T6.4). Derived from [PinnedCategoriesUseCase] so orphan pins (IDs
+         * whose category was deleted) are omitted — the subtitle shows only
+         * what the user would see on the widget. Emits an empty list when no
+         * slots are filled; the UI renders "None set" in that case.
+         */
+        val pinnedCategoryNames: StateFlow<List<String>> =
+            pinnedCategoriesUseCase()
+                .map { slots ->
+                    slots.filterIsInstance<PinnedCategorySlot.Filled>().map { it.category.name }
+                }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000L), emptyList())
 
         init {
             observeDefaultCurrency()
