@@ -14,9 +14,9 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.outlined.ReceiptLong
 import androidx.compose.material.icons.outlined.AccountBalanceWallet
 import androidx.compose.material.icons.outlined.CloudUpload
-import androidx.compose.material.icons.outlined.ReceiptLong
 import androidx.compose.material.icons.outlined.Savings
 import androidx.compose.material3.Button
 import androidx.compose.material3.Icon
@@ -53,7 +53,7 @@ private val pages =
             subtitleRes = R.string.onboarding_subtitle_welcome,
         ),
         OnboardingPage(
-            icon = Icons.Outlined.ReceiptLong,
+            icon = Icons.AutoMirrored.Outlined.ReceiptLong,
             titleRes = R.string.onboarding_title_transactions,
             subtitleRes = R.string.onboarding_subtitle_transactions,
         ),
