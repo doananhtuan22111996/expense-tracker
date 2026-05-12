@@ -647,7 +647,21 @@
     <string name="a11y_insights_row">%1$s</string>
     <string name="a11y_insights_loading">Loading insights</string>
 
-    <!-- Widget Categories screen (Settings → Widget → Pinned Categories) — T6.1 -->
+    <!-- Widget Categories screen (Settings → Widget → Pinned Categories) — T6.1 / T6.3 -->
     <string name="widget_categories_over_limit">You can only pin up to 3 categories</string>
     <string name="error_save_widget_categories">Couldn\'t save widget pins</string>
+    <string name="widget_categories_title">Widget Categories</string>
+    <string name="widget_categories_subtitle">Pick up to 3 expense categories to pin as quick-add tiles on the home-screen widget.</string>
+    <string name="widget_categories_empty_slot">Empty</string>
+    <string name="widget_categories_count_label">%1$d of 3 pinned</string>
+    <string name="widget_categories_list_header">Expense categories</string>
+    <string name="widget_categories_pin">Pin</string>
+    <string name="widget_categories_unpin">Unpin</string>
+    <string name="widget_categories_move_up">Move up</string>
+    <string name="widget_categories_move_down">Move down</string>
+    <string name="widget_categories_empty_title">No expense categories yet</string>
+    <string name="widget_categories_empty_body">Add expense categories before pinning widget tiles.</string>
+    <string name="widget_categories_empty_cta">Go to Categories</string>
+    <string name="a11y_widget_categories_preview_filled">Pinned slot %1$d: %2$s</string>
+    <string name="a11y_widget_categories_preview_empty">Pinned slot %1$d: empty</string>
 </resources>
