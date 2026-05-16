@@ -103,6 +103,7 @@ import java.time.format.FormatStyle
 fun HomeScreen(
     onNavigateToAddTransaction: () -> Unit,
     onNavigateToEditTransaction: (Long) -> Unit,
+    onNavigateToWidgetCategories: () -> Unit,
     viewModel: HomeViewModel,
     modifier: Modifier = Modifier,
     bottomContentPadding: Dp = 0.dp,
@@ -111,6 +112,7 @@ fun HomeScreen(
     val expenseCategories by viewModel.expenseCategories.collectAsStateWithLifecycle()
     val incomeCategories by viewModel.incomeCategories.collectAsStateWithLifecycle()
     val consentPromptVariant by viewModel.consentPromptVariant.collectAsStateWithLifecycle()
+    val showWidgetQuickAddBanner by viewModel.showWidgetQuickAddBanner.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
     var showMonthPicker by remember { mutableStateOf(false) }
     var isSearchActive by remember { mutableStateOf(false) }
@@ -328,6 +330,18 @@ fun HomeScreen(
             verticalArrangement = Arrangement.spacedBy(DesignSystemSpacing.listItemSpacing),
             contentPadding = PaddingValues(bottom = bottomContentPadding + DesignSystemSpacing.fabClearance),
         ) {
+            if (showWidgetQuickAddBanner) {
+                item(key = "widget_quick_add_banner") {
+                    WidgetQuickAddBanner(
+                        onSetUp = {
+                            viewModel.dismissWidgetQuickAddBanner()
+                            onNavigateToWidgetCategories()
+                        },
+                        onDismiss = viewModel::dismissWidgetQuickAddBanner,
+                    )
+                }
+            }
+
             // Month selector — scrolls away when user scrolls down
             item(key = "month_selector") {
                 MonthSelector(
@@ -894,6 +908,81 @@ private fun TransactionItem(
                         tint = MaterialTheme.colorScheme.error,
                     )
                 }
+            }
+        }
+    }
+}
+
+/**
+ * v3.12.0 widget-quick-add announcement (T7.5). Dismissible card with a
+ * primary "Set it up" CTA that routes to Settings → Widget Categories. The
+ * banner is rendered inside the Home `LazyColumn` so it scrolls with
+ * content and respects screen padding/elevation tokens consistent with
+ * `TransactionItem`. Visibility is gated by `HomeViewModel.showWidgetQuickAddBanner`
+ * (one-shot flag + zero-pinned guard).
+ */
+@Composable
+private fun WidgetQuickAddBanner(
+    onSetUp: () -> Unit,
+    onDismiss: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val titleText = stringResource(R.string.home_banner_widget_quick_add_title)
+    val bodyText = stringResource(R.string.home_banner_widget_quick_add_body)
+    val dismissDesc = stringResource(R.string.home_banner_widget_quick_add_dismiss)
+
+    Card(
+        colors =
+            CardDefaults.cardColors(
+                containerColor = MaterialTheme.colorScheme.secondaryContainer,
+                contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
+            ),
+        elevation = CardDefaults.cardElevation(defaultElevation = DesignSystemElevation.low),
+        modifier = modifier.fillMaxWidth(),
+    ) {
+        Row(
+            modifier =
+                Modifier
+                    .fillMaxWidth()
+                    .padding(
+                        start = DesignSystemSpacing.large,
+                        top = DesignSystemSpacing.large,
+                        end = DesignSystemSpacing.small,
+                        bottom = DesignSystemSpacing.small,
+                    ),
+            verticalAlignment = Alignment.Top,
+        ) {
+            Column(
+                modifier = Modifier.weight(1f),
+                verticalArrangement = Arrangement.spacedBy(DesignSystemSpacing.xs),
+            ) {
+                Text(
+                    text = titleText,
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.SemiBold,
+                )
+                Text(
+                    text = bodyText,
+                    style = MaterialTheme.typography.bodyMedium,
+                )
+                TextButton(
+                    onClick = onSetUp,
+                    contentPadding = PaddingValues(horizontal = 0.dp),
+                ) {
+                    Text(stringResource(R.string.home_banner_widget_quick_add_cta))
+                }
+            }
+            IconButton(
+                onClick = onDismiss,
+                modifier =
+                    Modifier.semantics {
+                        contentDescription = dismissDesc
+                    },
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Close,
+                    contentDescription = null,
+                )
             }
         }
     }

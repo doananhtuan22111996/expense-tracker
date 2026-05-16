@@ -337,6 +337,12 @@
     <string name="home_no_transactions">No transactions yet</string>
     <string name="home_no_transactions_subtitle">Tap the + button to add your first transaction</string>
     <string name="home_search_placeholder">Search by note</string>
+    <!-- v3.12.0 widget-quick-add announcement banner (T7.5). One-shot,
+         dismissible. Hidden once the user pins any widget category. -->
+    <string name="home_banner_widget_quick_add_title">Widget got quick-add</string>
+    <string name="home_banner_widget_quick_add_body">Tap a category on your home-screen widget to log an expense in one shot.</string>
+    <string name="home_banner_widget_quick_add_cta">Set it up</string>
+    <string name="home_banner_widget_quick_add_dismiss">Dismiss widget announcement</string>
     <string name="filter_all">All</string>
     <string name="filter_expenses">Expenses</string>
     <string name="filter_income">Income</string>

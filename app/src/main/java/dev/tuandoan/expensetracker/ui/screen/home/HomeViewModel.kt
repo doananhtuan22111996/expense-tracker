@@ -7,7 +7,9 @@ import dev.tuandoan.expensetracker.core.util.DateRangeCalculator
 import dev.tuandoan.expensetracker.core.util.ErrorUtils
 import dev.tuandoan.expensetracker.core.util.UiText
 import dev.tuandoan.expensetracker.data.preferences.AnalyticsPreferences
+import dev.tuandoan.expensetracker.data.preferences.HomeBannerPreferences
 import dev.tuandoan.expensetracker.data.preferences.OnboardingRepository
+import dev.tuandoan.expensetracker.data.preferences.WidgetCategoryPreferences
 import dev.tuandoan.expensetracker.domain.model.Category
 import dev.tuandoan.expensetracker.domain.model.SearchScope
 import dev.tuandoan.expensetracker.domain.model.Transaction
@@ -48,6 +50,8 @@ class HomeViewModel
         private val searchFilterPreferences: SearchFilterPreferences,
         private val analyticsPreferences: AnalyticsPreferences,
         private val onboardingRepository: OnboardingRepository,
+        private val homeBannerPreferences: HomeBannerPreferences,
+        private val widgetCategoryPreferences: WidgetCategoryPreferences,
     ) : ViewModel() {
         private val _uiState = MutableStateFlow(HomeUiState())
         val uiState: StateFlow<HomeUiState> = _uiState.asStateFlow()
@@ -108,6 +112,38 @@ class HomeViewModel
                 SharingStarted.WhileSubscribed(STOP_TIMEOUT_MS),
                 ConsentPromptVariant.None,
             )
+
+        /**
+         * v3.12.0 one-shot announcement: shown on the Home screen when
+         * (a) the user has not yet dismissed it AND (b) no widget categories
+         * are pinned yet. Auto-hiding once the user pins anything from
+         * Settings → Widget Categories means a freshly-configured user does
+         * not see a stale "Set it up" CTA — even if they never explicitly
+         * tapped Dismiss. Tapping the CTA also persists the dismissal so
+         * returning to Home after configuring does not flash the banner.
+         */
+        val showWidgetQuickAddBanner: StateFlow<Boolean> =
+            combine(
+                homeBannerPreferences.widgetQuickAddBannerDismissed,
+                widgetCategoryPreferences.pinnedCategoryIds,
+            ) { dismissed, pinnedIds ->
+                !dismissed && pinnedIds.isEmpty()
+            }.stateIn(
+                viewModelScope,
+                SharingStarted.WhileSubscribed(STOP_TIMEOUT_MS),
+                false,
+            )
+
+        /**
+         * Persist dismissal of the v3.12.0 widget-quick-add banner. Called
+         * from both the explicit Dismiss action and the CTA tap so that
+         * either path retires the banner permanently.
+         */
+        fun dismissWidgetQuickAddBanner() {
+            viewModelScope.launch {
+                homeBannerPreferences.setWidgetQuickAddBannerDismissed()
+            }
+        }
 
         /**
          * Called when the main dual-checkbox dialog dismisses — either via

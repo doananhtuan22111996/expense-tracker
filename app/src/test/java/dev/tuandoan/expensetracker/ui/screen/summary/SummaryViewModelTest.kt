@@ -545,6 +545,10 @@ class SummaryViewModelTest {
                         .FakeAnalyticsPreferences(),
                     dev.tuandoan.expensetracker.testutil
                         .FakeOnboardingRepository(),
+                    dev.tuandoan.expensetracker.testutil
+                        .FakeHomeBannerPreferences(),
+                    dev.tuandoan.expensetracker.data.preferences
+                        .FakeWidgetCategoryPreferences(),
                 )
             val summaryVm = createViewModel()
             advanceUntilIdle()
