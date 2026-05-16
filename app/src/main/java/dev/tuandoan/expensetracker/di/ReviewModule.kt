@@ -8,6 +8,8 @@ import dev.tuandoan.expensetracker.data.preferences.AnalyticsPreferences
 import dev.tuandoan.expensetracker.data.preferences.AnalyticsPreferencesImpl
 import dev.tuandoan.expensetracker.data.preferences.BackupEncryptionPreferences
 import dev.tuandoan.expensetracker.data.preferences.BackupEncryptionPreferencesImpl
+import dev.tuandoan.expensetracker.data.preferences.HomeBannerPreferences
+import dev.tuandoan.expensetracker.data.preferences.HomeBannerPreferencesImpl
 import dev.tuandoan.expensetracker.data.preferences.InsightsCollapsePreferences
 import dev.tuandoan.expensetracker.data.preferences.InsightsCollapsePreferencesImpl
 import dev.tuandoan.expensetracker.data.preferences.ReviewPreferences
@@ -45,4 +47,7 @@ abstract class ReviewModule {
 
     @Binds
     abstract fun bindWidgetCategoryPreferences(impl: WidgetCategoryPreferencesImpl): WidgetCategoryPreferences
+
+    @Binds
+    abstract fun bindHomeBannerPreferences(impl: HomeBannerPreferencesImpl): HomeBannerPreferences
 }

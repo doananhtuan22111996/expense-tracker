@@ -1,6 +1,7 @@
 package dev.tuandoan.expensetracker.ui.screen.home
 
 import dev.tuandoan.expensetracker.core.util.DateRangeCalculator
+import dev.tuandoan.expensetracker.data.preferences.FakeWidgetCategoryPreferences
 import dev.tuandoan.expensetracker.domain.model.Category
 import dev.tuandoan.expensetracker.domain.model.CategoryWithCount
 import dev.tuandoan.expensetracker.domain.model.MonthlyBarPoint
@@ -11,6 +12,7 @@ import dev.tuandoan.expensetracker.domain.model.TransactionType
 import dev.tuandoan.expensetracker.domain.repository.CategoryRepository
 import dev.tuandoan.expensetracker.domain.repository.TransactionRepository
 import dev.tuandoan.expensetracker.testutil.FakeAnalyticsPreferences
+import dev.tuandoan.expensetracker.testutil.FakeHomeBannerPreferences
 import dev.tuandoan.expensetracker.testutil.FakeOnboardingRepository
 import dev.tuandoan.expensetracker.testutil.FakeSearchFilterPreferences
 import dev.tuandoan.expensetracker.testutil.FakeSelectedMonthRepository
@@ -49,6 +51,8 @@ class HomeViewModelTest {
     private lateinit var fakeSearchFilterPreferences: FakeSearchFilterPreferences
     private lateinit var fakeAnalyticsPreferences: FakeAnalyticsPreferences
     private lateinit var fakeOnboardingRepository: FakeOnboardingRepository
+    private lateinit var fakeHomeBannerPreferences: FakeHomeBannerPreferences
+    private lateinit var fakeWidgetCategoryPreferences: FakeWidgetCategoryPreferences
     private lateinit var dateRangeCalculator: DateRangeCalculator
 
     private val fixedZone: ZoneId = ZoneId.of("UTC")
@@ -64,6 +68,8 @@ class HomeViewModelTest {
         fakeSearchFilterPreferences = FakeSearchFilterPreferences()
         fakeAnalyticsPreferences = FakeAnalyticsPreferences()
         fakeOnboardingRepository = FakeOnboardingRepository()
+        fakeHomeBannerPreferences = FakeHomeBannerPreferences()
+        fakeWidgetCategoryPreferences = FakeWidgetCategoryPreferences()
         dateRangeCalculator = DateRangeCalculator(fixedClock, fixedZone)
     }
 
@@ -76,6 +82,8 @@ class HomeViewModelTest {
             fakeSearchFilterPreferences,
             fakeAnalyticsPreferences,
             fakeOnboardingRepository,
+            fakeHomeBannerPreferences,
+            fakeWidgetCategoryPreferences,
         )
 
     @Test
@@ -1189,6 +1197,61 @@ class HomeViewModelTest {
             assertTrue(fakeAnalyticsPreferences.consentPromptShown.first())
             assertFalse(fakeAnalyticsPreferences.analyticsEventsConsent.first())
             assertTrue(fakeAnalyticsPreferences.analyticsEventsPromptShown.first())
+        }
+
+    @Test
+    fun showWidgetQuickAddBanner_freshInstall_andZeroPins_isTrue() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            val viewModel = createViewModel()
+            val collector = launch { viewModel.showWidgetQuickAddBanner.collect {} }
+            advanceUntilIdle()
+
+            assertTrue(viewModel.showWidgetQuickAddBanner.value)
+            collector.cancel()
+        }
+
+    @Test
+    fun showWidgetQuickAddBanner_dismissed_isFalse() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            val viewModel = createViewModel()
+            val collector = launch { viewModel.showWidgetQuickAddBanner.collect {} }
+            advanceUntilIdle()
+            assertTrue(viewModel.showWidgetQuickAddBanner.value)
+
+            viewModel.dismissWidgetQuickAddBanner()
+            advanceUntilIdle()
+
+            assertFalse(viewModel.showWidgetQuickAddBanner.value)
+            assertEquals(1, fakeHomeBannerPreferences.dismissCallCount)
+            collector.cancel()
+        }
+
+    @Test
+    fun showWidgetQuickAddBanner_pinsNonEmpty_isFalseEvenWhenNotDismissed() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            fakeWidgetCategoryPreferences.setPinnedCategoryIds(listOf(42L))
+            val viewModel = createViewModel()
+            val collector = launch { viewModel.showWidgetQuickAddBanner.collect {} }
+            advanceUntilIdle()
+
+            assertFalse(viewModel.showWidgetQuickAddBanner.value)
+            collector.cancel()
+        }
+
+    @Test
+    fun dismissWidgetQuickAddBanner_isIdempotent() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            val viewModel = createViewModel()
+            val collector = launch { viewModel.showWidgetQuickAddBanner.collect {} }
+            advanceUntilIdle()
+
+            viewModel.dismissWidgetQuickAddBanner()
+            viewModel.dismissWidgetQuickAddBanner()
+            advanceUntilIdle()
+
+            assertFalse(viewModel.showWidgetQuickAddBanner.value)
+            assertEquals(2, fakeHomeBannerPreferences.dismissCallCount)
+            collector.cancel()
         }
 
     private class FakeTransactionRepository : TransactionRepository {

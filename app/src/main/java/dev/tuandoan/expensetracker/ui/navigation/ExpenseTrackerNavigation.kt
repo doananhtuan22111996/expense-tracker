@@ -40,6 +40,7 @@ fun ExpenseTrackerNavigation(
             HomeScreen(
                 onNavigateToAddTransaction = onNavigateToAddTransaction,
                 onNavigateToEditTransaction = onNavigateToEditTransaction,
+                onNavigateToWidgetCategories = onNavigateToWidgetCategories,
                 bottomContentPadding = bottomContentPadding,
                 viewModel = hiltViewModel(),
             )
