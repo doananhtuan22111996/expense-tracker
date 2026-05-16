@@ -1,0 +1,6 @@
+What's new in v3.12:
+
+• Quick-add from your home-screen widget — pick up to 3 expense categories in Settings, then tap a category tile on the widget to log a spend in seconds. No app open needed.
+• Quiet confirmation notification with a 10-second Undo on every quick-add — one tap to take it back.
+• New Settings → Widget section to manage your pinned categories with arrow reorder.
+• A one-shot Home banner points existing users at the new feature; dismiss anytime.
