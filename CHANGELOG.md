@@ -2,6 +2,9 @@
 
 ## [Unreleased]
 
+### Added
+- `TripEntity` + Room v8 migration (T1.1 + T1.2, opens v3.13.0 Trips epic). New `trips` table per ADR-001 with snapshot columns (`original_category_id`, `original_category_name_snapshot`, `original_category_icon_snapshot`, `original_category_color_snapshot`) for reversible legacy-category conversion. `TransactionEntity` gains three nullable columns: `trip_id`, `original_category_id`, `amount_foreign_minor` (ADR-002 — home-currency `amount` stays authoritative for aggregation). New `index_transactions_trip_id` keeps trip-scoped reads cheap. No SQLite-level FK from `transactions.trip_id` to `trips.id` — ON DELETE SET NULL is enforced by `TripRepository.deleteTrip` in code (ADR-001). `MIGRATION_7_8` registered in `DatabaseModule`; v8 schema exported to `app/schemas/`. 5 new `MigrationTest` cases against a fabricated v7 fixture (`createV7Database`): table creation, transaction columns added, `trip_id` index added, pre-v8 rows have NULL for all new columns, trips table has the expected column set. Pre-v3.13.0 transactions restore unchanged. **Foundation for Epics 2–7.**
+
 ## [3.12.0] - 2026-05-16
 
 ### Changed

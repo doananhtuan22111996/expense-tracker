@@ -12,6 +12,7 @@ import dev.tuandoan.expensetracker.data.database.entity.GoldHoldingEntity
 import dev.tuandoan.expensetracker.data.database.entity.GoldPriceEntity
 import dev.tuandoan.expensetracker.data.database.entity.RecurringTransactionEntity
 import dev.tuandoan.expensetracker.data.database.entity.TransactionEntity
+import dev.tuandoan.expensetracker.data.database.entity.TripEntity
 
 @Database(
     entities = [
@@ -20,8 +21,9 @@ import dev.tuandoan.expensetracker.data.database.entity.TransactionEntity
         RecurringTransactionEntity::class,
         GoldHoldingEntity::class,
         GoldPriceEntity::class,
+        TripEntity::class,
     ],
-    version = 7,
+    version = 8,
     exportSchema = true,
 )
 abstract class AppDatabase : RoomDatabase() {

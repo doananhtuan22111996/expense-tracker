@@ -12,7 +12,15 @@ import org.junit.Test
 import org.junit.runner.RunWith
 
 private val ALL_MIGRATIONS =
-    arrayOf(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7)
+    arrayOf(
+        MIGRATION_1_2,
+        MIGRATION_2_3,
+        MIGRATION_3_4,
+        MIGRATION_4_5,
+        MIGRATION_5_6,
+        MIGRATION_6_7,
+        MIGRATION_7_8,
+    )
 
 /**
  * Instrumented tests that verify Room migrations preserve data across all
@@ -527,6 +535,164 @@ class MigrationTest {
     }
 
     // ───────────────────────────────────────────────────────────
+    //  v7 → v8: adds trips table + trip-related transaction columns
+    // ───────────────────────────────────────────────────────────
+
+    @Test
+    fun migration7To8_createsTripsTable() {
+        createV7Database()
+
+        val db =
+            Room
+                .databaseBuilder(context, AppDatabase::class.java, testDbName)
+                .addMigrations(*ALL_MIGRATIONS)
+                .build()
+
+        val cursor =
+            db.openHelper.readableDatabase.query(
+                "SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'trips'",
+            )
+        assertTrue("Expected trips table to exist", cursor.moveToFirst())
+        cursor.close()
+
+        db.close()
+    }
+
+    @Test
+    fun migration7To8_addsTripColumnsToTransactions() {
+        createV7Database()
+
+        val db =
+            Room
+                .databaseBuilder(context, AppDatabase::class.java, testDbName)
+                .addMigrations(*ALL_MIGRATIONS)
+                .build()
+
+        val cursor =
+            db.openHelper.readableDatabase.query("PRAGMA table_info(transactions)")
+        val columnNames = mutableListOf<String>()
+        while (cursor.moveToNext()) {
+            columnNames.add(cursor.getString(cursor.getColumnIndexOrThrow("name")))
+        }
+        cursor.close()
+
+        assertTrue("Expected trip_id column. Found: $columnNames", columnNames.contains("trip_id"))
+        assertTrue(
+            "Expected original_category_id column. Found: $columnNames",
+            columnNames.contains("original_category_id"),
+        )
+        assertTrue(
+            "Expected amount_foreign_minor column. Found: $columnNames",
+            columnNames.contains("amount_foreign_minor"),
+        )
+
+        db.close()
+    }
+
+    @Test
+    fun migration7To8_addsTripIdIndex() {
+        createV7Database()
+
+        val db =
+            Room
+                .databaseBuilder(context, AppDatabase::class.java, testDbName)
+                .addMigrations(*ALL_MIGRATIONS)
+                .build()
+
+        val cursor =
+            db.openHelper.readableDatabase.query(
+                "SELECT name FROM sqlite_master WHERE type = 'index' AND tbl_name = 'transactions'",
+            )
+        val indexNames = mutableListOf<String>()
+        while (cursor.moveToNext()) {
+            indexNames.add(cursor.getString(0))
+        }
+        cursor.close()
+
+        assertTrue(
+            "Expected index_transactions_trip_id. Found: $indexNames",
+            indexNames.contains("index_transactions_trip_id"),
+        )
+
+        db.close()
+    }
+
+    @Test
+    fun migration7To8_existingTransactionsHaveNullTripFields() {
+        createV7Database()
+
+        val db =
+            Room
+                .databaseBuilder(context, AppDatabase::class.java, testDbName)
+                .addMigrations(*ALL_MIGRATIONS)
+                .build()
+
+        val cursor =
+            db.openHelper.readableDatabase.query(
+                "SELECT id, amount, trip_id, original_category_id, amount_foreign_minor " +
+                    "FROM transactions ORDER BY id",
+            )
+
+        assertEquals(1, cursor.count)
+        cursor.moveToFirst()
+        assertEquals(50000L, cursor.getLong(cursor.getColumnIndexOrThrow("amount")))
+        assertTrue(
+            "trip_id should be NULL on pre-v8 rows",
+            cursor.isNull(cursor.getColumnIndexOrThrow("trip_id")),
+        )
+        assertTrue(
+            "original_category_id should be NULL on pre-v8 rows",
+            cursor.isNull(cursor.getColumnIndexOrThrow("original_category_id")),
+        )
+        assertTrue(
+            "amount_foreign_minor should be NULL on pre-v8 rows",
+            cursor.isNull(cursor.getColumnIndexOrThrow("amount_foreign_minor")),
+        )
+        cursor.close()
+
+        db.close()
+    }
+
+    @Test
+    fun migration7To8_tripsTableHasExpectedColumns() {
+        createV7Database()
+
+        val db =
+            Room
+                .databaseBuilder(context, AppDatabase::class.java, testDbName)
+                .addMigrations(*ALL_MIGRATIONS)
+                .build()
+
+        val cursor = db.openHelper.readableDatabase.query("PRAGMA table_info(trips)")
+        val columnNames = mutableListOf<String>()
+        while (cursor.moveToNext()) {
+            columnNames.add(cursor.getString(cursor.getColumnIndexOrThrow("name")))
+        }
+        cursor.close()
+
+        val expected =
+            listOf(
+                "id",
+                "name",
+                "destination",
+                "start_date_epoch_day",
+                "end_date_epoch_day",
+                "foreign_currency_code",
+                "foreign_to_home_rate",
+                "original_category_id",
+                "original_category_name_snapshot",
+                "original_category_icon_snapshot",
+                "original_category_color_snapshot",
+                "created_at",
+            )
+        for (col in expected) {
+            assertTrue("Expected $col on trips. Found: $columnNames", columnNames.contains(col))
+        }
+
+        db.close()
+    }
+
+    // ───────────────────────────────────────────────────────────
     //  Helper: create databases at specific versions
     // ───────────────────────────────────────────────────────────
 
@@ -802,6 +968,127 @@ class MigrationTest {
         )
 
         db.version = 6
+        db.close()
+    }
+
+    /**
+     * Creates a raw SQLite database matching the v7 schema (gold buy-back column added).
+     * Inserts a minimal category + transaction so the v7 → v8 migration can be validated
+     * for both the new `trips` table and the new transaction columns.
+     */
+    private fun createV7Database() {
+        val db = context.openOrCreateDatabase(testDbName, 0, null)
+
+        db.execSQL(
+            """
+            CREATE TABLE IF NOT EXISTS categories (
+                id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                name TEXT NOT NULL,
+                type INTEGER NOT NULL,
+                icon_key TEXT,
+                color_key TEXT,
+                is_default INTEGER NOT NULL DEFAULT 0
+            )
+            """.trimIndent(),
+        )
+
+        db.execSQL(
+            """
+            CREATE TABLE IF NOT EXISTS transactions (
+                id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                type INTEGER NOT NULL,
+                amount INTEGER NOT NULL,
+                currency_code TEXT NOT NULL DEFAULT 'VND',
+                category_id INTEGER NOT NULL,
+                note TEXT,
+                timestamp INTEGER NOT NULL,
+                created_at INTEGER NOT NULL,
+                updated_at INTEGER NOT NULL,
+                FOREIGN KEY (category_id) REFERENCES categories(id) ON DELETE CASCADE
+            )
+            """.trimIndent(),
+        )
+
+        db.execSQL(
+            "CREATE INDEX IF NOT EXISTS `index_transactions_timestamp` ON `transactions` (`timestamp`)",
+        )
+        db.execSQL(
+            "CREATE INDEX IF NOT EXISTS `index_transactions_category_id` ON `transactions` (`category_id`)",
+        )
+
+        db.execSQL(
+            """
+            CREATE TABLE IF NOT EXISTS recurring_transactions (
+                id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                type INTEGER NOT NULL,
+                amount INTEGER NOT NULL,
+                currency_code TEXT NOT NULL DEFAULT 'VND',
+                category_id INTEGER,
+                note TEXT,
+                frequency INTEGER NOT NULL,
+                day_of_month INTEGER,
+                day_of_week INTEGER,
+                next_due_millis INTEGER NOT NULL,
+                is_active INTEGER NOT NULL DEFAULT 1,
+                created_at INTEGER NOT NULL,
+                updated_at INTEGER NOT NULL,
+                FOREIGN KEY (category_id) REFERENCES categories(id) ON DELETE SET NULL
+            )
+            """.trimIndent(),
+        )
+
+        db.execSQL(
+            """
+            CREATE TABLE IF NOT EXISTS gold_holdings (
+                id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                type TEXT NOT NULL,
+                weight_value REAL NOT NULL,
+                weight_unit TEXT NOT NULL,
+                buy_price_per_unit INTEGER NOT NULL,
+                currency_code TEXT NOT NULL DEFAULT 'VND',
+                buy_date_millis INTEGER NOT NULL,
+                note TEXT,
+                created_at INTEGER NOT NULL,
+                updated_at INTEGER NOT NULL
+            )
+            """.trimIndent(),
+        )
+        db.execSQL(
+            "CREATE INDEX IF NOT EXISTS `index_gold_holdings_buy_date_millis` ON `gold_holdings` (`buy_date_millis`)",
+        )
+
+        db.execSQL(
+            """
+            CREATE TABLE IF NOT EXISTS gold_prices (
+                type TEXT NOT NULL,
+                unit TEXT NOT NULL,
+                price_per_unit INTEGER NOT NULL,
+                buy_back_price_per_unit INTEGER DEFAULT NULL,
+                currency_code TEXT NOT NULL DEFAULT 'VND',
+                updated_at INTEGER NOT NULL,
+                PRIMARY KEY (type, unit)
+            )
+            """.trimIndent(),
+        )
+
+        db.execSQL(
+            """
+            CREATE TABLE IF NOT EXISTS room_master_table (
+                id INTEGER PRIMARY KEY,
+                identity_hash TEXT
+            )
+            """.trimIndent(),
+        )
+
+        db.execSQL("INSERT INTO categories (id, name, type, is_default) VALUES (1, 'Food', 0, 1)")
+        db.execSQL(
+            """
+            INSERT INTO transactions (type, amount, currency_code, category_id, note, timestamp, created_at, updated_at)
+            VALUES (0, 50000, 'VND', 1, 'Lunch', 1700000000000, 1700000000000, 1700000000000)
+            """.trimIndent(),
+        )
+
+        db.version = 7
         db.close()
     }
 }

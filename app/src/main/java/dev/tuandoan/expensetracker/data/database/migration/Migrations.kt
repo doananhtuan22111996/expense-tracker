@@ -192,3 +192,52 @@ val MIGRATION_6_7 =
             )
         }
     }
+
+/**
+ * Migration from version 7 to version 8.
+ *
+ * Introduces the Trip entity (v3.13.0) and trip-related columns on transactions.
+ *
+ * - Creates `trips` table per ADR-001 (in-row snapshots for reversible legacy-category
+ *   conversion).
+ * - Adds nullable `trip_id`, `original_category_id`, `amount_foreign_minor` columns to
+ *   `transactions`. Existing rows get NULL for all three, preserving pre-v3.13.0 shape.
+ * - Adds `index_transactions_trip_id` to keep trip-scoped queries (totals, daily,
+ *   category breakdown, transaction list) cheap even on large histories.
+ *
+ * No SQLite-level FK from `transactions.trip_id` to `trips.id` — ON DELETE SET NULL
+ * semantics are enforced by `TripRepository.deleteTrip` in code (ADR-001).
+ */
+val MIGRATION_7_8 =
+    object : Migration(7, 8) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            db.execSQL(
+                """
+                CREATE TABLE IF NOT EXISTS `trips` (
+                    `id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                    `name` TEXT NOT NULL,
+                    `destination` TEXT,
+                    `start_date_epoch_day` INTEGER NOT NULL,
+                    `end_date_epoch_day` INTEGER NOT NULL,
+                    `foreign_currency_code` TEXT,
+                    `foreign_to_home_rate` REAL,
+                    `original_category_id` INTEGER,
+                    `original_category_name_snapshot` TEXT,
+                    `original_category_icon_snapshot` TEXT,
+                    `original_category_color_snapshot` TEXT,
+                    `created_at` INTEGER NOT NULL
+                )
+                """.trimIndent(),
+            )
+            db.execSQL("ALTER TABLE `transactions` ADD COLUMN `trip_id` INTEGER DEFAULT NULL")
+            db.execSQL(
+                "ALTER TABLE `transactions` ADD COLUMN `original_category_id` INTEGER DEFAULT NULL",
+            )
+            db.execSQL(
+                "ALTER TABLE `transactions` ADD COLUMN `amount_foreign_minor` INTEGER DEFAULT NULL",
+            )
+            db.execSQL(
+                "CREATE INDEX IF NOT EXISTS `index_transactions_trip_id` ON `transactions` (`trip_id`)",
+            )
+        }
+    }
