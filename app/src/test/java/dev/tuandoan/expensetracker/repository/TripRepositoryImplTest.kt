@@ -273,6 +273,25 @@ class TripRepositoryImplTest {
         }
 
     // ───────────────────────────────────────────────────────────
+    //  Runner invocation (catches future refactor that drops runInTransaction)
+    // ───────────────────────────────────────────────────────────
+
+    @Test
+    fun deleteTrip_runsInsideTransactionRunner() =
+        runTest {
+            val tripId = tripDao.seed(tripEntity(id = 7, name = "T")).id
+            assertEquals(0, transactionRunner.transactionCount)
+
+            repository.deleteTrip(tripId, DeleteTripBehavior.UNTAG)
+
+            assertEquals(
+                "deleteTrip must run inside transactionRunner.runInTransaction { ... } per ADR-001",
+                1,
+                transactionRunner.transactionCount,
+            )
+        }
+
+    // ───────────────────────────────────────────────────────────
     //  Atomicity (ADR-001 mandatory test)
     // ───────────────────────────────────────────────────────────
 

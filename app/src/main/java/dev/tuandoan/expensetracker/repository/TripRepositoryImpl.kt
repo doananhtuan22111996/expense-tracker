@@ -91,6 +91,10 @@ class TripRepositoryImpl
                             requireNotNull(trip.originalCategoryId) {
                                 "REVERT requires a conversion-origin trip"
                             }
+                        // EXPENSE-only per FR-24 — the conversion wizard's entry point only
+                        // surfaces on EXPENSE categories, so a recreated source category is always
+                        // EXPENSE. If FR-24 ever extends to INCOME, store the type on TripEntity
+                        // (originalCategoryType) and pass it through here.
                         val restoredCategoryId =
                             categoryDao.getById(originalCategoryId)?.id
                                 ?: categoryDao.insert(
