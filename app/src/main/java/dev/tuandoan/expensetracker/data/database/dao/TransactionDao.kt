@@ -108,13 +108,14 @@ interface TransactionDao {
 
     /**
      * REVERT_TO_ORIGINAL_CATEGORY path of `TripRepository.deleteTrip` (ADR-001). For every
-     * transaction in the trip: restore `category_id` from the snapshot column, then clear
-     * `trip_id`, `original_category_id`, and `amount_foreign_minor`. Atomic per row;
-     * the surrounding `runInTransaction` block makes the cross-row revert all-or-nothing.
+     * transaction in the trip: restore `category_id` to the caller-supplied snapshot id,
+     * then clear `trip_id`, `original_category_id`, and `amount_foreign_minor`. Atomic
+     * per row; the surrounding `runInTransaction` block makes the cross-row revert
+     * all-or-nothing.
      *
      * `restoredCategoryId` is the id of the recreated (or still-present) category;
-     * normally equal to the snapshot's `original_category_id`, but the caller passes it
-     * explicitly to handle the rare reuse-of-id edge case.
+     * normally equal to the trip's `originalCategoryId` snapshot, but the caller passes
+     * it explicitly to handle the rare reuse-of-id edge case.
      */
     @Query(
         """
