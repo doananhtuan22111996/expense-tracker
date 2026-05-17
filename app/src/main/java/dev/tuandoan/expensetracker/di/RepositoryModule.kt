@@ -34,11 +34,13 @@ import dev.tuandoan.expensetracker.domain.repository.RecurringTransactionReposit
 import dev.tuandoan.expensetracker.domain.repository.SearchFilterPreferences
 import dev.tuandoan.expensetracker.domain.repository.SelectedMonthRepository
 import dev.tuandoan.expensetracker.domain.repository.TransactionRepository
+import dev.tuandoan.expensetracker.domain.repository.TripRepository
 import dev.tuandoan.expensetracker.domain.widget.WidgetUpdater
 import dev.tuandoan.expensetracker.repository.CategoryRepositoryImpl
 import dev.tuandoan.expensetracker.repository.GoldRepositoryImpl
 import dev.tuandoan.expensetracker.repository.RecurringTransactionRepositoryImpl
 import dev.tuandoan.expensetracker.repository.TransactionRepositoryImpl
+import dev.tuandoan.expensetracker.repository.TripRepositoryImpl
 import dev.tuandoan.expensetracker.widget.GlanceWidgetUpdater
 
 @Module
@@ -82,6 +84,9 @@ abstract class RepositoryModule {
 
     @Binds
     abstract fun bindGoldRepository(goldRepositoryImpl: GoldRepositoryImpl): GoldRepository
+
+    @Binds
+    abstract fun bindTripRepository(tripRepositoryImpl: TripRepositoryImpl): TripRepository
 
     @Binds
     abstract fun bindBudgetAlertPreferences(
