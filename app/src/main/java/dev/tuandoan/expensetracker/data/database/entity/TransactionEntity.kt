@@ -20,6 +20,7 @@ import dev.tuandoan.expensetracker.domain.model.SupportedCurrencies
     indices = [
         Index(value = ["timestamp"]),
         Index(value = ["category_id"]),
+        Index(value = ["trip_id"]),
     ],
 )
 data class TransactionEntity(
@@ -42,6 +43,18 @@ data class TransactionEntity(
     val createdAt: Long,
     @ColumnInfo(name = "updated_at")
     val updatedAt: Long,
+    // Trip association. ON DELETE SET NULL is enforced by TripRepository in code,
+    // not at the SQLite level (no FK), per ADR-001.
+    @ColumnInfo(name = "trip_id")
+    val tripId: Long? = null,
+    // Snapshot of the pre-conversion category, set only for transactions migrated
+    // through the legacy-category conversion wizard. Used for revert. ADR-001.
+    @ColumnInfo(name = "original_category_id")
+    val originalCategoryId: Long? = null,
+    // Foreign-currency minor units when this transaction belongs to a foreign-currency trip.
+    // `amount` remains the home-currency authoritative value for aggregation. ADR-002.
+    @ColumnInfo(name = "amount_foreign_minor")
+    val amountForeignMinor: Long? = null,
 ) {
     companion object {
         const val TYPE_EXPENSE = 0
