@@ -127,14 +127,33 @@ class TripRepositoryImpl
             }
         }
 
-        override fun observeTripTotal(tripId: Long): Flow<Long?> = tripQueriesDao.observeTotal(tripId)
+        override fun observeTripTotal(tripId: Long): Flow<Long?> {
+            requirePositiveTripId(tripId)
+            return tripQueriesDao.observeTotal(tripId)
+        }
 
-        override fun observeTripTransactionCount(tripId: Long): Flow<Int> =
-            tripQueriesDao.observeTransactionCount(tripId)
+        override fun observeTripTransactionCount(tripId: Long): Flow<Int> {
+            requirePositiveTripId(tripId)
+            return tripQueriesDao.observeTransactionCount(tripId)
+        }
 
-        override fun observeTripDailyTotals(tripId: Long): Flow<List<DailyTotalRow>> =
-            tripQueriesDao.observeDailyTotals(tripId)
+        override fun observeTripDailyTotals(tripId: Long): Flow<List<DailyTotalRow>> {
+            requirePositiveTripId(tripId)
+            return tripQueriesDao.observeDailyTotals(tripId)
+        }
 
-        override fun observeTripCategoryBreakdown(tripId: Long): Flow<List<TripCategorySumRow>> =
-            tripQueriesDao.observeCategoryBreakdown(tripId)
+        override fun observeTripCategoryBreakdown(tripId: Long): Flow<List<TripCategorySumRow>> {
+            requirePositiveTripId(tripId)
+            return tripQueriesDao.observeCategoryBreakdown(tripId)
+        }
+
+        /**
+         * Trip ids are autoincrement starting at 1; a 0L or negative id is a programmer
+         * error (e.g., a wizard `previewTripId` placeholder leaking through). Throw
+         * synchronously at call time rather than emitting an empty flow on collect, so
+         * the buggy caller surfaces loudly.
+         */
+        private fun requirePositiveTripId(tripId: Long) {
+            require(tripId > 0L) { "tripId must be positive (got $tripId)" }
+        }
     }

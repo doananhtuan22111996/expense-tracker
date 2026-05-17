@@ -387,6 +387,33 @@ class TripRepositoryImplTest {
             assertEquals(rows, repository.observeTripCategoryBreakdown(42L).first())
         }
 
+    @Test
+    fun tripDetailFlows_throwOnNonPositiveTripId() {
+        // Trip ids are autoincrement starting at 1. 0L or negative leaking through is a
+        // programmer error; the guard throws synchronously at call time, not on collect.
+        val invalidIds = listOf(0L, -1L, Long.MIN_VALUE)
+        val callsByName: Map<String, (Long) -> Unit> =
+            mapOf(
+                "observeTripTotal" to { id -> repository.observeTripTotal(id) },
+                "observeTripTransactionCount" to { id -> repository.observeTripTransactionCount(id) },
+                "observeTripDailyTotals" to { id -> repository.observeTripDailyTotals(id) },
+                "observeTripCategoryBreakdown" to { id -> repository.observeTripCategoryBreakdown(id) },
+            )
+        for ((name, call) in callsByName) {
+            for (id in invalidIds) {
+                try {
+                    call(id)
+                    fail("$name($id) should throw IllegalArgumentException")
+                } catch (expected: IllegalArgumentException) {
+                    assertTrue(
+                        "$name($id) message must mention the bad id",
+                        expected.message.orEmpty().contains(id.toString()),
+                    )
+                }
+            }
+        }
+    }
+
     // ───────────────────────────────────────────────────────────
     //  Helpers
     // ───────────────────────────────────────────────────────────
