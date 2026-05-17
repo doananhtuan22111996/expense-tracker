@@ -1,5 +1,7 @@
 package dev.tuandoan.expensetracker.domain.repository
 
+import dev.tuandoan.expensetracker.data.database.entity.DailyTotalRow
+import dev.tuandoan.expensetracker.data.database.entity.TripCategorySumRow
 import dev.tuandoan.expensetracker.domain.model.DeleteTripBehavior
 import dev.tuandoan.expensetracker.domain.model.Trip
 import dev.tuandoan.expensetracker.domain.model.TripFilter
@@ -67,4 +69,19 @@ interface TripRepository {
         id: Long,
         behavior: DeleteTripBehavior,
     )
+
+    /**
+     * Total spend for the trip in home minor units. Emits `null` when the trip has no
+     * transactions yet (so VM can distinguish "no data" from "0 spent").
+     */
+    fun observeTripTotal(tripId: Long): Flow<Long?>
+
+    /** Number of transactions attached to the trip. Emits `0` when empty. */
+    fun observeTripTransactionCount(tripId: Long): Flow<Int>
+
+    /** Day-by-day totals (`yyyy-MM-dd` localtime) for the bar chart. */
+    fun observeTripDailyTotals(tripId: Long): Flow<List<DailyTotalRow>>
+
+    /** Per-category totals for the donut, sorted descending by total. */
+    fun observeTripCategoryBreakdown(tripId: Long): Flow<List<TripCategorySumRow>>
 }

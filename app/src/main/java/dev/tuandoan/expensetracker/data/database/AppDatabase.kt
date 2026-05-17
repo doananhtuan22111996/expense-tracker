@@ -8,6 +8,7 @@ import dev.tuandoan.expensetracker.data.database.dao.GoldPriceDao
 import dev.tuandoan.expensetracker.data.database.dao.RecurringTransactionDao
 import dev.tuandoan.expensetracker.data.database.dao.TransactionDao
 import dev.tuandoan.expensetracker.data.database.dao.TripDao
+import dev.tuandoan.expensetracker.data.database.dao.TripQueriesDao
 import dev.tuandoan.expensetracker.data.database.entity.CategoryEntity
 import dev.tuandoan.expensetracker.data.database.entity.GoldHoldingEntity
 import dev.tuandoan.expensetracker.data.database.entity.GoldPriceEntity
@@ -39,4 +40,6 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun goldPriceDao(): GoldPriceDao
 
     abstract fun tripDao(): TripDao
+
+    abstract fun tripQueriesDao(): TripQueriesDao
 }

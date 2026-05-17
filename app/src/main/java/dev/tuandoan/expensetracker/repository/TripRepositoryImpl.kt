@@ -5,7 +5,10 @@ import dev.tuandoan.expensetracker.data.database.TransactionRunner
 import dev.tuandoan.expensetracker.data.database.dao.CategoryDao
 import dev.tuandoan.expensetracker.data.database.dao.TransactionDao
 import dev.tuandoan.expensetracker.data.database.dao.TripDao
+import dev.tuandoan.expensetracker.data.database.dao.TripQueriesDao
 import dev.tuandoan.expensetracker.data.database.entity.CategoryEntity
+import dev.tuandoan.expensetracker.data.database.entity.DailyTotalRow
+import dev.tuandoan.expensetracker.data.database.entity.TripCategorySumRow
 import dev.tuandoan.expensetracker.data.database.entity.TripEntity
 import dev.tuandoan.expensetracker.domain.model.DeleteTripBehavior
 import dev.tuandoan.expensetracker.domain.model.Trip
@@ -23,6 +26,7 @@ class TripRepositoryImpl
     @Inject
     constructor(
         private val tripDao: TripDao,
+        private val tripQueriesDao: TripQueriesDao,
         private val transactionDao: TransactionDao,
         private val categoryDao: CategoryDao,
         private val transactionRunner: TransactionRunner,
@@ -122,4 +126,15 @@ class TripRepositoryImpl
                 tripDao.deleteById(id)
             }
         }
+
+        override fun observeTripTotal(tripId: Long): Flow<Long?> = tripQueriesDao.observeTotal(tripId)
+
+        override fun observeTripTransactionCount(tripId: Long): Flow<Int> =
+            tripQueriesDao.observeTransactionCount(tripId)
+
+        override fun observeTripDailyTotals(tripId: Long): Flow<List<DailyTotalRow>> =
+            tripQueriesDao.observeDailyTotals(tripId)
+
+        override fun observeTripCategoryBreakdown(tripId: Long): Flow<List<TripCategorySumRow>> =
+            tripQueriesDao.observeCategoryBreakdown(tripId)
     }
