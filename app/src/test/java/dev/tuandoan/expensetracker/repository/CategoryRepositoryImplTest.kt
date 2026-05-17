@@ -246,6 +246,17 @@ class CategoryRepositoryImplTest {
             lastReassignToId = toId
         }
 
+        override suspend fun clearTripId(
+            tripId: Long,
+            now: Long,
+        ) {}
+
+        override suspend fun revertTripAssignments(
+            tripId: Long,
+            restoredCategoryId: Long,
+            now: Long,
+        ) {}
+
         override suspend fun deleteAll() {}
 
         override fun sumExpenseByCurrency(

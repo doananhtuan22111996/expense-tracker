@@ -14,6 +14,7 @@ import dev.tuandoan.expensetracker.data.database.dao.GoldHoldingDao
 import dev.tuandoan.expensetracker.data.database.dao.GoldPriceDao
 import dev.tuandoan.expensetracker.data.database.dao.RecurringTransactionDao
 import dev.tuandoan.expensetracker.data.database.dao.TransactionDao
+import dev.tuandoan.expensetracker.data.database.dao.TripDao
 import dev.tuandoan.expensetracker.data.database.migration.MIGRATION_1_2
 import dev.tuandoan.expensetracker.data.database.migration.MIGRATION_2_3
 import dev.tuandoan.expensetracker.data.database.migration.MIGRATION_3_4
@@ -61,6 +62,9 @@ object DatabaseModule {
 
     @Provides
     fun provideGoldPriceDao(database: AppDatabase): GoldPriceDao = database.goldPriceDao()
+
+    @Provides
+    fun provideTripDao(database: AppDatabase): TripDao = database.tripDao()
 
     @Provides
     fun provideContentResolver(
