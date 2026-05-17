@@ -476,6 +476,17 @@ class RecurrenceSchedulerTest {
             toId: Long,
         ) {}
 
+        override suspend fun clearTripId(
+            tripId: Long,
+            now: Long,
+        ) {}
+
+        override suspend fun revertTripAssignments(
+            tripId: Long,
+            restoredCategoryId: Long,
+            now: Long,
+        ) {}
+
         override fun searchTransactionsAdvanced(
             from: Long?,
             to: Long?,

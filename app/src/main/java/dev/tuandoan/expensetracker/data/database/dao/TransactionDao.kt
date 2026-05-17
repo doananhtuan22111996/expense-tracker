@@ -88,6 +88,52 @@ interface TransactionDao {
         toId: Long,
     )
 
+    /**
+     * UNTAG path of `TripRepository.deleteTrip` (ADR-001). Clears `trip_id` on every
+     * transaction belonging to the trip. Category, original_category_id, and
+     * amount_foreign_minor are intentionally preserved — UNTAG does not undo a prior
+     * conversion. Bumps `updated_at` so sync/backup reflect the change.
+     */
+    @Query(
+        """
+        UPDATE transactions
+        SET trip_id = NULL, updated_at = :now
+        WHERE trip_id = :tripId
+        """,
+    )
+    suspend fun clearTripId(
+        tripId: Long,
+        now: Long,
+    )
+
+    /**
+     * REVERT_TO_ORIGINAL_CATEGORY path of `TripRepository.deleteTrip` (ADR-001). For every
+     * transaction in the trip: restore `category_id` to the caller-supplied snapshot id,
+     * then clear `trip_id`, `original_category_id`, and `amount_foreign_minor`. Atomic
+     * per row; the surrounding `runInTransaction` block makes the cross-row revert
+     * all-or-nothing.
+     *
+     * `restoredCategoryId` is the id of the recreated (or still-present) category;
+     * normally equal to the trip's `originalCategoryId` snapshot, but the caller passes
+     * it explicitly to handle the rare reuse-of-id edge case.
+     */
+    @Query(
+        """
+        UPDATE transactions
+        SET category_id = :restoredCategoryId,
+            trip_id = NULL,
+            original_category_id = NULL,
+            amount_foreign_minor = NULL,
+            updated_at = :now
+        WHERE trip_id = :tripId
+        """,
+    )
+    suspend fun revertTripAssignments(
+        tripId: Long,
+        restoredCategoryId: Long,
+        now: Long,
+    )
+
     @Query("DELETE FROM transactions")
     suspend fun deleteAll()
 

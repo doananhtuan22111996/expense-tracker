@@ -40,5 +40,5 @@ data class TripEntity(
     @ColumnInfo(name = "original_category_color_snapshot")
     val originalCategoryColorSnapshot: String?,
     @ColumnInfo(name = "created_at")
-    val createdAt: Long,
+    val createdAt: Long, // Epoch millis (matches TransactionEntity / RecurringTransactionEntity / Gold* convention)
 )
