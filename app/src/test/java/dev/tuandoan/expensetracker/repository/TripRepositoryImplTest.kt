@@ -4,12 +4,15 @@ import dev.tuandoan.expensetracker.data.database.TransactionRunner
 import dev.tuandoan.expensetracker.data.database.dao.CategoryDao
 import dev.tuandoan.expensetracker.data.database.dao.TransactionDao
 import dev.tuandoan.expensetracker.data.database.dao.TripDao
+import dev.tuandoan.expensetracker.data.database.dao.TripQueriesDao
 import dev.tuandoan.expensetracker.data.database.entity.CategoryEntity
 import dev.tuandoan.expensetracker.data.database.entity.CategoryWithCountRow
 import dev.tuandoan.expensetracker.data.database.entity.CurrencyCategorySumRow
 import dev.tuandoan.expensetracker.data.database.entity.CurrencySumRow
+import dev.tuandoan.expensetracker.data.database.entity.DailyTotalRow
 import dev.tuandoan.expensetracker.data.database.entity.MonthlyTotalRow
 import dev.tuandoan.expensetracker.data.database.entity.TransactionEntity
+import dev.tuandoan.expensetracker.data.database.entity.TripCategorySumRow
 import dev.tuandoan.expensetracker.data.database.entity.TripEntity
 import dev.tuandoan.expensetracker.domain.model.DeleteTripBehavior
 import dev.tuandoan.expensetracker.domain.model.Trip
@@ -30,6 +33,7 @@ import org.junit.Test
 
 class TripRepositoryImplTest {
     private lateinit var tripDao: FakeTripDao
+    private lateinit var tripQueriesDao: FakeTripQueriesDao
     private lateinit var transactionDao: FakeTransactionDao
     private lateinit var categoryDao: FakeCategoryDao
     private lateinit var transactionRunner: SnapshotTransactionRunner
@@ -41,6 +45,7 @@ class TripRepositoryImplTest {
     @Before
     fun setup() {
         tripDao = FakeTripDao()
+        tripQueriesDao = FakeTripQueriesDao()
         transactionDao = FakeTransactionDao()
         categoryDao = FakeCategoryDao()
         transactionRunner = SnapshotTransactionRunner(tripDao, transactionDao, categoryDao)
@@ -48,6 +53,7 @@ class TripRepositoryImplTest {
         repository =
             TripRepositoryImpl(
                 tripDao = tripDao,
+                tripQueriesDao = tripQueriesDao,
                 transactionDao = transactionDao,
                 categoryDao = categoryDao,
                 transactionRunner = transactionRunner,
@@ -331,6 +337,82 @@ class TripRepositoryImplTest {
             assertEquals("original_category_id NOT cleared (rolled back)", 42L, tx.originalCategoryId)
             assertNotNull("trip NOT deleted (rolled back)", tripDao.getById(tripId))
         }
+
+    // ───────────────────────────────────────────────────────────
+    //  TripQueriesDao passthroughs (T1.4)
+    // ───────────────────────────────────────────────────────────
+
+    @Test
+    fun observeTripTotal_passesThroughDaoEmission() =
+        runTest {
+            tripQueriesDao.totalByTrip[42L] = 250_000L
+            assertEquals(250_000L, repository.observeTripTotal(42L).first())
+        }
+
+    @Test
+    fun observeTripTotal_emitsNullForEmptyTrip() =
+        runTest {
+            // No seeded value → DAO emits null (matches `SUM(amount) WHERE trip_id = ...` on empty set)
+            assertNull(repository.observeTripTotal(99L).first())
+        }
+
+    @Test
+    fun observeTripTransactionCount_passesThroughDaoEmission() =
+        runTest {
+            tripQueriesDao.countByTrip[42L] = 18
+            assertEquals(18, repository.observeTripTransactionCount(42L).first())
+        }
+
+    @Test
+    fun observeTripDailyTotals_passesThroughDaoEmission() =
+        runTest {
+            val rows =
+                listOf(
+                    DailyTotalRow(date = "2026-05-05", total = 50_000L),
+                    DailyTotalRow(date = "2026-05-06", total = 75_000L),
+                )
+            tripQueriesDao.dailyByTrip[42L] = rows
+            assertEquals(rows, repository.observeTripDailyTotals(42L).first())
+        }
+
+    @Test
+    fun observeTripCategoryBreakdown_passesThroughDaoEmission() =
+        runTest {
+            val rows =
+                listOf(
+                    TripCategorySumRow(categoryId = 1L, total = 200_000L),
+                    TripCategorySumRow(categoryId = 3L, total = 50_000L),
+                )
+            tripQueriesDao.breakdownByTrip[42L] = rows
+            assertEquals(rows, repository.observeTripCategoryBreakdown(42L).first())
+        }
+
+    @Test
+    fun tripDetailFlows_throwOnNonPositiveTripId() {
+        // Trip ids are autoincrement starting at 1. 0L or negative leaking through is a
+        // programmer error; the guard throws synchronously at call time, not on collect.
+        val invalidIds = listOf(0L, -1L, Long.MIN_VALUE)
+        val callsByName: Map<String, (Long) -> Unit> =
+            mapOf(
+                "observeTripTotal" to { id -> repository.observeTripTotal(id) },
+                "observeTripTransactionCount" to { id -> repository.observeTripTransactionCount(id) },
+                "observeTripDailyTotals" to { id -> repository.observeTripDailyTotals(id) },
+                "observeTripCategoryBreakdown" to { id -> repository.observeTripCategoryBreakdown(id) },
+            )
+        for ((name, call) in callsByName) {
+            for (id in invalidIds) {
+                try {
+                    call(id)
+                    fail("$name($id) should throw IllegalArgumentException")
+                } catch (expected: IllegalArgumentException) {
+                    assertTrue(
+                        "$name($id) message must mention the bad id",
+                        expected.message.orEmpty().contains(id.toString()),
+                    )
+                }
+            }
+        }
+    }
 
     // ───────────────────────────────────────────────────────────
     //  Helpers
@@ -681,4 +763,27 @@ private fun List<Trip>.assertContainsName(name: String) {
 @Suppress("unused")
 private fun List<Trip>.assertDoesNotContainName(name: String) {
     assertFalse("did not expect name=$name in $this", any { it.name == name })
+}
+
+/**
+ * Per-trip seedable fake. Aggregations don't share state with the other DAOs (they're
+ * derived from `transactions.trip_id`), so the test seeds expected results directly.
+ * Empty/missing tripId emits the natural empty value — null for total, 0 for count,
+ * empty list for the row queries.
+ */
+private class FakeTripQueriesDao : TripQueriesDao {
+    val totalByTrip = mutableMapOf<Long, Long?>()
+    val countByTrip = mutableMapOf<Long, Int>()
+    val dailyByTrip = mutableMapOf<Long, List<DailyTotalRow>>()
+    val breakdownByTrip = mutableMapOf<Long, List<TripCategorySumRow>>()
+
+    override fun observeTotal(tripId: Long): Flow<Long?> = MutableStateFlow(totalByTrip[tripId])
+
+    override fun observeTransactionCount(tripId: Long): Flow<Int> = MutableStateFlow(countByTrip[tripId] ?: 0)
+
+    override fun observeDailyTotals(tripId: Long): Flow<List<DailyTotalRow>> =
+        MutableStateFlow(dailyByTrip[tripId] ?: emptyList())
+
+    override fun observeCategoryBreakdown(tripId: Long): Flow<List<TripCategorySumRow>> =
+        MutableStateFlow(breakdownByTrip[tripId] ?: emptyList())
 }
