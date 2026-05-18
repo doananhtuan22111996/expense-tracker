@@ -90,4 +90,13 @@ object ModalNavRoutes {
     fun addRecurringRoute(): String = "${ModalDestination.AddEditRecurring.route}/0"
 
     fun editRecurringRoute(recurringId: Long): String = "${ModalDestination.AddEditRecurring.route}/$recurringId"
+
+    fun addTripRoute(): String = "${ModalDestination.AddEditTrip.route}/0"
+
+    fun editTripRoute(tripId: Long): String = "${ModalDestination.AddEditTrip.route}/$tripId"
+
+    fun tripDetailRoute(tripId: Long): String = "${ModalDestination.TripDetail.route}/$tripId"
+
+    fun convertCategoryToTripRoute(categoryId: Long): String =
+        "${ModalDestination.ConvertCategoryToTrip.route}/$categoryId"
 }
