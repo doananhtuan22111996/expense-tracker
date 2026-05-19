@@ -30,6 +30,7 @@ import dev.tuandoan.expensetracker.ui.screen.gold.AddEditGoldHoldingScreen
 import dev.tuandoan.expensetracker.ui.screen.onboarding.OnboardingScreen
 import dev.tuandoan.expensetracker.ui.screen.recurring.AddEditRecurringTransactionScreen
 import dev.tuandoan.expensetracker.ui.screen.recurring.RecurringTransactionsScreen
+import dev.tuandoan.expensetracker.ui.screen.trips.TripsScreen
 import dev.tuandoan.expensetracker.ui.screen.widgetcategories.WidgetCategoriesScreen
 
 /**
@@ -199,6 +200,25 @@ fun ExpenseTrackerApp(
                     navController.navigate(ModalDestination.Categories.route) {
                         popUpTo(ModalDestination.WidgetCategories.route) { inclusive = true }
                     }
+                },
+                viewModel = hiltViewModel(),
+            )
+        }
+
+        composable(ModalDestination.Trips.route) {
+            TripsScreen(
+                onNavigateBack = {
+                    if (!navController.popBackStack()) {
+                        navController.navigate("Home") {
+                            popUpTo(0) { inclusive = true }
+                        }
+                    }
+                },
+                onNavigateToCreate = {
+                    navController.navigate(ModalNavRoutes.addTripRoute())
+                },
+                onNavigateToDetail = { tripId ->
+                    navController.navigate(ModalNavRoutes.tripDetailRoute(tripId))
                 },
                 viewModel = hiltViewModel(),
             )
