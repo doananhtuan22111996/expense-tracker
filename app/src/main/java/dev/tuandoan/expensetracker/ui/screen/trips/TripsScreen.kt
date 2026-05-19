@@ -32,13 +32,13 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import dev.tuandoan.expensetracker.R
-import dev.tuandoan.expensetracker.domain.model.Trip
 import dev.tuandoan.expensetracker.ui.component.EmptyStateMessage
 import dev.tuandoan.expensetracker.ui.theme.DesignSystemElevation
 import dev.tuandoan.expensetracker.ui.theme.DesignSystemSpacing
@@ -137,17 +137,17 @@ fun TripsScreen(
                 ) {
                     tripSection(
                         titleRes = R.string.trips_section_active,
-                        trips = uiState.active,
+                        cards = uiState.active,
                         onClick = onNavigateToDetail,
                     )
                     tripSection(
                         titleRes = R.string.trips_section_upcoming,
-                        trips = uiState.upcoming,
+                        cards = uiState.upcoming,
                         onClick = onNavigateToDetail,
                     )
                     tripSection(
                         titleRes = R.string.trips_section_past,
-                        trips = uiState.past,
+                        cards = uiState.past,
                         onClick = onNavigateToDetail,
                     )
                 }
@@ -158,10 +158,10 @@ fun TripsScreen(
 
 private fun androidx.compose.foundation.lazy.LazyListScope.tripSection(
     titleRes: Int,
-    trips: List<Trip>,
+    cards: List<TripCardUi>,
     onClick: (Long) -> Unit,
 ) {
-    if (trips.isEmpty()) return
+    if (cards.isEmpty()) return
     item(key = "header-$titleRes") {
         Text(
             text = stringResource(titleRes),
@@ -175,22 +175,28 @@ private fun androidx.compose.foundation.lazy.LazyListScope.tripSection(
                 ),
         )
     }
-    items(items = trips, key = { trip -> trip.id }) { trip ->
-        TripRow(trip = trip, onClick = { onClick(trip.id) })
+    items(items = cards, key = { card -> card.trip.id }) { card ->
+        TripRow(card = card, onClick = { onClick(card.trip.id) })
     }
 }
 
 @Composable
 private fun TripRow(
-    trip: Trip,
+    card: TripCardUi,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val trip = card.trip
     val dateRangeLabel =
         remember(trip.startDateEpochDay, trip.endDateEpochDay) {
             formatTripDateRange(trip.startDateEpochDay, trip.endDateEpochDay)
         }
-    val rowDesc = stringResource(R.string.a11y_trip_row, trip.name, dateRangeLabel)
+    val countLabel =
+        pluralStringResource(R.plurals.trip_row_count, card.transactionCount, card.transactionCount)
+    val totalLabel = card.totalLabel ?: stringResource(R.string.trip_row_no_spending)
+    // Per-row a11y: name + date range + count. Total amount intentionally
+    // excluded — privacy-in-depth (mirror Home/Summary precedent).
+    val rowDesc = stringResource(R.string.a11y_trip_row, trip.name, dateRangeLabel, countLabel)
 
     Card(
         onClick = onClick,
@@ -225,6 +231,12 @@ private fun TripRow(
                 }
                 Text(
                     text = dateRangeLabel,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(top = DesignSystemSpacing.xs),
+                )
+                Text(
+                    text = "$countLabel · $totalLabel",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.padding(top = DesignSystemSpacing.xs),

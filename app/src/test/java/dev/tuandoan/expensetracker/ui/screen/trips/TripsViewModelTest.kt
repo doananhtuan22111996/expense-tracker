@@ -1,11 +1,13 @@
 package dev.tuandoan.expensetracker.ui.screen.trips
 
+import dev.tuandoan.expensetracker.core.formatter.CurrencyFormatter
 import dev.tuandoan.expensetracker.core.util.UiText
 import dev.tuandoan.expensetracker.data.database.entity.DailyTotalRow
 import dev.tuandoan.expensetracker.data.database.entity.TripCategorySumRow
 import dev.tuandoan.expensetracker.domain.model.DeleteTripBehavior
 import dev.tuandoan.expensetracker.domain.model.Trip
 import dev.tuandoan.expensetracker.domain.model.TripFilter
+import dev.tuandoan.expensetracker.domain.repository.CurrencyPreferenceRepository
 import dev.tuandoan.expensetracker.domain.repository.TripRepository
 import dev.tuandoan.expensetracker.testutil.MainDispatcherRule
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -32,15 +34,17 @@ class TripsViewModelTest {
     val mainDispatcherRule = MainDispatcherRule()
 
     private lateinit var repo: FakeTripRepository
+    private lateinit var currencyRepo: FakeCurrencyPreferenceRepository
+    private lateinit var formatter: FakeCurrencyFormatter
     private lateinit var clock: Clock
 
-    // 2026-05-19 chosen to match the absolute date this test was first authored —
-    // any LocalDate.now(clock).toEpochDay() must equal `today`.
     private val today: Long = LocalDate.of(2026, 5, 19).toEpochDay()
 
     @Before
     fun setup() {
         repo = FakeTripRepository()
+        currencyRepo = FakeCurrencyPreferenceRepository(initial = "VND")
+        formatter = FakeCurrencyFormatter()
         clock =
             Clock.fixed(
                 LocalDate.of(2026, 5, 19).atStartOfDay().toInstant(ZoneOffset.UTC),
@@ -49,31 +53,42 @@ class TripsViewModelTest {
     }
 
     @Test
-    fun init_emitsLoadingThenSectionedTrips() =
+    fun init_emitsLoadingThenSectionedTripsWithAggregates() =
         runTest(mainDispatcherRule.testDispatcher) {
-            val activeTrip = trip(id = 1L, name = "Da Nang")
+            val active = trip(id = 1L, name = "Da Nang")
             val upcomingA = trip(id = 2L, name = "Tokyo")
             val upcomingB = trip(id = 3L, name = "Bali")
-            repo.activeFlow.value = listOf(activeTrip)
+            repo.activeFlow.value = listOf(active)
             repo.upcomingFlow.value = listOf(upcomingA, upcomingB)
             repo.pastFlow.value = emptyList()
+            repo.totalsByTrip[1L] = 250_000L
+            repo.countsByTrip[1L] = 4
+            repo.totalsByTrip[2L] = null
+            repo.countsByTrip[2L] = 0
+            repo.totalsByTrip[3L] = 1_200_000L
+            repo.countsByTrip[3L] = 17
 
-            val vm = TripsViewModel(repo, clock)
+            val vm = newVm()
             advanceUntilIdle()
 
             val state = vm.uiState.value
             assertFalse(state.isLoading)
-            assertEquals(listOf(activeTrip), state.active)
-            assertEquals(listOf(upcomingA, upcomingB), state.upcoming)
+            assertEquals(1, state.active.size)
+            assertEquals("250000 VND", state.active.first().totalLabel)
+            assertEquals(4, state.active.first().transactionCount)
+            assertNull(state.upcoming.first().totalLabel)
+            assertEquals(0, state.upcoming.first().transactionCount)
+            assertEquals("1200000 VND", state.upcoming[1].totalLabel)
+            assertEquals(17, state.upcoming[1].transactionCount)
             assertTrue(state.past.isEmpty())
             assertFalse(state.isEmpty)
             assertNull(state.errorMessage)
         }
 
     @Test
-    fun init_emptyRepo_resultsInIsEmptyTrue() =
+    fun init_emptyRepo_resultsInIsEmptyTrueWithoutHangingOnInnerCombine() =
         runTest(mainDispatcherRule.testDispatcher) {
-            val vm = TripsViewModel(repo, clock)
+            val vm = newVm()
             advanceUntilIdle()
 
             val state = vm.uiState.value
@@ -87,7 +102,7 @@ class TripsViewModelTest {
         runTest(mainDispatcherRule.testDispatcher) {
             repo.failingFilter = TripFilter::Active
 
-            val vm = TripsViewModel(repo, clock)
+            val vm = newVm()
             advanceUntilIdle()
 
             val state = vm.uiState.value
@@ -99,7 +114,7 @@ class TripsViewModelTest {
     @Test
     fun init_passesSameNowEpochDayToAllThreeFilters() =
         runTest(mainDispatcherRule.testDispatcher) {
-            TripsViewModel(repo, clock)
+            newVm()
             advanceUntilIdle()
 
             val active = repo.observedFilters.filterIsInstance<TripFilter.Active>().single()
@@ -115,7 +130,7 @@ class TripsViewModelTest {
     fun clearError_resetsErrorMessage() =
         runTest(mainDispatcherRule.testDispatcher) {
             repo.failingFilter = TripFilter::Active
-            val vm = TripsViewModel(repo, clock)
+            val vm = newVm()
             advanceUntilIdle()
             assertNotNull(vm.uiState.value.errorMessage)
 
@@ -123,6 +138,51 @@ class TripsViewModelTest {
 
             assertNull(vm.uiState.value.errorMessage)
         }
+
+    @Test
+    fun currencyChange_reformatsAllTotals() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            repo.activeFlow.value = listOf(trip(id = 1L, name = "Da Nang"))
+            repo.totalsByTrip[1L] = 100_000L
+            repo.countsByTrip[1L] = 2
+
+            val vm = newVm()
+            advanceUntilIdle()
+            assertEquals(
+                "100000 VND",
+                vm.uiState.value.active
+                    .first()
+                    .totalLabel,
+            )
+
+            currencyRepo.currencyFlow.value = "USD"
+            advanceUntilIdle()
+
+            assertEquals(
+                "100000 USD",
+                vm.uiState.value.active
+                    .first()
+                    .totalLabel,
+            )
+        }
+
+    @Test
+    fun nullTotal_yieldsNullLabelAndZeroCountFallback() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            repo.activeFlow.value = listOf(trip(id = 9L, name = "Empty trip"))
+            // Intentionally leave totals/counts unseeded → flows emit null/0.
+
+            val vm = newVm()
+            advanceUntilIdle()
+
+            val card =
+                vm.uiState.value.active
+                    .single()
+            assertNull(card.totalLabel)
+            assertEquals(0, card.transactionCount)
+        }
+
+    private fun newVm(): TripsViewModel = TripsViewModel(repo, currencyRepo, formatter, clock)
 
     private fun trip(
         id: Long,
@@ -150,10 +210,9 @@ private class FakeTripRepository : TripRepository {
     val pastFlow = MutableStateFlow<List<Trip>>(emptyList())
     val observedFilters = mutableListOf<TripFilter>()
 
-    /**
-     * When set, `observeTrips` returns a flow that throws as soon as a filter of the
-     * matching variant is requested. Used to drive the error path in the VM.
-     */
+    val totalsByTrip = mutableMapOf<Long, Long?>()
+    val countsByTrip = mutableMapOf<Long, Int>()
+
     var failingFilter: ((Long) -> TripFilter)? = null
 
     override fun observeTrips(filter: TripFilter): Flow<List<Trip>> {
@@ -190,11 +249,43 @@ private class FakeTripRepository : TripRepository {
         behavior: DeleteTripBehavior,
     ) = error("not used")
 
-    override fun observeTripTotal(tripId: Long): Flow<Long?> = error("not used")
+    override fun observeTripTotal(tripId: Long): Flow<Long?> = MutableStateFlow(totalsByTrip[tripId])
 
-    override fun observeTripTransactionCount(tripId: Long): Flow<Int> = error("not used")
+    override fun observeTripTransactionCount(tripId: Long): Flow<Int> = MutableStateFlow(countsByTrip[tripId] ?: 0)
 
     override fun observeTripDailyTotals(tripId: Long): Flow<List<DailyTotalRow>> = error("not used")
 
     override fun observeTripCategoryBreakdown(tripId: Long): Flow<List<TripCategorySumRow>> = error("not used")
+}
+
+private class FakeCurrencyPreferenceRepository(
+    initial: String,
+) : CurrencyPreferenceRepository {
+    val currencyFlow = MutableStateFlow(initial)
+
+    override fun observeDefaultCurrency(): Flow<String> = currencyFlow
+
+    override suspend fun setDefaultCurrency(currencyCode: String) {
+        currencyFlow.value = currencyCode
+    }
+
+    override suspend fun getDefaultCurrency(): String = currencyFlow.value
+}
+
+private class FakeCurrencyFormatter : CurrencyFormatter {
+    override fun format(
+        amountMinor: Long,
+        currencyCode: String,
+    ): String = "$amountMinor $currencyCode"
+
+    override fun formatWithSign(
+        amountMinor: Long,
+        currencyCode: String,
+        isIncome: Boolean,
+    ): String = "${if (isIncome) "+" else "-"}$amountMinor $currencyCode"
+
+    override fun formatBareAmount(
+        amountMinor: Long,
+        currencyCode: String,
+    ): String = amountMinor.toString()
 }
