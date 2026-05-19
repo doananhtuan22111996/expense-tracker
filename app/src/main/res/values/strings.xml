@@ -9,7 +9,12 @@
     <string name="trips_empty_subtitle">Tap the + button to plan your first trip.</string>
     <string name="a11y_add_trip">Create trip</string>
     <string name="a11y_loading_trips">Loading trips</string>
-    <string name="a11y_trip_row">Trip: %1$s, %2$s</string>
+    <string name="a11y_trip_row">Trip: %1$s, %2$s, %3$s</string>
+    <string name="trip_row_no_spending">No spending yet</string>
+    <plurals name="trip_row_count">
+        <item quantity="one">%1$d transaction</item>
+        <item quantity="other">%1$d transactions</item>
+    </plurals>
     <string name="screen_title_summary">Summary</string>
     <string name="screen_title_settings">Settings</string>
     <string name="summary_disclaimer">Totals are shown per currency. No currency conversion is applied.</string>
