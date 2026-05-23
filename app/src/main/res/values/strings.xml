@@ -692,4 +692,30 @@
     <string name="widget_categories_empty_cta">Go to Categories</string>
     <string name="a11y_widget_categories_preview_filled">Pinned slot %1$d: %2$s</string>
     <string name="a11y_widget_categories_preview_empty">Pinned slot %1$d: empty</string>
+
+    <!-- Create/Edit Trip (v3.13.0, T2.4) -->
+    <string name="create_edit_trip_title_create">Create trip</string>
+    <string name="create_edit_trip_title_edit">Edit trip</string>
+    <string name="create_edit_trip_label_name">Name</string>
+    <string name="create_edit_trip_hint_name">e.g. Tokyo, Spring Break</string>
+    <string name="create_edit_trip_label_destination">Destination (optional)</string>
+    <string name="create_edit_trip_hint_destination">e.g. Tokyo, Japan</string>
+    <string name="create_edit_trip_label_dates">Dates</string>
+    <string name="create_edit_trip_dates_unset">Pick start and end dates</string>
+    <string name="create_edit_trip_dates_partial">From %1$s</string>
+    <string name="create_edit_trip_dates_picker_title">Trip dates</string>
+    <string name="create_edit_trip_label_foreign_toggle">Foreign currency</string>
+    <string name="create_edit_trip_foreign_toggle_subtitle">Track expenses in a non-home currency</string>
+    <string name="create_edit_trip_label_foreign_currency">Foreign currency</string>
+    <string name="create_edit_trip_label_rate">Rate to home currency</string>
+    <string name="create_edit_trip_hint_rate">e.g. 165</string>
+    <string name="create_edit_trip_rate_helper">1 %1$s = ? %2$s</string>
+    <string name="create_edit_trip_home_marker">Home</string>
+    <string name="create_edit_trip_conversion_origin_notice">Created from a category — name, icon, and color are preserved for revert.</string>
+    <string name="error_trip_name_too_long">Name must be %1$d characters or fewer</string>
+    <string name="error_trip_dates_invalid">End date must be on or after start date</string>
+    <string name="error_trip_fx_code_same_as_home">Foreign currency must differ from home currency</string>
+    <string name="error_trip_fx_rate_invalid">Enter a positive rate</string>
+    <string name="error_trip_not_found">Trip not found</string>
+    <string name="a11y_create_edit_trip_dates">Trip dates: %1$s. Double-tap to change.</string>
 </resources>
