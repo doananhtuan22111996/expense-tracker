@@ -16,7 +16,6 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.CalendarToday
-import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
@@ -71,6 +70,7 @@ import dev.tuandoan.expensetracker.core.util.DateTimeUtil
 import dev.tuandoan.expensetracker.domain.model.Category
 import dev.tuandoan.expensetracker.domain.model.SupportedCurrencies
 import dev.tuandoan.expensetracker.domain.model.TransactionType
+import dev.tuandoan.expensetracker.ui.component.CurrencyDropdown
 import dev.tuandoan.expensetracker.ui.theme.DesignSystemElevation
 import dev.tuandoan.expensetracker.ui.theme.DesignSystemSpacing
 
@@ -707,117 +707,6 @@ private fun EnhancedCategoryDropdown(
                             },
                     )
                 }
-            }
-        }
-    }
-}
-
-@Composable
-private fun CurrencyDropdown(
-    selectedCurrencyCode: String,
-    onCurrencySelected: (String) -> Unit,
-    modifier: Modifier = Modifier,
-) {
-    var expanded by remember { mutableStateOf(false) }
-    val allCurrencies = remember { SupportedCurrencies.all() }
-    val selectedCurrency =
-        remember(selectedCurrencyCode) {
-            SupportedCurrencies.byCode(selectedCurrencyCode) ?: SupportedCurrencies.default()
-        }
-    val displayText = "${selectedCurrency.code} - ${selectedCurrency.displayName} ${selectedCurrency.symbol}"
-    val currencyCardDescription = stringResource(R.string.a11y_currency_tap_to_change, displayText)
-
-    Column(
-        modifier = modifier,
-        verticalArrangement = Arrangement.spacedBy(DesignSystemSpacing.xs),
-    ) {
-        Text(
-            text = stringResource(R.string.label_currency),
-            style = MaterialTheme.typography.titleMedium,
-            fontWeight = FontWeight.Medium,
-            color = MaterialTheme.colorScheme.onSurface,
-        )
-
-        val hapticFeedback = LocalHapticFeedback.current
-        Card(
-            onClick = {
-                hapticFeedback.performHapticFeedback(HapticFeedbackType.LongPress)
-                expanded = true
-            },
-            modifier =
-                Modifier
-                    .fillMaxWidth()
-                    .semantics {
-                        contentDescription = currencyCardDescription
-                    },
-            elevation = CardDefaults.cardElevation(defaultElevation = DesignSystemElevation.low),
-        ) {
-            Row(
-                modifier =
-                    Modifier
-                        .fillMaxWidth()
-                        .padding(DesignSystemSpacing.large),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Text(
-                    text = displayText,
-                    style = MaterialTheme.typography.bodyLarge,
-                    fontWeight = FontWeight.Medium,
-                    color = MaterialTheme.colorScheme.onSurface,
-                )
-                Icon(
-                    Icons.Default.KeyboardArrowDown,
-                    contentDescription = stringResource(R.string.a11y_open_currency_selection),
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            }
-        }
-
-        DropdownMenu(
-            expanded = expanded,
-            onDismissRequest = { expanded = false },
-        ) {
-            allCurrencies.forEach { currency ->
-                val isSelected = currency.code == selectedCurrencyCode
-                val currencyItemDescription =
-                    if (isSelected) {
-                        stringResource(R.string.a11y_currency_currently_selected, currency.code, currency.displayName)
-                    } else {
-                        stringResource(R.string.a11y_select_currency_item, currency.code, currency.displayName)
-                    }
-                DropdownMenuItem(
-                    text = {
-                        Text(
-                            "${currency.code} - ${currency.displayName} ${currency.symbol}",
-                            style = MaterialTheme.typography.bodyLarge,
-                            color =
-                                if (isSelected) {
-                                    MaterialTheme.colorScheme.primary
-                                } else {
-                                    MaterialTheme.colorScheme.onSurface
-                                },
-                        )
-                    },
-                    trailingIcon = {
-                        if (isSelected) {
-                            Icon(
-                                Icons.Default.Check,
-                                contentDescription = null,
-                                tint = MaterialTheme.colorScheme.primary,
-                            )
-                        }
-                    },
-                    onClick = {
-                        hapticFeedback.performHapticFeedback(HapticFeedbackType.LongPress)
-                        onCurrencySelected(currency.code)
-                        expanded = false
-                    },
-                    modifier =
-                        Modifier.semantics {
-                            contentDescription = currencyItemDescription
-                        },
-                )
             }
         }
     }

@@ -16,8 +16,6 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.CalendarToday
-import androidx.compose.material.icons.filled.Check
-import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -25,8 +23,6 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DateRangePicker
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -67,7 +63,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import dev.tuandoan.expensetracker.R
 import dev.tuandoan.expensetracker.core.util.EpochDayConverters
-import dev.tuandoan.expensetracker.domain.model.SupportedCurrencies
+import dev.tuandoan.expensetracker.ui.component.CurrencyDropdown
 import dev.tuandoan.expensetracker.ui.theme.DesignSystemElevation
 import dev.tuandoan.expensetracker.ui.theme.DesignSystemSpacing
 import java.time.LocalDate
@@ -204,10 +200,14 @@ fun CreateEditTripScreen(
                 )
 
                 if (uiState.isForeignCurrency) {
-                    CurrencyField(
-                        selectedCode = uiState.foreignCurrencyCode,
-                        homeCode = uiState.homeCurrencyCode,
-                        onSelected = viewModel::onForeignCurrencyChange,
+                    val homeMarkerSuffix =
+                        " · ${stringResource(R.string.create_edit_trip_home_marker)}"
+                    CurrencyDropdown(
+                        selectedCurrencyCode = uiState.foreignCurrencyCode,
+                        onCurrencySelected = viewModel::onForeignCurrencyChange,
+                        titleRes = R.string.create_edit_trip_label_foreign_currency,
+                        disabledCodes = setOf(uiState.homeCurrencyCode),
+                        disabledMarkerSuffix = homeMarkerSuffix,
                     )
                     RateField(
                         value = uiState.rateText,
@@ -417,91 +417,6 @@ private fun ForeignCurrencyToggle(
             )
         }
         Switch(checked = enabled, onCheckedChange = onChange)
-    }
-}
-
-@Composable
-private fun CurrencyField(
-    selectedCode: String,
-    homeCode: String,
-    onSelected: (String) -> Unit,
-) {
-    var expanded by remember { mutableStateOf(false) }
-    val all = remember { SupportedCurrencies.all() }
-    val selected =
-        remember(selectedCode) {
-            SupportedCurrencies.byCode(selectedCode) ?: SupportedCurrencies.default()
-        }
-    val displayText = "${selected.code} - ${selected.displayName} ${selected.symbol}"
-
-    Column(verticalArrangement = Arrangement.spacedBy(DesignSystemSpacing.xs)) {
-        Text(
-            text = stringResource(R.string.create_edit_trip_label_foreign_currency),
-            style = MaterialTheme.typography.titleMedium,
-            color = MaterialTheme.colorScheme.onSurface,
-        )
-        Card(
-            onClick = { expanded = true },
-            modifier = Modifier.fillMaxWidth(),
-            elevation = CardDefaults.cardElevation(defaultElevation = DesignSystemElevation.low),
-        ) {
-            Row(
-                modifier =
-                    Modifier
-                        .fillMaxWidth()
-                        .padding(DesignSystemSpacing.large),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Text(
-                    text = displayText,
-                    style = MaterialTheme.typography.bodyLarge,
-                    fontWeight = FontWeight.Medium,
-                    color = MaterialTheme.colorScheme.onSurface,
-                )
-                Icon(
-                    Icons.Default.KeyboardArrowDown,
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            }
-        }
-        DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
-            all.forEach { currency ->
-                val isSelected = currency.code == selectedCode
-                val isHome = currency.code == homeCode
-                DropdownMenuItem(
-                    text = {
-                        Text(
-                            "${currency.code} - ${currency.displayName} ${currency.symbol}" +
-                                if (isHome) " · ${stringResource(R.string.create_edit_trip_home_marker)}" else "",
-                            color =
-                                if (isSelected) {
-                                    MaterialTheme.colorScheme.primary
-                                } else if (isHome) {
-                                    MaterialTheme.colorScheme.onSurfaceVariant
-                                } else {
-                                    MaterialTheme.colorScheme.onSurface
-                                },
-                        )
-                    },
-                    trailingIcon = {
-                        if (isSelected) {
-                            Icon(
-                                Icons.Default.Check,
-                                contentDescription = null,
-                                tint = MaterialTheme.colorScheme.primary,
-                            )
-                        }
-                    },
-                    enabled = !isHome,
-                    onClick = {
-                        onSelected(currency.code)
-                        expanded = false
-                    },
-                )
-            }
-        }
     }
 }
 
