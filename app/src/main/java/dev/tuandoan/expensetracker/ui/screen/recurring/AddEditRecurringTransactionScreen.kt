@@ -72,6 +72,7 @@ import dev.tuandoan.expensetracker.domain.model.Category
 import dev.tuandoan.expensetracker.domain.model.RecurrenceFrequency
 import dev.tuandoan.expensetracker.domain.model.SupportedCurrencies
 import dev.tuandoan.expensetracker.domain.model.TransactionType
+import dev.tuandoan.expensetracker.ui.component.CurrencyDropdown
 import dev.tuandoan.expensetracker.ui.theme.DesignSystemElevation
 import dev.tuandoan.expensetracker.ui.theme.DesignSystemSpacing
 
@@ -395,104 +396,6 @@ private fun TransactionTypeSelector(
                         contentDescription = incomeDesc
                     },
             )
-        }
-    }
-}
-
-@Composable
-private fun CurrencyDropdown(
-    selectedCurrencyCode: String,
-    onCurrencySelected: (String) -> Unit,
-    modifier: Modifier = Modifier,
-) {
-    var expanded by remember { mutableStateOf(false) }
-    val allCurrencies = remember { SupportedCurrencies.all() }
-    val selectedCurrency =
-        remember(selectedCurrencyCode) {
-            SupportedCurrencies.byCode(selectedCurrencyCode) ?: SupportedCurrencies.default()
-        }
-    val displayText =
-        "${selectedCurrency.code} - ${selectedCurrency.displayName} ${selectedCurrency.symbol}"
-
-    Column(
-        modifier = modifier,
-        verticalArrangement = Arrangement.spacedBy(DesignSystemSpacing.xs),
-    ) {
-        Text(
-            text = stringResource(R.string.label_currency),
-            style = MaterialTheme.typography.titleMedium,
-            color = MaterialTheme.colorScheme.onSurface,
-        )
-        val hapticFeedback = LocalHapticFeedback.current
-        val currencyDesc = stringResource(R.string.a11y_currency_tap_to_change, displayText)
-        Card(
-            onClick = {
-                hapticFeedback.performHapticFeedback(HapticFeedbackType.LongPress)
-                expanded = true
-            },
-            modifier =
-                Modifier
-                    .fillMaxWidth()
-                    .semantics {
-                        contentDescription = currencyDesc
-                    },
-            elevation = CardDefaults.cardElevation(defaultElevation = DesignSystemElevation.low),
-        ) {
-            Row(
-                modifier =
-                    Modifier
-                        .fillMaxWidth()
-                        .padding(DesignSystemSpacing.large),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Text(
-                    text = displayText,
-                    style = MaterialTheme.typography.bodyLarge,
-                    fontWeight = FontWeight.Medium,
-                    color = MaterialTheme.colorScheme.onSurface,
-                )
-                Icon(
-                    Icons.Default.KeyboardArrowDown,
-                    contentDescription = stringResource(R.string.a11y_open_currency_selection),
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            }
-        }
-        DropdownMenu(
-            expanded = expanded,
-            onDismissRequest = { expanded = false },
-        ) {
-            allCurrencies.forEach { currency ->
-                val isSelected = currency.code == selectedCurrencyCode
-                DropdownMenuItem(
-                    text = {
-                        Text(
-                            "${currency.code} - ${currency.displayName} ${currency.symbol}",
-                            color =
-                                if (isSelected) {
-                                    MaterialTheme.colorScheme.primary
-                                } else {
-                                    MaterialTheme.colorScheme.onSurface
-                                },
-                        )
-                    },
-                    trailingIcon = {
-                        if (isSelected) {
-                            Icon(
-                                Icons.Default.Check,
-                                contentDescription = null,
-                                tint = MaterialTheme.colorScheme.primary,
-                            )
-                        }
-                    },
-                    onClick = {
-                        hapticFeedback.performHapticFeedback(HapticFeedbackType.LongPress)
-                        onCurrencySelected(currency.code)
-                        expanded = false
-                    },
-                )
-            }
         }
     }
 }
