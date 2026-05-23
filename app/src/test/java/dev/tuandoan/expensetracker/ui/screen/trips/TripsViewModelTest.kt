@@ -182,6 +182,59 @@ class TripsViewModelTest {
             assertEquals(0, card.transactionCount)
         }
 
+    @Test
+    fun sectionChange_midStream_addsCardWithAggregates() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            // Start empty so the inner combine takes the short-circuit branch.
+            val vm = newVm()
+            advanceUntilIdle()
+            assertTrue(vm.uiState.value.isEmpty)
+
+            // Seed aggregates BEFORE the trip appears — the new card must
+            // pick them up when sections re-emit and the enrichment branch
+            // re-attaches.
+            repo.totalsByTrip[5L] = 750_000L
+            repo.countsByTrip[5L] = 3
+            repo.activeFlow.value = listOf(trip(id = 5L, name = "Hue"))
+            advanceUntilIdle()
+
+            val card =
+                vm.uiState.value.active
+                    .single()
+            assertEquals("Hue", card.trip.name)
+            assertEquals("750000 VND", card.totalLabel)
+            assertEquals(3, card.transactionCount)
+        }
+
+    @Test
+    fun tripTotalUpdate_withoutTripChange_reformatsRowLabel() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            repo.activeFlow.value = listOf(trip(id = 1L, name = "Da Nang"))
+            repo.setTripTotal(1L, 100_000L)
+            repo.setTripTransactionCount(1L, 2)
+
+            val vm = newVm()
+            advanceUntilIdle()
+            assertEquals(
+                "100000 VND",
+                vm.uiState.value.active
+                    .first()
+                    .totalLabel,
+            )
+
+            // Same Trip object — only the per-trip total changes (e.g. user
+            // adds a transaction). Pins that the per-trip combine bubbles
+            // updates without depending on a Trip re-emission.
+            repo.setTripTotal(1L, 250_000L)
+            advanceUntilIdle()
+
+            val card =
+                vm.uiState.value.active
+                    .first()
+            assertEquals("250000 VND", card.totalLabel)
+            assertEquals(1L, card.trip.id)
+        }
+
     private fun newVm(): TripsViewModel = TripsViewModel(repo, currencyRepo, formatter, clock)
 
     private fun trip(
@@ -212,6 +265,27 @@ private class FakeTripRepository : TripRepository {
 
     val totalsByTrip = mutableMapOf<Long, Long?>()
     val countsByTrip = mutableMapOf<Long, Int>()
+
+    // Per-id MutableStateFlow caches so post-init mutations bubble to active
+    // collectors (used by tests that change a value AFTER newVm()).
+    private val totalFlows = mutableMapOf<Long, MutableStateFlow<Long?>>()
+    private val countFlows = mutableMapOf<Long, MutableStateFlow<Int>>()
+
+    fun setTripTotal(
+        tripId: Long,
+        value: Long?,
+    ) {
+        totalsByTrip[tripId] = value
+        totalFlows.getOrPut(tripId) { MutableStateFlow(value) }.value = value
+    }
+
+    fun setTripTransactionCount(
+        tripId: Long,
+        value: Int,
+    ) {
+        countsByTrip[tripId] = value
+        countFlows.getOrPut(tripId) { MutableStateFlow(value) }.value = value
+    }
 
     var failingFilter: ((Long) -> TripFilter)? = null
 
@@ -249,9 +323,11 @@ private class FakeTripRepository : TripRepository {
         behavior: DeleteTripBehavior,
     ) = error("not used")
 
-    override fun observeTripTotal(tripId: Long): Flow<Long?> = MutableStateFlow(totalsByTrip[tripId])
+    override fun observeTripTotal(tripId: Long): Flow<Long?> =
+        totalFlows.getOrPut(tripId) { MutableStateFlow(totalsByTrip[tripId]) }
 
-    override fun observeTripTransactionCount(tripId: Long): Flow<Int> = MutableStateFlow(countsByTrip[tripId] ?: 0)
+    override fun observeTripTransactionCount(tripId: Long): Flow<Int> =
+        countFlows.getOrPut(tripId) { MutableStateFlow(countsByTrip[tripId] ?: 0) }
 
     override fun observeTripDailyTotals(tripId: Long): Flow<List<DailyTotalRow>> = error("not used")
 
