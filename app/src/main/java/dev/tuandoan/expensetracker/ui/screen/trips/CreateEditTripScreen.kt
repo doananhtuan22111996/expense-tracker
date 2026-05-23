@@ -47,6 +47,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -60,16 +61,16 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import dev.tuandoan.expensetracker.R
+import dev.tuandoan.expensetracker.core.util.EpochDayConverters
 import dev.tuandoan.expensetracker.domain.model.SupportedCurrencies
 import dev.tuandoan.expensetracker.ui.theme.DesignSystemElevation
 import dev.tuandoan.expensetracker.ui.theme.DesignSystemSpacing
-import java.time.Instant
 import java.time.LocalDate
-import java.time.ZoneOffset
 import java.time.format.DateTimeFormatter
 import java.time.format.FormatStyle
 
@@ -85,8 +86,11 @@ fun CreateEditTripScreen(
     val context = LocalContext.current
     val focusManager = LocalFocusManager.current
     val isEditMode = viewModel.isEditMode
-    var showDiscardDialog by remember { mutableStateOf(false) }
-    var showDatePicker by remember { mutableStateOf(false) }
+    // rememberSaveable so an open dialog / picker survives rotation —
+    // rememberDateRangePickerState already preserves the picker's selection
+    // internally; this just keeps the sheet visible across the config change.
+    var showDiscardDialog by rememberSaveable { mutableStateOf(false) }
+    var showDatePicker by rememberSaveable { mutableStateOf(false) }
 
     val handleBack: () -> Unit = {
         if (uiState.hasUnsavedChanges) {
@@ -292,7 +296,7 @@ private fun NameField(
             supportingText = error?.let { { Text(it, color = MaterialTheme.colorScheme.error) } },
             keyboardOptions =
                 KeyboardOptions(
-                    capitalization = androidx.compose.ui.text.input.KeyboardCapitalization.Words,
+                    capitalization = KeyboardCapitalization.Words,
                     imeAction = ImeAction.Next,
                 ),
             keyboardActions = KeyboardActions(onNext = { onImeNext() }),
@@ -323,7 +327,7 @@ private fun DestinationField(
             singleLine = true,
             keyboardOptions =
                 KeyboardOptions(
-                    capitalization = androidx.compose.ui.text.input.KeyboardCapitalization.Words,
+                    capitalization = KeyboardCapitalization.Words,
                     imeAction = ImeAction.Next,
                 ),
             keyboardActions = KeyboardActions(onNext = { onImeNext() }),
@@ -597,8 +601,8 @@ private fun TripDateRangeSheet(
     onConfirm: (startEpochDay: Long, endEpochDay: Long) -> Unit,
     onDismiss: () -> Unit,
 ) {
-    val initialStartMillis = initialStartEpochDay?.let { epochDayToUtcMillis(it) }
-    val initialEndMillis = initialEndEpochDay?.let { epochDayToUtcMillis(it) }
+    val initialStartMillis = initialStartEpochDay?.let { EpochDayConverters.epochDayToUtcMillis(it) }
+    val initialEndMillis = initialEndEpochDay?.let { EpochDayConverters.epochDayToUtcMillis(it) }
     val state =
         rememberDateRangePickerState(
             initialSelectedStartDateMillis = initialStartMillis,
@@ -646,7 +650,10 @@ private fun TripDateRangeSheet(
                 TextButton(
                     onClick = {
                         if (startMs != null && endMs != null) {
-                            onConfirm(utcMillisToEpochDay(startMs), utcMillisToEpochDay(endMs))
+                            onConfirm(
+                                EpochDayConverters.utcMillisToEpochDay(startMs),
+                                EpochDayConverters.utcMillisToEpochDay(endMs),
+                            )
                         }
                     },
                     enabled = startMs != null && endMs != null,
@@ -667,19 +674,3 @@ private fun formatDateRange(
     startEpochDay: Long,
     endEpochDay: Long,
 ): String = "${formatDate(startEpochDay)} – ${formatDate(endEpochDay)}"
-
-// DateRangePicker emits start-of-day UTC millis. Convert via UTC-anchored
-// LocalDate so a non-UTC system zone can't shift the date by one.
-private fun utcMillisToEpochDay(millis: Long): Long =
-    Instant
-        .ofEpochMilli(millis)
-        .atZone(ZoneOffset.UTC)
-        .toLocalDate()
-        .toEpochDay()
-
-private fun epochDayToUtcMillis(epochDay: Long): Long =
-    LocalDate
-        .ofEpochDay(epochDay)
-        .atStartOfDay(ZoneOffset.UTC)
-        .toInstant()
-        .toEpochMilli()

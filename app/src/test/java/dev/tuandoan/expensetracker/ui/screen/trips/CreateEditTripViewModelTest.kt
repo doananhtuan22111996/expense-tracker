@@ -366,6 +366,79 @@ class CreateEditTripViewModelTest {
             vm.clearError()
             assertNull(vm.uiState.value.errorMessage)
         }
+
+    // --- Boundaries + edit-mode safety ---
+
+    @Test
+    fun nameLength_at60_isValidAndAt61_isInvalid() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            val vm = newVm()
+            advanceUntilIdle()
+            vm.onDatesSelected(today, today + 1)
+
+            vm.onNameChange("x".repeat(60))
+            assertNull(vm.uiState.value.nameError)
+            assertTrue(vm.uiState.value.isValid)
+
+            vm.onNameChange("x".repeat(61))
+            assertNotNull(vm.uiState.value.nameError)
+            assertFalse(vm.uiState.value.isValid)
+        }
+
+    @Test
+    fun rate_atMaxBoundary_isInvalid() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            val vm = newVm()
+            advanceUntilIdle()
+            vm.onNameChange("Tokyo")
+            vm.onDatesSelected(today, today + 1)
+            vm.onToggleForeignCurrency(true)
+            vm.onForeignCurrencyChange("JPY")
+            vm.onRateTextChange("1000000") // exactly MAX_RATE — must be invalid (> bound)
+
+            assertNotNull(vm.uiState.value.rateError)
+            assertFalse(vm.uiState.value.isValid)
+        }
+
+    @Test
+    fun rate_negativeViaDirectInput_isInvalid() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            val vm = newVm()
+            advanceUntilIdle()
+            vm.onToggleForeignCurrency(true)
+            vm.onForeignCurrencyChange("JPY")
+            // Keyboard regex would suppress '-' at the screen layer; this
+            // pins the VM-level guard against direct programmatic input.
+            vm.onRateTextChange("-5")
+
+            assertNotNull(vm.uiState.value.rateError)
+        }
+
+    @Test
+    fun editMode_loadFailed_saveIsNoOpAndDoesNotThrow() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            repo.failOnGetTripById = true
+
+            val vm = newVm(tripId = 7L)
+            advanceUntilIdle()
+            // Form rendered with errorMessage set; originalTrip is null.
+            assertNotNull(vm.uiState.value.errorMessage)
+            assertNull(vm.uiState.value.originalTrip)
+
+            // Even with full valid input, isValid must be false in edit mode
+            // when originalTrip is null — the guard prevents a write attempt.
+            vm.onNameChange("Tokyo")
+            vm.onDatesSelected(today, today + 1)
+            assertFalse(vm.uiState.value.isValid)
+
+            var success = false
+            vm.save { success = true }
+            advanceUntilIdle()
+
+            assertFalse(success)
+            assertTrue(repo.updatedTrips.isEmpty())
+            assertTrue(repo.createdTrips.isEmpty())
+        }
 }
 
 private class FakeCreateEditTripRepository : TripRepository {
@@ -373,6 +446,7 @@ private class FakeCreateEditTripRepository : TripRepository {
     val createdTrips = mutableListOf<CreatedTrip>()
     val updatedTrips = mutableListOf<Trip>()
     var failOnCreate = false
+    var failOnGetTripById = false
 
     data class CreatedTrip(
         val name: String,
@@ -387,7 +461,10 @@ private class FakeCreateEditTripRepository : TripRepository {
 
     override fun observeTripById(id: Long): Flow<Trip?> = MutableStateFlow(tripsById[id])
 
-    override suspend fun getTripById(id: Long): Trip? = tripsById[id]
+    override suspend fun getTripById(id: Long): Trip? {
+        if (failOnGetTripById) throw IllegalStateException("forced getTripById failure")
+        return tripsById[id]
+    }
 
     override suspend fun createTrip(
         name: String,

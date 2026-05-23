@@ -48,7 +48,9 @@ class CreateEditTripViewModel
         private val today: Long = LocalDate.now(clock).toEpochDay()
         private val homeCurrencyDefault: String = SupportedCurrencies.default().code
 
-        private val _uiState = MutableStateFlow(CreateEditTripUiState())
+        // Seed with isEditMode so isValid can gate the edit-mode invariant
+        // ("originalTrip must be loaded before save") from the first state read.
+        private val _uiState = MutableStateFlow(CreateEditTripUiState(isEditMode = isEditMode))
         val uiState: StateFlow<CreateEditTripUiState> = _uiState.asStateFlow()
 
         init {
@@ -117,7 +119,15 @@ class CreateEditTripViewModel
             viewModelScope.launch {
                 try {
                     if (isEditMode) {
-                        val original = state.originalTrip ?: error("edit-mode save without loaded trip")
+                        // Unreachable from the UI happy path: isValid gates on
+                        // originalTrip != null in edit mode (see UiState).
+                        // Defensive null-bail keeps a half-broken edit state
+                        // from throwing if ever reached programmatically.
+                        val original =
+                            state.originalTrip ?: run {
+                                _uiState.update { it.copy(isSaving = false) }
+                                return@launch
+                            }
                         tripRepository.updateTrip(
                             original.copy(
                                 name = state.name.trim(),
@@ -232,6 +242,12 @@ data class CreateEditTripUiState(
     val errorMessage: UiText? = null,
     val isConversionOrigin: Boolean = false,
     val originalTrip: Trip? = null,
+    /**
+     * Carried into state so [isValid] can gate the edit-mode invariant
+     * ("originalTrip must be loaded before save"). Mirrors the VM's
+     * static `isEditMode` so the screen can read both sources consistently.
+     */
+    val isEditMode: Boolean = false,
 ) {
     val nameError: UiText?
         get() =
@@ -286,7 +302,11 @@ data class CreateEditTripUiState(
                         rateText.isNotBlank() &&
                         rateError == null
                 }
-            return nameOk && datesOk && fxOk && !isSaving
+            // Edit mode requires the loaded trip — defends against the
+            // half-broken state where loadExisting failed (errorMessage shown,
+            // form still rendered) but originalTrip is null.
+            val editModeOk = !isEditMode || originalTrip != null
+            return nameOk && datesOk && fxOk && editModeOk && !isSaving
         }
 
     val hasUnsavedChanges: Boolean
