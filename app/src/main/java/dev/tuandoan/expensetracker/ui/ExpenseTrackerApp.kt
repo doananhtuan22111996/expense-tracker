@@ -115,6 +115,9 @@ fun ExpenseTrackerApp(
                 onNavigateToRecurring = {
                     navController.navigate(ModalDestination.Recurring.route)
                 },
+                onNavigateToTrips = {
+                    navController.navigate(ModalDestination.Trips.route)
+                },
                 onNavigateToWidgetCategories = {
                     navController.navigate(ModalDestination.WidgetCategories.route)
                 },
@@ -315,6 +318,7 @@ private fun Home(
     onNavigateToEditTransaction: (transactionId: Long) -> Unit,
     onNavigateToCategories: () -> Unit,
     onNavigateToRecurring: () -> Unit = {},
+    onNavigateToTrips: () -> Unit = {},
     onNavigateToWidgetCategories: () -> Unit = {},
     onNavigateToAddGoldHolding: () -> Unit = {},
     onNavigateToEditGoldHolding: (holdingId: Long) -> Unit = {},
@@ -351,6 +355,7 @@ private fun Home(
             onNavigateToEditTransaction = onNavigateToEditTransaction,
             onNavigateToCategories = onNavigateToCategories,
             onNavigateToRecurring = onNavigateToRecurring,
+            onNavigateToTrips = onNavigateToTrips,
             onNavigateToWidgetCategories = onNavigateToWidgetCategories,
             onNavigateToAddGoldHolding = onNavigateToAddGoldHolding,
             onNavigateToEditGoldHolding = onNavigateToEditGoldHolding,

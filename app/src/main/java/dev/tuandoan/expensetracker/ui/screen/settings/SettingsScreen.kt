@@ -94,6 +94,7 @@ fun SettingsScreen(
     modifier: Modifier = Modifier,
     onNavigateToCategories: () -> Unit = {},
     onNavigateToRecurring: () -> Unit = {},
+    onNavigateToTrips: () -> Unit = {},
     onNavigateToWidgetCategories: () -> Unit = {},
     onNavigateToDebugPanel: () -> Unit = {},
     bottomContentPadding: Dp = 0.dp,
@@ -400,6 +401,43 @@ fun SettingsScreen(
                                 } else {
                                     MaterialTheme.colorScheme.onSurfaceVariant
                                 },
+                            modifier = Modifier.padding(top = DesignSystemSpacing.xs),
+                        )
+                    }
+                    Icon(
+                        Icons.AutoMirrored.Filled.KeyboardArrowRight,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+
+                HorizontalDivider()
+
+                // Trips entry (v3.13.0, T2.8) — opens the Trips list modal.
+                val tripsLabel = stringResource(R.string.settings_trips_title)
+                Row(
+                    modifier =
+                        Modifier
+                            .fillMaxWidth()
+                            .clickable { onNavigateToTrips() }
+                            .padding(DesignSystemSpacing.large)
+                            .semantics {
+                                contentDescription = tripsLabel
+                            },
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = stringResource(R.string.settings_trips_title),
+                            style = MaterialTheme.typography.bodyLarge,
+                            fontWeight = FontWeight.Medium,
+                            color = MaterialTheme.colorScheme.onSurface,
+                        )
+                        Text(
+                            text = stringResource(R.string.settings_trips_subtitle),
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
                             modifier = Modifier.padding(top = DesignSystemSpacing.xs),
                         )
                     }
