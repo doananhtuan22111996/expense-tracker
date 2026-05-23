@@ -41,9 +41,9 @@ import javax.inject.Inject
  * that a midnight rollover during a single screen visit is not worth
  * re-bucketing for. Same trade-off as `HomeViewModel`'s month snapshot.
  */
+@OptIn(ExperimentalCoroutinesApi::class)
 @HiltViewModel
 class TripsViewModel
-    @OptIn(ExperimentalCoroutinesApi::class)
     @Inject
     constructor(
         private val tripRepository: TripRepository,
@@ -63,7 +63,6 @@ class TripsViewModel
             _uiState.update { it.copy(errorMessage = null) }
         }
 
-        @OptIn(ExperimentalCoroutinesApi::class)
         private fun observeTrips(nowEpochDay: Long) {
             viewModelScope.launch {
                 combine(
@@ -101,27 +100,29 @@ class TripsViewModel
             }
         }
 
-        @OptIn(ExperimentalCoroutinesApi::class)
+        // Currency stream lives in the SAME outer combine as totals/counts so
+        // a currency switch only re-emits the format step — it does NOT cancel
+        // and re-attach every per-trip Room observer (the older flatMapLatest
+        // shape did, which is needlessly expensive for a Settings-rare event).
         private fun enrichmentFlow(trips: List<Trip>): Flow<Map<Long, TripAggregates>> {
             val ids = trips.map { it.id }
             val totalsFlow: Flow<List<Long?>> =
                 combine(ids.map { tripRepository.observeTripTotal(it) }) { it.toList() }
             val countsFlow: Flow<List<Int>> =
                 combine(ids.map { tripRepository.observeTripTransactionCount(it) }) { it.toList() }
-            return currencyPreferenceRepository
-                .observeDefaultCurrency()
-                .distinctUntilChanged()
-                .flatMapLatest { code ->
-                    combine(totalsFlow, countsFlow) { totals, counts ->
-                        ids.indices.associate { i ->
-                            ids[i] to
-                                TripAggregates(
-                                    totalLabel = totals[i]?.let { currencyFormatter.format(it, code) },
-                                    transactionCount = counts[i],
-                                )
-                        }
-                    }
+            val currencyFlow: Flow<String> =
+                currencyPreferenceRepository
+                    .observeDefaultCurrency()
+                    .distinctUntilChanged()
+            return combine(totalsFlow, countsFlow, currencyFlow) { totals, counts, code ->
+                ids.indices.associate { i ->
+                    ids[i] to
+                        TripAggregates(
+                            totalLabel = totals[i]?.let { currencyFormatter.format(it, code) },
+                            transactionCount = counts[i],
+                        )
                 }
+            }
         }
 
         private fun Trip.toUi(aggMap: Map<Long, TripAggregates>): TripCardUi {
