@@ -27,6 +27,7 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import java.time.Clock
@@ -83,9 +84,7 @@ class TripDetailViewModel
                             // Trip was deleted while screen was open.
                             flowOf(null to DetailAggregates())
                         } else {
-                            aggregatesFlow(trip).flatMapLatest { agg ->
-                                flowOf(trip to agg)
-                            }
+                            aggregatesFlow(trip).map { agg -> trip to agg }
                         }
                     }.catch { e ->
                         _uiState.update {
@@ -183,7 +182,7 @@ class TripDetailViewModel
                 rows
                     .groupBy { row ->
                         val epochDay = LocalDate.parse(row.date).toEpochDay()
-                        val offset = (epochDay - trip.startDateEpochDay).toInt()
+                        val offset = maxOf(0, (epochDay - trip.startDateEpochDay).toInt())
                         offset / 7
                     }.entries
                     .sortedBy { it.key }
