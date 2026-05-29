@@ -126,10 +126,20 @@ fun CurrencyDropdown(
                     "${currency.code} - ${currency.displayName} ${currency.symbol}" +
                         (if (isDisabled && disabledMarkerSuffix != null) disabledMarkerSuffix else "")
                 val itemDescription =
-                    if (isSelected) {
-                        stringResource(R.string.a11y_currency_currently_selected, currency.code, currency.displayName)
-                    } else {
-                        stringResource(R.string.a11y_select_currency_item, currency.code, currency.displayName)
+                    when {
+                        isSelected ->
+                            stringResource(
+                                R.string.a11y_currency_currently_selected,
+                                currency.code,
+                                currency.displayName,
+                            )
+                        isDisabled ->
+                            stringResource(
+                                R.string.a11y_currency_item_disabled,
+                                currency.code,
+                                currency.displayName,
+                            )
+                        else -> stringResource(R.string.a11y_select_currency_item, currency.code, currency.displayName)
                     }
                 DropdownMenuItem(
                     text = {

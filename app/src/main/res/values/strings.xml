@@ -522,6 +522,7 @@
     <string name="a11y_open_currency_selection">Open currency selection</string>
     <string name="a11y_currency_currently_selected">%1$s %2$s, currently selected</string>
     <string name="a11y_select_currency_item">Select %1$s %2$s</string>
+    <string name="a11y_currency_item_disabled">%1$s %2$s, not available</string>
     <string name="a11y_selected_date">Selected date: %1$s, tap to change</string>
     <string name="a11y_select_date">Select date</string>
     <string name="a11y_confirm_date">Confirm date selection</string>
