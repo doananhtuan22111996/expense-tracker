@@ -487,6 +487,8 @@ class RecurrenceSchedulerTest {
             now: Long,
         ) {}
 
+        override fun observeByTripId(tripId: Long): Flow<List<TransactionEntity>> = MutableStateFlow(emptyList())
+
         override fun searchTransactionsAdvanced(
             from: Long?,
             to: Long?,

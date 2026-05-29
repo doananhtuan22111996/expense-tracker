@@ -31,6 +31,7 @@ import dev.tuandoan.expensetracker.ui.screen.onboarding.OnboardingScreen
 import dev.tuandoan.expensetracker.ui.screen.recurring.AddEditRecurringTransactionScreen
 import dev.tuandoan.expensetracker.ui.screen.recurring.RecurringTransactionsScreen
 import dev.tuandoan.expensetracker.ui.screen.trips.CreateEditTripScreen
+import dev.tuandoan.expensetracker.ui.screen.trips.TripDetailScreen
 import dev.tuandoan.expensetracker.ui.screen.trips.TripsScreen
 import dev.tuandoan.expensetracker.ui.screen.widgetcategories.WidgetCategoriesScreen
 
@@ -245,6 +246,34 @@ fun ExpenseTrackerApp(
                             popUpTo(0) { inclusive = true }
                         }
                     }
+                },
+                viewModel = hiltViewModel(),
+            )
+        }
+
+        composable(
+            route = "${ModalDestination.TripDetail.route}/{tripId}",
+            arguments =
+                listOf(
+                    navArgument("tripId") {
+                        type = NavType.LongType
+                        defaultValue = 0L
+                    },
+                ),
+        ) {
+            TripDetailScreen(
+                onNavigateBack = {
+                    if (!navController.popBackStack()) {
+                        navController.navigate("Home") {
+                            popUpTo(0) { inclusive = true }
+                        }
+                    }
+                },
+                onNavigateToEdit = { tripId ->
+                    navController.navigate(ModalNavRoutes.editTripRoute(tripId))
+                },
+                onNavigateToEditTransaction = { transactionId ->
+                    navController.navigate(ModalNavRoutes.editTransactionRoute(transactionId))
                 },
                 viewModel = hiltViewModel(),
             )

@@ -4,6 +4,7 @@ import androidx.lifecycle.SavedStateHandle
 import dev.tuandoan.expensetracker.data.database.entity.DailyTotalRow
 import dev.tuandoan.expensetracker.data.database.entity.TripCategorySumRow
 import dev.tuandoan.expensetracker.domain.model.DeleteTripBehavior
+import dev.tuandoan.expensetracker.domain.model.Transaction
 import dev.tuandoan.expensetracker.domain.model.Trip
 import dev.tuandoan.expensetracker.domain.model.TripFilter
 import dev.tuandoan.expensetracker.domain.repository.TripRepository
@@ -506,4 +507,6 @@ private class FakeCreateEditTripRepository : TripRepository {
 
     override fun observeTripCategoryBreakdown(tripId: Long): Flow<List<TripCategorySumRow>> =
         MutableStateFlow(emptyList())
+
+    override fun observeTripTransactions(tripId: Long): Flow<List<Transaction>> = MutableStateFlow(emptyList())
 }

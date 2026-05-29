@@ -61,6 +61,10 @@ interface TransactionDao {
         categoryId: Long? = null,
     ): Flow<List<TransactionEntity>>
 
+    /** All transactions belonging to a trip, newest first. Empty list when trip has no transactions. */
+    @Query("SELECT * FROM transactions WHERE trip_id = :tripId ORDER BY timestamp DESC")
+    fun observeByTripId(tripId: Long): Flow<List<TransactionEntity>>
+
     @Insert
     suspend fun insert(entity: TransactionEntity): Long
 

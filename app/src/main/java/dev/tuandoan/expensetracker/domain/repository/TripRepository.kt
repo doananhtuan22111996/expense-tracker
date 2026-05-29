@@ -3,6 +3,7 @@ package dev.tuandoan.expensetracker.domain.repository
 import dev.tuandoan.expensetracker.data.database.entity.DailyTotalRow
 import dev.tuandoan.expensetracker.data.database.entity.TripCategorySumRow
 import dev.tuandoan.expensetracker.domain.model.DeleteTripBehavior
+import dev.tuandoan.expensetracker.domain.model.Transaction
 import dev.tuandoan.expensetracker.domain.model.Trip
 import dev.tuandoan.expensetracker.domain.model.TripFilter
 import kotlinx.coroutines.flow.Flow
@@ -84,4 +85,7 @@ interface TripRepository {
 
     /** Per-category totals for the donut, sorted descending by total. */
     fun observeTripCategoryBreakdown(tripId: Long): Flow<List<TripCategorySumRow>>
+
+    /** All transactions belonging to the trip, newest first. */
+    fun observeTripTransactions(tripId: Long): Flow<List<Transaction>>
 }

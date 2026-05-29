@@ -11,12 +11,15 @@ import dev.tuandoan.expensetracker.data.database.entity.DailyTotalRow
 import dev.tuandoan.expensetracker.data.database.entity.TripCategorySumRow
 import dev.tuandoan.expensetracker.data.database.entity.TripEntity
 import dev.tuandoan.expensetracker.domain.model.DeleteTripBehavior
+import dev.tuandoan.expensetracker.domain.model.Transaction
+import dev.tuandoan.expensetracker.domain.model.TransactionType
 import dev.tuandoan.expensetracker.domain.model.Trip
 import dev.tuandoan.expensetracker.domain.model.TripFilter
 import dev.tuandoan.expensetracker.domain.repository.TripRepository
 import dev.tuandoan.expensetracker.repository.mapper.toDomain
 import dev.tuandoan.expensetracker.repository.mapper.toEntity
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.map
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -145,6 +148,23 @@ class TripRepositoryImpl
         override fun observeTripCategoryBreakdown(tripId: Long): Flow<List<TripCategorySumRow>> {
             requirePositiveTripId(tripId)
             return tripQueriesDao.observeCategoryBreakdown(tripId)
+        }
+
+        override fun observeTripTransactions(tripId: Long): Flow<List<Transaction>> {
+            requirePositiveTripId(tripId)
+            return transactionDao
+                .observeByTripId(tripId)
+                .combine(
+                    categoryDao
+                        .getCategories(TransactionType.EXPENSE.toInt())
+                        .combine(categoryDao.getCategories(TransactionType.INCOME.toInt())) { expense, income ->
+                            (expense + income).associateBy { it.id }
+                        },
+                ) { transactions, categoryMap ->
+                    transactions.mapNotNull { entity ->
+                        categoryMap[entity.categoryId]?.let { cat -> entity.toDomain(cat.toDomain()) }
+                    }
+                }
         }
 
         /**
