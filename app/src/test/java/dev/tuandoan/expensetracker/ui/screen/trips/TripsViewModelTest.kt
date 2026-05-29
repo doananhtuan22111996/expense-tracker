@@ -5,6 +5,7 @@ import dev.tuandoan.expensetracker.core.util.UiText
 import dev.tuandoan.expensetracker.data.database.entity.DailyTotalRow
 import dev.tuandoan.expensetracker.data.database.entity.TripCategorySumRow
 import dev.tuandoan.expensetracker.domain.model.DeleteTripBehavior
+import dev.tuandoan.expensetracker.domain.model.Transaction
 import dev.tuandoan.expensetracker.domain.model.Trip
 import dev.tuandoan.expensetracker.domain.model.TripFilter
 import dev.tuandoan.expensetracker.domain.repository.CurrencyPreferenceRepository
@@ -332,6 +333,8 @@ private class FakeTripRepository : TripRepository {
     override fun observeTripDailyTotals(tripId: Long): Flow<List<DailyTotalRow>> = error("not used")
 
     override fun observeTripCategoryBreakdown(tripId: Long): Flow<List<TripCategorySumRow>> = error("not used")
+
+    override fun observeTripTransactions(tripId: Long): Flow<List<Transaction>> = error("not used")
 }
 
 private class FakeCurrencyPreferenceRepository(

@@ -257,6 +257,8 @@ class CategoryRepositoryImplTest {
             now: Long,
         ) {}
 
+        override fun observeByTripId(tripId: Long): Flow<List<TransactionEntity>> = MutableStateFlow(emptyList())
+
         override suspend fun deleteAll() {}
 
         override fun sumExpenseByCurrency(

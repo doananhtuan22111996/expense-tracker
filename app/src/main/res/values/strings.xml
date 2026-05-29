@@ -721,4 +721,24 @@
     <string name="error_trip_fx_rate_invalid">Enter a positive rate</string>
     <string name="error_trip_not_found">Trip not found</string>
     <string name="a11y_create_edit_trip_dates">Trip dates: %1$s. Double-tap to change.</string>
+
+    <!-- Trip detail (T2.6) -->
+    <string name="trip_detail_status_active">Active</string>
+    <string name="trip_detail_status_upcoming">Upcoming</string>
+    <string name="trip_detail_status_past">Past</string>
+    <string name="trip_detail_kpi_total">Total</string>
+    <string name="trip_detail_kpi_daily_avg">Daily avg</string>
+    <string name="trip_detail_kpi_count">Transactions</string>
+    <string name="trip_detail_kpi_no_data">—</string>
+    <string name="trip_detail_section_spending">Spending by category</string>
+    <string name="trip_detail_section_by_day">Day by day</string>
+    <string name="trip_detail_section_transactions">Transactions</string>
+    <string name="trip_detail_empty_chart">No spending yet</string>
+    <string name="trip_detail_transactions_empty">No transactions yet</string>
+    <string name="trip_gone_message">This trip no longer exists</string>
+    <string name="trip_detail_edit">Edit trip</string>
+    <string name="trip_detail_delete">Delete trip</string>
+    <string name="trip_detail_revert">Revert to category</string>
+    <string name="a11y_trip_detail_menu">Trip options</string>
+    <string name="a11y_trip_status">Status: %1$s</string>
 </resources>

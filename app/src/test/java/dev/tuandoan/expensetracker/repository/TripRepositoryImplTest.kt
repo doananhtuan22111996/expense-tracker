@@ -723,6 +723,9 @@ private class FakeTransactionDao : TransactionDao {
             }
     }
 
+    override fun observeByTripId(tripId: Long): Flow<List<TransactionEntity>> =
+        MutableStateFlow(entities.filter { it.tripId == tripId })
+
     override suspend fun deleteAll() {
         entities = emptyList()
     }
