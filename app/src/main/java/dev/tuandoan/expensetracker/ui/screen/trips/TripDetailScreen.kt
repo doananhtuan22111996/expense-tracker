@@ -15,6 +15,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -31,6 +32,7 @@ import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.SuggestionChip
 import androidx.compose.material3.SuggestionChipDefaults
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -100,11 +102,26 @@ fun TripDetailScreen(
                 isConversionOrigin = uiState.trip?.isConversionOrigin ?: false,
                 onNavigateBack = onNavigateBack,
                 onEdit = { uiState.trip?.let { onNavigateToEdit(it.id) } },
-                onDelete = { /* T2.7 */ },
-                onRevert = { /* T2.7 */ },
+                onDelete = viewModel::requestDelete,
+                onRevert = viewModel::requestRevert,
             )
         },
     ) { innerPadding ->
+        when (uiState.pendingAction) {
+            PendingTripAction.UNTAG_DELETE ->
+                DeleteTripDialog(
+                    onConfirm = viewModel::confirmAction,
+                    onDismiss = viewModel::dismissAction,
+                )
+            PendingTripAction.REVERT ->
+                RevertTripDialog(
+                    originalCategoryName = uiState.trip?.originalCategoryNameSnapshot ?: "",
+                    onConfirm = viewModel::confirmAction,
+                    onDismiss = viewModel::dismissAction,
+                )
+            null -> Unit
+        }
+
         if (uiState.isLoading) {
             Box(
                 modifier =
@@ -482,6 +499,56 @@ private fun TripTransactionItem(
             )
         }
     }
+}
+
+@Composable
+private fun DeleteTripDialog(
+    onConfirm: () -> Unit,
+    onDismiss: () -> Unit,
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(stringResource(R.string.trip_delete_dialog_title)) },
+        text = { Text(stringResource(R.string.trip_delete_dialog_body)) },
+        confirmButton = {
+            TextButton(onClick = onConfirm) {
+                Text(
+                    text = stringResource(R.string.trip_action_delete),
+                    color = MaterialTheme.colorScheme.error,
+                )
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text(stringResource(R.string.cancel))
+            }
+        },
+    )
+}
+
+@Composable
+private fun RevertTripDialog(
+    originalCategoryName: String,
+    onConfirm: () -> Unit,
+    onDismiss: () -> Unit,
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(stringResource(R.string.trip_revert_dialog_title)) },
+        text = {
+            Text(stringResource(R.string.trip_revert_dialog_body, originalCategoryName))
+        },
+        confirmButton = {
+            TextButton(onClick = onConfirm) {
+                Text(stringResource(R.string.trip_action_revert))
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text(stringResource(R.string.cancel))
+            }
+        },
+    )
 }
 
 private val TRIP_DETAIL_DATE_FORMATTER: DateTimeFormatter =

@@ -739,6 +739,12 @@
     <string name="trip_detail_edit">Edit trip</string>
     <string name="trip_detail_delete">Delete trip</string>
     <string name="trip_detail_revert">Revert to category</string>
+    <string name="trip_delete_dialog_title">Delete trip?</string>
+    <string name="trip_delete_dialog_body">All transactions will be untagged from this trip. This cannot be undone.</string>
+    <string name="trip_revert_dialog_title">Revert to category?</string>
+    <string name="trip_revert_dialog_body">Transactions will be moved back to \"%1$s\". The trip will be deleted.</string>
+    <string name="trip_action_delete">Delete</string>
+    <string name="trip_action_revert">Revert</string>
     <string name="a11y_trip_detail_menu">Trip options</string>
     <string name="a11y_trip_status">Status: %1$s</string>
 </resources>

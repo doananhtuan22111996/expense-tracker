@@ -11,6 +11,7 @@ import dev.tuandoan.expensetracker.data.database.entity.DailyTotalRow
 import dev.tuandoan.expensetracker.data.database.entity.TripCategorySumRow
 import dev.tuandoan.expensetracker.domain.model.Category
 import dev.tuandoan.expensetracker.domain.model.CategoryTotal
+import dev.tuandoan.expensetracker.domain.model.DeleteTripBehavior
 import dev.tuandoan.expensetracker.domain.model.Transaction
 import dev.tuandoan.expensetracker.domain.model.TransactionType
 import dev.tuandoan.expensetracker.domain.model.Trip
@@ -73,6 +74,41 @@ class TripDetailViewModel
 
         fun clearError() {
             _uiState.update { it.copy(errorMessage = null) }
+        }
+
+        fun requestDelete() {
+            _uiState.update { it.copy(pendingAction = PendingTripAction.UNTAG_DELETE) }
+        }
+
+        fun requestRevert() {
+            _uiState.update { it.copy(pendingAction = PendingTripAction.REVERT) }
+        }
+
+        fun dismissAction() {
+            _uiState.update { it.copy(pendingAction = null) }
+        }
+
+        fun confirmAction() {
+            val action = _uiState.value.pendingAction ?: return
+            _uiState.update { it.copy(pendingAction = null) }
+            val behavior =
+                when (action) {
+                    PendingTripAction.UNTAG_DELETE -> DeleteTripBehavior.UNTAG
+                    PendingTripAction.REVERT -> DeleteTripBehavior.REVERT_TO_ORIGINAL_CATEGORY
+                }
+            performDelete(behavior)
+        }
+
+        private fun performDelete(behavior: DeleteTripBehavior) {
+            viewModelScope.launch {
+                try {
+                    tripRepository.deleteTrip(tripId, behavior)
+                } catch (e: Exception) {
+                    _uiState.update {
+                        it.copy(errorMessage = ErrorUtils.getErrorMessage(e))
+                    }
+                }
+            }
         }
 
         private fun observeDetail() {
@@ -219,6 +255,8 @@ class TripDetailViewModel
 
 enum class TripStatus { ACTIVE, UPCOMING, PAST }
 
+enum class PendingTripAction { UNTAG_DELETE, REVERT }
+
 data class DailyBarPoint(
     val dayLabel: String,
     val totalMinor: Long,
@@ -237,4 +275,6 @@ data class TripDetailUiState(
     val errorMessage: UiText? = null,
     /** True when the trip was deleted while the screen was open → screen should pop. */
     val tripGone: Boolean = false,
+    /** Non-null while a destructive-action confirmation dialog is shown. */
+    val pendingAction: PendingTripAction? = null,
 )
