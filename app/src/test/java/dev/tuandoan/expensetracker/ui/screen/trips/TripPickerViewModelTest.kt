@@ -150,6 +150,27 @@ class TripPickerViewModelTest {
             assertFalse(vm.uiState.value.isLoading)
         }
 
+    // --- hasAnyTrip computed property ---
+
+    @Test
+    fun hasAnyTrip_falseWhenAllSectionsEmpty() =
+        runTest {
+            val vm = newVm()
+            advanceUntilIdle()
+
+            assertFalse(vm.uiState.value.hasAnyTrip)
+        }
+
+    @Test
+    fun hasAnyTrip_trueWhenActiveSectionNonEmpty() =
+        runTest {
+            repo.activeFlow.value = listOf(trip(id = 1L, name = "Active"))
+            val vm = newVm()
+            advanceUntilIdle()
+
+            assertTrue(vm.uiState.value.hasAnyTrip)
+        }
+
     // --- reactive updates ---
 
     @Test
@@ -188,6 +209,24 @@ class TripPickerViewModelTest {
             vm.togglePastExpanded()
 
             assertFalse(vm.uiState.value.isPastExpanded)
+        }
+
+    @Test
+    fun togglePastExpanded_survivesSubsequentRepoEmission() =
+        runTest {
+            val vm = newVm()
+            advanceUntilIdle()
+
+            vm.togglePastExpanded()
+            assertTrue(vm.uiState.value.isPastExpanded)
+
+            // Simulate a new trip-list emission from the repository after the toggle
+            repo.activeFlow.value = listOf(trip(id = 99L, name = "New Trip"))
+            advanceUntilIdle()
+
+            // isPastExpanded must not be overwritten by the repo emission
+            assertTrue(vm.uiState.value.isPastExpanded)
+            assertEquals(1, vm.uiState.value.active.size)
         }
 
     // --- error resilience ---

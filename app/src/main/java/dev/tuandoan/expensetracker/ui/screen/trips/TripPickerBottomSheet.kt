@@ -74,11 +74,6 @@ fun TripPickerBottomSheet(
                 modifier = Modifier.padding(bottom = DesignSystemSpacing.large),
             )
 
-            val hasAnyTrip =
-                uiState.active.isNotEmpty() ||
-                    uiState.upcoming.isNotEmpty() ||
-                    uiState.past.isNotEmpty()
-
             LazyColumn(modifier = Modifier.heightIn(max = PICKER_MAX_HEIGHT)) {
                 // "No trip" option
                 item {
@@ -96,7 +91,7 @@ fun TripPickerBottomSheet(
                     )
                 }
 
-                if (!hasAnyTrip) {
+                if (!uiState.hasAnyTrip) {
                     item {
                         Text(
                             text = stringResource(R.string.trip_picker_no_trips),

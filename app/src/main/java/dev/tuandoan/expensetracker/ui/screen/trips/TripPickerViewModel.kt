@@ -48,16 +48,13 @@ class TripPickerViewModel
                     tripRepository.observeTrips(TripFilter.Upcoming(nowEpochDay)),
                     tripRepository.observeTrips(TripFilter.Past(nowEpochDay)),
                 ) { active, upcoming, past ->
-                    _uiState.value.copy(
-                        active = active,
-                        upcoming = upcoming,
-                        past = past,
-                        isLoading = false,
-                    )
+                    Triple(active, upcoming, past)
                 }.catch { _ ->
                     _uiState.update { it.copy(isLoading = false) }
-                }.collect { state ->
-                    _uiState.value = state
+                }.collect { (active, upcoming, past) ->
+                    _uiState.update {
+                        it.copy(active = active, upcoming = upcoming, past = past, isLoading = false)
+                    }
                 }
             }
         }
@@ -69,4 +66,7 @@ data class TripPickerUiState(
     val past: List<Trip> = emptyList(),
     val isLoading: Boolean = true,
     val isPastExpanded: Boolean = false,
-)
+) {
+    val hasAnyTrip: Boolean
+        get() = active.isNotEmpty() || upcoming.isNotEmpty() || past.isNotEmpty()
+}
