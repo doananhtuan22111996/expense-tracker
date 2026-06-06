@@ -234,7 +234,7 @@ class AddEditTransactionViewModel
                             tripRepository
                                 .observeTrips(TripFilter.Active(nowEpochDay))
                                 .first()
-                        // FR-19: auto-assign when exactly one active trip; tie-break
+                        // FR-19: auto-assign when any active trips exist; tie-break
                         // (multiple active) picks the most-recently-created (first by
                         // the repo's createdAt DESC ordering).
                         val autoTrip = if (activeTrips.isNotEmpty()) activeTrips.first() else null

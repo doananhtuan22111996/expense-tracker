@@ -644,6 +644,19 @@ class AddEditTransactionViewModelTest {
         }
 
     @Test
+    fun init_newMode_tripRepoThrows_selectedTripIsNull() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            fakeCategoryRepo.categoriesToEmit = listOf(TestData.expenseCategory)
+            fakeTripRepo.shouldThrowOnObserve = true
+
+            val viewModel = createViewModel()
+            advanceUntilIdle()
+
+            // Trip lookup failure is non-fatal; form still usable, trip stays null
+            assertNull(viewModel.uiState.value.selectedTrip)
+        }
+
+    @Test
     fun onTripSelected_updatesSelectedTrip() =
         runTest(mainDispatcherRule.testDispatcher) {
             fakeCategoryRepo.categoriesToEmit = listOf(TestData.expenseCategory)
@@ -776,14 +789,17 @@ class AddEditTransactionViewModelTest {
 
     private class FakeAddEditTripRepository : TripRepository {
         var activeTrips: List<Trip> = emptyList()
+        var shouldThrowOnObserve = false
 
-        override fun observeTrips(filter: TripFilter): Flow<List<Trip>> =
-            MutableStateFlow(
+        override fun observeTrips(filter: TripFilter): Flow<List<Trip>> {
+            if (shouldThrowOnObserve) return flow { throw RuntimeException("trip repo failure") }
+            return MutableStateFlow(
                 when (filter) {
                     is TripFilter.Active -> activeTrips
                     else -> emptyList()
                 },
             )
+        }
 
         override fun observeTripById(id: Long): Flow<Trip?> = error("not used")
 

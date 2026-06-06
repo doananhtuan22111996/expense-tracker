@@ -47,6 +47,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -257,7 +258,7 @@ private fun TransactionForm(
 ) {
     val focusManager = LocalFocusManager.current
     val amountFocusRequester = remember { FocusRequester() }
-    var showTripPicker by remember { mutableStateOf(false) }
+    var showTripPicker by rememberSaveable { mutableStateOf(false) }
     val tripPickerSheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
 
     // Auto-focus amount field in add mode
