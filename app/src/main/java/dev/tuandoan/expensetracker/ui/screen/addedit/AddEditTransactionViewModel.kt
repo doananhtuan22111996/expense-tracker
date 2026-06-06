@@ -17,16 +17,22 @@ import dev.tuandoan.expensetracker.domain.model.Category
 import dev.tuandoan.expensetracker.domain.model.SupportedCurrencies
 import dev.tuandoan.expensetracker.domain.model.Transaction
 import dev.tuandoan.expensetracker.domain.model.TransactionType
+import dev.tuandoan.expensetracker.domain.model.Trip
+import dev.tuandoan.expensetracker.domain.model.TripFilter
 import dev.tuandoan.expensetracker.domain.repository.BudgetAlertScheduler
 import dev.tuandoan.expensetracker.domain.repository.CategoryRepository
 import dev.tuandoan.expensetracker.domain.repository.CurrencyPreferenceRepository
 import dev.tuandoan.expensetracker.domain.repository.TransactionRepository
+import dev.tuandoan.expensetracker.domain.repository.TripRepository
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
+import java.time.Clock
+import java.time.LocalDate
 import javax.inject.Inject
 
 @HiltViewModel
@@ -35,10 +41,12 @@ class AddEditTransactionViewModel
     constructor(
         private val transactionRepository: TransactionRepository,
         private val categoryRepository: CategoryRepository,
+        private val tripRepository: TripRepository,
         private val timeProvider: TimeProvider,
         private val currencyPreferenceRepository: CurrencyPreferenceRepository,
         private val budgetAlertScheduler: BudgetAlertScheduler,
         private val analytics: Analytics,
+        private val clock: Clock,
         savedStateHandle: SavedStateHandle,
     ) : ViewModel() {
         private val transactionId: Long = savedStateHandle.get<Long>("transactionId") ?: 0L
@@ -86,6 +94,10 @@ class AddEditTransactionViewModel
 
             // amountText is raw digits — no reformatting needed on currency change
             _uiState.value = state.copy(currencyCode = currencyCode)
+        }
+
+        fun onTripSelected(trip: Trip?) {
+            _uiState.value = _uiState.value.copy(selectedTrip = trip)
         }
 
         fun onBackPressed() {
@@ -217,11 +229,21 @@ class AddEditTransactionViewModel
                     } else {
                         // New transaction - set defaults
                         val defaultCurrency = currencyPreferenceRepository.getDefaultCurrency()
+                        val nowEpochDay = LocalDate.now(clock).toEpochDay()
+                        val activeTrips =
+                            tripRepository
+                                .observeTrips(TripFilter.Active(nowEpochDay))
+                                .first()
+                        // FR-19: auto-assign when exactly one active trip; tie-break
+                        // (multiple active) picks the most-recently-created (first by
+                        // the repo's createdAt DESC ordering).
+                        val autoTrip = if (activeTrips.isNotEmpty()) activeTrips.first() else null
                         _uiState.value =
                             _uiState.value.copy(
                                 type = TransactionType.EXPENSE,
                                 timestamp = timeProvider.currentTimeMillis(),
                                 currencyCode = defaultCurrency,
+                                selectedTrip = autoTrip,
                             )
                         loadCategories(TransactionType.EXPENSE)
                     }
@@ -276,6 +298,7 @@ data class AddEditTransactionUiState(
     val amountText: String = "",
     val categories: List<Category> = emptyList(),
     val selectedCategory: Category? = null,
+    val selectedTrip: Trip? = null,
     val timestamp: Long = System.currentTimeMillis(),
     val note: String = "",
     val currencyCode: String = SupportedCurrencies.default().code,
@@ -305,7 +328,7 @@ data class AddEditTransactionUiState(
                     currencyCode != original.currencyCode
             }
             // Add mode: any user input counts as dirty
-            return amountText.isNotBlank() || note.isNotBlank() || selectedCategory != null
+            return amountText.isNotBlank() || note.isNotBlank() || selectedCategory != null || selectedTrip != null
         }
 
     val isSaveEnabled: Boolean
