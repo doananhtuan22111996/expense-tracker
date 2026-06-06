@@ -45,7 +45,7 @@ import java.time.format.FormatStyle
 fun TripPickerBottomSheet(
     sheetState: SheetState,
     selectedTripId: Long?,
-    onTripSelected: (Long?) -> Unit,
+    onTripSelected: (Trip?) -> Unit,
     onDismiss: () -> Unit,
     modifier: Modifier = Modifier,
     viewModel: TripPickerViewModel = hiltViewModel(),
@@ -116,7 +116,7 @@ fun TripPickerBottomSheet(
                             trip = trip,
                             isSelected = selectedTripId == trip.id,
                             onClick = {
-                                onTripSelected(trip.id)
+                                onTripSelected(trip)
                                 onDismiss()
                             },
                         )
@@ -133,7 +133,7 @@ fun TripPickerBottomSheet(
                             trip = trip,
                             isSelected = selectedTripId == trip.id,
                             onClick = {
-                                onTripSelected(trip.id)
+                                onTripSelected(trip)
                                 onDismiss()
                             },
                         )
@@ -154,7 +154,7 @@ fun TripPickerBottomSheet(
                                 trip = trip,
                                 isSelected = selectedTripId == trip.id,
                                 onClick = {
-                                    onTripSelected(trip.id)
+                                    onTripSelected(trip)
                                     onDismiss()
                                 },
                             )

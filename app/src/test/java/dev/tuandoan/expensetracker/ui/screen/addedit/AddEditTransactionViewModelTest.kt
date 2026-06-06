@@ -3,22 +3,29 @@ package dev.tuandoan.expensetracker.ui.screen.addedit
 import androidx.lifecycle.SavedStateHandle
 import dev.tuandoan.expensetracker.R
 import dev.tuandoan.expensetracker.core.util.UiText
+import dev.tuandoan.expensetracker.data.database.entity.DailyTotalRow
+import dev.tuandoan.expensetracker.data.database.entity.TripCategorySumRow
 import dev.tuandoan.expensetracker.domain.analytics.NoOpAnalytics
 import dev.tuandoan.expensetracker.domain.model.Category
 import dev.tuandoan.expensetracker.domain.model.CategoryWithCount
+import dev.tuandoan.expensetracker.domain.model.DeleteTripBehavior
 import dev.tuandoan.expensetracker.domain.model.MonthlyBarPoint
 import dev.tuandoan.expensetracker.domain.model.MonthlySummary
 import dev.tuandoan.expensetracker.domain.model.Transaction
 import dev.tuandoan.expensetracker.domain.model.TransactionType
+import dev.tuandoan.expensetracker.domain.model.Trip
+import dev.tuandoan.expensetracker.domain.model.TripFilter
 import dev.tuandoan.expensetracker.domain.repository.BudgetAlertScheduler
 import dev.tuandoan.expensetracker.domain.repository.CategoryRepository
 import dev.tuandoan.expensetracker.domain.repository.TransactionRepository
+import dev.tuandoan.expensetracker.domain.repository.TripRepository
 import dev.tuandoan.expensetracker.testutil.FakeCurrencyPreferenceRepository
 import dev.tuandoan.expensetracker.testutil.FakeTimeProvider
 import dev.tuandoan.expensetracker.testutil.MainDispatcherRule
 import dev.tuandoan.expensetracker.testutil.TestData
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
@@ -30,6 +37,10 @@ import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
+import java.time.Clock
+import java.time.Instant
+import java.time.LocalDate
+import java.time.ZoneOffset
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class AddEditTransactionViewModelTest {
@@ -38,17 +49,23 @@ class AddEditTransactionViewModelTest {
 
     private lateinit var fakeTransactionRepo: FakeTransactionRepository
     private lateinit var fakeCategoryRepo: FakeCategoryRepository
+    private lateinit var fakeTripRepo: FakeAddEditTripRepository
     private lateinit var fakeTimeProvider: FakeTimeProvider
     private lateinit var fakeCurrencyPreferenceRepo: FakeCurrencyPreferenceRepository
     private lateinit var fakeBudgetAlertScheduler: FakeBudgetAlertScheduler
+    private lateinit var clock: Clock
+
+    private val today = LocalDate.of(2026, 6, 6).toEpochDay()
 
     @Before
     fun setup() {
         fakeTransactionRepo = FakeTransactionRepository()
         fakeCategoryRepo = FakeCategoryRepository()
+        fakeTripRepo = FakeAddEditTripRepository()
         fakeTimeProvider = FakeTimeProvider(currentMillis = 1700000000000L)
         fakeCurrencyPreferenceRepo = FakeCurrencyPreferenceRepository()
         fakeBudgetAlertScheduler = FakeBudgetAlertScheduler()
+        clock = Clock.fixed(Instant.ofEpochSecond(today * 86400), ZoneOffset.UTC)
     }
 
     private fun createViewModel(transactionId: Long = 0L): AddEditTransactionViewModel {
@@ -56,13 +73,33 @@ class AddEditTransactionViewModelTest {
         return AddEditTransactionViewModel(
             fakeTransactionRepo,
             fakeCategoryRepo,
+            fakeTripRepo,
             fakeTimeProvider,
             fakeCurrencyPreferenceRepo,
             fakeBudgetAlertScheduler,
             NoOpAnalytics(),
+            clock,
             savedStateHandle,
         )
     }
+
+    private fun trip(
+        id: Long,
+        name: String,
+    ) = Trip(
+        id = id,
+        name = name,
+        destination = null,
+        startDateEpochDay = today,
+        endDateEpochDay = today + 5,
+        foreignCurrencyCode = null,
+        foreignToHomeRate = null,
+        originalCategoryId = null,
+        originalCategoryNameSnapshot = null,
+        originalCategoryIconSnapshot = null,
+        originalCategoryColorSnapshot = null,
+        createdAt = 0L,
+    )
 
     // New transaction mode tests
 
@@ -552,6 +589,99 @@ class AddEditTransactionViewModelTest {
             assertTrue(viewModel.uiState.value.hasUnsavedChanges)
         }
 
+    // Trip auto-assign (T3.3) + onTripSelected (T3.2)
+
+    @Test
+    fun init_newMode_noActiveTrips_selectedTripIsNull() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            fakeCategoryRepo.categoriesToEmit = listOf(TestData.expenseCategory)
+
+            val viewModel = createViewModel()
+            advanceUntilIdle()
+
+            assertNull(viewModel.uiState.value.selectedTrip)
+        }
+
+    @Test
+    fun init_newMode_singleActiveTrip_autoAssigned() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            fakeCategoryRepo.categoriesToEmit = listOf(TestData.expenseCategory)
+            val activeTrip = trip(id = 1L, name = "Tokyo")
+            fakeTripRepo.activeTrips = listOf(activeTrip)
+
+            val viewModel = createViewModel()
+            advanceUntilIdle()
+
+            assertEquals(activeTrip, viewModel.uiState.value.selectedTrip)
+        }
+
+    @Test
+    fun init_newMode_multipleActiveTrips_firstAutoAssigned() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            fakeCategoryRepo.categoriesToEmit = listOf(TestData.expenseCategory)
+            val trip1 = trip(id = 1L, name = "Tokyo")
+            val trip2 = trip(id = 2L, name = "Paris")
+            fakeTripRepo.activeTrips = listOf(trip1, trip2)
+
+            val viewModel = createViewModel()
+            advanceUntilIdle()
+
+            assertEquals(trip1, viewModel.uiState.value.selectedTrip)
+        }
+
+    @Test
+    fun init_editMode_selectedTripIsNull() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            fakeTransactionRepo.transactionById = TestData.sampleExpenseTransaction
+            fakeCategoryRepo.categoriesToEmit = listOf(TestData.expenseCategory)
+            fakeTripRepo.activeTrips = listOf(trip(id = 1L, name = "Tokyo"))
+
+            val viewModel = createViewModel(transactionId = 1L)
+            advanceUntilIdle()
+
+            // Edit mode does not auto-assign trips — T3.6 will load from transaction
+            assertNull(viewModel.uiState.value.selectedTrip)
+        }
+
+    @Test
+    fun init_newMode_tripRepoThrows_selectedTripIsNull() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            fakeCategoryRepo.categoriesToEmit = listOf(TestData.expenseCategory)
+            fakeTripRepo.shouldThrowOnObserve = true
+
+            val viewModel = createViewModel()
+            advanceUntilIdle()
+
+            // Trip lookup failure is non-fatal; form still usable, trip stays null
+            assertNull(viewModel.uiState.value.selectedTrip)
+        }
+
+    @Test
+    fun onTripSelected_updatesSelectedTrip() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            fakeCategoryRepo.categoriesToEmit = listOf(TestData.expenseCategory)
+            val viewModel = createViewModel()
+            advanceUntilIdle()
+
+            val trip = trip(id = 5L, name = "Seoul")
+            viewModel.onTripSelected(trip)
+
+            assertEquals(trip, viewModel.uiState.value.selectedTrip)
+        }
+
+    @Test
+    fun onTripSelected_null_clearsSelectedTrip() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            fakeCategoryRepo.categoriesToEmit = listOf(TestData.expenseCategory)
+            fakeTripRepo.activeTrips = listOf(trip(id = 1L, name = "Tokyo"))
+            val viewModel = createViewModel()
+            advanceUntilIdle()
+
+            viewModel.onTripSelected(null)
+
+            assertNull(viewModel.uiState.value.selectedTrip)
+        }
+
     // Fake implementations
 
     private class FakeTransactionRepository : TransactionRepository {
@@ -655,5 +785,50 @@ class AddEditTransactionViewModelTest {
         override fun scheduleImmediateCheck() {
             scheduleCount++
         }
+    }
+
+    private class FakeAddEditTripRepository : TripRepository {
+        var activeTrips: List<Trip> = emptyList()
+        var shouldThrowOnObserve = false
+
+        override fun observeTrips(filter: TripFilter): Flow<List<Trip>> {
+            if (shouldThrowOnObserve) return flow { throw RuntimeException("trip repo failure") }
+            return MutableStateFlow(
+                when (filter) {
+                    is TripFilter.Active -> activeTrips
+                    else -> emptyList()
+                },
+            )
+        }
+
+        override fun observeTripById(id: Long): Flow<Trip?> = error("not used")
+
+        override suspend fun getTripById(id: Long): Trip? = error("not used")
+
+        override suspend fun createTrip(
+            name: String,
+            destination: String?,
+            startDateEpochDay: Long,
+            endDateEpochDay: Long,
+            foreignCurrencyCode: String?,
+            foreignToHomeRate: Double?,
+        ): Long = error("not used")
+
+        override suspend fun updateTrip(trip: Trip) = error("not used")
+
+        override suspend fun deleteTrip(
+            id: Long,
+            behavior: DeleteTripBehavior,
+        ) = error("not used")
+
+        override fun observeTripTotal(tripId: Long): Flow<Long?> = error("not used")
+
+        override fun observeTripTransactionCount(tripId: Long): Flow<Int> = error("not used")
+
+        override fun observeTripDailyTotals(tripId: Long): Flow<List<DailyTotalRow>> = error("not used")
+
+        override fun observeTripCategoryBreakdown(tripId: Long): Flow<List<TripCategorySumRow>> = error("not used")
+
+        override fun observeTripTransactions(tripId: Long): Flow<List<Transaction>> = error("not used")
     }
 }

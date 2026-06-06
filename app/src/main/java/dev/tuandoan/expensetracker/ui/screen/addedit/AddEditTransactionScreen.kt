@@ -31,6 +31,7 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.InputChip
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
@@ -40,11 +41,13 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.rememberDatePickerState
+import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -70,7 +73,9 @@ import dev.tuandoan.expensetracker.core.util.DateTimeUtil
 import dev.tuandoan.expensetracker.domain.model.Category
 import dev.tuandoan.expensetracker.domain.model.SupportedCurrencies
 import dev.tuandoan.expensetracker.domain.model.TransactionType
+import dev.tuandoan.expensetracker.domain.model.Trip
 import dev.tuandoan.expensetracker.ui.component.CurrencyDropdown
+import dev.tuandoan.expensetracker.ui.screen.trips.TripPickerBottomSheet
 import dev.tuandoan.expensetracker.ui.theme.DesignSystemElevation
 import dev.tuandoan.expensetracker.ui.theme.DesignSystemSpacing
 
@@ -243,6 +248,7 @@ fun AddEditTransactionScreen(
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun TransactionForm(
     uiState: AddEditTransactionUiState,
@@ -252,6 +258,8 @@ private fun TransactionForm(
 ) {
     val focusManager = LocalFocusManager.current
     val amountFocusRequester = remember { FocusRequester() }
+    var showTripPicker by rememberSaveable { mutableStateOf(false) }
+    val tripPickerSheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
 
     // Auto-focus amount field in add mode
     LaunchedEffect(Unit) {
@@ -361,6 +369,21 @@ private fun TransactionForm(
             timestamp = uiState.timestamp,
             onDateSelected = viewModel::onDateSelected,
         )
+
+        // Trip Selection
+        TripChip(
+            selectedTrip = uiState.selectedTrip,
+            onClick = { showTripPicker = true },
+        )
+
+        if (showTripPicker) {
+            TripPickerBottomSheet(
+                sheetState = tripPickerSheetState,
+                selectedTripId = uiState.selectedTrip?.id,
+                onTripSelected = viewModel::onTripSelected,
+                onDismiss = { showTripPicker = false },
+            )
+        }
 
         // Note - Optional field with lower visual priority
         Column(verticalArrangement = Arrangement.spacedBy(DesignSystemSpacing.xs)) {
@@ -830,6 +853,58 @@ private fun EnhancedDateSelector(
                         modifier = Modifier.padding(16.dp),
                     )
                 },
+            )
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun TripChip(
+    selectedTrip: Trip?,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Column(
+        modifier = modifier.fillMaxWidth(),
+        verticalArrangement = Arrangement.spacedBy(DesignSystemSpacing.xs),
+    ) {
+        Text(
+            text = stringResource(R.string.label_trip_optional),
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        if (selectedTrip == null) {
+            val desc = stringResource(R.string.a11y_trip_chip_none)
+            InputChip(
+                selected = false,
+                onClick = onClick,
+                label = { Text(stringResource(R.string.trip_chip_no_trip)) },
+                modifier =
+                    Modifier.semantics {
+                        contentDescription = desc
+                    },
+            )
+        } else {
+            val label =
+                if (!selectedTrip.foreignCurrencyCode.isNullOrBlank()) {
+                    stringResource(
+                        R.string.trip_chip_foreign_badge,
+                        selectedTrip.name,
+                        selectedTrip.foreignCurrencyCode,
+                    )
+                } else {
+                    selectedTrip.name
+                }
+            val desc = stringResource(R.string.a11y_trip_chip_attached, selectedTrip.name)
+            InputChip(
+                selected = true,
+                onClick = onClick,
+                label = { Text(label) },
+                modifier =
+                    Modifier.semantics {
+                        contentDescription = desc
+                    },
             )
         }
     }

@@ -1,6 +1,7 @@
 package dev.tuandoan.expensetracker.ui.screen.addedit
 
 import dev.tuandoan.expensetracker.domain.model.TransactionType
+import dev.tuandoan.expensetracker.domain.model.Trip
 import dev.tuandoan.expensetracker.testutil.TestData
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
@@ -205,6 +206,47 @@ class AddEditTransactionUiStateTest {
                 selectedCategory = original.category,
                 timestamp = original.timestamp,
                 note = "",
+            )
+        assertFalse(state.hasUnsavedChanges)
+    }
+
+    @Test
+    fun hasUnsavedChanges_addMode_tripSelected_true() {
+        val trip =
+            Trip(
+                id = 1L,
+                name = "Tokyo",
+                destination = null,
+                startDateEpochDay = 0L,
+                endDateEpochDay = 5L,
+                foreignCurrencyCode = null,
+                foreignToHomeRate = null,
+                originalCategoryId = null,
+                originalCategoryNameSnapshot = null,
+                originalCategoryIconSnapshot = null,
+                originalCategoryColorSnapshot = null,
+                createdAt = 0L,
+            )
+        val state =
+            AddEditTransactionUiState(
+                originalTransaction = null,
+                amountText = "",
+                selectedCategory = null,
+                note = "",
+                selectedTrip = trip,
+            )
+        assertTrue(state.hasUnsavedChanges)
+    }
+
+    @Test
+    fun hasUnsavedChanges_addMode_noTripNoInput_false() {
+        val state =
+            AddEditTransactionUiState(
+                originalTransaction = null,
+                amountText = "",
+                selectedCategory = null,
+                note = "",
+                selectedTrip = null,
             )
         assertFalse(state.hasUnsavedChanges)
     }

@@ -757,4 +757,11 @@
     <string name="trip_picker_past_hide">Hide past trips</string>
     <string name="a11y_trip_picker_item">%1$s, %2$s</string>
     <string name="a11y_trip_picker_none">No trip, don\'t attach to a trip</string>
+
+    <!-- Trip chip in Add/Edit Transaction (T3.2) -->
+    <string name="label_trip_optional">Trip (optional)</string>
+    <string name="trip_chip_no_trip">No trip</string>
+    <string name="trip_chip_foreign_badge">%1$s · %2$s</string>
+    <string name="a11y_trip_chip_none">No trip attached. Double-tap to attach a trip.</string>
+    <string name="a11y_trip_chip_attached">Trip: %1$s. Double-tap to change.</string>
 </resources>
