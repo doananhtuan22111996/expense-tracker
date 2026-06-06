@@ -747,4 +747,14 @@
     <string name="trip_action_revert">Revert</string>
     <string name="a11y_trip_detail_menu">Trip options</string>
     <string name="a11y_trip_status">Status: %1$s</string>
+
+    <!-- Trip picker bottom sheet (T3.1) -->
+    <string name="trip_picker_title">Attach trip</string>
+    <string name="trip_picker_none">No trip</string>
+    <string name="trip_picker_none_subtitle">Don\'t attach to a trip</string>
+    <string name="trip_picker_no_trips">No trips yet</string>
+    <string name="trip_picker_past_show">Show past trips</string>
+    <string name="trip_picker_past_hide">Hide past trips</string>
+    <string name="a11y_trip_picker_item">%1$s, %2$s</string>
+    <string name="a11y_trip_picker_none">No trip, don\'t attach to a trip</string>
 </resources>
