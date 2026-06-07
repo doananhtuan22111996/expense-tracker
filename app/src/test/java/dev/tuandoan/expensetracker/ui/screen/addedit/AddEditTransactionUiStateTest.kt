@@ -283,6 +283,23 @@ class AddEditTransactionUiStateTest {
     }
 
     @Test
+    fun hasUnsavedChanges_editMode_tripRemoved_true() {
+        val original = TestData.sampleExpenseTransaction.copy(tripId = 1L)
+        val state =
+            AddEditTransactionUiState(
+                originalTransaction = original,
+                type = original.type,
+                amountText = "50000",
+                selectedCategory = original.category,
+                timestamp = original.timestamp,
+                note = original.note ?: "",
+                currencyCode = original.currencyCode,
+                selectedTrip = null,
+            )
+        assertTrue(state.hasUnsavedChanges)
+    }
+
+    @Test
     fun hasUnsavedChanges_editMode_foreignAmountChanged_true() {
         val original = TestData.sampleExpenseTransaction.copy(tripId = 1L, amountForeignMinor = 100L)
         val state =
