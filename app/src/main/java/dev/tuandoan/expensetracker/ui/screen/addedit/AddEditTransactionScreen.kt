@@ -884,6 +884,9 @@ private fun ForeignAmountField(
     onImeNext: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    // foreignCurrencyCode is always a valid SupportedCurrencies entry here —
+    // CreateEditTripViewModel.validate() enforces this at trip-creation time.
+    // The default() fallback is a defensive guard; it should never be reached.
     val foreignCurrency =
         SupportedCurrencies.byCode(foreignCurrencyCode) ?: SupportedCurrencies.default()
     val isError =
