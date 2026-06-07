@@ -693,6 +693,8 @@ class SummaryViewModelTest {
             note: String?,
             timestamp: Long,
             currencyCode: String,
+            tripId: Long?,
+            amountForeignMinor: Long?,
         ): Long = 1L
 
         override suspend fun updateTransaction(transaction: Transaction) {}

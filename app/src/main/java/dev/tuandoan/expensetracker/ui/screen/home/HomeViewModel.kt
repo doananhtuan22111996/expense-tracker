@@ -418,6 +418,8 @@ class HomeViewModel
                         note = transaction.note,
                         timestamp = transaction.timestamp,
                         currencyCode = transaction.currencyCode,
+                        tripId = transaction.tripId,
+                        amountForeignMinor = transaction.amountForeignMinor,
                     )
                     _uiState.value = _uiState.value.copy(lastDeletedTransaction = null)
                 } catch (e: Exception) {

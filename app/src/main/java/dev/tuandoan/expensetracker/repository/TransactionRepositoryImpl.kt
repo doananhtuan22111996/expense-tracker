@@ -65,6 +65,8 @@ class TransactionRepositoryImpl
             note: String?,
             timestamp: Long,
             currencyCode: String,
+            tripId: Long?,
+            amountForeignMinor: Long?,
         ): Long {
             val insertedId =
                 withContext(ioDispatcher) {
@@ -79,6 +81,8 @@ class TransactionRepositoryImpl
                             timestamp = timestamp,
                             createdAt = now,
                             updatedAt = now,
+                            tripId = tripId,
+                            amountForeignMinor = amountForeignMinor,
                         )
                     transactionDao.insert(entity)
                 }

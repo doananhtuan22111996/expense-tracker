@@ -1289,6 +1289,8 @@ class HomeViewModelTest {
             note: String?,
             timestamp: Long,
             currencyCode: String,
+            tripId: Long?,
+            amountForeignMinor: Long?,
         ): Long {
             addedTransactions.add(
                 mapOf(

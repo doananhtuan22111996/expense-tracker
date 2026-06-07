@@ -157,6 +157,15 @@ class AddEditTransactionViewModel
 
             _uiState.value = state.copy(isLoading = true, errorMessage = null)
 
+            val trip = state.selectedTrip
+            val tripId = trip?.id
+            val amountForeignMinor =
+                if (state.isForeignCurrencyMode) {
+                    AmountFormatter.parseAmount(state.amountForeignText)
+                } else {
+                    null
+                }
+
             viewModelScope.launch {
                 try {
                     if (isEditMode) {
@@ -179,6 +188,8 @@ class AddEditTransactionViewModel
                                 note = state.note.ifBlank { null },
                                 timestamp = state.timestamp,
                                 updatedAt = timeProvider.currentTimeMillis(),
+                                tripId = tripId,
+                                amountForeignMinor = amountForeignMinor,
                             )
                         transactionRepository.updateTransaction(updatedTransaction)
                     } else {
@@ -190,6 +201,8 @@ class AddEditTransactionViewModel
                             note = state.note.ifBlank { null },
                             timestamp = state.timestamp,
                             currencyCode = state.currencyCode,
+                            tripId = tripId,
+                            amountForeignMinor = amountForeignMinor,
                         )
                         // PRD FR-A6: fire transaction_added only for the add path,
                         // not for updates — edits don't create new transactions.
@@ -226,6 +239,14 @@ class AddEditTransactionViewModel
                         // Load existing transaction
                         val transaction = transactionRepository.getTransaction(transactionId)
                         if (transaction != null) {
+                            val existingTrip =
+                                transaction.tripId?.let {
+                                    try {
+                                        tripRepository.getTripById(it)
+                                    } catch (_: Exception) {
+                                        null
+                                    }
+                                }
                             _uiState.value =
                                 _uiState.value.copy(
                                     originalTransaction = transaction,
@@ -235,6 +256,16 @@ class AddEditTransactionViewModel
                                     timestamp = transaction.timestamp,
                                     note = transaction.note ?: "",
                                     currencyCode = transaction.currencyCode,
+                                    selectedTrip = existingTrip,
+                                    amountForeignText =
+                                        transaction.amountForeignMinor
+                                            ?.toString()
+                                            ?: "",
+                                    rateOverrideText =
+                                        existingTrip
+                                            ?.foreignToHomeRate
+                                            ?.let { formatRate(it) }
+                                            ?: "",
                                 )
                             loadCategories(transaction.type)
                         } else {
