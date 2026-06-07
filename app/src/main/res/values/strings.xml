@@ -764,4 +764,13 @@
     <string name="trip_chip_foreign_badge">%1$s · %2$s</string>
     <string name="a11y_trip_chip_none">No trip attached. Double-tap to attach a trip.</string>
     <string name="a11y_trip_chip_attached">Trip: %1$s. Double-tap to change.</string>
+
+    <!-- Foreign-currency sub-form in Add/Edit Transaction (T3.5) -->
+    <string name="label_foreign_amount">Amount in %1$s</string>
+    <string name="hint_foreign_amount_example">e.g. 100</string>
+    <string name="label_rate_override">Rate: 1 %1$s =</string>
+    <string name="hint_rate_override">e.g. 165</string>
+    <string name="helper_rate_override">%1$s → %2$s conversion rate for this transaction</string>
+    <string name="error_foreign_amount_invalid">Enter a positive foreign amount</string>
+    <string name="error_rate_invalid">Enter a positive rate</string>
 </resources>

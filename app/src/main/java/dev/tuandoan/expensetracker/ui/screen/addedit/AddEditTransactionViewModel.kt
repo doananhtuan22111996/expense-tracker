@@ -97,7 +97,26 @@ class AddEditTransactionViewModel
         }
 
         fun onTripSelected(trip: Trip?) {
-            _uiState.value = _uiState.value.copy(selectedTrip = trip)
+            val rateDefault =
+                trip
+                    ?.foreignToHomeRate
+                    ?.let { formatRate(it) }
+                    ?: ""
+            _uiState.value =
+                _uiState.value.copy(
+                    selectedTrip = trip,
+                    // Seed rate from trip; clear foreign amount so the user re-enters it
+                    amountForeignText = "",
+                    rateOverrideText = rateDefault,
+                )
+        }
+
+        fun onForeignAmountChanged(text: String) {
+            _uiState.value = _uiState.value.copy(amountForeignText = text)
+        }
+
+        fun onRateOverrideChanged(text: String) {
+            _uiState.value = _uiState.value.copy(rateOverrideText = text)
         }
 
         fun onBackPressed() {
@@ -287,8 +306,17 @@ class AddEditTransactionViewModel
 
         override fun onCleared() {
             super.onCleared()
-            // Ensure category loading job is cancelled when ViewModel is destroyed
             categoryLoadingJob?.cancel()
+        }
+
+        companion object {
+            /** Format a rate Double for display; strips trailing zeros. */
+            fun formatRate(rate: Double): String =
+                if (rate == rate.toLong().toDouble()) {
+                    rate.toLong().toString()
+                } else {
+                    rate.toString()
+                }
         }
     }
 
@@ -299,6 +327,8 @@ data class AddEditTransactionUiState(
     val categories: List<Category> = emptyList(),
     val selectedCategory: Category? = null,
     val selectedTrip: Trip? = null,
+    val amountForeignText: String = "",
+    val rateOverrideText: String = "",
     val timestamp: Long = System.currentTimeMillis(),
     val note: String = "",
     val currencyCode: String = SupportedCurrencies.default().code,
@@ -306,11 +336,21 @@ data class AddEditTransactionUiState(
     val errorMessage: UiText? = null,
     val showDiscardDialog: Boolean = false,
 ) {
+    /** True when the selected trip tracks a foreign currency. */
+    val isForeignCurrencyMode: Boolean
+        get() = !selectedTrip?.foreignCurrencyCode.isNullOrBlank()
+
     val isFormValid: Boolean
-        get() =
-            amountText.isNotBlank() &&
-                selectedCategory != null &&
-                AmountFormatter.parseAmount(amountText)?.let { it > 0 } == true
+        get() {
+            if (amountText.isBlank()) return false
+            if (selectedCategory == null) return false
+            if (AmountFormatter.parseAmount(amountText)?.let { it > 0 } != true) return false
+            if (isForeignCurrencyMode) {
+                if (AmountFormatter.parseAmount(amountForeignText)?.let { it > 0 } != true) return false
+                if (parseRate(rateOverrideText) == null) return false
+            }
+            return true
+        }
 
     val hasUnsavedChanges: Boolean
         get() {
@@ -328,7 +368,11 @@ data class AddEditTransactionUiState(
                     currencyCode != original.currencyCode
             }
             // Add mode: any user input counts as dirty
-            return amountText.isNotBlank() || note.isNotBlank() || selectedCategory != null || selectedTrip != null
+            return amountText.isNotBlank() ||
+                note.isNotBlank() ||
+                selectedCategory != null ||
+                selectedTrip != null ||
+                amountForeignText.isNotBlank()
         }
 
     val isSaveEnabled: Boolean
@@ -339,3 +383,20 @@ data class AddEditTransactionUiState(
             return originalTransaction == null || hasUnsavedChanges
         }
 }
+
+/**
+ * Parses a user-entered rate string (digits + optional comma/dot separator).
+ * Returns null if blank or non-positive.
+ */
+fun parseRate(text: String): Double? =
+    try {
+        val normalised = text.replace(',', '.')
+        if (normalised.isBlank()) {
+            null
+        } else {
+            val v = normalised.toDouble()
+            if (v > 0.0) v else null
+        }
+    } catch (_: NumberFormatException) {
+        null
+    }

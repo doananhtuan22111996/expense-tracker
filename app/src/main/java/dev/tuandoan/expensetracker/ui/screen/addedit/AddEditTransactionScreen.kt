@@ -272,6 +272,21 @@ private fun TransactionForm(
         modifier = modifier,
         verticalArrangement = Arrangement.spacedBy(DesignSystemSpacing.large),
     ) {
+        // Trip selection — top so foreign-currency sub-form appears right after Amount
+        TripChip(
+            selectedTrip = uiState.selectedTrip,
+            onClick = { showTripPicker = true },
+        )
+
+        if (showTripPicker) {
+            TripPickerBottomSheet(
+                sheetState = tripPickerSheetState,
+                selectedTripId = uiState.selectedTrip?.id,
+                onTripSelected = viewModel::onTripSelected,
+                onDismiss = { showTripPicker = false },
+            )
+        }
+
         // Amount (primary field — first for fastest input)
         val currency = SupportedCurrencies.byCode(uiState.currencyCode) ?: SupportedCurrencies.default()
         val amountPlaceholder =
@@ -345,6 +360,24 @@ private fun TransactionForm(
             )
         }
 
+        // Foreign-currency sub-form — shown only when the selected trip tracks a foreign currency
+        if (uiState.isForeignCurrencyMode) {
+            val foreignCode = uiState.selectedTrip?.foreignCurrencyCode ?: ""
+            ForeignAmountField(
+                foreignAmountText = uiState.amountForeignText,
+                foreignCurrencyCode = foreignCode,
+                onForeignAmountChanged = viewModel::onForeignAmountChanged,
+                onImeNext = { focusManager.moveFocus(FocusDirection.Down) },
+            )
+            RateOverrideField(
+                rateText = uiState.rateOverrideText,
+                foreignCode = foreignCode,
+                homeCode = uiState.currencyCode,
+                onRateChanged = viewModel::onRateOverrideChanged,
+                onImeDone = { focusManager.clearFocus() },
+            )
+        }
+
         // Transaction Type
         TransactionTypeSelector(
             selectedType = uiState.type,
@@ -369,21 +402,6 @@ private fun TransactionForm(
             timestamp = uiState.timestamp,
             onDateSelected = viewModel::onDateSelected,
         )
-
-        // Trip Selection
-        TripChip(
-            selectedTrip = uiState.selectedTrip,
-            onClick = { showTripPicker = true },
-        )
-
-        if (showTripPicker) {
-            TripPickerBottomSheet(
-                sheetState = tripPickerSheetState,
-                selectedTripId = uiState.selectedTrip?.id,
-                onTripSelected = viewModel::onTripSelected,
-                onDismiss = { showTripPicker = false },
-            )
-        }
 
         // Note - Optional field with lower visual priority
         Column(verticalArrangement = Arrangement.spacedBy(DesignSystemSpacing.xs)) {
@@ -855,6 +873,128 @@ private fun EnhancedDateSelector(
                 },
             )
         }
+    }
+}
+
+@Composable
+private fun ForeignAmountField(
+    foreignAmountText: String,
+    foreignCurrencyCode: String,
+    onForeignAmountChanged: (String) -> Unit,
+    onImeNext: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    // foreignCurrencyCode is always a valid SupportedCurrencies entry here —
+    // CreateEditTripViewModel.validate() enforces this at trip-creation time.
+    // The default() fallback is a defensive guard; it should never be reached.
+    val foreignCurrency =
+        SupportedCurrencies.byCode(foreignCurrencyCode) ?: SupportedCurrencies.default()
+    val isError =
+        foreignAmountText.isNotBlank() &&
+            AmountFormatter.parseAmount(foreignAmountText)?.let { it > 0 } != true
+    Column(
+        modifier = modifier.fillMaxWidth(),
+        verticalArrangement = Arrangement.spacedBy(DesignSystemSpacing.xs),
+    ) {
+        Text(
+            text = stringResource(R.string.label_foreign_amount, foreignCurrencyCode),
+            style = MaterialTheme.typography.titleMedium,
+            color = MaterialTheme.colorScheme.onSurface,
+        )
+        OutlinedTextField(
+            value = foreignAmountText,
+            onValueChange = { input ->
+                onForeignAmountChanged(input.replace("[^0-9]".toRegex(), ""))
+            },
+            label = { Text(stringResource(R.string.label_foreign_amount, foreignCurrencyCode)) },
+            placeholder = { Text(stringResource(R.string.hint_foreign_amount_example)) },
+            suffix = {
+                Text(
+                    foreignCurrency.symbol,
+                    style = MaterialTheme.typography.titleMedium,
+                    color = MaterialTheme.colorScheme.primary,
+                )
+            },
+            visualTransformation =
+                remember(foreignCurrencyCode) {
+                    CurrencyAmountVisualTransformation(foreignCurrencyCode)
+                },
+            isError = isError,
+            supportingText = {
+                if (isError) {
+                    Text(
+                        stringResource(R.string.error_foreign_amount_invalid),
+                        color = MaterialTheme.colorScheme.error,
+                    )
+                }
+            },
+            keyboardOptions =
+                KeyboardOptions(
+                    keyboardType = KeyboardType.Number,
+                    imeAction = ImeAction.Next,
+                ),
+            keyboardActions = KeyboardActions(onNext = { onImeNext() }),
+            modifier = Modifier.fillMaxWidth(),
+            textStyle = MaterialTheme.typography.headlineSmall,
+        )
+    }
+}
+
+@Composable
+private fun RateOverrideField(
+    rateText: String,
+    foreignCode: String,
+    homeCode: String,
+    onRateChanged: (String) -> Unit,
+    onImeDone: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val isError = rateText.isNotBlank() && parseRate(rateText) == null
+    Column(
+        modifier = modifier.fillMaxWidth(),
+        verticalArrangement = Arrangement.spacedBy(DesignSystemSpacing.xs),
+    ) {
+        Text(
+            text = stringResource(R.string.label_rate_override, foreignCode),
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        OutlinedTextField(
+            value = rateText,
+            onValueChange = { input ->
+                onRateChanged(input.replace("[^0-9.,]".toRegex(), ""))
+            },
+            placeholder = { Text(stringResource(R.string.hint_rate_override)) },
+            suffix = {
+                Text(
+                    homeCode,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            },
+            isError = isError,
+            supportingText = {
+                if (isError) {
+                    Text(
+                        stringResource(R.string.error_rate_invalid),
+                        color = MaterialTheme.colorScheme.error,
+                    )
+                } else {
+                    Text(
+                        stringResource(R.string.helper_rate_override, foreignCode, homeCode),
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+            },
+            keyboardOptions =
+                KeyboardOptions(
+                    keyboardType = KeyboardType.Decimal,
+                    imeAction = ImeAction.Done,
+                ),
+            keyboardActions = KeyboardActions(onDone = { onImeDone() }),
+            singleLine = true,
+            modifier = Modifier.fillMaxWidth(),
+        )
     }
 }
 

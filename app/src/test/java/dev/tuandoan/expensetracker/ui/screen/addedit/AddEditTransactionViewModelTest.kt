@@ -657,6 +657,46 @@ class AddEditTransactionViewModelTest {
         }
 
     @Test
+    fun onTripSelected_withForeignRate_seedsRateOverrideText() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            fakeCategoryRepo.categoriesToEmit = listOf(TestData.expenseCategory)
+            val viewModel = createViewModel()
+            advanceUntilIdle()
+
+            val fxTrip =
+                trip(id = 5L, name = "Tokyo").copy(
+                    foreignCurrencyCode = "JPY",
+                    foreignToHomeRate = 165.0,
+                )
+            viewModel.onTripSelected(fxTrip)
+
+            assertEquals("165", viewModel.uiState.value.rateOverrideText)
+            assertEquals("", viewModel.uiState.value.amountForeignText)
+        }
+
+    @Test
+    fun onTripSelected_null_clearsForeignFields() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            fakeCategoryRepo.categoriesToEmit = listOf(TestData.expenseCategory)
+            val fxTrip =
+                trip(id = 5L, name = "Tokyo").copy(
+                    foreignCurrencyCode = "JPY",
+                    foreignToHomeRate = 165.0,
+                )
+            fakeTripRepo.activeTrips = listOf(fxTrip)
+            val viewModel = createViewModel()
+            advanceUntilIdle()
+
+            // Start with an fx trip selected and some foreign input
+            viewModel.onForeignAmountChanged("1000")
+            viewModel.onTripSelected(null)
+
+            assertNull(viewModel.uiState.value.selectedTrip)
+            assertEquals("", viewModel.uiState.value.rateOverrideText)
+            assertEquals("", viewModel.uiState.value.amountForeignText)
+        }
+
+    @Test
     fun onTripSelected_updatesSelectedTrip() =
         runTest(mainDispatcherRule.testDispatcher) {
             fakeCategoryRepo.categoriesToEmit = listOf(TestData.expenseCategory)
