@@ -401,14 +401,17 @@ data class AddEditTransactionUiState(
                     selectedCategory?.id != original.category.id ||
                     timestamp != original.timestamp ||
                     currentNote != original.note ||
-                    currencyCode != original.currencyCode
+                    currencyCode != original.currencyCode ||
+                    selectedTrip?.id != original.tripId ||
+                    AmountFormatter.parseAmount(amountForeignText) != original.amountForeignMinor
             }
             // Add mode: any user input counts as dirty
             return amountText.isNotBlank() ||
                 note.isNotBlank() ||
                 selectedCategory != null ||
                 selectedTrip != null ||
-                amountForeignText.isNotBlank()
+                amountForeignText.isNotBlank() ||
+                rateOverrideText.isNotBlank()
         }
 
     val isSaveEnabled: Boolean
