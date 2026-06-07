@@ -741,6 +741,29 @@ class AddEditTransactionViewModelTest {
         }
 
     @Test
+    fun saveTransaction_fxTrip_missingForeignAmount_setsError() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            fakeCategoryRepo.categoriesToEmit = listOf(TestData.expenseCategory)
+            val fxTrip =
+                trip(id = 3L, name = "Tokyo").copy(
+                    foreignCurrencyCode = "JPY",
+                    foreignToHomeRate = 165.0,
+                )
+            fakeTripRepo.activeTrips = listOf(fxTrip)
+            val viewModel = createViewModel()
+            advanceUntilIdle()
+
+            viewModel.onAmountChanged("165000")
+            viewModel.onCategorySelected(TestData.expenseCategory)
+            // amountForeignText intentionally left blank
+            viewModel.saveTransaction { }
+            advanceUntilIdle()
+
+            assertFalse(fakeTransactionRepo.addCalled)
+            assertNotNull(viewModel.uiState.value.errorMessage)
+        }
+
+    @Test
     fun saveTransaction_homeCurrencyTrip_addPath_tripIdSetForeignMinorNull() =
         runTest(mainDispatcherRule.testDispatcher) {
             fakeCategoryRepo.categoriesToEmit = listOf(TestData.expenseCategory)

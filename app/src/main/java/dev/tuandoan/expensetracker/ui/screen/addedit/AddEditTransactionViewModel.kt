@@ -155,16 +155,19 @@ class AddEditTransactionViewModel
                 return
             }
 
-            _uiState.value = state.copy(isLoading = true, errorMessage = null)
-
-            val trip = state.selectedTrip
-            val tripId = trip?.id
+            val tripId = state.selectedTrip?.id
             val amountForeignMinor =
                 if (state.isForeignCurrencyMode) {
                     AmountFormatter.parseAmount(state.amountForeignText)
                 } else {
                     null
                 }
+            if (state.isForeignCurrencyMode && amountForeignMinor == null) {
+                _uiState.value = state.copy(errorMessage = UiText.StringResource(R.string.error_invalid_amount))
+                return
+            }
+
+            _uiState.value = state.copy(isLoading = true, errorMessage = null)
 
             viewModelScope.launch {
                 try {
@@ -261,6 +264,8 @@ class AddEditTransactionViewModel
                                         transaction.amountForeignMinor
                                             ?.toString()
                                             ?: "",
+                                    // Rate override is not persisted on the transaction; seed from
+                                    // trip's stored rate (ADR-002 — original override unrecoverable).
                                     rateOverrideText =
                                         existingTrip
                                             ?.foreignToHomeRate
