@@ -58,6 +58,7 @@ fun CurrencyDropdown(
     @StringRes titleRes: Int = R.string.label_currency,
     disabledCodes: Set<String> = emptySet(),
     disabledMarkerSuffix: String? = null,
+    enabled: Boolean = true,
 ) {
     var expanded by remember { mutableStateOf(false) }
     val allCurrencies = remember { SupportedCurrencies.all() }
@@ -85,6 +86,7 @@ fun CurrencyDropdown(
                 hapticFeedback.performHapticFeedback(HapticFeedbackType.LongPress)
                 expanded = true
             },
+            enabled = enabled,
             modifier =
                 Modifier
                     .fillMaxWidth()

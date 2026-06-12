@@ -63,7 +63,6 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import dev.tuandoan.expensetracker.R
 import dev.tuandoan.expensetracker.core.util.EpochDayConverters
-import dev.tuandoan.expensetracker.domain.model.SupportedCurrencies
 import dev.tuandoan.expensetracker.ui.component.CurrencyDropdown
 import dev.tuandoan.expensetracker.ui.theme.DesignSystemElevation
 import dev.tuandoan.expensetracker.ui.theme.DesignSystemSpacing
@@ -203,18 +202,13 @@ fun CreateEditTripScreen(
                 if (uiState.isForeignCurrency) {
                     val homeMarkerSuffix =
                         " · ${stringResource(R.string.create_edit_trip_home_marker)}"
-                    val lockedCodes =
-                        if (uiState.isFxCurrencyLocked) {
-                            SupportedCurrencies.all().map { it.code }.toSet()
-                        } else {
-                            setOf(uiState.homeCurrencyCode)
-                        }
                     CurrencyDropdown(
                         selectedCurrencyCode = uiState.foreignCurrencyCode,
                         onCurrencySelected = viewModel::onForeignCurrencyChange,
                         titleRes = R.string.create_edit_trip_label_foreign_currency,
-                        disabledCodes = lockedCodes,
+                        disabledCodes = setOf(uiState.homeCurrencyCode),
                         disabledMarkerSuffix = homeMarkerSuffix,
+                        enabled = !uiState.isFxCurrencyLocked,
                     )
                     if (uiState.isFxCurrencyLocked) {
                         Text(
