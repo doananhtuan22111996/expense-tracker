@@ -238,6 +238,8 @@ private class FakeDetailTripRepository(
         MutableStateFlow(emptyList())
 
     override fun observeTripTransactions(tripId: Long): Flow<List<Transaction>> = MutableStateFlow(emptyList())
+
+    override fun observeHasForeignTransactions(tripId: Long): Flow<Boolean> = MutableStateFlow(false)
 }
 
 private class FakeDetailCategoryRepository : CategoryRepository {

@@ -14,6 +14,8 @@ fun TransactionEntity.toBackupDto(): BackupTransactionDto =
         timestamp = timestamp,
         createdAt = createdAt,
         updatedAt = updatedAt,
+        tripId = tripId,
+        amountForeignMinor = amountForeignMinor,
     )
 
 fun BackupTransactionDto.toEntity(): TransactionEntity =
@@ -27,4 +29,6 @@ fun BackupTransactionDto.toEntity(): TransactionEntity =
         timestamp = timestamp,
         createdAt = createdAt,
         updatedAt = updatedAt,
+        tripId = tripId,
+        amountForeignMinor = amountForeignMinor,
     )

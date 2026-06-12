@@ -440,6 +440,93 @@ class CreateEditTripViewModelTest {
             assertTrue(repo.updatedTrips.isEmpty())
             assertTrue(repo.createdTrips.isEmpty())
         }
+
+    // T3.7 — FX currency lock guard
+
+    @Test
+    fun editMode_hasForeignTransactions_isFxCurrencyLockedTrue() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            val trip =
+                Trip(
+                    id = 5L,
+                    name = "Tokyo",
+                    destination = null,
+                    startDateEpochDay = today,
+                    endDateEpochDay = today + 7,
+                    foreignCurrencyCode = "JPY",
+                    foreignToHomeRate = 165.0,
+                    originalCategoryId = null,
+                    originalCategoryNameSnapshot = null,
+                    originalCategoryIconSnapshot = null,
+                    originalCategoryColorSnapshot = null,
+                    createdAt = 0L,
+                )
+            repo.tripsById[5L] = trip
+            repo.hasForeignTransactionsByTripId[5L] = true
+
+            val vm = newVm(tripId = 5L)
+            advanceUntilIdle()
+
+            assertTrue(vm.uiState.value.isFxCurrencyLocked)
+        }
+
+    @Test
+    fun editMode_noForeignTransactions_isFxCurrencyLockedFalse() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            val trip =
+                Trip(
+                    id = 6L,
+                    name = "Paris",
+                    destination = null,
+                    startDateEpochDay = today,
+                    endDateEpochDay = today + 5,
+                    foreignCurrencyCode = "EUR",
+                    foreignToHomeRate = 26000.0,
+                    originalCategoryId = null,
+                    originalCategoryNameSnapshot = null,
+                    originalCategoryIconSnapshot = null,
+                    originalCategoryColorSnapshot = null,
+                    createdAt = 0L,
+                )
+            repo.tripsById[6L] = trip
+            repo.hasForeignTransactionsByTripId[6L] = false
+
+            val vm = newVm(tripId = 6L)
+            advanceUntilIdle()
+
+            assertFalse(vm.uiState.value.isFxCurrencyLocked)
+        }
+
+    @Test
+    fun editMode_fxCurrencyLocked_onForeignCurrencyChange_isIgnored() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            val trip =
+                Trip(
+                    id = 7L,
+                    name = "Tokyo",
+                    destination = null,
+                    startDateEpochDay = today,
+                    endDateEpochDay = today + 7,
+                    foreignCurrencyCode = "JPY",
+                    foreignToHomeRate = 165.0,
+                    originalCategoryId = null,
+                    originalCategoryNameSnapshot = null,
+                    originalCategoryIconSnapshot = null,
+                    originalCategoryColorSnapshot = null,
+                    createdAt = 0L,
+                )
+            repo.tripsById[7L] = trip
+            repo.hasForeignTransactionsByTripId[7L] = true
+
+            val vm = newVm(tripId = 7L)
+            advanceUntilIdle()
+
+            vm.onForeignCurrencyChange("USD")
+            advanceUntilIdle()
+
+            // Should remain JPY — change was blocked by the lock
+            assertEquals("JPY", vm.uiState.value.foreignCurrencyCode)
+        }
 }
 
 private class FakeCreateEditTripRepository : TripRepository {
@@ -448,6 +535,7 @@ private class FakeCreateEditTripRepository : TripRepository {
     val updatedTrips = mutableListOf<Trip>()
     var failOnCreate = false
     var failOnGetTripById = false
+    val hasForeignTransactionsByTripId = mutableMapOf<Long, Boolean>()
 
     data class CreatedTrip(
         val name: String,
@@ -509,4 +597,7 @@ private class FakeCreateEditTripRepository : TripRepository {
         MutableStateFlow(emptyList())
 
     override fun observeTripTransactions(tripId: Long): Flow<List<Transaction>> = MutableStateFlow(emptyList())
+
+    override fun observeHasForeignTransactions(tripId: Long): Flow<Boolean> =
+        MutableStateFlow(hasForeignTransactionsByTripId[tripId] ?: false)
 }

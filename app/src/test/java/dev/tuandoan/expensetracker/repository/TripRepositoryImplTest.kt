@@ -789,4 +789,6 @@ private class FakeTripQueriesDao : TripQueriesDao {
 
     override fun observeCategoryBreakdown(tripId: Long): Flow<List<TripCategorySumRow>> =
         MutableStateFlow(breakdownByTrip[tripId] ?: emptyList())
+
+    override fun observeHasForeignTransactions(tripId: Long): Flow<Boolean> = MutableStateFlow(false)
 }

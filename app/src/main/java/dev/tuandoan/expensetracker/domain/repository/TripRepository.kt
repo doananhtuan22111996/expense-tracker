@@ -88,4 +88,10 @@ interface TripRepository {
 
     /** All transactions belonging to the trip, newest first. */
     fun observeTripTransactions(tripId: Long): Flow<List<Transaction>>
+
+    /**
+     * Emits `true` when the trip has at least one transaction with a recorded foreign
+     * amount. Used by the edit form to lock the [foreignCurrencyCode] picker (T3.7).
+     */
+    fun observeHasForeignTransactions(tripId: Long): Flow<Boolean>
 }

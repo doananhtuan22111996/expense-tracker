@@ -6,6 +6,7 @@ import dev.tuandoan.expensetracker.data.backup.model.BackupGoldHoldingDto
 import dev.tuandoan.expensetracker.data.backup.model.BackupGoldPriceDto
 import dev.tuandoan.expensetracker.data.backup.model.BackupRecurringTransactionDto
 import dev.tuandoan.expensetracker.data.backup.model.BackupTransactionDto
+import dev.tuandoan.expensetracker.data.backup.model.BackupTripDto
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -19,6 +20,7 @@ class BackupAssembler
             recurringTransactions: List<BackupRecurringTransactionDto> = emptyList(),
             goldHoldings: List<BackupGoldHoldingDto> = emptyList(),
             goldPrices: List<BackupGoldPriceDto> = emptyList(),
+            trips: List<BackupTripDto> = emptyList(),
             defaultCurrencyCode: String,
             appVersionName: String,
             createdAtEpochMs: Long,
@@ -34,5 +36,6 @@ class BackupAssembler
                 recurringTransactions = recurringTransactions.sortedBy { it.id },
                 goldHoldings = goldHoldings.sortedBy { it.id },
                 goldPrices = goldPrices.sortedBy { "${it.type}:${it.unit}" },
+                trips = trips.sortedBy { it.id },
             )
     }

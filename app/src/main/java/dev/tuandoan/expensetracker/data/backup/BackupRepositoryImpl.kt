@@ -10,12 +10,14 @@ import dev.tuandoan.expensetracker.data.backup.model.BackupGoldHoldingDto
 import dev.tuandoan.expensetracker.data.backup.model.BackupGoldPriceDto
 import dev.tuandoan.expensetracker.data.backup.model.BackupRecurringTransactionDto
 import dev.tuandoan.expensetracker.data.backup.model.BackupTransactionDto
+import dev.tuandoan.expensetracker.data.backup.model.BackupTripDto
 import dev.tuandoan.expensetracker.data.database.TransactionRunner
 import dev.tuandoan.expensetracker.data.database.dao.CategoryDao
 import dev.tuandoan.expensetracker.data.database.dao.GoldHoldingDao
 import dev.tuandoan.expensetracker.data.database.dao.GoldPriceDao
 import dev.tuandoan.expensetracker.data.database.dao.RecurringTransactionDao
 import dev.tuandoan.expensetracker.data.database.dao.TransactionDao
+import dev.tuandoan.expensetracker.data.database.dao.TripDao
 import dev.tuandoan.expensetracker.data.export.CsvExporter
 import dev.tuandoan.expensetracker.data.export.TransactionWithCategory
 import dev.tuandoan.expensetracker.domain.analytics.Analytics
@@ -48,6 +50,7 @@ class BackupRepositoryImpl
         private val recurringTransactionDao: RecurringTransactionDao,
         private val goldHoldingDao: GoldHoldingDao,
         private val goldPriceDao: GoldPriceDao,
+        private val tripDao: TripDao,
         private val backupValidator: BackupValidator,
         private val backupSerializer: BackupSerializer,
         private val backupAssembler: BackupAssembler,
@@ -170,6 +173,7 @@ class BackupRepositoryImpl
                 val recurring: List<BackupRecurringTransactionDto>,
                 val goldHoldings: List<BackupGoldHoldingDto>,
                 val goldPrices: List<BackupGoldPriceDto>,
+                val trips: List<BackupTripDto>,
             )
 
             val result =
@@ -180,6 +184,7 @@ class BackupRepositoryImpl
                         recurring = recurringTransactionDao.getAllList().map { it.toBackupDto() },
                         goldHoldings = goldHoldingDao.getAll().map { it.toBackupDto() },
                         goldPrices = goldPriceDao.getAll().map { it.toBackupDto() },
+                        trips = tripDao.getAllList().map { it.toBackupDto() },
                     )
                 }
 
@@ -191,6 +196,7 @@ class BackupRepositoryImpl
                 recurringTransactions = result.recurring,
                 goldHoldings = result.goldHoldings,
                 goldPrices = result.goldPrices,
+                trips = result.trips,
                 defaultCurrencyCode = defaultCurrencyCode,
                 appVersionName = AppInfo.getVersionName(),
                 createdAtEpochMs = timeProvider.currentTimeMillis(),
@@ -212,9 +218,11 @@ class BackupRepositoryImpl
             val recurringEntities = document.recurringTransactions.map { it.toEntity() }
             val goldHoldingEntities = document.goldHoldings.map { it.toEntity() }
             val goldPriceEntities = document.goldPrices.map { it.toEntity() }
+            val tripEntities = document.trips.map { it.toEntity() }
             val total =
                 categoryEntities.size + transactionEntities.size +
-                    recurringEntities.size + goldHoldingEntities.size + goldPriceEntities.size
+                    recurringEntities.size + goldHoldingEntities.size + goldPriceEntities.size +
+                    tripEntities.size
             onProgress(BackupProgress(current = 0, total = total))
 
             // Once the destructive deleteAll() begins, the transaction must run to
@@ -223,6 +231,7 @@ class BackupRepositoryImpl
                 transactionRunner.runInTransaction {
                     recurringTransactionDao.deleteAll()
                     transactionDao.deleteAll()
+                    tripDao.deleteAll()
                     categoryDao.deleteAll()
                     if (goldHoldingEntities.isNotEmpty()) {
                         goldHoldingDao.deleteAll()
@@ -231,6 +240,13 @@ class BackupRepositoryImpl
 
                     var inserted = categoryEntities.size
                     onProgress(BackupProgress(current = inserted, total = total))
+
+                    // Trips must be inserted before transactions so trip_id FK references resolve.
+                    if (tripEntities.isNotEmpty()) {
+                        tripDao.insertAll(tripEntities)
+                        inserted += tripEntities.size
+                        onProgress(BackupProgress(current = inserted, total = total))
+                    }
 
                     for (batch in transactionEntities.chunked(BATCH_SIZE)) {
                         transactionDao.insertAll(batch)
@@ -266,6 +282,7 @@ class BackupRepositoryImpl
                 transactionCount = document.transactions.size,
                 goldHoldingCount = document.goldHoldings.size,
                 goldPriceCount = document.goldPrices.size,
+                tripCount = document.trips.size,
             )
         }
 

@@ -150,6 +150,11 @@ class TripRepositoryImpl
             return tripQueriesDao.observeCategoryBreakdown(tripId)
         }
 
+        override fun observeHasForeignTransactions(tripId: Long): Flow<Boolean> {
+            requirePositiveTripId(tripId)
+            return tripQueriesDao.observeHasForeignTransactions(tripId)
+        }
+
         override fun observeTripTransactions(tripId: Long): Flow<List<Transaction>> {
             requirePositiveTripId(tripId)
             return transactionDao

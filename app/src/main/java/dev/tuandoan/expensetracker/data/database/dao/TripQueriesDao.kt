@@ -55,4 +55,15 @@ interface TripQueriesDao {
         """,
     )
     fun observeCategoryBreakdown(tripId: Long): Flow<List<TripCategorySumRow>>
+
+    /**
+     * Emits `true` when at least one transaction linked to this trip has a non-null
+     * `amount_foreign_minor`. Used by [CreateEditTripViewModel] to lock the foreign-
+     * currency code picker — changing the code after FX amounts are stored would make
+     * the recorded amounts uninterpretable (T3.7).
+     */
+    @Query(
+        "SELECT COUNT(*) > 0 FROM transactions WHERE trip_id = :tripId AND amount_foreign_minor IS NOT NULL",
+    )
+    fun observeHasForeignTransactions(tripId: Long): Flow<Boolean>
 }
