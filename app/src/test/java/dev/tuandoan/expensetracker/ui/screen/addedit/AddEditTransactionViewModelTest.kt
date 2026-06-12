@@ -722,6 +722,159 @@ class AddEditTransactionViewModelTest {
             assertNull(viewModel.uiState.value.selectedTrip)
         }
 
+    // T3.6 save path: trip_id + amount_foreign_minor
+
+    @Test
+    fun saveTransaction_noTrip_addPath_tripIdAndForeignMinorAreNull() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            fakeCategoryRepo.categoriesToEmit = listOf(TestData.expenseCategory)
+            val viewModel = createViewModel()
+            advanceUntilIdle()
+
+            viewModel.onAmountChanged("50000")
+            viewModel.onCategorySelected(TestData.expenseCategory)
+            viewModel.saveTransaction { }
+            advanceUntilIdle()
+
+            assertNull(fakeTransactionRepo.lastAddedTripId)
+            assertNull(fakeTransactionRepo.lastAddedAmountForeignMinor)
+        }
+
+    @Test
+    fun saveTransaction_fxTrip_missingForeignAmount_setsError() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            fakeCategoryRepo.categoriesToEmit = listOf(TestData.expenseCategory)
+            val fxTrip =
+                trip(id = 3L, name = "Tokyo").copy(
+                    foreignCurrencyCode = "JPY",
+                    foreignToHomeRate = 165.0,
+                )
+            fakeTripRepo.activeTrips = listOf(fxTrip)
+            val viewModel = createViewModel()
+            advanceUntilIdle()
+
+            viewModel.onAmountChanged("165000")
+            viewModel.onCategorySelected(TestData.expenseCategory)
+            // amountForeignText intentionally left blank
+            viewModel.saveTransaction { }
+            advanceUntilIdle()
+
+            assertFalse(fakeTransactionRepo.addCalled)
+            assertNotNull(viewModel.uiState.value.errorMessage)
+        }
+
+    @Test
+    fun saveTransaction_homeCurrencyTrip_addPath_tripIdSetForeignMinorNull() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            fakeCategoryRepo.categoriesToEmit = listOf(TestData.expenseCategory)
+            val homeTrip = trip(id = 7L, name = "Local")
+            fakeTripRepo.activeTrips = listOf(homeTrip)
+            val viewModel = createViewModel()
+            advanceUntilIdle()
+
+            viewModel.onAmountChanged("50000")
+            viewModel.onCategorySelected(TestData.expenseCategory)
+            viewModel.saveTransaction { }
+            advanceUntilIdle()
+
+            assertEquals(7L, fakeTransactionRepo.lastAddedTripId)
+            assertNull(fakeTransactionRepo.lastAddedAmountForeignMinor)
+        }
+
+    @Test
+    fun saveTransaction_fxTrip_addPath_tripIdAndForeignMinorBothSet() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            fakeCategoryRepo.categoriesToEmit = listOf(TestData.expenseCategory)
+            val fxTrip =
+                trip(id = 3L, name = "Tokyo").copy(
+                    foreignCurrencyCode = "JPY",
+                    foreignToHomeRate = 165.0,
+                )
+            fakeTripRepo.activeTrips = listOf(fxTrip)
+            val viewModel = createViewModel()
+            advanceUntilIdle()
+
+            viewModel.onAmountChanged("165000") // 165000 VND
+            viewModel.onCategorySelected(TestData.expenseCategory)
+            viewModel.onForeignAmountChanged("1000") // 1000 JPY
+            viewModel.onRateOverrideChanged("165")
+            viewModel.saveTransaction { }
+            advanceUntilIdle()
+
+            assertEquals(3L, fakeTransactionRepo.lastAddedTripId)
+            assertEquals(1000L, fakeTransactionRepo.lastAddedAmountForeignMinor)
+        }
+
+    @Test
+    fun saveTransaction_fxTrip_editPath_updatedTransactionHasTripIdAndForeignMinor() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            val fxTrip =
+                trip(id = 3L, name = "Tokyo").copy(
+                    foreignCurrencyCode = "JPY",
+                    foreignToHomeRate = 165.0,
+                )
+            val existingTx =
+                TestData.sampleExpenseTransaction.copy(
+                    tripId = 3L,
+                    amountForeignMinor = 800L,
+                )
+            fakeTransactionRepo.transactionById = existingTx
+            fakeTripRepo.tripsById = mapOf(3L to fxTrip)
+            fakeCategoryRepo.categoriesToEmit = listOf(TestData.expenseCategory)
+            val viewModel = createViewModel(transactionId = 1L)
+            advanceUntilIdle()
+
+            viewModel.onAmountChanged("165000")
+            viewModel.onForeignAmountChanged("1000")
+            viewModel.saveTransaction { }
+            advanceUntilIdle()
+
+            val updated = fakeTransactionRepo.lastUpdatedTransaction
+            assertNotNull(updated)
+            assertEquals(3L, updated!!.tripId)
+            assertEquals(1000L, updated.amountForeignMinor)
+        }
+
+    @Test
+    fun editMode_withFxTrip_loadsSelectedTripAndForeignAmountFromTransaction() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            val fxTrip =
+                trip(id = 3L, name = "Tokyo").copy(
+                    foreignCurrencyCode = "JPY",
+                    foreignToHomeRate = 165.0,
+                )
+            val existingTx =
+                TestData.sampleExpenseTransaction.copy(
+                    tripId = 3L,
+                    amountForeignMinor = 500L,
+                )
+            fakeTransactionRepo.transactionById = existingTx
+            fakeTripRepo.tripsById = mapOf(3L to fxTrip)
+            fakeCategoryRepo.categoriesToEmit = listOf(TestData.expenseCategory)
+
+            val viewModel = createViewModel(transactionId = 1L)
+            advanceUntilIdle()
+
+            val state = viewModel.uiState.value
+            assertEquals(fxTrip, state.selectedTrip)
+            assertEquals("500", state.amountForeignText)
+            assertEquals("165", state.rateOverrideText)
+        }
+
+    @Test
+    fun editMode_tripIdNotFound_selectedTripIsNull() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            val existingTx = TestData.sampleExpenseTransaction.copy(tripId = 99L)
+            fakeTransactionRepo.transactionById = existingTx
+            // tripsById is empty — trip 99 not found
+            fakeCategoryRepo.categoriesToEmit = listOf(TestData.expenseCategory)
+
+            val viewModel = createViewModel(transactionId = 1L)
+            advanceUntilIdle()
+
+            assertNull(viewModel.uiState.value.selectedTrip)
+        }
+
     // Fake implementations
 
     private class FakeTransactionRepository : TransactionRepository {
@@ -731,6 +884,8 @@ class AddEditTransactionViewModelTest {
         var updateCalled = false
         var lastUpdatedTransaction: Transaction? = null
         var lastAddedCurrencyCode: String? = null
+        var lastAddedTripId: Long? = null
+        var lastAddedAmountForeignMinor: Long? = null
 
         override fun observeTransactions(
             from: Long,
@@ -745,10 +900,14 @@ class AddEditTransactionViewModelTest {
             note: String?,
             timestamp: Long,
             currencyCode: String,
+            tripId: Long?,
+            amountForeignMinor: Long?,
         ): Long {
             if (shouldThrowOnSave) throw RuntimeException("Save failed")
             addCalled = true
             lastAddedCurrencyCode = currencyCode
+            lastAddedTripId = tripId
+            lastAddedAmountForeignMinor = amountForeignMinor
             return 1L
         }
 
@@ -830,6 +989,7 @@ class AddEditTransactionViewModelTest {
     private class FakeAddEditTripRepository : TripRepository {
         var activeTrips: List<Trip> = emptyList()
         var shouldThrowOnObserve = false
+        var tripsById: Map<Long, Trip> = emptyMap()
 
         override fun observeTrips(filter: TripFilter): Flow<List<Trip>> {
             if (shouldThrowOnObserve) return flow { throw RuntimeException("trip repo failure") }
@@ -843,7 +1003,7 @@ class AddEditTransactionViewModelTest {
 
         override fun observeTripById(id: Long): Flow<Trip?> = error("not used")
 
-        override suspend fun getTripById(id: Long): Trip? = error("not used")
+        override suspend fun getTripById(id: Long): Trip? = tripsById[id]
 
         override suspend fun createTrip(
             name: String,

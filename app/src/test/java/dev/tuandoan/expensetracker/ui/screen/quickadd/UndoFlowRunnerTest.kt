@@ -215,6 +215,8 @@ private class RecordingTransactionRepository : TransactionRepository {
         note: String?,
         timestamp: Long,
         currencyCode: String,
+        tripId: Long?,
+        amountForeignMinor: Long?,
     ): Long = throw UnsupportedOperationException()
 
     override suspend fun updateTransaction(transaction: Transaction) = throw UnsupportedOperationException()

@@ -251,6 +251,100 @@ class AddEditTransactionUiStateTest {
         assertFalse(state.hasUnsavedChanges)
     }
 
+    @Test
+    fun hasUnsavedChanges_editMode_tripChanged_true() {
+        val original = TestData.sampleExpenseTransaction.copy(tripId = 1L)
+        val state =
+            AddEditTransactionUiState(
+                originalTransaction = original,
+                type = original.type,
+                amountText = "50000",
+                selectedCategory = original.category,
+                timestamp = original.timestamp,
+                note = original.note ?: "",
+                currencyCode = original.currencyCode,
+                selectedTrip =
+                    Trip(
+                        id = 2L, // different trip
+                        name = "Paris",
+                        destination = null,
+                        startDateEpochDay = 0L,
+                        endDateEpochDay = 5L,
+                        foreignCurrencyCode = null,
+                        foreignToHomeRate = null,
+                        originalCategoryId = null,
+                        originalCategoryNameSnapshot = null,
+                        originalCategoryIconSnapshot = null,
+                        originalCategoryColorSnapshot = null,
+                        createdAt = 0L,
+                    ),
+            )
+        assertTrue(state.hasUnsavedChanges)
+    }
+
+    @Test
+    fun hasUnsavedChanges_editMode_tripRemoved_true() {
+        val original = TestData.sampleExpenseTransaction.copy(tripId = 1L)
+        val state =
+            AddEditTransactionUiState(
+                originalTransaction = original,
+                type = original.type,
+                amountText = "50000",
+                selectedCategory = original.category,
+                timestamp = original.timestamp,
+                note = original.note ?: "",
+                currencyCode = original.currencyCode,
+                selectedTrip = null,
+            )
+        assertTrue(state.hasUnsavedChanges)
+    }
+
+    @Test
+    fun hasUnsavedChanges_editMode_foreignAmountChanged_true() {
+        val original = TestData.sampleExpenseTransaction.copy(tripId = 1L, amountForeignMinor = 100L)
+        val state =
+            AddEditTransactionUiState(
+                originalTransaction = original,
+                type = original.type,
+                amountText = "50000",
+                selectedCategory = original.category,
+                timestamp = original.timestamp,
+                note = original.note ?: "",
+                currencyCode = original.currencyCode,
+                selectedTrip =
+                    Trip(
+                        id = 1L,
+                        name = "Tokyo",
+                        destination = null,
+                        startDateEpochDay = 0L,
+                        endDateEpochDay = 5L,
+                        foreignCurrencyCode = "JPY",
+                        foreignToHomeRate = 165.0,
+                        originalCategoryId = null,
+                        originalCategoryNameSnapshot = null,
+                        originalCategoryIconSnapshot = null,
+                        originalCategoryColorSnapshot = null,
+                        createdAt = 0L,
+                    ),
+                amountForeignText = "200", // changed from 100
+            )
+        assertTrue(state.hasUnsavedChanges)
+    }
+
+    @Test
+    fun hasUnsavedChanges_addMode_rateOnlyEntered_true() {
+        val state =
+            AddEditTransactionUiState(
+                originalTransaction = null,
+                amountText = "",
+                selectedCategory = null,
+                note = "",
+                selectedTrip = null,
+                rateOverrideText = "165",
+            )
+        assertTrue(state.hasUnsavedChanges)
+    }
+
     // isSaveEnabled tests
 
     @Test

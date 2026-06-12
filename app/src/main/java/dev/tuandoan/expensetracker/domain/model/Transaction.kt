@@ -10,6 +10,8 @@ data class Transaction(
     val timestamp: Long,
     val createdAt: Long,
     val updatedAt: Long,
+    val tripId: Long? = null,
+    val amountForeignMinor: Long? = null,
 )
 
 enum class TransactionType {

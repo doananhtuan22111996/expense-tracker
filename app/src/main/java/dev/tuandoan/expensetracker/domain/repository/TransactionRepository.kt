@@ -21,6 +21,8 @@ interface TransactionRepository {
         note: String?,
         timestamp: Long,
         currencyCode: String = SupportedCurrencies.default().code,
+        tripId: Long? = null,
+        amountForeignMinor: Long? = null,
     ): Long
 
     suspend fun updateTransaction(transaction: Transaction)

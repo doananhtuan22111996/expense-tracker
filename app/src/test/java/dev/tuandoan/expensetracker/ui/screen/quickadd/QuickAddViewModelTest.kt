@@ -415,6 +415,8 @@ private class FakeTransactionRepository : TransactionRepository {
         note: String?,
         timestamp: Long,
         currencyCode: String,
+        tripId: Long?,
+        amountForeignMinor: Long?,
     ): Long {
         if (suspendAdd) {
             // Record the call synchronously then hang — simulates a long-running
