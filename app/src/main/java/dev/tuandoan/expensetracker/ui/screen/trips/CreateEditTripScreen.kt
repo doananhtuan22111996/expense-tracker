@@ -197,6 +197,7 @@ fun CreateEditTripScreen(
                 ForeignCurrencyToggle(
                     enabled = uiState.isForeignCurrency,
                     onChange = viewModel::onToggleForeignCurrency,
+                    toggleEnabled = !uiState.isFxCurrencyLocked,
                 )
 
                 if (uiState.isForeignCurrency) {
@@ -407,6 +408,7 @@ private fun DateRangeRow(
 private fun ForeignCurrencyToggle(
     enabled: Boolean,
     onChange: (Boolean) -> Unit,
+    toggleEnabled: Boolean = true,
 ) {
     Row(
         modifier = Modifier.fillMaxWidth(),
@@ -424,7 +426,7 @@ private fun ForeignCurrencyToggle(
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }
-        Switch(checked = enabled, onCheckedChange = onChange)
+        Switch(checked = enabled, onCheckedChange = onChange, enabled = toggleEnabled)
     }
 }
 
