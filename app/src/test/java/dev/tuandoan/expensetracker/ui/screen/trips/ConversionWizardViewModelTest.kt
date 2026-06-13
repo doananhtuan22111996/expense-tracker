@@ -116,6 +116,16 @@ class ConversionWizardViewModelTest {
         }
 
     @Test
+    fun init_repositoryThrows_setsDoneTrue() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            categoryRepo.throwOnGetCategory = true
+            val vm = newVm()
+            advanceUntilIdle()
+            assertTrue(vm.uiState.value.done)
+            assertFalse(vm.uiState.value.isLoading)
+        }
+
+    @Test
     fun init_incomeCategoryId_setsDoneTrue() =
         runTest(mainDispatcherRule.testDispatcher) {
             categoryRepo.categories[TestData.incomeCategory.id] = TestData.incomeCategory
@@ -308,6 +318,7 @@ class ConversionWizardViewModelTest {
     private inner class FakeWizardCategoryRepository : CategoryRepository {
         val categories = mutableMapOf<Long, Category>()
         var allExpense: List<Category> = emptyList()
+        var throwOnGetCategory = false
 
         override fun observeCategories(type: TransactionType) =
             MutableStateFlow(
@@ -317,7 +328,10 @@ class ConversionWizardViewModelTest {
                 },
             )
 
-        override suspend fun getCategory(id: Long): Category? = categories[id]
+        override suspend fun getCategory(id: Long): Category? {
+            if (throwOnGetCategory) throw IllegalStateException("forced failure")
+            return categories[id]
+        }
 
         override suspend fun createCategory(
             name: String,

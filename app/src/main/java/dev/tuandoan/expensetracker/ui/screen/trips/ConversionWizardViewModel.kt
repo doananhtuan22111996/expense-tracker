@@ -290,7 +290,7 @@ class ConversionWizardViewModel
                     _uiState.update {
                         it.copy(
                             isLoading = false,
-                            errorMessage = UiText.StringResource(R.string.error_load_category),
+                            done = true,
                         )
                     }
                 }
