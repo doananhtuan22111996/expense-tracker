@@ -542,6 +542,22 @@
     <string name="a11y_loading_categories">Loading categories</string>
     <string name="a11y_edit_category_name">Edit %1$s</string>
     <string name="a11y_delete_category_name">Delete %1$s</string>
+    <string name="a11y_more_options">More options</string>
+    <string name="convert_to_trip">Convert to Trip</string>
+
+    <!-- Conversion wizard (T4.1 / T4.2) -->
+    <string name="conversion_wizard_step1_title">Step 1: Trip details</string>
+    <string name="conversion_wizard_step2_title">Step 2: Sort transactions</string>
+    <string name="conversion_wizard_step3_title">Step 3: Review</string>
+    <string name="conversion_wizard_step1_subtitle">Converting "%1$s" to a trip. Set the trip details below.</string>
+    <string name="conversion_wizard_step1_placeholder">Trip metadata form — coming in T4.3</string>
+    <string name="conversion_wizard_step2_subtitle">%1$d transactions to sort. Migrate or skip each one.</string>
+    <string name="conversion_wizard_step2_placeholder">Per-row decision list — coming in T4.4</string>
+    <string name="conversion_wizard_step3_subtitle">%1$d transactions will migrate, %2$d will stay.</string>
+    <string name="conversion_wizard_source_will_be_deleted">Source category will be deleted after commit.</string>
+    <string name="conversion_wizard_source_will_be_kept">Source category will be kept (some transactions were skipped).</string>
+    <string name="conversion_wizard_next">Next</string>
+    <string name="conversion_wizard_commit">Commit</string>
 
     <!-- Accessibility: Recurring -->
     <string name="a11y_add_recurring">Add recurring transaction</string>
@@ -721,6 +737,11 @@
     <string name="error_trip_fx_code_same_as_home">Foreign currency must differ from home currency</string>
     <string name="error_trip_fx_rate_invalid">Enter a positive rate</string>
     <string name="error_trip_not_found">Trip not found</string>
+    <string name="error_trip_name_required">Trip name is required</string>
+    <string name="error_trip_dates_required">Select a start and end date</string>
+    <string name="error_trip_end_before_start">End date must be on or after start date</string>
+    <string name="error_trip_rate_invalid">Enter a positive rate</string>
+    <string name="error_load_category">Failed to load category</string>
     <string name="a11y_create_edit_trip_dates">Trip dates: %1$s. Double-tap to change.</string>
 
     <!-- Trip detail (T2.6) -->

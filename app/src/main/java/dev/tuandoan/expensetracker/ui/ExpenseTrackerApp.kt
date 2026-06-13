@@ -30,6 +30,7 @@ import dev.tuandoan.expensetracker.ui.screen.gold.AddEditGoldHoldingScreen
 import dev.tuandoan.expensetracker.ui.screen.onboarding.OnboardingScreen
 import dev.tuandoan.expensetracker.ui.screen.recurring.AddEditRecurringTransactionScreen
 import dev.tuandoan.expensetracker.ui.screen.recurring.RecurringTransactionsScreen
+import dev.tuandoan.expensetracker.ui.screen.trips.ConversionWizardScreen
 import dev.tuandoan.expensetracker.ui.screen.trips.CreateEditTripScreen
 import dev.tuandoan.expensetracker.ui.screen.trips.TripDetailScreen
 import dev.tuandoan.expensetracker.ui.screen.trips.TripsScreen
@@ -177,6 +178,31 @@ fun ExpenseTrackerApp(
 
         composable(ModalDestination.Categories.route) {
             CategoriesScreen(
+                onNavigateBack = {
+                    if (!navController.popBackStack()) {
+                        navController.navigate("Home") {
+                            popUpTo(0) { inclusive = true }
+                        }
+                    }
+                },
+                onNavigateToConversionWizard = { categoryId ->
+                    navController.navigate(ModalNavRoutes.convertCategoryToTripRoute(categoryId))
+                },
+                viewModel = hiltViewModel(),
+            )
+        }
+
+        composable(
+            route = "${ModalDestination.ConvertCategoryToTrip.route}/{categoryId}",
+            arguments =
+                listOf(
+                    navArgument("categoryId") {
+                        type = NavType.LongType
+                        defaultValue = 0L
+                    },
+                ),
+        ) {
+            ConversionWizardScreen(
                 onNavigateBack = {
                     if (!navController.popBackStack()) {
                         navController.navigate("Home") {

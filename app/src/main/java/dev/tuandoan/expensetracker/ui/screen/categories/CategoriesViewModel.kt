@@ -109,6 +109,14 @@ class CategoriesViewModel
             }
         }
 
+        fun onConvertToTripRequested(categoryId: Long) {
+            _uiState.update { it.copy(convertToTripCategoryId = categoryId) }
+        }
+
+        fun onConvertToTripConsumed() {
+            _uiState.update { it.copy(convertToTripCategoryId = null) }
+        }
+
         fun onErrorDismissed() {
             _uiState.update { it.copy(error = null) }
         }
@@ -152,6 +160,7 @@ data class CategoriesUiState(
     val error: UiText? = null,
     val selectedTab: TransactionType = TransactionType.EXPENSE,
     val pendingDeleteId: Long? = null,
+    val convertToTripCategoryId: Long? = null,
 ) {
     val visibleExpenseCategories: List<CategoryWithCount>
         get() = expenseCategories.filter { it.category.id != pendingDeleteId }
