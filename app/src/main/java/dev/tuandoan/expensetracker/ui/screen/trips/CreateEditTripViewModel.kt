@@ -14,6 +14,8 @@ import dev.tuandoan.expensetracker.domain.repository.TripRepository
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.launchIn
+import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import java.time.Clock
@@ -54,7 +56,19 @@ class CreateEditTripViewModel
         val uiState: StateFlow<CreateEditTripUiState> = _uiState.asStateFlow()
 
         init {
-            if (isEditMode) loadExisting() else loadDefaults()
+            if (isEditMode) {
+                loadExisting()
+                observeFxLock()
+            } else {
+                loadDefaults()
+            }
+        }
+
+        private fun observeFxLock() {
+            tripRepository
+                .observeHasForeignTransactions(tripId)
+                .onEach { locked -> _uiState.update { it.copy(isFxCurrencyLocked = locked) } }
+                .launchIn(viewModelScope)
         }
 
         fun onNameChange(value: String) {
@@ -93,6 +107,7 @@ class CreateEditTripViewModel
 
         fun onForeignCurrencyChange(code: String) {
             if (SupportedCurrencies.byCode(code) == null) return
+            if (_uiState.value.isFxCurrencyLocked) return
             _uiState.update { it.copy(foreignCurrencyCode = code) }
         }
 
@@ -248,6 +263,13 @@ data class CreateEditTripUiState(
      * static `isEditMode` so the screen can read both sources consistently.
      */
     val isEditMode: Boolean = false,
+    /**
+     * True when at least one transaction linked to this trip has a recorded
+     * `amountForeignMinor`. When locked, the foreign-currency code picker is
+     * disabled — changing the code would make existing FX amounts uninterpretable
+     * (T3.7 / ADR-002).
+     */
+    val isFxCurrencyLocked: Boolean = false,
 ) {
     val nameError: UiText?
         get() =

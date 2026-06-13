@@ -28,6 +28,7 @@ data class BackupRestoreResult(
     val transactionCount: Int,
     val goldHoldingCount: Int = 0,
     val goldPriceCount: Int = 0,
+    val tripCount: Int = 0,
 )
 
 data class BackupProgress(

@@ -714,6 +714,7 @@
     <string name="create_edit_trip_hint_rate">e.g. 165</string>
     <string name="create_edit_trip_rate_helper">1 %1$s = ? %2$s</string>
     <string name="create_edit_trip_home_marker">Home</string>
+    <string name="create_edit_trip_fx_currency_locked">Currency locked — existing foreign-currency transactions</string>
     <string name="create_edit_trip_conversion_origin_notice">Created from a category — name, icon, and color are preserved for revert.</string>
     <string name="error_trip_name_too_long">Name must be %1$d characters or fewer</string>
     <string name="error_trip_dates_invalid">End date must be on or after start date</string>

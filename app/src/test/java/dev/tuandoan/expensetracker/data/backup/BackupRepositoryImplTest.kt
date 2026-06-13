@@ -6,6 +6,7 @@ import dev.tuandoan.expensetracker.data.database.dao.GoldHoldingDao
 import dev.tuandoan.expensetracker.data.database.dao.GoldPriceDao
 import dev.tuandoan.expensetracker.data.database.dao.RecurringTransactionDao
 import dev.tuandoan.expensetracker.data.database.dao.TransactionDao
+import dev.tuandoan.expensetracker.data.database.dao.TripDao
 import dev.tuandoan.expensetracker.data.database.entity.CategoryEntity
 import dev.tuandoan.expensetracker.data.database.entity.CategoryWithCountRow
 import dev.tuandoan.expensetracker.data.database.entity.CurrencyCategorySumRow
@@ -14,6 +15,7 @@ import dev.tuandoan.expensetracker.data.database.entity.GoldHoldingEntity
 import dev.tuandoan.expensetracker.data.database.entity.GoldPriceEntity
 import dev.tuandoan.expensetracker.data.database.entity.RecurringTransactionEntity
 import dev.tuandoan.expensetracker.data.database.entity.TransactionEntity
+import dev.tuandoan.expensetracker.data.database.entity.TripEntity
 import dev.tuandoan.expensetracker.data.export.CsvExporter
 import dev.tuandoan.expensetracker.domain.analytics.NoOpAnalytics
 import dev.tuandoan.expensetracker.domain.crash.NoOpCrashReporter
@@ -41,6 +43,7 @@ class BackupRepositoryImplTest {
     private lateinit var fakeRecurringDao: FakeRecurringTransactionDao
     private lateinit var fakeGoldHoldingDao: FakeGoldHoldingDao
     private lateinit var fakeGoldPriceDao: FakeGoldPriceDao
+    private lateinit var fakeTripDao: FakeTripDao
     private lateinit var fakeTimeProvider: FakeTimeProvider
     private lateinit var fakeCurrencyPreferenceRepo: FakeCurrencyPreferenceRepository
     private lateinit var validator: BackupValidator
@@ -56,6 +59,7 @@ class BackupRepositoryImplTest {
         fakeRecurringDao = FakeRecurringTransactionDao()
         fakeGoldHoldingDao = FakeGoldHoldingDao()
         fakeGoldPriceDao = FakeGoldPriceDao()
+        fakeTripDao = FakeTripDao()
         fakeTimeProvider = FakeTimeProvider()
         fakeCurrencyPreferenceRepo = FakeCurrencyPreferenceRepository()
         validator = BackupValidator()
@@ -69,6 +73,7 @@ class BackupRepositoryImplTest {
                 recurringTransactionDao = fakeRecurringDao,
                 goldHoldingDao = fakeGoldHoldingDao,
                 goldPriceDao = fakeGoldPriceDao,
+                tripDao = fakeTripDao,
                 backupValidator = validator,
                 backupSerializer = serializer,
                 backupAssembler = assembler,
@@ -804,6 +809,108 @@ class BackupRepositoryImplTest {
             assertEquals(1, result.transactionCount)
         }
 
+    // Trip round-trip tests (T3.6 + backup)
+
+    @Test
+    fun exportBackupJson_includesTripsWithFxFields() =
+        runTest {
+            fakeTripDao.trips.add(
+                TripEntity(
+                    id = 1L,
+                    name = "Tokyo",
+                    destination = "Japan",
+                    startDateEpochDay = 20000L,
+                    endDateEpochDay = 20007L,
+                    foreignCurrencyCode = "JPY",
+                    foreignToHomeRate = 165.0,
+                    originalCategoryId = null,
+                    originalCategoryNameSnapshot = null,
+                    originalCategoryIconSnapshot = null,
+                    originalCategoryColorSnapshot = null,
+                    createdAt = TestData.FIXED_TIME,
+                ),
+            )
+
+            val json = repository.exportBackupJson()
+            val document = serializer.decode(json)!!
+
+            assertEquals(1, document.trips.size)
+            val dto = document.trips[0]
+            assertEquals(1L, dto.id)
+            assertEquals("Tokyo", dto.name)
+            assertEquals("Japan", dto.destination)
+            assertEquals("JPY", dto.foreignCurrencyCode)
+            assertEquals(165.0, dto.foreignToHomeRate!!, 0.001)
+        }
+
+    @Test
+    fun exportBackupJson_transactionWithTripFields_roundTripsCorrectly() =
+        runTest {
+            fakeCategoryDao.allCategories.add(TestData.expenseCategoryEntity)
+            fakeTransactionDao.allTransactions.add(
+                TransactionEntity(
+                    id = 1L,
+                    type = 0,
+                    amount = 165000L,
+                    currencyCode = "VND",
+                    categoryId = TestData.expenseCategoryEntity.id,
+                    note = null,
+                    timestamp = TestData.FIXED_TIME,
+                    createdAt = TestData.FIXED_TIME,
+                    updatedAt = TestData.FIXED_TIME,
+                    tripId = 1L,
+                    amountForeignMinor = 1000L,
+                ),
+            )
+
+            val json = repository.exportBackupJson()
+            val document = serializer.decode(json)!!
+
+            val txDto = document.transactions[0]
+            assertEquals(1L, txDto.tripId)
+            assertEquals(1000L, txDto.amountForeignMinor)
+        }
+
+    @Test
+    fun importBackupJson_tripsInsertedBeforeTransactions() =
+        runTest {
+            val tripEntity =
+                TripEntity(
+                    id = 2L,
+                    name = "Paris",
+                    destination = null,
+                    startDateEpochDay = 20000L,
+                    endDateEpochDay = 20005L,
+                    foreignCurrencyCode = null,
+                    foreignToHomeRate = null,
+                    originalCategoryId = null,
+                    originalCategoryNameSnapshot = null,
+                    originalCategoryIconSnapshot = null,
+                    originalCategoryColorSnapshot = null,
+                    createdAt = TestData.FIXED_TIME,
+                )
+            fakeTripDao.trips.add(tripEntity)
+
+            val json = repository.exportBackupJson()
+            fakeTripDao.trips.clear()
+
+            val result = repository.importBackupJson(json)
+
+            assertEquals(1, result.tripCount)
+            assertEquals(1, fakeTripDao.trips.size)
+            assertEquals("Paris", fakeTripDao.trips[0].name)
+        }
+
+    @Test
+    fun importBackupJson_legacyBackupWithoutTrips_importsCleanly() =
+        runTest {
+            // A backup document with no trips field (default emptyList) should import without error.
+            val json = serializer.encode(TestData.sampleBackupDocument)
+            val result = repository.importBackupJson(json)
+
+            assertEquals(0, result.tripCount)
+        }
+
     // Fakes
 
     private inner class FakeTransactionRunner : TransactionRunner {
@@ -1029,6 +1136,43 @@ class BackupRepositoryImplTest {
 
         override suspend fun deleteAll() {
             allRecurring.clear()
+        }
+    }
+
+    private inner class FakeTripDao : TripDao {
+        val trips = mutableListOf<TripEntity>()
+
+        override fun observeAll() = MutableStateFlow(trips.toList())
+
+        override fun observeActive(nowEpochDay: Long) = MutableStateFlow(emptyList<TripEntity>())
+
+        override fun observeUpcoming(nowEpochDay: Long) = MutableStateFlow(emptyList<TripEntity>())
+
+        override fun observePast(nowEpochDay: Long) = MutableStateFlow(emptyList<TripEntity>())
+
+        override fun observeById(id: Long) = MutableStateFlow(trips.find { it.id == id })
+
+        override suspend fun getById(id: Long) = trips.find { it.id == id }
+
+        override suspend fun insert(entity: TripEntity): Long {
+            trips.add(entity)
+            return entity.id
+        }
+
+        override suspend fun update(entity: TripEntity) {}
+
+        override suspend fun deleteById(id: Long) {
+            trips.removeAll { it.id == id }
+        }
+
+        override suspend fun getAllList() = trips.toList()
+
+        override suspend fun insertAll(list: List<TripEntity>) {
+            trips.addAll(list)
+        }
+
+        override suspend fun deleteAll() {
+            trips.clear()
         }
     }
 }

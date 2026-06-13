@@ -318,4 +318,6 @@ private class PickerFakeTripRepository : TripRepository {
     override fun observeTripCategoryBreakdown(tripId: Long): Flow<List<TripCategorySumRow>> = error("not used")
 
     override fun observeTripTransactions(tripId: Long): Flow<List<Transaction>> = error("not used")
+
+    override fun observeHasForeignTransactions(tripId: Long): Flow<Boolean> = error("not used")
 }
