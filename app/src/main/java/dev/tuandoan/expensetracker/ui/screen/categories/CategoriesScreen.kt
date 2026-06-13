@@ -22,11 +22,15 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.FlightTakeoff
 import androidx.compose.material.icons.filled.Lock
+import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
@@ -73,6 +77,7 @@ import dev.tuandoan.expensetracker.ui.theme.DesignSystemSpacing
 @Composable
 fun CategoriesScreen(
     onNavigateBack: () -> Unit,
+    onNavigateToConversionWizard: (categoryId: Long) -> Unit,
     viewModel: CategoriesViewModel,
     modifier: Modifier = Modifier,
 ) {
@@ -105,6 +110,13 @@ fun CategoriesScreen(
         uiState.error?.let {
             snackbarHostState.showSnackbar(it.asString(context))
             viewModel.onErrorDismissed()
+        }
+    }
+
+    LaunchedEffect(uiState.convertToTripCategoryId) {
+        uiState.convertToTripCategoryId?.let { categoryId ->
+            onNavigateToConversionWizard(categoryId)
+            viewModel.onConvertToTripConsumed()
         }
     }
 
@@ -215,6 +227,14 @@ fun CategoriesScreen(
                                 categoryWithCount = categoryWithCount,
                                 onEdit = { editingCategory = categoryWithCount },
                                 onDelete = { deletingCategory = categoryWithCount },
+                                onConvertToTrip =
+                                    if (categoryWithCount.category.type == TransactionType.EXPENSE &&
+                                        categoryWithCount.transactionCount > 0
+                                    ) {
+                                        { viewModel.onConvertToTripRequested(categoryWithCount.category.id) }
+                                    } else {
+                                        null
+                                    },
                             )
                         }
                     }
@@ -278,12 +298,14 @@ private fun CategoryRow(
     categoryWithCount: CategoryWithCount,
     onEdit: () -> Unit,
     onDelete: () -> Unit,
+    onConvertToTrip: (() -> Unit)?,
     modifier: Modifier = Modifier,
 ) {
     val category = categoryWithCount.category
     val colorValue =
         AVAILABLE_COLORS.firstOrNull { it.first == category.colorKey }?.second
             ?: MaterialTheme.colorScheme.primary
+    var menuExpanded by remember { mutableStateOf(false) }
 
     Card(
         modifier = modifier.fillMaxWidth(),
@@ -366,6 +388,35 @@ private fun CategoryRow(
                         contentDescription = null,
                         tint = MaterialTheme.colorScheme.error,
                     )
+                }
+                // "Convert to Trip" is only available for EXPENSE categories with ≥1 transaction
+                if (onConvertToTrip != null) {
+                    Box {
+                        IconButton(onClick = { menuExpanded = true }) {
+                            Icon(
+                                imageVector = Icons.Default.MoreVert,
+                                contentDescription = stringResource(R.string.a11y_more_options),
+                            )
+                        }
+                        DropdownMenu(
+                            expanded = menuExpanded,
+                            onDismissRequest = { menuExpanded = false },
+                        ) {
+                            DropdownMenuItem(
+                                text = { Text(stringResource(R.string.convert_to_trip)) },
+                                leadingIcon = {
+                                    Icon(
+                                        imageVector = Icons.Default.FlightTakeoff,
+                                        contentDescription = null,
+                                    )
+                                },
+                                onClick = {
+                                    menuExpanded = false
+                                    onConvertToTrip()
+                                },
+                            )
+                        }
+                    }
                 }
             }
         }
