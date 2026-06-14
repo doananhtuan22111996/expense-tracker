@@ -600,4 +600,7 @@ private class FakeCreateEditTripRepository : TripRepository {
 
     override fun observeHasForeignTransactions(tripId: Long): Flow<Boolean> =
         MutableStateFlow(hasForeignTransactionsByTripId[tripId] ?: false)
+
+    override suspend fun commitConversion(draft: dev.tuandoan.expensetracker.domain.model.ConversionDraft): Long =
+        error("not used")
 }

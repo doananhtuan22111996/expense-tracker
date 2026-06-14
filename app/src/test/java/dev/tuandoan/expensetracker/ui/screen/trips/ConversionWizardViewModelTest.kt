@@ -10,6 +10,7 @@ import dev.tuandoan.expensetracker.domain.model.Transaction
 import dev.tuandoan.expensetracker.domain.model.TransactionType
 import dev.tuandoan.expensetracker.domain.repository.CategoryRepository
 import dev.tuandoan.expensetracker.domain.repository.TransactionRepository
+import dev.tuandoan.expensetracker.domain.repository.TripRepository
 import dev.tuandoan.expensetracker.testutil.FakeCurrencyPreferenceRepository
 import dev.tuandoan.expensetracker.testutil.MainDispatcherRule
 import dev.tuandoan.expensetracker.testutil.TestData
@@ -37,6 +38,7 @@ class ConversionWizardViewModelTest {
     private lateinit var categoryRepo: FakeWizardCategoryRepository
     private lateinit var transactionRepo: FakeWizardTransactionRepository
     private lateinit var currencyRepo: FakeCurrencyPreferenceRepository
+    private lateinit var tripRepo: FakeWizardTripRepository
     private lateinit var clock: Clock
 
     private val today = LocalDate.of(2026, 6, 13).toEpochDay()
@@ -46,6 +48,7 @@ class ConversionWizardViewModelTest {
         categoryRepo = FakeWizardCategoryRepository()
         transactionRepo = FakeWizardTransactionRepository()
         currencyRepo = FakeCurrencyPreferenceRepository(initialCurrency = "VND")
+        tripRepo = FakeWizardTripRepository()
         clock =
             Clock.fixed(
                 LocalDate.of(2026, 6, 13).atStartOfDay().toInstant(ZoneOffset.UTC),
@@ -64,6 +67,7 @@ class ConversionWizardViewModelTest {
             categoryRepository = categoryRepo,
             transactionRepository = transactionRepo,
             currencyPreferenceRepository = currencyRepo,
+            tripRepository = tripRepo,
             clock = clock,
         )
 
@@ -209,7 +213,8 @@ class ConversionWizardViewModelTest {
             advanceUntilIdle()
             vm.onNext() // → RowDecisions
             vm.onNext() // → Preview
-            vm.onNext() // commit stub → done
+            vm.onNext() // commitConversion → done (async)
+            advanceUntilIdle()
             assertTrue(vm.uiState.value.done)
         }
 
@@ -313,6 +318,32 @@ class ConversionWizardViewModelTest {
             assertNotNull(vm.buildDraft())
         }
 
+    // ── commit ───────────────────────────────────────────────────────────────────
+
+    @Test
+    fun commit_success_setsDoneTrue() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            val vm = newVm()
+            advanceUntilIdle()
+            vm.commit()
+            advanceUntilIdle()
+            assertTrue(vm.uiState.value.done)
+            assertFalse(vm.uiState.value.isLoading)
+        }
+
+    @Test
+    fun commit_repositoryThrows_setsErrorMessage() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            tripRepo.throwOnCommit = true
+            val vm = newVm()
+            advanceUntilIdle()
+            vm.commit()
+            advanceUntilIdle()
+            assertFalse(vm.uiState.value.done)
+            assertNotNull(vm.uiState.value.errorMessage)
+            assertFalse(vm.uiState.value.isLoading)
+        }
+
     // ── Fakes ────────────────────────────────────────────────────────────────────
 
     private inner class FakeWizardCategoryRepository : CategoryRepository {
@@ -403,5 +434,55 @@ class ConversionWizardViewModelTest {
             to: Long,
             currencyCode: String,
         ): List<MonthlyBarPoint> = emptyList()
+    }
+
+    private inner class FakeWizardTripRepository : TripRepository {
+        var throwOnCommit = false
+        var lastCommittedDraft: ConversionDraft? = null
+        private var nextTripId = 100L
+
+        override suspend fun commitConversion(draft: ConversionDraft): Long {
+            if (throwOnCommit) throw IllegalStateException("forced commit failure")
+            lastCommittedDraft = draft
+            return nextTripId++
+        }
+
+        override fun observeTrips(filter: dev.tuandoan.expensetracker.domain.model.TripFilter) =
+            MutableStateFlow(emptyList<dev.tuandoan.expensetracker.domain.model.Trip>())
+
+        override fun observeTripById(id: Long) = MutableStateFlow<dev.tuandoan.expensetracker.domain.model.Trip?>(null)
+
+        override suspend fun getTripById(id: Long) = null
+
+        override suspend fun createTrip(
+            name: String,
+            destination: String?,
+            startDateEpochDay: Long,
+            endDateEpochDay: Long,
+            foreignCurrencyCode: String?,
+            foreignToHomeRate: Double?,
+        ) = nextTripId++
+
+        override suspend fun updateTrip(trip: dev.tuandoan.expensetracker.domain.model.Trip) = Unit
+
+        override suspend fun deleteTrip(
+            id: Long,
+            behavior: dev.tuandoan.expensetracker.domain.model.DeleteTripBehavior,
+        ) = Unit
+
+        override fun observeTripTotal(tripId: Long) = MutableStateFlow<Long?>(null)
+
+        override fun observeTripTransactionCount(tripId: Long) = MutableStateFlow(0)
+
+        override fun observeTripDailyTotals(tripId: Long) =
+            MutableStateFlow(emptyList<dev.tuandoan.expensetracker.data.database.entity.DailyTotalRow>())
+
+        override fun observeTripCategoryBreakdown(tripId: Long) =
+            MutableStateFlow(emptyList<dev.tuandoan.expensetracker.data.database.entity.TripCategorySumRow>())
+
+        override fun observeTripTransactions(tripId: Long) =
+            MutableStateFlow(emptyList<dev.tuandoan.expensetracker.domain.model.Transaction>())
+
+        override fun observeHasForeignTransactions(tripId: Long) = MutableStateFlow(false)
     }
 }

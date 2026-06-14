@@ -14,6 +14,7 @@ import dev.tuandoan.expensetracker.domain.model.TransactionType
 import dev.tuandoan.expensetracker.domain.repository.CategoryRepository
 import dev.tuandoan.expensetracker.domain.repository.CurrencyPreferenceRepository
 import dev.tuandoan.expensetracker.domain.repository.TransactionRepository
+import dev.tuandoan.expensetracker.domain.repository.TripRepository
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -70,11 +71,11 @@ data class ConversionWizardUiState(
 }
 
 /**
- * Backs [ConversionWizardScreen] (v3.13.0, T4.2). Three-step wizard:
+ * Backs [ConversionWizardScreen] (v3.13.0, T4.2/T4.6). Three-step wizard:
  * Step 1 — Trip metadata, Step 2 — Per-row decisions, Step 3 — Preview + Commit.
  *
- * Zero DB writes until [commit] is called (T4.6 wires the actual commit path).
- * All state is held in-memory; the wizard is abortable at any point.
+ * Zero DB writes until [commit] is called. All state is held in-memory;
+ * the wizard is abortable at any point.
  */
 @HiltViewModel
 class ConversionWizardViewModel
@@ -84,6 +85,7 @@ class ConversionWizardViewModel
         private val categoryRepository: CategoryRepository,
         private val transactionRepository: TransactionRepository,
         private val currencyPreferenceRepository: CurrencyPreferenceRepository,
+        private val tripRepository: TripRepository,
         clock: Clock,
     ) : ViewModel() {
         private val categoryId: Long = savedStateHandle["categoryId"] ?: 0L
@@ -170,12 +172,26 @@ class ConversionWizardViewModel
             }
         }
 
-        // ── Commit (stub — T4.6 wires the actual DB write) ───────────────────────
+        // ── Commit ───────────────────────────────────────────────────────────────
 
         fun commit() {
-            // T4.6 will replace this with the real commitConversion call.
-            // For now, mark done so the screen pops back.
-            _uiState.update { it.copy(done = true) }
+            val draft = buildDraft() ?: return
+            if (_uiState.value.isLoading) return
+            _uiState.update { it.copy(isLoading = true) }
+            viewModelScope.launch {
+                try {
+                    tripRepository.commitConversion(draft)
+                    _uiState.update { it.copy(isLoading = false, done = true) }
+                } catch (e: Exception) {
+                    if (e is kotlinx.coroutines.CancellationException) throw e
+                    _uiState.update {
+                        it.copy(
+                            isLoading = false,
+                            errorMessage = UiText.StringResource(R.string.error_generic),
+                        )
+                    }
+                }
+            }
         }
 
         fun clearError() {

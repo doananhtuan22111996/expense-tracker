@@ -2,6 +2,7 @@ package dev.tuandoan.expensetracker.domain.repository
 
 import dev.tuandoan.expensetracker.data.database.entity.DailyTotalRow
 import dev.tuandoan.expensetracker.data.database.entity.TripCategorySumRow
+import dev.tuandoan.expensetracker.domain.model.ConversionDraft
 import dev.tuandoan.expensetracker.domain.model.DeleteTripBehavior
 import dev.tuandoan.expensetracker.domain.model.Transaction
 import dev.tuandoan.expensetracker.domain.model.Trip
@@ -12,10 +13,6 @@ import kotlinx.coroutines.flow.Flow
  * Persistence + domain operations for Trips (v3.13.0). All write paths run inside a
  * single `TransactionRunner.runInTransaction` block so revert / delete is atomic per
  * ADR-001.
- *
- * `commitConversion(draft: ConversionDraft)` is deliberately not on this interface yet —
- * it lands with T4.6 (Epic 4 wizard commit) where the per-row migration semantics + the
- * `attachToTrip` DAO helper land together.
  */
 interface TripRepository {
     /** Cold flow of trips matching [filter]. Time-relative filters close over `now`. */
@@ -94,4 +91,19 @@ interface TripRepository {
      * amount. Used by the edit form to lock the [foreignCurrencyCode] picker (T3.7).
      */
     fun observeHasForeignTransactions(tripId: Long): Flow<Boolean>
+
+    /**
+     * Atomic conversion-wizard commit (T4.6). Inside a single DB transaction:
+     * 1. Inserts a new trip row with [ConversionDraft.TripMetadata] and the source
+     *    category snapshot (for ADR-001 REVERT support).
+     * 2. For each [ConversionDraft.RowDecision.Migrate]: calls `migrateToTrip` —
+     *    sets `trip_id`, `category_id = newCategoryId`, `original_category_id`.
+     *    [ConversionDraft.RowDecision.Skip] rows are left untouched.
+     * 3. If [ConversionDraft.SourceDisposition.DELETE]: deletes the source category row.
+     *
+     * Returns the newly created trip id.
+     *
+     * @throws Exception if the DB write fails (caller should map to a UI error state).
+     */
+    suspend fun commitConversion(draft: ConversionDraft): Long
 }
