@@ -482,30 +482,165 @@ private fun RowCategoryPicker(
     }
 }
 
-// ── Step 3 — Preview (stub for T4.5) ─────────────────────────────────────────
+// ── Step 3 — Preview ─────────────────────────────────────────────────────────
 
 @Composable
 private fun WizardStep3PreviewBody(uiState: ConversionWizardUiState) {
-    Column(verticalArrangement = Arrangement.spacedBy(DesignSystemSpacing.medium)) {
-        Text(
-            text =
-                stringResource(
-                    R.string.conversion_wizard_step3_subtitle,
-                    uiState.migratedCount,
-                    uiState.skippedCount,
+    Column(
+        modifier =
+            Modifier
+                .fillMaxSize()
+                .verticalScroll(rememberScrollState()),
+        verticalArrangement = Arrangement.spacedBy(DesignSystemSpacing.large),
+    ) {
+        // Trip summary card
+        PreviewSection(title = stringResource(R.string.conversion_wizard_preview_trip_header)) {
+            PreviewRow(
+                label = stringResource(R.string.conversion_wizard_preview_label_name),
+                value = uiState.tripName,
+            )
+            if (uiState.tripDestination.isNotBlank()) {
+                PreviewRow(
+                    label = stringResource(R.string.conversion_wizard_preview_label_destination),
+                    value = uiState.tripDestination,
+                )
+            }
+            val startDay = uiState.startEpochDay
+            val endDay = uiState.endEpochDay
+            if (startDay != null && endDay != null) {
+                PreviewRow(
+                    label = stringResource(R.string.conversion_wizard_preview_label_dates),
+                    value = tripFormatDateRange(startDay, endDay),
+                )
+            }
+            if (uiState.isForeignCurrency && uiState.foreignCurrencyCode.isNotBlank()) {
+                PreviewRow(
+                    label = stringResource(R.string.conversion_wizard_preview_label_currency),
+                    value =
+                        if (uiState.rateText.isNotBlank()) {
+                            stringResource(
+                                R.string.conversion_wizard_preview_fx_rate,
+                                uiState.foreignCurrencyCode,
+                                uiState.rateText,
+                                uiState.homeCurrencyCode,
+                            )
+                        } else {
+                            uiState.foreignCurrencyCode
+                        },
+                )
+            }
+        }
+
+        // Transaction decisions summary
+        PreviewSection(title = stringResource(R.string.conversion_wizard_preview_decisions_header)) {
+            if (uiState.migratedCount > 0) {
+                PreviewRow(
+                    label =
+                        stringResource(
+                            R.string.conversion_wizard_preview_label_migrate,
+                            uiState.migratedCount,
+                        ),
+                    value = uiState.tripName,
+                )
+            }
+            if (uiState.skippedCount > 0) {
+                PreviewRow(
+                    label =
+                        stringResource(
+                            R.string.conversion_wizard_preview_label_skip,
+                            uiState.skippedCount,
+                        ),
+                    value = uiState.sourceCategoryName,
+                )
+            }
+        }
+
+        // Source category fate
+        val isDelete = uiState.sourceDisposition == ConversionDraft.SourceDisposition.DELETE
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            colors =
+                CardDefaults.cardColors(
+                    containerColor =
+                        if (isDelete) {
+                            MaterialTheme.colorScheme.errorContainer
+                        } else {
+                            MaterialTheme.colorScheme.secondaryContainer
+                        },
                 ),
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
+        ) {
+            Text(
+                text =
+                    if (isDelete) {
+                        stringResource(
+                            R.string.conversion_wizard_source_will_be_deleted_named,
+                            uiState.sourceCategoryName,
+                        )
+                    } else {
+                        stringResource(
+                            R.string.conversion_wizard_source_will_be_kept_named,
+                            uiState.sourceCategoryName,
+                        )
+                    },
+                style = MaterialTheme.typography.bodyMedium,
+                color =
+                    if (isDelete) {
+                        MaterialTheme.colorScheme.onErrorContainer
+                    } else {
+                        MaterialTheme.colorScheme.onSecondaryContainer
+                    },
+                modifier = Modifier.padding(DesignSystemSpacing.large),
+            )
+        }
+    }
+}
+
+@Composable
+private fun PreviewSection(
+    title: String,
+    content: @Composable () -> Unit,
+) {
+    Column(verticalArrangement = Arrangement.spacedBy(DesignSystemSpacing.xs)) {
         Text(
-            text =
-                if (uiState.sourceDisposition == ConversionDraft.SourceDisposition.DELETE) {
-                    stringResource(R.string.conversion_wizard_source_will_be_deleted)
-                } else {
-                    stringResource(R.string.conversion_wizard_source_will_be_kept)
-                },
+            text = title,
+            style = MaterialTheme.typography.titleSmall,
+            color = MaterialTheme.colorScheme.primary,
+        )
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            elevation = CardDefaults.cardElevation(defaultElevation = DesignSystemElevation.low),
+        ) {
+            Column(
+                modifier = Modifier.padding(DesignSystemSpacing.large),
+                verticalArrangement = Arrangement.spacedBy(DesignSystemSpacing.small),
+            ) {
+                content()
+            }
+        }
+    }
+}
+
+@Composable
+private fun PreviewRow(
+    label: String,
+    value: String,
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.Top,
+    ) {
+        Text(
+            text = label,
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.weight(0.4f),
+        )
+        Text(
+            text = value,
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurface,
+            modifier = Modifier.weight(0.6f),
         )
     }
 }

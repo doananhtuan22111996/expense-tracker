@@ -557,6 +557,17 @@
     <string name="conversion_wizard_step3_subtitle">%1$d transactions will migrate, %2$d will stay.</string>
     <string name="conversion_wizard_source_will_be_deleted">Source category will be deleted after commit.</string>
     <string name="conversion_wizard_source_will_be_kept">Source category will be kept (some transactions were skipped).</string>
+    <string name="conversion_wizard_source_will_be_deleted_named">"%1$s" will be deleted after commit.</string>
+    <string name="conversion_wizard_source_will_be_kept_named">"%1$s" will be kept (some transactions were skipped).</string>
+    <string name="conversion_wizard_preview_trip_header">Trip</string>
+    <string name="conversion_wizard_preview_decisions_header">Transactions</string>
+    <string name="conversion_wizard_preview_label_name">Name</string>
+    <string name="conversion_wizard_preview_label_destination">Destination</string>
+    <string name="conversion_wizard_preview_label_dates">Dates</string>
+    <string name="conversion_wizard_preview_label_currency">Currency</string>
+    <string name="conversion_wizard_preview_fx_rate">%1$s @ %2$s %3$s</string>
+    <string name="conversion_wizard_preview_label_migrate">%1$d migrating to</string>
+    <string name="conversion_wizard_preview_label_skip">%1$d staying in</string>
     <string name="conversion_wizard_next">Next</string>
     <string name="conversion_wizard_commit">Commit</string>
 
