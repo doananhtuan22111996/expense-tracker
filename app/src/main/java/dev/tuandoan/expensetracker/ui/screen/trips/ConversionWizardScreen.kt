@@ -10,6 +10,8 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.Button
@@ -24,8 +26,15 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.res.stringResource
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import dev.tuandoan.expensetracker.R
@@ -134,23 +143,80 @@ private fun WizardStepScaffold(
     }
 }
 
-// ── Step 1 — Trip metadata (stub for T4.3) ───────────────────────────────────
+// ── Step 1 — Trip metadata ───────────────────────────────────────────────────
 
 @Composable
 private fun WizardStep1MetadataBody(
     uiState: ConversionWizardUiState,
     viewModel: ConversionWizardViewModel,
 ) {
-    Column(verticalArrangement = Arrangement.spacedBy(DesignSystemSpacing.medium)) {
+    val context = LocalContext.current
+    val focusManager = LocalFocusManager.current
+    val nameFocusRequester = remember { FocusRequester() }
+    var showDatePicker by rememberSaveable { mutableStateOf(false) }
+
+    LaunchedEffect(Unit) { nameFocusRequester.requestFocus() }
+
+    Column(
+        modifier =
+            Modifier
+                .fillMaxSize()
+                .verticalScroll(rememberScrollState()),
+        verticalArrangement = Arrangement.spacedBy(DesignSystemSpacing.large),
+    ) {
         Text(
             text = stringResource(R.string.conversion_wizard_step1_subtitle, uiState.sourceCategoryName),
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
-        Text(
-            text = stringResource(R.string.conversion_wizard_step1_placeholder),
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
+
+        TripNameField(
+            value = uiState.tripName,
+            error = uiState.nameError?.asString(context),
+            onChange = viewModel::onTripNameChange,
+            focusRequester = nameFocusRequester,
+            onImeNext = { focusManager.clearFocus() },
+        )
+
+        TripDestinationField(
+            value = uiState.tripDestination,
+            onChange = viewModel::onTripDestinationChange,
+            onImeNext = { focusManager.clearFocus() },
+        )
+
+        TripDateRangeRow(
+            startEpochDay = uiState.startEpochDay,
+            endEpochDay = uiState.endEpochDay,
+            error = uiState.dateError?.asString(context),
+            onClick = { showDatePicker = true },
+        )
+
+        TripForeignCurrencyToggle(
+            enabled = uiState.isForeignCurrency,
+            onChange = viewModel::onForeignCurrencyToggle,
+        )
+
+        TripForeignCurrencySection(
+            isForeignCurrency = uiState.isForeignCurrency,
+            foreignCurrencyCode = uiState.foreignCurrencyCode,
+            homeCurrencyCode = uiState.homeCurrencyCode,
+            rateText = uiState.rateText,
+            rateError = uiState.rateError?.asString(context),
+            onCurrencyChange = viewModel::onForeignCurrencyChange,
+            onRateChange = viewModel::onRateTextChange,
+            onImeDone = { focusManager.clearFocus() },
+        )
+    }
+
+    if (showDatePicker) {
+        TripDateRangeSheet(
+            initialStartEpochDay = uiState.startEpochDay,
+            initialEndEpochDay = uiState.endEpochDay,
+            onConfirm = { start, end ->
+                viewModel.onDatesSelected(start, end)
+                showDatePicker = false
+            },
+            onDismiss = { showDatePicker = false },
         )
     }
 }
