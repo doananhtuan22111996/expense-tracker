@@ -10,34 +10,25 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.text.KeyboardActions
-import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.CalendarToday
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.DateRangePicker
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.ModalBottomSheet
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
-import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.rememberDateRangePickerState
-import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -49,26 +40,17 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusDirection
 import androidx.compose.ui.focus.FocusRequester
-import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.input.ImeAction
-import androidx.compose.ui.text.input.KeyboardCapitalization
-import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import dev.tuandoan.expensetracker.R
-import dev.tuandoan.expensetracker.core.util.EpochDayConverters
 import dev.tuandoan.expensetracker.ui.component.CurrencyDropdown
 import dev.tuandoan.expensetracker.ui.theme.DesignSystemElevation
 import dev.tuandoan.expensetracker.ui.theme.DesignSystemSpacing
-import java.time.LocalDate
-import java.time.format.DateTimeFormatter
-import java.time.format.FormatStyle
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -173,7 +155,7 @@ fun CreateEditTripScreen(
                     ConversionOriginNotice()
                 }
 
-                NameField(
+                TripNameField(
                     value = uiState.name,
                     error = uiState.nameError?.asString(context),
                     onChange = viewModel::onNameChange,
@@ -181,20 +163,20 @@ fun CreateEditTripScreen(
                     onImeNext = { focusManager.moveFocus(FocusDirection.Down) },
                 )
 
-                DestinationField(
+                TripDestinationField(
                     value = uiState.destination,
                     onChange = viewModel::onDestinationChange,
                     onImeNext = { focusManager.moveFocus(FocusDirection.Down) },
                 )
 
-                DateRangeRow(
+                TripDateRangeRow(
                     startEpochDay = uiState.startEpochDay,
                     endEpochDay = uiState.endEpochDay,
                     error = uiState.dateError?.asString(context),
                     onClick = { showDatePicker = true },
                 )
 
-                ForeignCurrencyToggle(
+                TripForeignCurrencyToggle(
                     enabled = uiState.isForeignCurrency,
                     onChange = viewModel::onToggleForeignCurrency,
                     toggleEnabled = !uiState.isFxCurrencyLocked,
@@ -218,7 +200,7 @@ fun CreateEditTripScreen(
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
                     }
-                    RateField(
+                    TripRateField(
                         value = uiState.rateText,
                         homeCode = uiState.homeCurrencyCode,
                         foreignCode = uiState.foreignCurrencyCode,
@@ -283,200 +265,6 @@ private fun ConversionOriginNotice(modifier: Modifier = Modifier) {
 }
 
 @Composable
-private fun NameField(
-    value: String,
-    error: String?,
-    onChange: (String) -> Unit,
-    focusRequester: FocusRequester,
-    onImeNext: () -> Unit,
-) {
-    Column(verticalArrangement = Arrangement.spacedBy(DesignSystemSpacing.xs)) {
-        Text(
-            text = stringResource(R.string.create_edit_trip_label_name),
-            style = MaterialTheme.typography.titleMedium,
-            color = MaterialTheme.colorScheme.onSurface,
-        )
-        OutlinedTextField(
-            value = value,
-            onValueChange = onChange,
-            placeholder = { Text(stringResource(R.string.create_edit_trip_hint_name)) },
-            singleLine = true,
-            isError = error != null,
-            supportingText = error?.let { { Text(it, color = MaterialTheme.colorScheme.error) } },
-            keyboardOptions =
-                KeyboardOptions(
-                    capitalization = KeyboardCapitalization.Words,
-                    imeAction = ImeAction.Next,
-                ),
-            keyboardActions = KeyboardActions(onNext = { onImeNext() }),
-            modifier =
-                Modifier
-                    .fillMaxWidth()
-                    .focusRequester(focusRequester),
-        )
-    }
-}
-
-@Composable
-private fun DestinationField(
-    value: String,
-    onChange: (String) -> Unit,
-    onImeNext: () -> Unit,
-) {
-    Column(verticalArrangement = Arrangement.spacedBy(DesignSystemSpacing.xs)) {
-        Text(
-            text = stringResource(R.string.create_edit_trip_label_destination),
-            style = MaterialTheme.typography.titleMedium,
-            color = MaterialTheme.colorScheme.onSurface,
-        )
-        OutlinedTextField(
-            value = value,
-            onValueChange = onChange,
-            placeholder = { Text(stringResource(R.string.create_edit_trip_hint_destination)) },
-            singleLine = true,
-            keyboardOptions =
-                KeyboardOptions(
-                    capitalization = KeyboardCapitalization.Words,
-                    imeAction = ImeAction.Next,
-                ),
-            keyboardActions = KeyboardActions(onNext = { onImeNext() }),
-            modifier = Modifier.fillMaxWidth(),
-        )
-    }
-}
-
-@Composable
-private fun DateRangeRow(
-    startEpochDay: Long?,
-    endEpochDay: Long?,
-    error: String?,
-    onClick: () -> Unit,
-) {
-    val rangeText =
-        if (startEpochDay != null && endEpochDay != null) {
-            formatDateRange(startEpochDay, endEpochDay)
-        } else if (startEpochDay != null) {
-            stringResource(R.string.create_edit_trip_dates_partial, formatDate(startEpochDay))
-        } else {
-            stringResource(R.string.create_edit_trip_dates_unset)
-        }
-    val rowDesc = stringResource(R.string.a11y_create_edit_trip_dates, rangeText)
-
-    Column(verticalArrangement = Arrangement.spacedBy(DesignSystemSpacing.xs)) {
-        Text(
-            text = stringResource(R.string.create_edit_trip_label_dates),
-            style = MaterialTheme.typography.titleMedium,
-            color = MaterialTheme.colorScheme.onSurface,
-        )
-        Card(
-            onClick = onClick,
-            modifier =
-                Modifier
-                    .fillMaxWidth()
-                    .semantics { contentDescription = rowDesc },
-            elevation = CardDefaults.cardElevation(defaultElevation = DesignSystemElevation.low),
-        ) {
-            Row(
-                modifier =
-                    Modifier
-                        .fillMaxWidth()
-                        .padding(DesignSystemSpacing.large),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(DesignSystemSpacing.medium),
-            ) {
-                Icon(
-                    Icons.Default.CalendarToday,
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.primary,
-                )
-                Text(
-                    text = rangeText,
-                    style = MaterialTheme.typography.bodyLarge,
-                    fontWeight = FontWeight.Medium,
-                    color = MaterialTheme.colorScheme.onSurface,
-                    modifier = Modifier.weight(1f),
-                )
-            }
-        }
-        if (error != null) {
-            Text(error, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
-        }
-    }
-}
-
-@Composable
-private fun ForeignCurrencyToggle(
-    enabled: Boolean,
-    onChange: (Boolean) -> Unit,
-    toggleEnabled: Boolean = true,
-) {
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Column(modifier = Modifier.weight(1f)) {
-            Text(
-                text = stringResource(R.string.create_edit_trip_label_foreign_toggle),
-                style = MaterialTheme.typography.titleMedium,
-                color = MaterialTheme.colorScheme.onSurface,
-            )
-            Text(
-                text = stringResource(R.string.create_edit_trip_foreign_toggle_subtitle),
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-        }
-        Switch(checked = enabled, onCheckedChange = onChange, enabled = toggleEnabled)
-    }
-}
-
-@Composable
-private fun RateField(
-    value: String,
-    homeCode: String,
-    foreignCode: String,
-    error: String?,
-    onChange: (String) -> Unit,
-    onImeDone: () -> Unit,
-) {
-    Column(verticalArrangement = Arrangement.spacedBy(DesignSystemSpacing.xs)) {
-        Text(
-            text = stringResource(R.string.create_edit_trip_label_rate),
-            style = MaterialTheme.typography.titleMedium,
-            color = MaterialTheme.colorScheme.onSurface,
-        )
-        OutlinedTextField(
-            value = value,
-            onValueChange = { input ->
-                // Allow digits, comma and dot only.
-                val cleaned = input.replace("[^0-9.,]".toRegex(), "")
-                onChange(cleaned)
-            },
-            placeholder = { Text(stringResource(R.string.create_edit_trip_hint_rate)) },
-            singleLine = true,
-            isError = error != null,
-            supportingText = {
-                if (error != null) {
-                    Text(error, color = MaterialTheme.colorScheme.error)
-                } else if (foreignCode.isNotBlank()) {
-                    Text(
-                        stringResource(R.string.create_edit_trip_rate_helper, foreignCode, homeCode),
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                }
-            },
-            keyboardOptions =
-                KeyboardOptions(
-                    keyboardType = KeyboardType.Decimal,
-                    imeAction = ImeAction.Done,
-                ),
-            keyboardActions = KeyboardActions(onDone = { onImeDone() }),
-            modifier = Modifier.fillMaxWidth(),
-        )
-    }
-}
-
-@Composable
 private fun SaveBottomBar(
     uiState: CreateEditTripUiState,
     onSave: () -> Unit,
@@ -517,85 +305,3 @@ private fun SaveBottomBar(
         }
     }
 }
-
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-private fun TripDateRangeSheet(
-    initialStartEpochDay: Long?,
-    initialEndEpochDay: Long?,
-    onConfirm: (startEpochDay: Long, endEpochDay: Long) -> Unit,
-    onDismiss: () -> Unit,
-) {
-    val initialStartMillis = initialStartEpochDay?.let { EpochDayConverters.epochDayToUtcMillis(it) }
-    val initialEndMillis = initialEndEpochDay?.let { EpochDayConverters.epochDayToUtcMillis(it) }
-    val state =
-        rememberDateRangePickerState(
-            initialSelectedStartDateMillis = initialStartMillis,
-            initialSelectedEndDateMillis = initialEndMillis,
-        )
-    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
-
-    ModalBottomSheet(
-        onDismissRequest = onDismiss,
-        sheetState = sheetState,
-    ) {
-        Column(
-            modifier =
-                Modifier
-                    .fillMaxWidth()
-                    .padding(bottom = DesignSystemSpacing.xl),
-        ) {
-            DateRangePicker(
-                state = state,
-                title = {
-                    Text(
-                        text = stringResource(R.string.create_edit_trip_dates_picker_title),
-                        style = MaterialTheme.typography.titleLarge,
-                        modifier =
-                            Modifier.padding(
-                                start = DesignSystemSpacing.xl,
-                                top = DesignSystemSpacing.large,
-                            ),
-                    )
-                },
-                modifier = Modifier.weight(1f, fill = false),
-            )
-            Row(
-                modifier =
-                    Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = DesignSystemSpacing.large),
-                horizontalArrangement = Arrangement.End,
-            ) {
-                TextButton(onClick = onDismiss) {
-                    Text(stringResource(R.string.cancel))
-                }
-                val startMs = state.selectedStartDateMillis
-                val endMs = state.selectedEndDateMillis
-                TextButton(
-                    onClick = {
-                        if (startMs != null && endMs != null) {
-                            onConfirm(
-                                EpochDayConverters.utcMillisToEpochDay(startMs),
-                                EpochDayConverters.utcMillisToEpochDay(endMs),
-                            )
-                        }
-                    },
-                    enabled = startMs != null && endMs != null,
-                ) {
-                    Text(stringResource(R.string.save))
-                }
-            }
-        }
-    }
-}
-
-private val TRIP_DATE_FORMATTER: DateTimeFormatter =
-    DateTimeFormatter.ofLocalizedDate(FormatStyle.MEDIUM)
-
-private fun formatDate(epochDay: Long): String = LocalDate.ofEpochDay(epochDay).format(TRIP_DATE_FORMATTER)
-
-private fun formatDateRange(
-    startEpochDay: Long,
-    endEpochDay: Long,
-): String = "${formatDate(startEpochDay)} – ${formatDate(endEpochDay)}"
