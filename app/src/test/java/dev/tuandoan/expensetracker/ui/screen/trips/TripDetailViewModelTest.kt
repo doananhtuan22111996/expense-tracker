@@ -240,6 +240,9 @@ private class FakeDetailTripRepository(
     override fun observeTripTransactions(tripId: Long): Flow<List<Transaction>> = MutableStateFlow(emptyList())
 
     override fun observeHasForeignTransactions(tripId: Long): Flow<Boolean> = MutableStateFlow(false)
+
+    override suspend fun commitConversion(draft: dev.tuandoan.expensetracker.domain.model.ConversionDraft): Long =
+        error("not used")
 }
 
 private class FakeDetailCategoryRepository : CategoryRepository {

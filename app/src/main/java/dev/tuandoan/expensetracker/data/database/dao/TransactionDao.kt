@@ -138,6 +138,31 @@ interface TransactionDao {
         now: Long,
     )
 
+    /**
+     * Conversion-wizard commit path (T4.6). For a single Migrate row decision: assigns
+     * `trip_id`, updates `category_id` to the new category chosen by the user,
+     * and stores `original_category_id` so the REVERT_TO_ORIGINAL_CATEGORY delete
+     * path (ADR-001) can restore it later. `amount_foreign_minor` is untouched —
+     * it was written by the add/edit screen at save time (T3.6). Bumps `updated_at`.
+     */
+    @Query(
+        """
+        UPDATE transactions
+        SET trip_id = :tripId,
+            category_id = :newCategoryId,
+            original_category_id = :originalCategoryId,
+            updated_at = :now
+        WHERE id = :transactionId
+        """,
+    )
+    suspend fun migrateToTrip(
+        transactionId: Long,
+        tripId: Long,
+        newCategoryId: Long,
+        originalCategoryId: Long,
+        now: Long,
+    )
+
     @Query("DELETE FROM transactions")
     suspend fun deleteAll()
 

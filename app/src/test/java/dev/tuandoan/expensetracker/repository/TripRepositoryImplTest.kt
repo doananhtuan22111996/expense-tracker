@@ -14,6 +14,7 @@ import dev.tuandoan.expensetracker.data.database.entity.MonthlyTotalRow
 import dev.tuandoan.expensetracker.data.database.entity.TransactionEntity
 import dev.tuandoan.expensetracker.data.database.entity.TripCategorySumRow
 import dev.tuandoan.expensetracker.data.database.entity.TripEntity
+import dev.tuandoan.expensetracker.domain.model.ConversionDraft
 import dev.tuandoan.expensetracker.domain.model.DeleteTripBehavior
 import dev.tuandoan.expensetracker.domain.model.Trip
 import dev.tuandoan.expensetracker.domain.model.TripFilter
@@ -415,8 +416,95 @@ class TripRepositoryImplTest {
     }
 
     // ───────────────────────────────────────────────────────────
+    //  commitConversion (T4.6)
+    // ───────────────────────────────────────────────────────────
+
+    @Test
+    fun commitConversion_createsTrip_withSnapshotFields() =
+        runTest {
+            val draft = conversionDraft(sourceId = 10L, disposition = ConversionDraft.SourceDisposition.DELETE)
+            val tripId = repository.commitConversion(draft)
+            val trip = tripDao.getById(tripId)
+            assertNotNull(trip)
+            assertEquals("Tokyo", trip!!.name)
+            assertEquals(10L, trip.originalCategoryId)
+            assertEquals("Food", trip.originalCategoryNameSnapshot)
+        }
+
+    @Test
+    fun commitConversion_migratesRows_setsCorrectFields() =
+        runTest {
+            val tx1 = txEntity(id = 1L, categoryId = 10L, tripId = null)
+            val tx2 = txEntity(id = 2L, categoryId = 10L, tripId = null)
+            transactionDao.seed(tx1)
+            transactionDao.seed(tx2)
+            val draft =
+                conversionDraft(
+                    sourceId = 10L,
+                    disposition = ConversionDraft.SourceDisposition.DELETE,
+                    decisions =
+                        listOf(
+                            ConversionDraft.RowDecision.Migrate(transactionId = 1L, newCategoryId = 20L),
+                            ConversionDraft.RowDecision.Skip(transactionId = 2L),
+                        ),
+                )
+            val tripId = repository.commitConversion(draft)
+            val migratedTx = transactionDao.getById(1L)!!
+            assertEquals(tripId, migratedTx.tripId)
+            assertEquals(20L, migratedTx.categoryId)
+            assertEquals(10L, migratedTx.originalCategoryId)
+            // Skip row must be untouched
+            val skippedTx = transactionDao.getById(2L)!!
+            assertNull(skippedTx.tripId)
+            assertEquals(10L, skippedTx.categoryId)
+        }
+
+    @Test
+    fun commitConversion_deletesSourceCategory_whenDispositionDelete() =
+        runTest {
+            categoryDao.seed(categoryEntity(id = 10L, name = "Food"))
+            val draft = conversionDraft(sourceId = 10L, disposition = ConversionDraft.SourceDisposition.DELETE)
+            repository.commitConversion(draft)
+            assertNull(categoryDao.getById(10L))
+        }
+
+    @Test
+    fun commitConversion_keepsSourceCategory_whenDispositionKeep() =
+        runTest {
+            categoryDao.seed(categoryEntity(id = 10L, name = "Food"))
+            val draft = conversionDraft(sourceId = 10L, disposition = ConversionDraft.SourceDisposition.KEEP)
+            repository.commitConversion(draft)
+            assertNotNull(categoryDao.getById(10L))
+        }
+
+    // ───────────────────────────────────────────────────────────
     //  Helpers
     // ───────────────────────────────────────────────────────────
+
+    private fun conversionDraft(
+        sourceId: Long,
+        disposition: ConversionDraft.SourceDisposition,
+        decisions: List<ConversionDraft.RowDecision> = emptyList(),
+    ) = ConversionDraft(
+        sourceCategoryId = sourceId,
+        sourceCategorySnapshot =
+            ConversionDraft.CategorySnapshot(
+                name = "Food",
+                iconKey = "restaurant",
+                colorKey = "red",
+            ),
+        tripMetadata =
+            ConversionDraft.TripMetadata(
+                name = "Tokyo",
+                destination = "Japan",
+                startDateEpochDay = 100L,
+                endDateEpochDay = 110L,
+                foreignCurrencyCode = null,
+                foreignToHomeRate = null,
+            ),
+        rowDecisions = decisions,
+        sourceDisposition = disposition,
+    )
 
     private fun tripEntity(
         id: Long,
@@ -715,6 +803,28 @@ private class FakeTransactionDao : TransactionDao {
                         tripId = null,
                         originalCategoryId = null,
                         amountForeignMinor = null,
+                        updatedAt = now,
+                    )
+                } else {
+                    it
+                }
+            }
+    }
+
+    override suspend fun migrateToTrip(
+        transactionId: Long,
+        tripId: Long,
+        newCategoryId: Long,
+        originalCategoryId: Long,
+        now: Long,
+    ) {
+        entities =
+            entities.map {
+                if (it.id == transactionId) {
+                    it.copy(
+                        tripId = tripId,
+                        categoryId = newCategoryId,
+                        originalCategoryId = originalCategoryId,
                         updatedAt = now,
                     )
                 } else {

@@ -337,6 +337,9 @@ private class FakeTripRepository : TripRepository {
     override fun observeTripTransactions(tripId: Long): Flow<List<Transaction>> = error("not used")
 
     override fun observeHasForeignTransactions(tripId: Long): Flow<Boolean> = error("not used")
+
+    override suspend fun commitConversion(draft: dev.tuandoan.expensetracker.domain.model.ConversionDraft): Long =
+        error("not used")
 }
 
 private class FakeCurrencyPreferenceRepository(
