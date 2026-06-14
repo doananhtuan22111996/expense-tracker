@@ -551,7 +551,9 @@
     <string name="conversion_wizard_step3_title">Step 3: Review</string>
     <string name="conversion_wizard_step1_subtitle">Converting "%1$s" to a trip. Set the trip details below.</string>
     <string name="conversion_wizard_step2_subtitle">%1$d transactions to sort. Migrate or skip each one.</string>
-    <string name="conversion_wizard_step2_placeholder">Per-row decision list — coming in T4.4</string>
+    <string name="conversion_wizard_migrate">Migrate</string>
+    <string name="conversion_wizard_skip">Skip</string>
+    <string name="conversion_wizard_move_to">Move to</string>
     <string name="conversion_wizard_step3_subtitle">%1$d transactions will migrate, %2$d will stay.</string>
     <string name="conversion_wizard_source_will_be_deleted">Source category will be deleted after commit.</string>
     <string name="conversion_wizard_source_will_be_kept">Source category will be kept (some transactions were skipped).</string>
