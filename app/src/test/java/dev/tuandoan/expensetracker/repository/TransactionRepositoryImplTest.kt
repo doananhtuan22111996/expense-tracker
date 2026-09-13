@@ -746,6 +746,14 @@ class TransactionRepositoryImplTest {
             now: Long,
         ) {}
 
+        override suspend fun migrateToTrip(
+            transactionId: Long,
+            tripId: Long,
+            newCategoryId: Long,
+            originalCategoryId: Long,
+            now: Long,
+        ) {}
+
         override fun observeByTripId(tripId: Long): Flow<List<TransactionEntity>> = MutableStateFlow(emptyList())
 
         override fun searchTransactionsAdvanced(

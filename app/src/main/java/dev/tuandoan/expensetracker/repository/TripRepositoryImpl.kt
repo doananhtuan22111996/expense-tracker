@@ -10,6 +10,7 @@ import dev.tuandoan.expensetracker.data.database.entity.CategoryEntity
 import dev.tuandoan.expensetracker.data.database.entity.DailyTotalRow
 import dev.tuandoan.expensetracker.data.database.entity.TripCategorySumRow
 import dev.tuandoan.expensetracker.data.database.entity.TripEntity
+import dev.tuandoan.expensetracker.domain.model.ConversionDraft
 import dev.tuandoan.expensetracker.domain.model.DeleteTripBehavior
 import dev.tuandoan.expensetracker.domain.model.Transaction
 import dev.tuandoan.expensetracker.domain.model.TransactionType
@@ -170,6 +171,50 @@ class TripRepositoryImpl
                         categoryMap[entity.categoryId]?.let { cat -> entity.toDomain(cat.toDomain()) }
                     }
                 }
+        }
+
+        override suspend fun commitConversion(draft: ConversionDraft): Long {
+            val now = timeProvider.currentTimeMillis()
+            return transactionRunner.runInTransaction {
+                // 1 — Insert the trip with the source-category snapshot for ADR-001 REVERT.
+                val tripId =
+                    tripDao.insert(
+                        TripEntity(
+                            name = draft.tripMetadata.name,
+                            destination = draft.tripMetadata.destination,
+                            startDateEpochDay = draft.tripMetadata.startDateEpochDay,
+                            endDateEpochDay = draft.tripMetadata.endDateEpochDay,
+                            foreignCurrencyCode = draft.tripMetadata.foreignCurrencyCode,
+                            foreignToHomeRate = draft.tripMetadata.foreignToHomeRate,
+                            originalCategoryId = draft.sourceCategoryId,
+                            originalCategoryNameSnapshot = draft.sourceCategorySnapshot.name,
+                            originalCategoryIconSnapshot = draft.sourceCategorySnapshot.iconKey,
+                            originalCategoryColorSnapshot = draft.sourceCategorySnapshot.colorKey,
+                            createdAt = now,
+                        ),
+                    )
+
+                // 2 — Migrate rows: assign trip_id + new category + record original.
+                for (decision in draft.rowDecisions) {
+                    if (decision is ConversionDraft.RowDecision.Migrate) {
+                        transactionDao.migrateToTrip(
+                            transactionId = decision.transactionId,
+                            tripId = tripId,
+                            newCategoryId = decision.newCategoryId,
+                            originalCategoryId = draft.sourceCategoryId,
+                            now = now,
+                        )
+                    }
+                    // Skip rows are left untouched.
+                }
+
+                // 3 — Delete source category when all rows migrated.
+                if (draft.sourceDisposition == ConversionDraft.SourceDisposition.DELETE) {
+                    categoryDao.deleteNonDefault(draft.sourceCategoryId)
+                }
+
+                tripId
+            }
         }
 
         /**
