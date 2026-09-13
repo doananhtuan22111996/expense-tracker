@@ -105,7 +105,7 @@ class BudgetAlertWorkerTest {
             fakeBudgetPrefs.setBudget("VND", 1_000_000L)
 
             // 50% spent — below 80% threshold
-            whenever(mockTransactionDao.getExpenseTotalsByCurrency(any(), any()))
+            whenever(mockTransactionDao.getExpenseTotalsByCurrency(any(), any(), any()))
                 .thenReturn(listOf(CurrencySumRow("VND", 500_000L)))
 
             val worker = createWorker()
@@ -121,7 +121,7 @@ class BudgetAlertWorkerTest {
             fakeBudgetPrefs.setBudget("VND", 1_000_000L)
 
             // 85% spent — above 80% threshold
-            whenever(mockTransactionDao.getExpenseTotalsByCurrency(any(), any()))
+            whenever(mockTransactionDao.getExpenseTotalsByCurrency(any(), any(), any()))
                 .thenReturn(listOf(CurrencySumRow("VND", 850_000L)))
 
             val worker = createWorker()
@@ -143,7 +143,7 @@ class BudgetAlertWorkerTest {
             fakeBudgetPrefs.setBudget("VND", 1_000_000L)
 
             // 110% spent — over budget
-            whenever(mockTransactionDao.getExpenseTotalsByCurrency(any(), any()))
+            whenever(mockTransactionDao.getExpenseTotalsByCurrency(any(), any(), any()))
                 .thenReturn(listOf(CurrencySumRow("VND", 1_100_000L)))
 
             val worker = createWorker()
@@ -167,7 +167,7 @@ class BudgetAlertWorkerTest {
             fakeBudgetPrefs.setBudget("VND", 1_000_000L)
 
             // Still at 85% — WARNING again, same level
-            whenever(mockTransactionDao.getExpenseTotalsByCurrency(any(), any()))
+            whenever(mockTransactionDao.getExpenseTotalsByCurrency(any(), any(), any()))
                 .thenReturn(listOf(CurrencySumRow("VND", 850_000L)))
 
             val worker = createWorker()
@@ -185,7 +185,7 @@ class BudgetAlertWorkerTest {
             fakeBudgetPrefs.setBudget("VND", 1_000_000L)
 
             // Now 110% — escalation from WARNING to OVER_BUDGET
-            whenever(mockTransactionDao.getExpenseTotalsByCurrency(any(), any()))
+            whenever(mockTransactionDao.getExpenseTotalsByCurrency(any(), any(), any()))
                 .thenReturn(listOf(CurrencySumRow("VND", 1_100_000L)))
 
             val worker = createWorker()
@@ -208,7 +208,7 @@ class BudgetAlertWorkerTest {
             fakeBudgetPrefs.setBudget("VND", 1_000_000L)
 
             // New month, 85% — should alert even though last month was OVER_BUDGET
-            whenever(mockTransactionDao.getExpenseTotalsByCurrency(any(), any()))
+            whenever(mockTransactionDao.getExpenseTotalsByCurrency(any(), any(), any()))
                 .thenReturn(listOf(CurrencySumRow("VND", 850_000L)))
 
             val worker = createWorker()
@@ -231,7 +231,7 @@ class BudgetAlertWorkerTest {
             fakeBudgetPrefs.setBudget("USD", 10_000L)
 
             // VND at 85% (WARNING), USD at 110% (OVER_BUDGET)
-            whenever(mockTransactionDao.getExpenseTotalsByCurrency(any(), any()))
+            whenever(mockTransactionDao.getExpenseTotalsByCurrency(any(), any(), any()))
                 .thenReturn(
                     listOf(
                         CurrencySumRow("VND", 850_000L),

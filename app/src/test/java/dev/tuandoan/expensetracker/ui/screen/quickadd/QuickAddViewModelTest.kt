@@ -406,6 +406,7 @@ private class FakeTransactionRepository : TransactionRepository {
         from: Long,
         to: Long,
         filterType: TransactionType?,
+        excludeTrips: Boolean,
     ): Flow<List<Transaction>> = flow { emit(emptyList()) }
 
     override suspend fun addTransaction(
@@ -441,6 +442,7 @@ private class FakeTransactionRepository : TransactionRepository {
     override fun observeMonthlySummary(
         from: Long,
         to: Long,
+        excludeTrips: Boolean,
     ): Flow<MonthlySummary> = flow { emit(MonthlySummary(currencySummaries = emptyList())) }
 
     override fun searchTransactions(
@@ -448,6 +450,7 @@ private class FakeTransactionRepository : TransactionRepository {
         to: Long,
         query: String,
         filterType: TransactionType?,
+        excludeTrips: Boolean,
     ): Flow<List<Transaction>> = flow { emit(emptyList()) }
 
     override fun searchTransactionsAdvanced(
@@ -456,12 +459,14 @@ private class FakeTransactionRepository : TransactionRepository {
         query: String,
         filterType: TransactionType?,
         categoryId: Long?,
+        excludeTrips: Boolean,
     ): Flow<List<Transaction>> = flow { emit(emptyList()) }
 
     override suspend fun getMonthlyExpenseTotals(
         from: Long,
         to: Long,
         currencyCode: String,
+        excludeTrips: Boolean,
     ): List<MonthlyBarPoint> = emptyList()
 }
 

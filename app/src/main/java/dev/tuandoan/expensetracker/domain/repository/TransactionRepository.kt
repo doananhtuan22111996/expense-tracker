@@ -12,6 +12,7 @@ interface TransactionRepository {
         from: Long,
         to: Long,
         filterType: TransactionType? = null,
+        excludeTrips: Boolean = false,
     ): Flow<List<Transaction>>
 
     suspend fun addTransaction(
@@ -34,6 +35,7 @@ interface TransactionRepository {
     fun observeMonthlySummary(
         from: Long,
         to: Long,
+        excludeTrips: Boolean = false,
     ): Flow<MonthlySummary>
 
     fun searchTransactions(
@@ -41,6 +43,7 @@ interface TransactionRepository {
         to: Long,
         query: String,
         filterType: TransactionType? = null,
+        excludeTrips: Boolean = false,
     ): Flow<List<Transaction>>
 
     fun searchTransactionsAdvanced(
@@ -49,11 +52,13 @@ interface TransactionRepository {
         query: String,
         filterType: TransactionType? = null,
         categoryId: Long? = null,
+        excludeTrips: Boolean = false,
     ): Flow<List<Transaction>>
 
     suspend fun getMonthlyExpenseTotals(
         from: Long,
         to: Long,
         currencyCode: String,
+        excludeTrips: Boolean = false,
     ): List<MonthlyBarPoint>
 }

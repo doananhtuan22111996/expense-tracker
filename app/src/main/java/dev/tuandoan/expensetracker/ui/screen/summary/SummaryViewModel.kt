@@ -23,6 +23,7 @@ import dev.tuandoan.expensetracker.domain.repository.BudgetPreferences
 import dev.tuandoan.expensetracker.domain.repository.CurrencyPreferenceRepository
 import dev.tuandoan.expensetracker.domain.repository.SelectedMonthRepository
 import dev.tuandoan.expensetracker.domain.repository.TransactionRepository
+import dev.tuandoan.expensetracker.domain.repository.TripPreferences
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.FlowPreview
@@ -58,6 +59,7 @@ class SummaryViewModel
         private val transactionRepository: TransactionRepository,
         private val selectedMonthRepository: SelectedMonthRepository,
         private val dateRangeCalculator: DateRangeCalculator,
+        private val tripPreferences: TripPreferences,
         private val budgetPreferences: BudgetPreferences,
         private val currencyPreferenceRepository: CurrencyPreferenceRepository,
         private val insightsCollapsePreferences: InsightsCollapsePreferences,
@@ -116,7 +118,10 @@ class SummaryViewModel
 
         @OptIn(ExperimentalCoroutinesApi::class)
         private fun buildInsightsFlow(): Flow<InsightsUiState> =
-            selectedMonthRepository.selectedMonth.flatMapLatest { currentMonth ->
+            combine(
+                selectedMonthRepository.selectedMonth,
+                tripPreferences.excludeTrips,
+            ) { month, exclude -> Pair(month, exclude) }.flatMapLatest { (currentMonth, excludeTrips) ->
                 val currentRange = dateRangeCalculator.rangeOf(currentMonth)
                 val previousRange = dateRangeCalculator.rangeOf(currentMonth.minusMonths(1))
 
@@ -125,12 +130,14 @@ class SummaryViewModel
                         from = currentRange.startMillis,
                         to = currentRange.endMillisExclusive,
                         filterType = TransactionType.EXPENSE,
+                        excludeTrips = excludeTrips,
                     )
                 val previousExpenses =
                     transactionRepository.observeTransactions(
                         from = previousRange.startMillis,
                         to = previousRange.endMillisExclusive,
                         filterType = TransactionType.EXPENSE,
+                        excludeTrips = excludeTrips,
                     )
 
                 // Budget has to live downstream of currency: getBudget(code) takes
@@ -281,6 +288,7 @@ class SummaryViewModel
             summary: MonthlySummary,
             from: Long,
             to: Long,
+            excludeTrips: Boolean,
         ): Map<String, List<MonthlyBarPoint>> {
             val result = mutableMapOf<String, List<MonthlyBarPoint>>()
             for (currencySummary in summary.currencySummaries) {
@@ -290,6 +298,7 @@ class SummaryViewModel
                             from,
                             to,
                             currencySummary.currencyCode,
+                            excludeTrips,
                         )
                     result[currencySummary.currencyCode] = points
                 }
@@ -336,19 +345,27 @@ class SummaryViewModel
                             dateRangeCalculator.rangeOf(selectedMonthRepository.selectedMonth.value)
                         }
 
-                    transactionRepository
-                        .observeMonthlySummary(range.startMillis, range.endMillisExclusive)
-                        .catch { e ->
+                    tripPreferences.excludeTrips
+                        .flatMapLatest { excludeTrips ->
+                            transactionRepository
+                                .observeMonthlySummary(range.startMillis, range.endMillisExclusive, excludeTrips)
+                                .map { summary -> Pair(summary, excludeTrips) }
+                        }.catch { e ->
                             _uiState.value =
                                 _uiState.value.copy(
                                     isLoading = false,
                                     isError = true,
                                     errorMessage = ErrorUtils.getErrorMessage(e),
                                 )
-                        }.collect { summary ->
+                        }.collect { (summary, excludeTrips) ->
                             val barData =
                                 if (mode == SummaryMode.YEAR) {
-                                    buildMonthlyBarData(summary, range.startMillis, range.endMillisExclusive)
+                                    buildMonthlyBarData(
+                                        summary,
+                                        range.startMillis,
+                                        range.endMillisExclusive,
+                                        excludeTrips,
+                                    )
                                 } else {
                                     emptyMap()
                                 }

@@ -20,6 +20,7 @@ import dev.tuandoan.expensetracker.domain.repository.TransactionRepository
 import dev.tuandoan.expensetracker.testutil.FakeCurrencyPreferenceRepository
 import dev.tuandoan.expensetracker.testutil.FakeSelectedMonthRepository
 import dev.tuandoan.expensetracker.testutil.FakeTimeProvider
+import dev.tuandoan.expensetracker.testutil.FakeTripPreferences
 import dev.tuandoan.expensetracker.testutil.MainDispatcherRule
 import dev.tuandoan.expensetracker.testutil.TestData
 import dev.tuandoan.expensetracker.ui.screen.home.HomeViewModel
@@ -55,6 +56,7 @@ class SummaryViewModelTest {
     private lateinit var fakeCurrencyPreferences: FakeCurrencyPreferenceRepository
     private lateinit var fakeInsightsCollapse: FakeInsightsCollapsePreferences
     private lateinit var fakeTimeProvider: FakeTimeProvider
+    private lateinit var fakeTripPreferences: FakeTripPreferences
     private lateinit var dateRangeCalculator: DateRangeCalculator
 
     private val fixedZone: ZoneId = ZoneId.of("UTC")
@@ -67,6 +69,7 @@ class SummaryViewModelTest {
         fakeBudgetPreferences = FakeBudgetPreferences()
         fakeCurrencyPreferences = FakeCurrencyPreferenceRepository(initialCurrency = "VND")
         fakeInsightsCollapse = FakeInsightsCollapsePreferences()
+        fakeTripPreferences = FakeTripPreferences()
         // 2026-03-15T12:00:00Z matches the fixedClock used by DateRangeCalculator.
         fakeTimeProvider = FakeTimeProvider(currentMillis = 1773921600000L)
         dateRangeCalculator = DateRangeCalculator(fixedClock, fixedZone)
@@ -77,6 +80,7 @@ class SummaryViewModelTest {
             transactionRepository = fakeRepository,
             selectedMonthRepository = fakeSelectedMonth,
             dateRangeCalculator = dateRangeCalculator,
+            tripPreferences = fakeTripPreferences,
             budgetPreferences = fakeBudgetPreferences,
             currencyPreferenceRepository = fakeCurrencyPreferences,
             insightsCollapsePreferences = fakeInsightsCollapse,
@@ -140,6 +144,16 @@ class SummaryViewModelTest {
             assertTrue(state.isError)
             assertFalse(state.isLoading)
             assertNotNull(state.errorMessage)
+        }
+
+    @Test
+    fun loadSummary_passesExcludeTripsToRepository() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            fakeTripPreferences.setExcludeTrips(true)
+            val viewModel = createViewModel()
+            advanceUntilIdle()
+
+            assertTrue(fakeRepository.lastExcludeTrips)
         }
 
     @Test
@@ -549,6 +563,7 @@ class SummaryViewModelTest {
                         .FakeHomeBannerPreferences(),
                     dev.tuandoan.expensetracker.data.preferences
                         .FakeWidgetCategoryPreferences(),
+                    fakeTripPreferences,
                 )
             val summaryVm = createViewModel()
             advanceUntilIdle()
@@ -671,6 +686,7 @@ class SummaryViewModelTest {
             from: Long,
             to: Long,
             filterType: TransactionType?,
+            excludeTrips: Boolean,
         ): Flow<List<Transaction>> {
             if (observeTransactionsShouldThrow) {
                 return flow { throw RuntimeException("observeTransactions failed") }
@@ -703,12 +719,16 @@ class SummaryViewModelTest {
 
         override suspend fun getTransaction(id: Long): Transaction? = null
 
+        var lastExcludeTrips: Boolean = false
+
         override fun observeMonthlySummary(
             from: Long,
             to: Long,
+            excludeTrips: Boolean,
         ): Flow<MonthlySummary> {
             lastFrom = from
             lastTo = to
+            lastExcludeTrips = excludeTrips
             return if (shouldThrow) {
                 flow { throw RuntimeException("Test error") }
             } else {
@@ -721,12 +741,14 @@ class SummaryViewModelTest {
             to: Long,
             query: String,
             filterType: TransactionType?,
+            excludeTrips: Boolean,
         ): Flow<List<Transaction>> = flow { emit(emptyList()) }
 
         override suspend fun getMonthlyExpenseTotals(
             from: Long,
             to: Long,
             currencyCode: String,
+            excludeTrips: Boolean,
         ): List<MonthlyBarPoint> =
             monthlyBarPointsToEmit[currencyCode]
                 ?: (1..12).map { MonthlyBarPoint(month = it, totalExpense = 0L) }
@@ -739,6 +761,7 @@ class SummaryViewModelTest {
             query: String,
             filterType: TransactionType?,
             categoryId: Long?,
+            excludeTrips: Boolean,
         ): Flow<List<Transaction>> = MutableStateFlow(emptyList())
     }
 

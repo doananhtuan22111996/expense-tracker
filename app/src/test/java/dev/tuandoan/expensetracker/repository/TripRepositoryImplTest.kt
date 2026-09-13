@@ -733,6 +733,7 @@ private class FakeTransactionDao : TransactionDao {
         from: Long,
         to: Long,
         type: Int?,
+        excludeTrips: Int,
     ): Flow<List<TransactionEntity>> = MutableStateFlow(emptyList())
 
     override fun searchTransactions(
@@ -740,6 +741,7 @@ private class FakeTransactionDao : TransactionDao {
         to: Long,
         query: String,
         type: Int?,
+        excludeTrips: Int,
     ): Flow<List<TransactionEntity>> = MutableStateFlow(emptyList())
 
     override fun searchTransactionsAdvanced(
@@ -748,6 +750,7 @@ private class FakeTransactionDao : TransactionDao {
         query: String,
         type: Int?,
         categoryId: Long?,
+        excludeTrips: Int,
     ): Flow<List<TransactionEntity>> = MutableStateFlow(emptyList())
 
     override suspend fun insert(entity: TransactionEntity): Long {
@@ -843,28 +846,33 @@ private class FakeTransactionDao : TransactionDao {
     override fun sumExpenseByCurrency(
         from: Long,
         to: Long,
+        excludeTrips: Int,
     ): Flow<List<CurrencySumRow>> = MutableStateFlow(emptyList())
 
     override suspend fun getExpenseTotalsByCurrency(
         from: Long,
         to: Long,
+        excludeTrips: Int,
     ): List<CurrencySumRow> = emptyList()
 
     override fun sumIncomeByCurrency(
         from: Long,
         to: Long,
+        excludeTrips: Int,
     ): Flow<List<CurrencySumRow>> = MutableStateFlow(emptyList())
 
     override suspend fun getMonthlyExpenseTotals(
         from: Long,
         to: Long,
         currencyCode: String,
+        excludeTrips: Int,
     ): List<MonthlyTotalRow> = emptyList()
 
     override fun sumByCurrencyAndCategory(
         from: Long,
         to: Long,
         type: Int,
+        excludeTrips: Int,
     ): Flow<List<CurrencyCategorySumRow>> = MutableStateFlow(emptyList())
 }
 

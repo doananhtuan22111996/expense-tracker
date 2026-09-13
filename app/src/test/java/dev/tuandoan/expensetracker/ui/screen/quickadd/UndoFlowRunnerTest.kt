@@ -206,6 +206,7 @@ private class RecordingTransactionRepository : TransactionRepository {
         from: Long,
         to: Long,
         filterType: TransactionType?,
+        excludeTrips: Boolean,
     ): Flow<List<Transaction>> = flow { emit(emptyList()) }
 
     override suspend fun addTransaction(
@@ -226,6 +227,7 @@ private class RecordingTransactionRepository : TransactionRepository {
     override fun observeMonthlySummary(
         from: Long,
         to: Long,
+        excludeTrips: Boolean,
     ): Flow<MonthlySummary> = throw UnsupportedOperationException()
 
     override fun searchTransactions(
@@ -233,6 +235,7 @@ private class RecordingTransactionRepository : TransactionRepository {
         to: Long,
         query: String,
         filterType: TransactionType?,
+        excludeTrips: Boolean,
     ): Flow<List<Transaction>> = throw UnsupportedOperationException()
 
     override fun searchTransactionsAdvanced(
@@ -241,12 +244,14 @@ private class RecordingTransactionRepository : TransactionRepository {
         query: String,
         filterType: TransactionType?,
         categoryId: Long?,
+        excludeTrips: Boolean,
     ): Flow<List<Transaction>> = throw UnsupportedOperationException()
 
     override suspend fun getMonthlyExpenseTotals(
         from: Long,
         to: Long,
         currencyCode: String,
+        excludeTrips: Boolean,
     ): List<MonthlyBarPoint> = throw UnsupportedOperationException()
 }
 
