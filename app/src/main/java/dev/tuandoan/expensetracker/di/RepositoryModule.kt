@@ -19,6 +19,7 @@ import dev.tuandoan.expensetracker.data.preferences.BudgetPreferencesImpl
 import dev.tuandoan.expensetracker.data.preferences.CurrencyPreferenceRepositoryImpl
 import dev.tuandoan.expensetracker.data.preferences.SearchFilterPreferencesImpl
 import dev.tuandoan.expensetracker.data.preferences.SelectedMonthRepositoryImpl
+import dev.tuandoan.expensetracker.data.preferences.TripPreferencesImpl
 import dev.tuandoan.expensetracker.data.worker.BudgetAlertSchedulerImpl
 import dev.tuandoan.expensetracker.domain.notification.QuickAddConfirmationNotifier
 import dev.tuandoan.expensetracker.domain.notification.QuickAddNotificationSurface
@@ -34,6 +35,7 @@ import dev.tuandoan.expensetracker.domain.repository.RecurringTransactionReposit
 import dev.tuandoan.expensetracker.domain.repository.SearchFilterPreferences
 import dev.tuandoan.expensetracker.domain.repository.SelectedMonthRepository
 import dev.tuandoan.expensetracker.domain.repository.TransactionRepository
+import dev.tuandoan.expensetracker.domain.repository.TripPreferences
 import dev.tuandoan.expensetracker.domain.repository.TripRepository
 import dev.tuandoan.expensetracker.domain.widget.WidgetUpdater
 import dev.tuandoan.expensetracker.repository.CategoryRepositoryImpl
@@ -42,8 +44,6 @@ import dev.tuandoan.expensetracker.repository.RecurringTransactionRepositoryImpl
 import dev.tuandoan.expensetracker.repository.TransactionRepositoryImpl
 import dev.tuandoan.expensetracker.repository.TripRepositoryImpl
 import dev.tuandoan.expensetracker.widget.GlanceWidgetUpdater
-import dev.tuandoan.expensetracker.domain.repository.TripPreferences
-import dev.tuandoan.expensetracker.data.preferences.TripPreferencesImpl
 
 @Module
 @InstallIn(SingletonComponent::class)

@@ -16,6 +16,7 @@ import dev.tuandoan.expensetracker.testutil.FakeHomeBannerPreferences
 import dev.tuandoan.expensetracker.testutil.FakeOnboardingRepository
 import dev.tuandoan.expensetracker.testutil.FakeSearchFilterPreferences
 import dev.tuandoan.expensetracker.testutil.FakeSelectedMonthRepository
+import dev.tuandoan.expensetracker.testutil.FakeTripPreferences
 import dev.tuandoan.expensetracker.testutil.MainDispatcherRule
 import dev.tuandoan.expensetracker.testutil.TestData
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -53,6 +54,7 @@ class HomeViewModelTest {
     private lateinit var fakeOnboardingRepository: FakeOnboardingRepository
     private lateinit var fakeHomeBannerPreferences: FakeHomeBannerPreferences
     private lateinit var fakeWidgetCategoryPreferences: FakeWidgetCategoryPreferences
+    private lateinit var fakeTripPreferences: FakeTripPreferences
     private lateinit var dateRangeCalculator: DateRangeCalculator
 
     private val fixedZone: ZoneId = ZoneId.of("UTC")
@@ -70,6 +72,7 @@ class HomeViewModelTest {
         fakeOnboardingRepository = FakeOnboardingRepository()
         fakeHomeBannerPreferences = FakeHomeBannerPreferences()
         fakeWidgetCategoryPreferences = FakeWidgetCategoryPreferences()
+        fakeTripPreferences = FakeTripPreferences()
         dateRangeCalculator = DateRangeCalculator(fixedClock, fixedZone)
     }
 
@@ -84,6 +87,7 @@ class HomeViewModelTest {
             fakeOnboardingRepository,
             fakeHomeBannerPreferences,
             fakeWidgetCategoryPreferences,
+            fakeTripPreferences,
         )
 
     @Test
@@ -98,6 +102,16 @@ class HomeViewModelTest {
             assertEquals(1, state.transactions.size)
             assertFalse(state.isLoading)
             assertFalse(state.isError)
+        }
+
+    @Test
+    fun excludeTrips_passedToRepository() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            fakeTripPreferences.setExcludeTrips(true)
+            val viewModel = createViewModel()
+            advanceUntilIdle()
+
+            assertTrue(fakeRepository.lastExcludeTrips)
         }
 
     @Test
@@ -1264,6 +1278,7 @@ class HomeViewModelTest {
         var lastObservedTo: Long? = null
         var lastSearchQuery: String? = null
         var advancedSearchCalled = false
+        var lastExcludeTrips: Boolean = false
         var lastAdvancedFrom: Long? = null
         var lastAdvancedTo: Long? = null
         val addedTransactions = mutableListOf<Map<String, Any?>>()
@@ -1272,9 +1287,11 @@ class HomeViewModelTest {
             from: Long,
             to: Long,
             filterType: TransactionType?,
+            excludeTrips: Boolean,
         ): Flow<List<Transaction>> {
             lastObservedFrom = from
             lastObservedTo = to
+            lastExcludeTrips = excludeTrips
             return if (shouldThrowOnObserve) {
                 flow { throw RuntimeException("Test error") }
             } else {
@@ -1317,15 +1334,21 @@ class HomeViewModelTest {
         override fun observeMonthlySummary(
             from: Long,
             to: Long,
-        ): Flow<MonthlySummary> = flow { emit(TestData.sampleMonthlySummary) }
+            excludeTrips: Boolean,
+        ): Flow<MonthlySummary> {
+            lastExcludeTrips = excludeTrips
+            return flow { emit(TestData.sampleMonthlySummary) }
+        }
 
         override fun searchTransactions(
             from: Long,
             to: Long,
             query: String,
             filterType: TransactionType?,
+            excludeTrips: Boolean,
         ): Flow<List<Transaction>> {
             lastSearchQuery = query
+            lastExcludeTrips = excludeTrips
             return flow { emit(searchResultsToEmit) }
         }
 
@@ -1333,7 +1356,11 @@ class HomeViewModelTest {
             from: Long,
             to: Long,
             currencyCode: String,
-        ): List<MonthlyBarPoint> = (1..12).map { MonthlyBarPoint(month = it, totalExpense = 0L) }
+            excludeTrips: Boolean,
+        ): List<MonthlyBarPoint> {
+            lastExcludeTrips = excludeTrips
+            return (1..12).map { MonthlyBarPoint(month = it, totalExpense = 0L) }
+        }
 
         override fun searchTransactionsAdvanced(
             from: Long?,
@@ -1341,10 +1368,12 @@ class HomeViewModelTest {
             query: String,
             filterType: TransactionType?,
             categoryId: Long?,
+            excludeTrips: Boolean,
         ): Flow<List<Transaction>> {
             advancedSearchCalled = true
             lastAdvancedFrom = from
             lastAdvancedTo = to
+            lastExcludeTrips = excludeTrips
             return flow { emit(searchResultsToEmit) }
         }
     }

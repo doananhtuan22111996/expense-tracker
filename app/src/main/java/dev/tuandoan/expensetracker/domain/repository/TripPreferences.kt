@@ -4,5 +4,6 @@ import kotlinx.coroutines.flow.Flow
 
 interface TripPreferences {
     val excludeTrips: Flow<Boolean>
+
     suspend fun setExcludeTrips(exclude: Boolean)
 }

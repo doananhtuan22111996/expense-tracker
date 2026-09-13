@@ -188,7 +188,12 @@ class TransactionRepositoryImpl
             combine(
                 transactionDao.sumExpenseByCurrency(from, to, if (excludeTrips) 1 else 0),
                 transactionDao.sumIncomeByCurrency(from, to, if (excludeTrips) 1 else 0),
-                transactionDao.sumByCurrencyAndCategory(from, to, TransactionType.EXPENSE.toInt(), if (excludeTrips) 1 else 0),
+                transactionDao.sumByCurrencyAndCategory(
+                    from,
+                    to,
+                    TransactionType.EXPENSE.toInt(),
+                    if (excludeTrips) 1 else 0,
+                ),
                 categoryDao.getCategories(TransactionType.EXPENSE.toInt()),
             ) { expenseByCurrency, incomeByCurrency, categorySums, categories ->
                 buildMonthlySummary(expenseByCurrency, incomeByCurrency, categorySums, categories)

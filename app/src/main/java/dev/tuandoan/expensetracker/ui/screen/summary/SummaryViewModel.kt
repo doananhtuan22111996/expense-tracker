@@ -23,6 +23,7 @@ import dev.tuandoan.expensetracker.domain.repository.BudgetPreferences
 import dev.tuandoan.expensetracker.domain.repository.CurrencyPreferenceRepository
 import dev.tuandoan.expensetracker.domain.repository.SelectedMonthRepository
 import dev.tuandoan.expensetracker.domain.repository.TransactionRepository
+import dev.tuandoan.expensetracker.domain.repository.TripPreferences
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.FlowPreview
@@ -50,8 +51,6 @@ import java.time.ZoneId
 import javax.inject.Inject
 
 enum class SummaryMode { MONTH, YEAR }
-
-import dev.tuandoan.expensetracker.domain.repository.TripPreferences
 
 @HiltViewModel
 class SummaryViewModel
@@ -346,12 +345,12 @@ class SummaryViewModel
                             dateRangeCalculator.rangeOf(selectedMonthRepository.selectedMonth.value)
                         }
 
-                    tripPreferences.excludeTrips.flatMapLatest { excludeTrips ->
-                        transactionRepository
-                            .observeMonthlySummary(range.startMillis, range.endMillisExclusive, excludeTrips)
-                            .map { summary -> Pair(summary, excludeTrips) }
-                    }
-                        .catch { e ->
+                    tripPreferences.excludeTrips
+                        .flatMapLatest { excludeTrips ->
+                            transactionRepository
+                                .observeMonthlySummary(range.startMillis, range.endMillisExclusive, excludeTrips)
+                                .map { summary -> Pair(summary, excludeTrips) }
+                        }.catch { e ->
                             _uiState.value =
                                 _uiState.value.copy(
                                     isLoading = false,
@@ -361,7 +360,12 @@ class SummaryViewModel
                         }.collect { (summary, excludeTrips) ->
                             val barData =
                                 if (mode == SummaryMode.YEAR) {
-                                    buildMonthlyBarData(summary, range.startMillis, range.endMillisExclusive, excludeTrips)
+                                    buildMonthlyBarData(
+                                        summary,
+                                        range.startMillis,
+                                        range.endMillisExclusive,
+                                        excludeTrips,
+                                    )
                                 } else {
                                     emptyMap()
                                 }

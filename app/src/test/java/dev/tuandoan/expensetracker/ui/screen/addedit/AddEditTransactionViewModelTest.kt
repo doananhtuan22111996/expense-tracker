@@ -891,6 +891,7 @@ class AddEditTransactionViewModelTest {
             from: Long,
             to: Long,
             filterType: TransactionType?,
+            excludeTrips: Boolean,
         ): Flow<List<Transaction>> = flow { emit(emptyList()) }
 
         override suspend fun addTransaction(
@@ -924,6 +925,7 @@ class AddEditTransactionViewModelTest {
         override fun observeMonthlySummary(
             from: Long,
             to: Long,
+            excludeTrips: Boolean,
         ): Flow<MonthlySummary> = flow { emit(TestData.sampleMonthlySummary) }
 
         override fun searchTransactions(
@@ -931,12 +933,14 @@ class AddEditTransactionViewModelTest {
             to: Long,
             query: String,
             filterType: TransactionType?,
+            excludeTrips: Boolean,
         ): Flow<List<Transaction>> = flow { emit(emptyList()) }
 
         override suspend fun getMonthlyExpenseTotals(
             from: Long,
             to: Long,
             currencyCode: String,
+            excludeTrips: Boolean,
         ): List<MonthlyBarPoint> = (1..12).map { MonthlyBarPoint(month = it, totalExpense = 0L) }
 
         override fun searchTransactionsAdvanced(
@@ -945,6 +949,7 @@ class AddEditTransactionViewModelTest {
             query: String,
             filterType: TransactionType?,
             categoryId: Long?,
+            excludeTrips: Boolean,
         ): Flow<List<Transaction>> =
             flow {
                 emit(emptyList())

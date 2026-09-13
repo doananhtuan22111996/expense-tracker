@@ -22,6 +22,7 @@ import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Rule
@@ -406,6 +407,7 @@ class ConversionWizardViewModelTest {
             from: Long,
             to: Long,
             filterType: TransactionType?,
+            excludeTrips: Boolean,
         ) = MutableStateFlow(emptyList<Transaction>())
 
         override suspend fun addTransaction(
@@ -428,6 +430,7 @@ class ConversionWizardViewModelTest {
         override fun observeMonthlySummary(
             from: Long,
             to: Long,
+            excludeTrips: Boolean,
         ) = MutableStateFlow(MonthlySummary(emptyList()))
 
         override fun searchTransactions(
@@ -435,6 +438,7 @@ class ConversionWizardViewModelTest {
             to: Long,
             query: String,
             filterType: TransactionType?,
+            excludeTrips: Boolean,
         ) = MutableStateFlow(emptyList<Transaction>())
 
         override fun searchTransactionsAdvanced(
@@ -443,12 +447,14 @@ class ConversionWizardViewModelTest {
             query: String,
             filterType: TransactionType?,
             categoryId: Long?,
+            excludeTrips: Boolean,
         ) = MutableStateFlow(transactionsByCategory[categoryId] ?: emptyList())
 
         override suspend fun getMonthlyExpenseTotals(
             from: Long,
             to: Long,
             currencyCode: String,
+            excludeTrips: Boolean,
         ): List<MonthlyBarPoint> = emptyList()
     }
 

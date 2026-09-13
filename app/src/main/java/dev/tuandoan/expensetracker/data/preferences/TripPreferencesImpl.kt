@@ -15,20 +15,23 @@ import javax.inject.Singleton
 private val Context.tripDataStore by preferencesDataStore(name = "trip_preferences")
 
 @Singleton
-class TripPreferencesImpl @Inject constructor(
-    @ApplicationContext private val context: Context,
-    private val widgetUpdater: WidgetUpdater,
-) : TripPreferences {
-    private val excludeTripsKey = booleanPreferencesKey("exclude_trips")
+class TripPreferencesImpl
+    @Inject
+    constructor(
+        @ApplicationContext private val context: Context,
+        private val widgetUpdater: WidgetUpdater,
+    ) : TripPreferences {
+        private val excludeTripsKey = booleanPreferencesKey("exclude_trips")
 
-    override val excludeTrips: Flow<Boolean> = context.tripDataStore.data.map { preferences ->
-        preferences[excludeTripsKey] ?: false
-    }
+        override val excludeTrips: Flow<Boolean> =
+            context.tripDataStore.data.map { preferences ->
+                preferences[excludeTripsKey] ?: false
+            }
 
-    override suspend fun setExcludeTrips(exclude: Boolean) {
-        context.tripDataStore.edit { preferences ->
-            preferences[excludeTripsKey] = exclude
+        override suspend fun setExcludeTrips(exclude: Boolean) {
+            context.tripDataStore.edit { preferences ->
+                preferences[excludeTripsKey] = exclude
+            }
+            widgetUpdater.requestUpdate()
         }
-        widgetUpdater.requestUpdate()
     }
-}

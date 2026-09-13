@@ -665,6 +665,7 @@ class TransactionRepositoryImplTest {
             from: Long,
             to: Long,
             type: Int?,
+            excludeTrips: Int,
         ): Flow<List<TransactionEntity>> = transactionsFlow
 
         override suspend fun insert(entity: TransactionEntity): Long {
@@ -697,17 +698,20 @@ class TransactionRepositoryImplTest {
         override fun sumExpenseByCurrency(
             from: Long,
             to: Long,
+            excludeTrips: Int,
         ): Flow<List<CurrencySumRow>> = expenseByCurrencyFlow
 
         override fun sumIncomeByCurrency(
             from: Long,
             to: Long,
+            excludeTrips: Int,
         ): Flow<List<CurrencySumRow>> = incomeByCurrencyFlow
 
         override fun sumByCurrencyAndCategory(
             from: Long,
             to: Long,
             type: Int,
+            excludeTrips: Int,
         ): Flow<List<CurrencyCategorySumRow>> = categorySumByCurrencyFlow
 
         override fun searchTransactions(
@@ -715,6 +719,7 @@ class TransactionRepositoryImplTest {
             to: Long,
             query: String,
             type: Int?,
+            excludeTrips: Int,
         ): Flow<List<TransactionEntity>> = transactionsFlow
 
         var monthlyTotalRows: List<MonthlyTotalRow> = emptyList()
@@ -723,11 +728,13 @@ class TransactionRepositoryImplTest {
             from: Long,
             to: Long,
             currencyCode: String,
+            excludeTrips: Int,
         ): List<MonthlyTotalRow> = monthlyTotalRows
 
         override suspend fun getExpenseTotalsByCurrency(
             from: Long,
             to: Long,
+            excludeTrips: Int,
         ): List<CurrencySumRow> = emptyList()
 
         override suspend fun reassignCategory(
@@ -762,6 +769,7 @@ class TransactionRepositoryImplTest {
             query: String,
             type: Int?,
             categoryId: Long?,
+            excludeTrips: Int,
         ): Flow<List<TransactionEntity>> = MutableStateFlow(emptyList())
     }
 
