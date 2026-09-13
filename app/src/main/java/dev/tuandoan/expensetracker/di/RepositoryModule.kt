@@ -42,6 +42,8 @@ import dev.tuandoan.expensetracker.repository.RecurringTransactionRepositoryImpl
 import dev.tuandoan.expensetracker.repository.TransactionRepositoryImpl
 import dev.tuandoan.expensetracker.repository.TripRepositoryImpl
 import dev.tuandoan.expensetracker.widget.GlanceWidgetUpdater
+import dev.tuandoan.expensetracker.domain.repository.TripPreferences
+import dev.tuandoan.expensetracker.data.preferences.TripPreferencesImpl
 
 @Module
 @InstallIn(SingletonComponent::class)
@@ -76,6 +78,9 @@ abstract class RepositoryModule {
 
     @Binds
     abstract fun bindBudgetPreferences(budgetPreferencesImpl: BudgetPreferencesImpl): BudgetPreferences
+
+    @Binds
+    abstract fun bindTripPreferences(tripPreferencesImpl: TripPreferencesImpl): TripPreferences
 
     @Binds
     abstract fun bindRecurringTransactionRepository(
