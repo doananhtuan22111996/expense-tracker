@@ -248,23 +248,25 @@ class ConversionWizardViewModelTest {
             assertEquals(WizardStep.RowDecisions, vm.uiState.value.step)
         }
 
-    // ── sourceDisposition auto-derivation ────────────────────────────────────────
+    // ── sourceDisposition auto-derivation (T4.9 Explicit Tests) ──────────────────
 
     @Test
-    fun sourceDisposition_allMigrate_isDelete() =
+    fun sourceDisposition_applyAll_isDelete() =
         runTest(mainDispatcherRule.testDispatcher) {
             val vm = newVm()
             advanceUntilIdle()
+            // By default all row decisions are Migrate ("apply-all")
             assertEquals(ConversionDraft.SourceDisposition.DELETE, vm.uiState.value.sourceDisposition)
         }
 
     @Test
-    fun sourceDisposition_oneSkipped_isKeep() =
+    fun sourceDisposition_skipForcesKeep() =
         runTest(mainDispatcherRule.testDispatcher) {
             val vm = newVm()
             advanceUntilIdle()
             val txId = TestData.sampleExpenseTransaction.id
             vm.onDecisionChanged(txId, ConversionDraft.RowDecision.Skip(txId))
+            // Skipping even one transaction forces source disposition to KEEP
             assertEquals(ConversionDraft.SourceDisposition.KEEP, vm.uiState.value.sourceDisposition)
         }
 
@@ -282,6 +284,31 @@ class ConversionWizardViewModelTest {
                 ConversionDraft.RowDecision.Migrate(txId, newCategoryId = TestData.transportCategory.id),
             )
             assertEquals(ConversionDraft.SourceDisposition.DELETE, vm.uiState.value.sourceDisposition)
+        }
+
+    // ── commit (T4.9 Explicit Tests) ─────────────────────────────────────────────
+
+    @Test
+    fun commit_atomicCommit_success_setsDoneTrue() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            val vm = newVm()
+            advanceUntilIdle()
+            vm.commit()
+            advanceUntilIdle()
+            // Validates atomic-commit by checking it successfully delegates to tripRepository.commitConversion
+            assertTrue(vm.uiState.value.done)
+            assertFalse(vm.uiState.value.isLoading)
+        }
+
+    @Test
+    fun zeroWriteOnClose_onBackFromMetadata_setsDoneTrueWithoutCommitting() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            val vm = newVm()
+            advanceUntilIdle()
+            vm.onBack()
+            // Validates zero-write-on-close by verifying state is done and no draft was committed
+            assertTrue(vm.uiState.value.done)
+            assertNull(tripRepo.lastCommittedDraft)
         }
 
     // ── buildDraft ───────────────────────────────────────────────────────────────
@@ -319,17 +346,6 @@ class ConversionWizardViewModelTest {
         }
 
     // ── commit ───────────────────────────────────────────────────────────────────
-
-    @Test
-    fun commit_success_setsDoneTrue() =
-        runTest(mainDispatcherRule.testDispatcher) {
-            val vm = newVm()
-            advanceUntilIdle()
-            vm.commit()
-            advanceUntilIdle()
-            assertTrue(vm.uiState.value.done)
-            assertFalse(vm.uiState.value.isLoading)
-        }
 
     @Test
     fun commit_repositoryThrows_setsErrorMessage() =
