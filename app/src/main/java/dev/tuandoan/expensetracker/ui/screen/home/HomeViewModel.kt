@@ -219,17 +219,14 @@ class HomeViewModel
             @OptIn(FlowPreview::class, ExperimentalCoroutinesApi::class)
             viewModelScope.launch {
                 combine(
-                    combine(
-                        selectedMonthRepository.selectedMonth,
-                        searchQueryFlow.debounce(SEARCH_DEBOUNCE_MS).distinctUntilChanged(),
-                        filterFlow,
-                        searchScopeFlow,
-                        selectedCategoryIdFlow,
-                    ) { month, query, filter, scope, categoryId ->
-                        FilterParams(month, query.trim(), filter, scope, categoryId, false)
-                    },
-                    tripPreferences.excludeTrips,
-                ) { params, excludeTrips ->
+                    selectedMonthRepository.selectedMonth,
+                    searchQueryFlow.debounce(SEARCH_DEBOUNCE_MS).distinctUntilChanged(),
+                    filterFlow,
+                    searchScopeFlow,
+                    selectedCategoryIdFlow,
+                ) { month, query, filter, scope, categoryId ->
+                    FilterParams(month, query.trim(), filter, scope, categoryId, excludeTrips = false)
+                }.combine(tripPreferences.excludeTrips) { params, excludeTrips ->
                     params.copy(excludeTrips = excludeTrips)
                 }.combine(retryTrigger) { params, _ -> params }
                     .flatMapLatest { params ->

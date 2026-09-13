@@ -1,7 +1,9 @@
 package dev.tuandoan.expensetracker.data.database.entity
 
+import dev.tuandoan.expensetracker.repository.TransactionRepositoryImpl
 import dev.tuandoan.expensetracker.ui.screen.categories.AVAILABLE_COLORS
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -42,8 +44,9 @@ class CategorySnapshotRegressionTest {
 
     @Test
     fun categoryIconEncoding_isPinnedForSnapshots() {
-        // Although the app no longer allows users to set custom icons via the UI,
-        // seed data and historical categories still use these string keys.
+        // These icon keys are stored in TripEntity snapshots and in seed data.
+        // If any key is removed or renamed, reverting a legacy-converted trip
+        // will result in a category with an unresolvable icon.
         val historicalIcons =
             listOf(
                 "restaurant",
@@ -59,8 +62,26 @@ class CategorySnapshotRegressionTest {
                 "more_horiz",
             )
 
+        // Verify pinned keys include the icons used in code-level constants.
+        // OTHER_CATEGORY and unknownCategory() use these keys; if they were renamed
+        // without updating this list, the assertion would fail.
+        val otherCategoryIconKey = TransactionRepositoryImpl.OTHER_CATEGORY.iconKey
+        assertNotNull("OTHER_CATEGORY must have a non-null iconKey", otherCategoryIconKey)
+        assertTrue(
+            "OTHER_CATEGORY iconKey '$otherCategoryIconKey' must be in the pinned historical icons list",
+            historicalIcons.contains(otherCategoryIconKey),
+        )
+
+        // Verify no duplicate keys (each icon key must be unique)
+        assertEquals(
+            "Historical icon keys must be unique",
+            historicalIcons.size,
+            historicalIcons.toSet().size,
+        )
+
+        // Verify every key is non-blank
         historicalIcons.forEach { iconKey ->
-            assertTrue("Historical icon key must not be empty", iconKey.isNotEmpty())
+            assertTrue("Historical icon key must not be blank", iconKey.isNotBlank())
         }
     }
 }

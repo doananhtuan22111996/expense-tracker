@@ -43,7 +43,7 @@ class TransactionRepositoryImpl
             excludeTrips: Boolean,
         ): Flow<List<Transaction>> =
             transactionDao
-                .getTransactions(from, to, filterType?.toInt(), if (excludeTrips) 1 else 0)
+                .getTransactions(from, to, filterType?.toInt(), excludeTrips.toSqlInt())
                 .combine(
                     // Get all categories to map to transactions
                     categoryDao
@@ -121,7 +121,7 @@ class TransactionRepositoryImpl
             excludeTrips: Boolean,
         ): Flow<List<Transaction>> =
             transactionDao
-                .searchTransactions(from, to, escapeLikeQuery(query), filterType?.toInt(), if (excludeTrips) 1 else 0)
+                .searchTransactions(from, to, escapeLikeQuery(query), filterType?.toInt(), excludeTrips.toSqlInt())
                 .combine(
                     categoryDao
                         .getCategories(TransactionType.EXPENSE.toInt())
@@ -151,7 +151,7 @@ class TransactionRepositoryImpl
                     query = if (query.isBlank()) "" else escapeLikeQuery(query),
                     type = filterType?.toInt(),
                     categoryId = categoryId,
-                    excludeTrips = if (excludeTrips) 1 else 0,
+                    excludeTrips = excludeTrips.toSqlInt(),
                 ).combine(
                     categoryDao
                         .getCategories(TransactionType.EXPENSE.toInt())
@@ -173,7 +173,7 @@ class TransactionRepositoryImpl
             excludeTrips: Boolean,
         ): List<MonthlyBarPoint> =
             withContext(ioDispatcher) {
-                val rows = transactionDao.getMonthlyExpenseTotals(from, to, currencyCode, if (excludeTrips) 1 else 0)
+                val rows = transactionDao.getMonthlyExpenseTotals(from, to, currencyCode, excludeTrips.toSqlInt())
                 val dataMap = rows.associate { it.month.toInt() to it.total }
                 (1..12).map { month ->
                     MonthlyBarPoint(month = month, totalExpense = dataMap[month] ?: 0L)
@@ -186,13 +186,13 @@ class TransactionRepositoryImpl
             excludeTrips: Boolean,
         ): Flow<MonthlySummary> =
             combine(
-                transactionDao.sumExpenseByCurrency(from, to, if (excludeTrips) 1 else 0),
-                transactionDao.sumIncomeByCurrency(from, to, if (excludeTrips) 1 else 0),
+                transactionDao.sumExpenseByCurrency(from, to, excludeTrips.toSqlInt()),
+                transactionDao.sumIncomeByCurrency(from, to, excludeTrips.toSqlInt()),
                 transactionDao.sumByCurrencyAndCategory(
                     from,
                     to,
                     TransactionType.EXPENSE.toInt(),
-                    if (excludeTrips) 1 else 0,
+                    excludeTrips.toSqlInt(),
                 ),
                 categoryDao.getCategories(TransactionType.EXPENSE.toInt()),
             ) { expenseByCurrency, incomeByCurrency, categorySums, categories ->
@@ -303,6 +303,10 @@ class TransactionRepositoryImpl
 
         companion object {
             private const val TOP_CATEGORIES_LIMIT = 5
+
+            /** Converts a domain-layer Boolean to the 0/1 Int expected by Room DAO queries. */
+            private fun Boolean.toSqlInt(): Int = if (this) 1 else 0
+
             const val OTHER_CATEGORY_ID = -1L
 
             internal fun escapeLikeQuery(query: String): String =
