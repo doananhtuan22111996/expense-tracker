@@ -40,9 +40,10 @@ class TransactionRepositoryImpl
             from: Long,
             to: Long,
             filterType: TransactionType?,
+            excludeTrips: Boolean,
         ): Flow<List<Transaction>> =
             transactionDao
-                .getTransactions(from, to, filterType?.toInt())
+                .getTransactions(from, to, filterType?.toInt(), if (excludeTrips) 1 else 0)
                 .combine(
                     // Get all categories to map to transactions
                     categoryDao
@@ -117,9 +118,10 @@ class TransactionRepositoryImpl
             to: Long,
             query: String,
             filterType: TransactionType?,
+            excludeTrips: Boolean,
         ): Flow<List<Transaction>> =
             transactionDao
-                .searchTransactions(from, to, escapeLikeQuery(query), filterType?.toInt())
+                .searchTransactions(from, to, escapeLikeQuery(query), filterType?.toInt(), if (excludeTrips) 1 else 0)
                 .combine(
                     categoryDao
                         .getCategories(TransactionType.EXPENSE.toInt())
@@ -140,6 +142,7 @@ class TransactionRepositoryImpl
             query: String,
             filterType: TransactionType?,
             categoryId: Long?,
+            excludeTrips: Boolean,
         ): Flow<List<Transaction>> =
             transactionDao
                 .searchTransactionsAdvanced(
@@ -148,6 +151,7 @@ class TransactionRepositoryImpl
                     query = if (query.isBlank()) "" else escapeLikeQuery(query),
                     type = filterType?.toInt(),
                     categoryId = categoryId,
+                    excludeTrips = if (excludeTrips) 1 else 0,
                 ).combine(
                     categoryDao
                         .getCategories(TransactionType.EXPENSE.toInt())
@@ -166,9 +170,10 @@ class TransactionRepositoryImpl
             from: Long,
             to: Long,
             currencyCode: String,
+            excludeTrips: Boolean,
         ): List<MonthlyBarPoint> =
             withContext(ioDispatcher) {
-                val rows = transactionDao.getMonthlyExpenseTotals(from, to, currencyCode)
+                val rows = transactionDao.getMonthlyExpenseTotals(from, to, currencyCode, if (excludeTrips) 1 else 0)
                 val dataMap = rows.associate { it.month.toInt() to it.total }
                 (1..12).map { month ->
                     MonthlyBarPoint(month = month, totalExpense = dataMap[month] ?: 0L)
@@ -178,11 +183,12 @@ class TransactionRepositoryImpl
         override fun observeMonthlySummary(
             from: Long,
             to: Long,
+            excludeTrips: Boolean,
         ): Flow<MonthlySummary> =
             combine(
-                transactionDao.sumExpenseByCurrency(from, to),
-                transactionDao.sumIncomeByCurrency(from, to),
-                transactionDao.sumByCurrencyAndCategory(from, to, TransactionType.EXPENSE.toInt()),
+                transactionDao.sumExpenseByCurrency(from, to, if (excludeTrips) 1 else 0),
+                transactionDao.sumIncomeByCurrency(from, to, if (excludeTrips) 1 else 0),
+                transactionDao.sumByCurrencyAndCategory(from, to, TransactionType.EXPENSE.toInt(), if (excludeTrips) 1 else 0),
                 categoryDao.getCategories(TransactionType.EXPENSE.toInt()),
             ) { expenseByCurrency, incomeByCurrency, categorySums, categories ->
                 buildMonthlySummary(expenseByCurrency, incomeByCurrency, categorySums, categories)

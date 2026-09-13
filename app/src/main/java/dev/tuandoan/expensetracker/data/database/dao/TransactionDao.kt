@@ -17,6 +17,7 @@ interface TransactionDao {
         SELECT * FROM transactions
         WHERE timestamp >= :from AND timestamp < :to
         AND (:type IS NULL OR type = :type)
+        AND (:excludeTrips = 0 OR trip_id IS NULL)
         ORDER BY timestamp DESC
     """,
     )
@@ -24,6 +25,7 @@ interface TransactionDao {
         from: Long,
         to: Long,
         type: Int? = null,
+        excludeTrips: Int = 0,
     ): Flow<List<TransactionEntity>>
 
     @Query(
@@ -31,6 +33,7 @@ interface TransactionDao {
         SELECT * FROM transactions
         WHERE timestamp >= :from AND timestamp < :to
         AND (:type IS NULL OR type = :type)
+        AND (:excludeTrips = 0 OR trip_id IS NULL)
         AND note LIKE '%' || :query || '%' ESCAPE '\' COLLATE NOCASE
         ORDER BY timestamp DESC
     """,
@@ -40,6 +43,7 @@ interface TransactionDao {
         to: Long,
         query: String,
         type: Int? = null,
+        excludeTrips: Int = 0,
     ): Flow<List<TransactionEntity>>
 
     @Query(
@@ -49,6 +53,7 @@ interface TransactionDao {
         AND (:to IS NULL OR timestamp < :to)
         AND (:type IS NULL OR type = :type)
         AND (:categoryId IS NULL OR category_id = :categoryId)
+        AND (:excludeTrips = 0 OR trip_id IS NULL)
         AND (:query = '' OR note LIKE '%' || :query || '%' ESCAPE '\' COLLATE NOCASE)
         ORDER BY timestamp DESC
     """,
@@ -59,6 +64,7 @@ interface TransactionDao {
         query: String,
         type: Int? = null,
         categoryId: Long? = null,
+        excludeTrips: Int = 0,
     ): Flow<List<TransactionEntity>>
 
     /** All transactions belonging to a trip, newest first. Empty list when trip has no transactions. */
@@ -172,12 +178,14 @@ interface TransactionDao {
         FROM transactions
         WHERE timestamp >= :from AND timestamp < :to
         AND type = ${TransactionEntity.TYPE_EXPENSE}
+        AND (:excludeTrips = 0 OR trip_id IS NULL)
         GROUP BY currency_code
     """,
     )
     fun sumExpenseByCurrency(
         from: Long,
         to: Long,
+        excludeTrips: Int = 0,
     ): Flow<List<CurrencySumRow>>
 
     @Query(
@@ -186,12 +194,14 @@ interface TransactionDao {
         FROM transactions
         WHERE timestamp >= :from AND timestamp < :to
         AND type = ${TransactionEntity.TYPE_EXPENSE}
+        AND (:excludeTrips = 0 OR trip_id IS NULL)
         GROUP BY currency_code
     """,
     )
     suspend fun getExpenseTotalsByCurrency(
         from: Long,
         to: Long,
+        excludeTrips: Int = 0,
     ): List<CurrencySumRow>
 
     @Query(
@@ -200,12 +210,14 @@ interface TransactionDao {
         FROM transactions
         WHERE timestamp >= :from AND timestamp < :to
         AND type = ${TransactionEntity.TYPE_INCOME}
+        AND (:excludeTrips = 0 OR trip_id IS NULL)
         GROUP BY currency_code
     """,
     )
     fun sumIncomeByCurrency(
         from: Long,
         to: Long,
+        excludeTrips: Int = 0,
     ): Flow<List<CurrencySumRow>>
 
     @Query(
@@ -217,6 +229,7 @@ interface TransactionDao {
         WHERE timestamp >= :from AND timestamp < :to
         AND type = ${TransactionEntity.TYPE_EXPENSE}
         AND currency_code = :currencyCode
+        AND (:excludeTrips = 0 OR trip_id IS NULL)
         GROUP BY month
         ORDER BY month ASC
     """,
@@ -225,6 +238,7 @@ interface TransactionDao {
         from: Long,
         to: Long,
         currencyCode: String,
+        excludeTrips: Int = 0,
     ): List<MonthlyTotalRow>
 
     @Query(
@@ -233,6 +247,7 @@ interface TransactionDao {
         FROM transactions
         WHERE timestamp >= :from AND timestamp < :to
         AND type = :type
+        AND (:excludeTrips = 0 OR trip_id IS NULL)
         GROUP BY currency_code, category_id
         ORDER BY currency_code ASC, total DESC
     """,
@@ -241,5 +256,6 @@ interface TransactionDao {
         from: Long,
         to: Long,
         type: Int,
+        excludeTrips: Int = 0,
     ): Flow<List<CurrencyCategorySumRow>>
 }

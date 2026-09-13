@@ -39,6 +39,8 @@ import java.time.YearMonth
 import java.time.ZoneId
 import javax.inject.Inject
 
+import dev.tuandoan.expensetracker.domain.repository.TripPreferences
+
 @HiltViewModel
 class HomeViewModel
     @Inject
@@ -52,6 +54,7 @@ class HomeViewModel
         private val onboardingRepository: OnboardingRepository,
         private val homeBannerPreferences: HomeBannerPreferences,
         private val widgetCategoryPreferences: WidgetCategoryPreferences,
+        private val tripPreferences: TripPreferences,
     ) : ViewModel() {
         private val _uiState = MutableStateFlow(HomeUiState())
         val uiState: StateFlow<HomeUiState> = _uiState.asStateFlow()
@@ -217,13 +220,18 @@ class HomeViewModel
             @OptIn(FlowPreview::class, ExperimentalCoroutinesApi::class)
             viewModelScope.launch {
                 combine(
-                    selectedMonthRepository.selectedMonth,
-                    searchQueryFlow.debounce(SEARCH_DEBOUNCE_MS).distinctUntilChanged(),
-                    filterFlow,
-                    searchScopeFlow,
-                    selectedCategoryIdFlow,
-                ) { month, query, filter, scope, categoryId ->
-                    FilterParams(month, query.trim(), filter, scope, categoryId)
+                    combine(
+                        selectedMonthRepository.selectedMonth,
+                        searchQueryFlow.debounce(SEARCH_DEBOUNCE_MS).distinctUntilChanged(),
+                        filterFlow,
+                        searchScopeFlow,
+                        selectedCategoryIdFlow,
+                    ) { month, query, filter, scope, categoryId ->
+                        FilterParams(month, query.trim(), filter, scope, categoryId, false)
+                    },
+                    tripPreferences.excludeTrips,
+                ) { params, excludeTrips ->
+                    params.copy(excludeTrips = excludeTrips)
                 }.combine(retryTrigger) { params, _ -> params }
                     .flatMapLatest { params ->
                         val currentState = _uiState.value
@@ -261,12 +269,14 @@ class HomeViewModel
                                     query = params.query,
                                     filterType = params.filter,
                                     categoryId = params.categoryId,
+                                    excludeTrips = params.excludeTrips,
                                 )
                             } else if (params.query.isEmpty()) {
                                 transactionRepository.observeTransactions(
                                     from = range.startMillis,
                                     to = range.endMillisExclusive,
                                     filterType = params.filter,
+                                    excludeTrips = params.excludeTrips,
                                 )
                             } else {
                                 transactionRepository.searchTransactions(
@@ -274,6 +284,7 @@ class HomeViewModel
                                     to = range.endMillisExclusive,
                                     query = params.query,
                                     filterType = params.filter,
+                                    excludeTrips = params.excludeTrips,
                                 )
                             }
                         sourceFlow.catch { e ->
@@ -461,6 +472,7 @@ class HomeViewModel
             val filter: TransactionType?,
             val scope: SearchScope,
             val categoryId: Long?,
+            val excludeTrips: Boolean,
         )
 
         companion object {
