@@ -3,6 +3,8 @@ package dev.tuandoan.expensetracker.ui.screen.trips
 import androidx.lifecycle.SavedStateHandle
 import dev.tuandoan.expensetracker.data.database.entity.DailyTotalRow
 import dev.tuandoan.expensetracker.data.database.entity.TripCategorySumRow
+import dev.tuandoan.expensetracker.domain.analytics.Analytics
+import dev.tuandoan.expensetracker.domain.analytics.AnalyticsEvent
 import dev.tuandoan.expensetracker.domain.model.DeleteTripBehavior
 import dev.tuandoan.expensetracker.domain.model.Transaction
 import dev.tuandoan.expensetracker.domain.model.Trip
@@ -34,6 +36,7 @@ class CreateEditTripViewModelTest {
 
     private lateinit var repo: FakeCreateEditTripRepository
     private lateinit var currencyRepo: FakeCurrencyPreferenceRepository
+    private lateinit var analytics: RecordingAnalytics
     private lateinit var clock: Clock
 
     private val today: Long = LocalDate.of(2026, 5, 19).toEpochDay()
@@ -42,6 +45,7 @@ class CreateEditTripViewModelTest {
     fun setup() {
         repo = FakeCreateEditTripRepository()
         currencyRepo = FakeCurrencyPreferenceRepository(initialCurrency = "VND")
+        analytics = RecordingAnalytics()
         clock =
             Clock.fixed(
                 LocalDate.of(2026, 5, 19).atStartOfDay().toInstant(ZoneOffset.UTC),
@@ -54,6 +58,7 @@ class CreateEditTripViewModelTest {
             savedStateHandle = SavedStateHandle(mapOf("tripId" to tripId)),
             tripRepository = repo,
             currencyPreferenceRepository = currencyRepo,
+            analytics = analytics,
             clock = clock,
         )
 
@@ -527,6 +532,78 @@ class CreateEditTripViewModelTest {
             // Should remain JPY — change was blocked by the lock
             assertEquals("JPY", vm.uiState.value.foreignCurrencyCode)
         }
+
+    @Test
+    fun save_addMode_homeCurrency_logsTripCreatedWithForeignCurrencyFalse() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            val vm = newVm()
+            advanceUntilIdle()
+            vm.onNameChange("Da Nang")
+            vm.onDatesSelected(today, today + 3)
+
+            vm.save { }
+            advanceUntilIdle()
+
+            val event = analytics.events.filterIsInstance<AnalyticsEvent.TripCreated>().single()
+            assertFalse(event.foreignCurrency)
+        }
+
+    @Test
+    fun save_addMode_foreignCurrency_logsTripCreatedWithForeignCurrencyTrue() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            val vm = newVm()
+            advanceUntilIdle()
+            vm.onNameChange("Tokyo")
+            vm.onDatesSelected(today, today + 5)
+            vm.onToggleForeignCurrency(true)
+            vm.onForeignCurrencyChange("JPY")
+            vm.onRateTextChange("165.0")
+
+            vm.save { }
+            advanceUntilIdle()
+
+            val event = analytics.events.filterIsInstance<AnalyticsEvent.TripCreated>().single()
+            assertTrue(event.foreignCurrency)
+        }
+
+    @Test
+    fun save_editMode_doesNotLogTripCreated() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            val existing =
+                Trip(
+                    id = 7L,
+                    name = "Tokyo",
+                    destination = null,
+                    startDateEpochDay = today,
+                    endDateEpochDay = today + 2,
+                    foreignCurrencyCode = null,
+                    foreignToHomeRate = null,
+                    originalCategoryId = null,
+                    originalCategoryNameSnapshot = null,
+                    originalCategoryIconSnapshot = null,
+                    originalCategoryColorSnapshot = null,
+                    createdAt = 0L,
+                )
+            repo.tripsById[7L] = existing
+            val vm = newVm(tripId = 7L)
+            advanceUntilIdle()
+            vm.onNameChange("Updated Name")
+
+            vm.save { }
+            advanceUntilIdle()
+
+            assertTrue(analytics.events.filterIsInstance<AnalyticsEvent.TripCreated>().isEmpty())
+        }
+}
+
+private class RecordingAnalytics : Analytics {
+    val events = mutableListOf<AnalyticsEvent>()
+
+    override fun logEvent(event: AnalyticsEvent) {
+        events += event
+    }
+
+    override fun setCollectionEnabled(enabled: Boolean) = Unit
 }
 
 private class FakeCreateEditTripRepository : TripRepository {

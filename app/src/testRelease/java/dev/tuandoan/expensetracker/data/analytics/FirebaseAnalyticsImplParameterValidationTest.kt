@@ -5,6 +5,7 @@ import dev.tuandoan.expensetracker.domain.analytics.AnalyticsEventParam
 import dev.tuandoan.expensetracker.domain.analytics.BackupFormat
 import dev.tuandoan.expensetracker.domain.analytics.BuildType
 import dev.tuandoan.expensetracker.domain.analytics.InsightRowType
+import dev.tuandoan.expensetracker.domain.analytics.TransactionCountBucket
 import dev.tuandoan.expensetracker.domain.analytics.TransactionKind
 import dev.tuandoan.expensetracker.domain.analytics.TransactionSource
 import dev.tuandoan.expensetracker.domain.analytics.WidgetSize
@@ -70,15 +71,19 @@ class FirebaseAnalyticsImplParameterValidationTest {
             AnalyticsEvent.WidgetAdded(WidgetSize.SMALL),
             AnalyticsEvent.WidgetAdded(WidgetSize.MEDIUM),
             AnalyticsEvent.WidgetRemoved,
-            // Cartesian product: every TransactionKind × every TransactionSource.
-            // Ensures the per-subtype `toWire` mapping emits exhaustively correct
-            // params regardless of which (kind, source) pair the caller constructs.
-            AnalyticsEvent.TransactionAdded(TransactionKind.EXPENSE, TransactionSource.MANUAL),
-            AnalyticsEvent.TransactionAdded(TransactionKind.EXPENSE, TransactionSource.WIDGET),
-            AnalyticsEvent.TransactionAdded(TransactionKind.EXPENSE, TransactionSource.RECURRING),
-            AnalyticsEvent.TransactionAdded(TransactionKind.INCOME, TransactionSource.MANUAL),
-            AnalyticsEvent.TransactionAdded(TransactionKind.INCOME, TransactionSource.WIDGET),
-            AnalyticsEvent.TransactionAdded(TransactionKind.INCOME, TransactionSource.RECURRING),
+            // Cartesian product: every TransactionKind × every TransactionSource × every tripAttached.
+            AnalyticsEvent.TransactionAdded(TransactionKind.EXPENSE, TransactionSource.MANUAL, tripAttached = false),
+            AnalyticsEvent.TransactionAdded(TransactionKind.EXPENSE, TransactionSource.MANUAL, tripAttached = true),
+            AnalyticsEvent.TransactionAdded(TransactionKind.EXPENSE, TransactionSource.WIDGET, tripAttached = false),
+            AnalyticsEvent.TransactionAdded(TransactionKind.EXPENSE, TransactionSource.WIDGET, tripAttached = true),
+            AnalyticsEvent.TransactionAdded(TransactionKind.EXPENSE, TransactionSource.RECURRING, tripAttached = false),
+            AnalyticsEvent.TransactionAdded(TransactionKind.EXPENSE, TransactionSource.RECURRING, tripAttached = true),
+            AnalyticsEvent.TransactionAdded(TransactionKind.INCOME, TransactionSource.MANUAL, tripAttached = false),
+            AnalyticsEvent.TransactionAdded(TransactionKind.INCOME, TransactionSource.MANUAL, tripAttached = true),
+            AnalyticsEvent.TransactionAdded(TransactionKind.INCOME, TransactionSource.WIDGET, tripAttached = false),
+            AnalyticsEvent.TransactionAdded(TransactionKind.INCOME, TransactionSource.WIDGET, tripAttached = true),
+            AnalyticsEvent.TransactionAdded(TransactionKind.INCOME, TransactionSource.RECURRING, tripAttached = false),
+            AnalyticsEvent.TransactionAdded(TransactionKind.INCOME, TransactionSource.RECURRING, tripAttached = true),
             AnalyticsEvent.TransactionUndone,
             AnalyticsEvent.BackupExported(BackupFormat.JSON),
             AnalyticsEvent.BackupExported(BackupFormat.ENCRYPTED),
@@ -88,6 +93,14 @@ class FirebaseAnalyticsImplParameterValidationTest {
             AnalyticsEvent.InsightShown(InsightRowType.DAILY_PACE),
             AnalyticsEvent.InsightShown(InsightRowType.NO_BUDGET_FALLBACK),
             AnalyticsEvent.InsightShown(InsightRowType.DAY_OF_MONTH),
+            AnalyticsEvent.TripCreated(foreignCurrency = false),
+            AnalyticsEvent.TripCreated(foreignCurrency = true),
+            AnalyticsEvent.TripConvertedFromCategory(TransactionCountBucket.ONE_TO_NINE, foreignCurrency = false),
+            AnalyticsEvent.TripConvertedFromCategory(TransactionCountBucket.ONE_TO_NINE, foreignCurrency = true),
+            AnalyticsEvent.TripConvertedFromCategory(TransactionCountBucket.TEN_TO_FORTY_NINE, foreignCurrency = false),
+            AnalyticsEvent.TripConvertedFromCategory(TransactionCountBucket.TEN_TO_FORTY_NINE, foreignCurrency = true),
+            AnalyticsEvent.TripConvertedFromCategory(TransactionCountBucket.FIFTY_PLUS, foreignCurrency = false),
+            AnalyticsEvent.TripConvertedFromCategory(TransactionCountBucket.FIFTY_PLUS, foreignCurrency = true),
         )
 
     /**
@@ -105,6 +118,8 @@ class FirebaseAnalyticsImplParameterValidationTest {
             FirebaseAnalyticsImpl.EVENT_BACKUP_EXPORTED,
             FirebaseAnalyticsImpl.EVENT_BACKUP_IMPORTED,
             FirebaseAnalyticsImpl.EVENT_INSIGHT_SHOWN,
+            FirebaseAnalyticsImpl.EVENT_TRIP_CREATED,
+            FirebaseAnalyticsImpl.EVENT_TRIP_CONVERTED_FROM_CATEGORY,
         )
 
     /**
@@ -120,10 +135,13 @@ class FirebaseAnalyticsImplParameterValidationTest {
             FirebaseAnalyticsImpl.PARAM_SOURCE,
             FirebaseAnalyticsImpl.PARAM_FORMAT,
             FirebaseAnalyticsImpl.PARAM_ROW_TYPE,
+            FirebaseAnalyticsImpl.PARAM_FOREIGN_CURRENCY,
+            FirebaseAnalyticsImpl.PARAM_TRANSACTION_COUNT,
+            FirebaseAnalyticsImpl.PARAM_TRIP_ATTACHED,
         )
 
     /**
-     * Union of every enum's `wireValue`. Any parameter value outside
+     * Union of every enum's `wireValue` + boolean wire values. Any parameter value outside
      * this set would represent either:
      * - A new enum variant not yet disclosed in the privacy policy
      * - A raw string smuggled through a custom `toWire` branch
@@ -136,8 +154,9 @@ class FirebaseAnalyticsImplParameterValidationTest {
                 TransactionKind.entries +
                 TransactionSource.entries +
                 BackupFormat.entries +
-                InsightRowType.entries
-        ).map { it.wireValue }.toSet()
+                InsightRowType.entries +
+                TransactionCountBucket.entries
+        ).map { it.wireValue }.toSet() + setOf("true", "false")
 
     @Test
     fun everyAnalyticsEventSubtype_isRepresentedInExhaustiveList() {
@@ -222,7 +241,8 @@ class FirebaseAnalyticsImplParameterValidationTest {
      */
     private val maxParamsByEventName: Map<String, Int> =
         mapOf(
-            FirebaseAnalyticsImpl.EVENT_TRANSACTION_ADDED to 2,
+            FirebaseAnalyticsImpl.EVENT_TRANSACTION_ADDED to 3,
+            FirebaseAnalyticsImpl.EVENT_TRIP_CONVERTED_FROM_CATEGORY to 2,
         )
 
     @Test

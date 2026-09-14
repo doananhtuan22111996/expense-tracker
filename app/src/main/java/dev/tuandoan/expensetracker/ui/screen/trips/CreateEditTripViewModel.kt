@@ -7,6 +7,8 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import dev.tuandoan.expensetracker.R
 import dev.tuandoan.expensetracker.core.util.ErrorUtils
 import dev.tuandoan.expensetracker.core.util.UiText
+import dev.tuandoan.expensetracker.domain.analytics.Analytics
+import dev.tuandoan.expensetracker.domain.analytics.AnalyticsEvent
 import dev.tuandoan.expensetracker.domain.model.SupportedCurrencies
 import dev.tuandoan.expensetracker.domain.model.Trip
 import dev.tuandoan.expensetracker.domain.repository.CurrencyPreferenceRepository
@@ -42,6 +44,7 @@ class CreateEditTripViewModel
         savedStateHandle: SavedStateHandle,
         private val tripRepository: TripRepository,
         private val currencyPreferenceRepository: CurrencyPreferenceRepository,
+        private val analytics: Analytics,
         clock: Clock,
     ) : ViewModel() {
         private val tripId: Long = savedStateHandle["tripId"] ?: 0L
@@ -162,6 +165,11 @@ class CreateEditTripViewModel
                             endDateEpochDay = end,
                             foreignCurrencyCode = foreignCode,
                             foreignToHomeRate = foreignRate,
+                        )
+                        analytics.logEvent(
+                            AnalyticsEvent.TripCreated(
+                                foreignCurrency = foreignCode != null,
+                            ),
                         )
                     }
                     onSuccess()

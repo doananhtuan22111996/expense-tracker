@@ -1,6 +1,9 @@
 package dev.tuandoan.expensetracker.ui.screen.trips
 
 import androidx.lifecycle.SavedStateHandle
+import dev.tuandoan.expensetracker.domain.analytics.Analytics
+import dev.tuandoan.expensetracker.domain.analytics.AnalyticsEvent
+import dev.tuandoan.expensetracker.domain.analytics.TransactionCountBucket
 import dev.tuandoan.expensetracker.domain.model.Category
 import dev.tuandoan.expensetracker.domain.model.CategoryWithCount
 import dev.tuandoan.expensetracker.domain.model.ConversionDraft
@@ -40,6 +43,7 @@ class ConversionWizardViewModelTest {
     private lateinit var transactionRepo: FakeWizardTransactionRepository
     private lateinit var currencyRepo: FakeCurrencyPreferenceRepository
     private lateinit var tripRepo: FakeWizardTripRepository
+    private lateinit var analytics: RecordingAnalytics
     private lateinit var clock: Clock
 
     private val today = LocalDate.of(2026, 6, 13).toEpochDay()
@@ -50,6 +54,7 @@ class ConversionWizardViewModelTest {
         transactionRepo = FakeWizardTransactionRepository()
         currencyRepo = FakeCurrencyPreferenceRepository(initialCurrency = "VND")
         tripRepo = FakeWizardTripRepository()
+        analytics = RecordingAnalytics()
         clock =
             Clock.fixed(
                 LocalDate.of(2026, 6, 13).atStartOfDay().toInstant(ZoneOffset.UTC),
@@ -69,6 +74,7 @@ class ConversionWizardViewModelTest {
             transactionRepository = transactionRepo,
             currencyPreferenceRepository = currencyRepo,
             tripRepository = tripRepo,
+            analytics = analytics,
             clock = clock,
         )
 
@@ -361,7 +367,45 @@ class ConversionWizardViewModelTest {
             assertFalse(vm.uiState.value.isLoading)
         }
 
+    @Test
+    fun commit_success_logsTripConvertedFromCategoryWithCorrectBucketAndForeignFlag() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            val vm = newVm()
+            advanceUntilIdle()
+            vm.onForeignCurrencyToggle(true)
+            vm.onForeignCurrencyChange("USD")
+            vm.onRateTextChange("25000")
+            vm.commit()
+            advanceUntilIdle()
+
+            val event = analytics.events.filterIsInstance<AnalyticsEvent.TripConvertedFromCategory>().single()
+            assertEquals(TransactionCountBucket.ONE_TO_NINE, event.transactionCount)
+            assertTrue(event.foreignCurrency)
+        }
+
+    @Test
+    fun commit_failure_doesNotLogTripConvertedFromCategory() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            tripRepo.throwOnCommit = true
+            val vm = newVm()
+            advanceUntilIdle()
+            vm.commit()
+            advanceUntilIdle()
+
+            assertTrue(analytics.events.filterIsInstance<AnalyticsEvent.TripConvertedFromCategory>().isEmpty())
+        }
+
     // ── Fakes ────────────────────────────────────────────────────────────────────
+
+    private class RecordingAnalytics : Analytics {
+        val events = mutableListOf<AnalyticsEvent>()
+
+        override fun logEvent(event: AnalyticsEvent) {
+            events += event
+        }
+
+        override fun setCollectionEnabled(enabled: Boolean) = Unit
+    }
 
     private inner class FakeWizardCategoryRepository : CategoryRepository {
         val categories = mutableMapOf<Long, Category>()

@@ -13,6 +13,7 @@ import dev.tuandoan.expensetracker.domain.analytics.TransactionSource
 import dev.tuandoan.expensetracker.domain.model.TransactionType
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import org.mockito.kotlin.any
@@ -23,13 +24,9 @@ import java.time.ZoneId
 
 /**
  * Pins the T5.4 invariant: `RecurringTransactionRepositoryImpl.processDueRecurring`
- * emits one `transaction_added` analytics event per materialised transaction,
- * tagged with `source = TransactionSource.RECURRING`, with the correct
- * `TransactionKind` derived from each inserted transaction's type.
- *
- * Tests stub [RecurrenceScheduler] directly so the repo's analytics
- * responsibility is isolated from scheduler internals. Scheduler-level
- * insertion order and orphan filtering are covered by `RecurrenceSchedulerTest`.
+ * fires [AnalyticsEvent.TransactionAdded] with [TransactionSource.RECURRING]
+ * for every transaction it generates, and fires nothing when no transactions
+ * are due.
  */
 class RecurringTransactionRepositoryImplAnalyticsTest {
     private val recurringDao: RecurringTransactionDao = mock()
@@ -52,7 +49,7 @@ class RecurringTransactionRepositoryImplAnalyticsTest {
         )
 
     @Test
-    fun processDueRecurring_schedulerReturnsEmpty_emitsZeroAnalyticsEvents() =
+    fun processDueRecurring_emptyDueList_firesNoAnalyticsEvents() =
         runTest {
             val analytics: Analytics = mock()
             whenever(scheduler.processDueRecurring(any(), any(), any(), any()))
@@ -76,6 +73,7 @@ class RecurringTransactionRepositoryImplAnalyticsTest {
             val event = analytics.events[0] as AnalyticsEvent.TransactionAdded
             assertEquals(TransactionKind.EXPENSE, event.type)
             assertEquals(TransactionSource.RECURRING, event.source)
+            assertFalse(event.tripAttached)
         }
 
     @Test
@@ -99,6 +97,9 @@ class RecurringTransactionRepositoryImplAnalyticsTest {
             val sources =
                 analytics.events.map { (it as AnalyticsEvent.TransactionAdded).source }
             assertTrue(sources.all { it == TransactionSource.RECURRING })
+            val tripsAttached =
+                analytics.events.map { (it as AnalyticsEvent.TransactionAdded).tripAttached }
+            assertTrue(tripsAttached.all { !it })
         }
 
     @Test
@@ -114,6 +115,7 @@ class RecurringTransactionRepositoryImplAnalyticsTest {
             val event = analytics.events[0] as AnalyticsEvent.TransactionAdded
             assertEquals(TransactionKind.INCOME, event.type)
             assertEquals(TransactionSource.RECURRING, event.source)
+            assertFalse(event.tripAttached)
         }
 
     private class RecordingAnalytics : Analytics {

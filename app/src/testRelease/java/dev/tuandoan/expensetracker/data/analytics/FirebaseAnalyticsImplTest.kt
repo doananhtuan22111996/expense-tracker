@@ -4,6 +4,7 @@ import dev.tuandoan.expensetracker.domain.analytics.AnalyticsEvent
 import dev.tuandoan.expensetracker.domain.analytics.BackupFormat
 import dev.tuandoan.expensetracker.domain.analytics.BuildType
 import dev.tuandoan.expensetracker.domain.analytics.InsightRowType
+import dev.tuandoan.expensetracker.domain.analytics.TransactionCountBucket
 import dev.tuandoan.expensetracker.domain.analytics.TransactionKind
 import dev.tuandoan.expensetracker.domain.analytics.TransactionSource
 import dev.tuandoan.expensetracker.domain.analytics.WidgetSize
@@ -111,33 +112,35 @@ class FirebaseAnalyticsImplTest {
     }
 
     @Test
-    fun logEvent_transactionAdded_expenseManual_mapsToTypeAndSourceParams_noAmountOrCategoryName() {
+    fun logEvent_transactionAdded_expenseManual_mapsToTypeAndSourceAndTripAttachedParams_noAmountOrCategoryName() {
         // Privacy-critical regression guard: TransactionAdded must emit
-        // ONLY `type` + `source` (v3.12.0), never leak into an `amount`,
-        // `currency`, or `category_name` parameter. The sealed hierarchy
-        // makes this structural; this test makes it visible at the wire
-        // boundary.
+        // ONLY `type` + `source` + `trip_attached` (v3.13.0), never leak into an
+        // `amount`, `currency`, or `category_name` parameter.
         val wrapper: FirebaseAnalyticsWrapper = mock()
         val impl = FirebaseAnalyticsImpl(wrapper)
 
-        impl.logEvent(AnalyticsEvent.TransactionAdded(TransactionKind.EXPENSE, TransactionSource.MANUAL))
+        impl.logEvent(
+            AnalyticsEvent.TransactionAdded(TransactionKind.EXPENSE, TransactionSource.MANUAL, tripAttached = true),
+        )
 
         verify(wrapper).logEvent(
             name = "transaction_added",
-            params = mapOf("type" to "expense", "source" to "manual"),
+            params = mapOf("type" to "expense", "source" to "manual", "trip_attached" to "true"),
         )
     }
 
     @Test
-    fun logEvent_transactionAdded_incomeWidget_mapsToTypeAndSourceParams() {
+    fun logEvent_transactionAdded_incomeWidget_mapsToTypeAndSourceAndTripAttachedParams() {
         val wrapper: FirebaseAnalyticsWrapper = mock()
         val impl = FirebaseAnalyticsImpl(wrapper)
 
-        impl.logEvent(AnalyticsEvent.TransactionAdded(TransactionKind.INCOME, TransactionSource.WIDGET))
+        impl.logEvent(
+            AnalyticsEvent.TransactionAdded(TransactionKind.INCOME, TransactionSource.WIDGET, tripAttached = false),
+        )
 
         verify(wrapper).logEvent(
             name = "transaction_added",
-            params = mapOf("type" to "income", "source" to "widget"),
+            params = mapOf("type" to "income", "source" to "widget", "trip_attached" to "false"),
         )
     }
 
@@ -149,11 +152,57 @@ class FirebaseAnalyticsImplTest {
         val wrapper: FirebaseAnalyticsWrapper = mock()
         val impl = FirebaseAnalyticsImpl(wrapper)
 
-        impl.logEvent(AnalyticsEvent.TransactionAdded(TransactionKind.EXPENSE, TransactionSource.RECURRING))
+        impl.logEvent(
+            AnalyticsEvent.TransactionAdded(TransactionKind.EXPENSE, TransactionSource.RECURRING, tripAttached = false),
+        )
 
         verify(wrapper).logEvent(
             name = "transaction_added",
-            params = mapOf("type" to "expense", "source" to "recurring"),
+            params = mapOf("type" to "expense", "source" to "recurring", "trip_attached" to "false"),
+        )
+    }
+
+    @Test
+    fun logEvent_tripCreated_foreignCurrencyTrue_mapsToTripCreatedNameAndParam() {
+        val wrapper: FirebaseAnalyticsWrapper = mock()
+        val impl = FirebaseAnalyticsImpl(wrapper)
+
+        impl.logEvent(AnalyticsEvent.TripCreated(foreignCurrency = true))
+
+        verify(wrapper).logEvent(
+            name = "trip_created",
+            params = mapOf("foreign_currency" to "true"),
+        )
+    }
+
+    @Test
+    fun logEvent_tripCreated_foreignCurrencyFalse_mapsToTripCreatedNameAndParam() {
+        val wrapper: FirebaseAnalyticsWrapper = mock()
+        val impl = FirebaseAnalyticsImpl(wrapper)
+
+        impl.logEvent(AnalyticsEvent.TripCreated(foreignCurrency = false))
+
+        verify(wrapper).logEvent(
+            name = "trip_created",
+            params = mapOf("foreign_currency" to "false"),
+        )
+    }
+
+    @Test
+    fun logEvent_tripConvertedFromCategory_mapsToTripConvertedNameAndParams() {
+        val wrapper: FirebaseAnalyticsWrapper = mock()
+        val impl = FirebaseAnalyticsImpl(wrapper)
+
+        impl.logEvent(
+            AnalyticsEvent.TripConvertedFromCategory(
+                transactionCount = TransactionCountBucket.TEN_TO_FORTY_NINE,
+                foreignCurrency = true,
+            ),
+        )
+
+        verify(wrapper).logEvent(
+            name = "trip_converted_from_category",
+            params = mapOf("transaction_count" to "ten_to_forty_nine", "foreign_currency" to "true"),
         )
     }
 

@@ -55,6 +55,7 @@ sealed interface AnalyticsEvent {
     data class TransactionAdded(
         val type: TransactionKind,
         val source: TransactionSource,
+        val tripAttached: Boolean,
     ) : AnalyticsEvent
 
     /**
@@ -88,6 +89,26 @@ sealed interface AnalyticsEvent {
      */
     data class InsightShown(
         val rowType: InsightRowType,
+    ) : AnalyticsEvent
+
+    /**
+     * Fired on successful trip creation via CreateEditTripViewModel
+     * (v3.13.0, PRD FR-37). Captures whether the trip tracks a foreign
+     * currency. Never carries names, destinations, or dates.
+     */
+    data class TripCreated(
+        val foreignCurrency: Boolean,
+    ) : AnalyticsEvent
+
+    /**
+     * Fired on successful conversion of a legacy category to a trip via
+     * ConversionWizardViewModel (v3.13.0, PRD FR-38). Captures the
+     * count of migrated transactions in broad buckets and whether a
+     * foreign currency was set.
+     */
+    data class TripConvertedFromCategory(
+        val transactionCount: TransactionCountBucket,
+        val foreignCurrency: Boolean,
     ) : AnalyticsEvent
 }
 
@@ -165,4 +186,22 @@ enum class InsightRowType(
     DAILY_PACE("daily_pace"),
     NO_BUDGET_FALLBACK("no_budget_fallback"),
     DAY_OF_MONTH("day_of_month"),
+}
+
+enum class TransactionCountBucket(
+    override val wireValue: String,
+) : AnalyticsEventParam {
+    ONE_TO_NINE("one_to_nine"),
+    TEN_TO_FORTY_NINE("ten_to_forty_nine"),
+    FIFTY_PLUS("fifty_plus"),
+    ;
+
+    companion object {
+        fun fromCount(count: Int): TransactionCountBucket =
+            when {
+                count >= 50 -> FIFTY_PLUS
+                count >= 10 -> TEN_TO_FORTY_NINE
+                else -> ONE_TO_NINE
+            }
+    }
 }

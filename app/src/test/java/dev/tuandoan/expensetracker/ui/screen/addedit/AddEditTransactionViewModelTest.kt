@@ -5,7 +5,9 @@ import dev.tuandoan.expensetracker.R
 import dev.tuandoan.expensetracker.core.util.UiText
 import dev.tuandoan.expensetracker.data.database.entity.DailyTotalRow
 import dev.tuandoan.expensetracker.data.database.entity.TripCategorySumRow
-import dev.tuandoan.expensetracker.domain.analytics.NoOpAnalytics
+import dev.tuandoan.expensetracker.domain.analytics.Analytics
+import dev.tuandoan.expensetracker.domain.analytics.AnalyticsEvent
+import dev.tuandoan.expensetracker.domain.analytics.TransactionSource
 import dev.tuandoan.expensetracker.domain.model.Category
 import dev.tuandoan.expensetracker.domain.model.CategoryWithCount
 import dev.tuandoan.expensetracker.domain.model.DeleteTripBehavior
@@ -53,6 +55,7 @@ class AddEditTransactionViewModelTest {
     private lateinit var fakeTimeProvider: FakeTimeProvider
     private lateinit var fakeCurrencyPreferenceRepo: FakeCurrencyPreferenceRepository
     private lateinit var fakeBudgetAlertScheduler: FakeBudgetAlertScheduler
+    private lateinit var analytics: RecordingAnalytics
     private lateinit var clock: Clock
 
     private val today = LocalDate.of(2026, 6, 6).toEpochDay()
@@ -65,6 +68,7 @@ class AddEditTransactionViewModelTest {
         fakeTimeProvider = FakeTimeProvider(currentMillis = 1700000000000L)
         fakeCurrencyPreferenceRepo = FakeCurrencyPreferenceRepository()
         fakeBudgetAlertScheduler = FakeBudgetAlertScheduler()
+        analytics = RecordingAnalytics()
         clock = Clock.fixed(Instant.ofEpochSecond(today * 86400), ZoneOffset.UTC)
     }
 
@@ -77,7 +81,7 @@ class AddEditTransactionViewModelTest {
             fakeTimeProvider,
             fakeCurrencyPreferenceRepo,
             fakeBudgetAlertScheduler,
-            NoOpAnalytics(),
+            analytics,
             clock,
             savedStateHandle,
         )
@@ -875,6 +879,55 @@ class AddEditTransactionViewModelTest {
             assertNull(viewModel.uiState.value.selectedTrip)
         }
 
+    @Test
+    fun saveTransaction_newMode_withTrip_logsTransactionAddedWithTripAttachedTrue() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            val trip = trip(10L, "Japan")
+            fakeTripRepo.activeTrips = listOf(trip)
+            val viewModel = createViewModel()
+            advanceUntilIdle()
+
+            viewModel.onAmountChanged("50.00")
+            viewModel.onCategorySelected(TestData.expenseCategory)
+            viewModel.onTripSelected(trip)
+            viewModel.saveTransaction { }
+            advanceUntilIdle()
+
+            val event = analytics.events.filterIsInstance<AnalyticsEvent.TransactionAdded>().single()
+            assertTrue(event.tripAttached)
+            assertEquals(TransactionSource.MANUAL, event.source)
+        }
+
+    @Test
+    fun saveTransaction_newMode_withoutTrip_logsTransactionAddedWithTripAttachedFalse() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            val viewModel = createViewModel()
+            advanceUntilIdle()
+
+            viewModel.onAmountChanged("50.00")
+            viewModel.onCategorySelected(TestData.expenseCategory)
+            viewModel.saveTransaction { }
+            advanceUntilIdle()
+
+            val event = analytics.events.filterIsInstance<AnalyticsEvent.TransactionAdded>().single()
+            assertFalse(event.tripAttached)
+            assertEquals(TransactionSource.MANUAL, event.source)
+        }
+
+    @Test
+    fun saveTransaction_editMode_doesNotLogTransactionAdded() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            fakeTransactionRepo.transactionById = TestData.sampleExpenseTransaction
+            val viewModel = createViewModel(transactionId = TestData.sampleExpenseTransaction.id)
+            advanceUntilIdle()
+
+            viewModel.onAmountChanged("60.00")
+            viewModel.saveTransaction { }
+            advanceUntilIdle()
+
+            assertTrue(analytics.events.filterIsInstance<AnalyticsEvent.TransactionAdded>().isEmpty())
+        }
+
     // Fake implementations
 
     private class FakeTransactionRepository : TransactionRepository {
@@ -1040,5 +1093,15 @@ class AddEditTransactionViewModelTest {
 
         override suspend fun commitConversion(draft: dev.tuandoan.expensetracker.domain.model.ConversionDraft): Long =
             error("not used")
+    }
+
+    private class RecordingAnalytics : Analytics {
+        val events = mutableListOf<AnalyticsEvent>()
+
+        override fun logEvent(event: AnalyticsEvent) {
+            events += event
+        }
+
+        override fun setCollectionEnabled(enabled: Boolean) = Unit
     }
 }

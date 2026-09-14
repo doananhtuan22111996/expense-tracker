@@ -53,6 +53,7 @@ class AnalyticsEventTest {
             TransactionSource.entries.toList(),
             BackupFormat.entries.toList(),
             InsightRowType.entries.toList(),
+            TransactionCountBucket.entries.toList(),
         ).forEach { group ->
             val values = group.map { it.wireValue }
             assertEquals(
@@ -110,6 +111,24 @@ class AnalyticsEventTest {
     }
 
     @Test
+    fun transactionCountBucket_hasExactlyThreeDocumentedBuckets() {
+        assertEquals(
+            setOf("one_to_nine", "ten_to_forty_nine", "fifty_plus"),
+            TransactionCountBucket.entries.map { it.wireValue }.toSet(),
+        )
+    }
+
+    @Test
+    fun transactionCountBucket_fromCount_mapsCorrectly() {
+        assertEquals(TransactionCountBucket.ONE_TO_NINE, TransactionCountBucket.fromCount(1))
+        assertEquals(TransactionCountBucket.ONE_TO_NINE, TransactionCountBucket.fromCount(9))
+        assertEquals(TransactionCountBucket.TEN_TO_FORTY_NINE, TransactionCountBucket.fromCount(10))
+        assertEquals(TransactionCountBucket.TEN_TO_FORTY_NINE, TransactionCountBucket.fromCount(49))
+        assertEquals(TransactionCountBucket.FIFTY_PLUS, TransactionCountBucket.fromCount(50))
+        assertEquals(TransactionCountBucket.FIFTY_PLUS, TransactionCountBucket.fromCount(100))
+    }
+
+    @Test
     fun appOpenEvent_carriesOnlyBuildType() {
         // FR-A7 invariant, asserted structurally: AppOpen's only field is a
         // BuildType. Any future PR adding e.g. a `sessionId` parameter must
@@ -119,19 +138,37 @@ class AnalyticsEventTest {
     }
 
     @Test
-    fun transactionAddedEvent_carriesOnlyKindAndSource_notAmountOrCategoryOrNote() {
+    fun transactionAddedEvent_carriesOnlyKindSourceAndTripAttached_notAmountOrCategoryOrNote() {
         // Privacy-critical structural assertion: the ONLY payload of a
-        // transaction event is expense-vs-income AND the entry-point
-        // source (v3.12.0 — see TransactionSource KDoc). A future
-        // contributor tempted to add `amount: Long` or `categoryName:
-        // String` would have to rewrite this test — which is the point.
+        // transaction event is expense-vs-income, entry-point source, and
+        // tripAttached (v3.13.0). A future contributor tempted to add `amount: Long`
+        // or `categoryName: String` would have to rewrite this test.
         val event =
             AnalyticsEvent.TransactionAdded(
                 type = TransactionKind.EXPENSE,
                 source = TransactionSource.WIDGET,
+                tripAttached = true,
             )
         assertEquals(TransactionKind.EXPENSE, event.type)
         assertEquals(TransactionSource.WIDGET, event.source)
+        assertTrue(event.tripAttached)
+    }
+
+    @Test
+    fun tripCreatedEvent_carriesOnlyForeignCurrency() {
+        val event = AnalyticsEvent.TripCreated(foreignCurrency = true)
+        assertTrue(event.foreignCurrency)
+    }
+
+    @Test
+    fun tripConvertedFromCategoryEvent_carriesOnlyBucketAndForeignCurrency() {
+        val event =
+            AnalyticsEvent.TripConvertedFromCategory(
+                transactionCount = TransactionCountBucket.TEN_TO_FORTY_NINE,
+                foreignCurrency = false,
+            )
+        assertEquals(TransactionCountBucket.TEN_TO_FORTY_NINE, event.transactionCount)
+        assertEquals(false, event.foreignCurrency)
     }
 
     @Test
@@ -161,5 +198,6 @@ class AnalyticsEventTest {
             TransactionKind.entries +
             TransactionSource.entries +
             BackupFormat.entries +
-            InsightRowType.entries
+            InsightRowType.entries +
+            TransactionCountBucket.entries
 }

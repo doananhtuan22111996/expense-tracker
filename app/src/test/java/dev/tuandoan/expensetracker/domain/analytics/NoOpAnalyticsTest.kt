@@ -21,9 +21,9 @@ class NoOpAnalyticsTest {
             AnalyticsEvent.WidgetAdded(WidgetSize.SMALL),
             AnalyticsEvent.WidgetAdded(WidgetSize.MEDIUM),
             AnalyticsEvent.WidgetRemoved,
-            AnalyticsEvent.TransactionAdded(TransactionKind.EXPENSE, TransactionSource.MANUAL),
-            AnalyticsEvent.TransactionAdded(TransactionKind.INCOME, TransactionSource.WIDGET),
-            AnalyticsEvent.TransactionAdded(TransactionKind.EXPENSE, TransactionSource.RECURRING),
+            AnalyticsEvent.TransactionAdded(TransactionKind.EXPENSE, TransactionSource.MANUAL, tripAttached = false),
+            AnalyticsEvent.TransactionAdded(TransactionKind.INCOME, TransactionSource.WIDGET, tripAttached = true),
+            AnalyticsEvent.TransactionAdded(TransactionKind.EXPENSE, TransactionSource.RECURRING, tripAttached = false),
             AnalyticsEvent.TransactionUndone,
             AnalyticsEvent.BackupExported(BackupFormat.JSON),
             AnalyticsEvent.BackupExported(BackupFormat.ENCRYPTED),
@@ -33,6 +33,8 @@ class NoOpAnalyticsTest {
             AnalyticsEvent.InsightShown(InsightRowType.DAILY_PACE),
             AnalyticsEvent.InsightShown(InsightRowType.NO_BUDGET_FALLBACK),
             AnalyticsEvent.InsightShown(InsightRowType.DAY_OF_MONTH),
+            AnalyticsEvent.TripCreated(foreignCurrency = true),
+            AnalyticsEvent.TripConvertedFromCategory(TransactionCountBucket.ONE_TO_NINE, foreignCurrency = false),
         ).forEach { noOp.logEvent(it) }
     }
 
