@@ -25,6 +25,7 @@ data class BackupTransactionDto(
     @SerialName("created_at") val createdAt: Long,
     @SerialName("updated_at") val updatedAt: Long,
     @SerialName("trip_id") val tripId: Long? = null,
+    @SerialName("original_category_id") val originalCategoryId: Long? = null,
     @SerialName("amount_foreign_minor") val amountForeignMinor: Long? = null,
 )
 
@@ -76,6 +77,6 @@ data class BackupDocumentV1(
     @SerialName("trips") val trips: List<BackupTripDto> = emptyList(),
 ) {
     companion object {
-        const val CURRENT_SCHEMA_VERSION = 1
+        const val CURRENT_SCHEMA_VERSION = 2
     }
 }

@@ -1,0 +1,52 @@
+{
+  "schema_version": 1,
+  "app_version_name": "3.11.0",
+  "created_at_epoch_ms": 1715340000000,
+  "default_currency_code": "VND",
+  "device_locale": "en-US",
+  "categories": [
+    {
+      "id": 1,
+      "name": "Food & Dining",
+      "type": 0,
+      "icon_key": "restaurant",
+      "color_key": "red",
+      "is_default": true
+    },
+    {
+      "id": 2,
+      "name": "Salary",
+      "type": 1,
+      "icon_key": "payments",
+      "color_key": "green",
+      "is_default": true
+    }
+  ],
+  "transactions": [
+    {
+      "id": 100,
+      "type": 0,
+      "amount": 75000,
+      "currency_code": "VND",
+      "category_id": 1,
+      "note": "Pho bo lunch",
+      "timestamp": 1715340000000,
+      "created_at": 1715340000000,
+      "updated_at": 1715340000000
+    },
+    {
+      "id": 101,
+      "type": 1,
+      "amount": 25000000,
+      "currency_code": "VND",
+      "category_id": 2,
+      "note": "Monthly salary",
+      "timestamp": 1715340000000,
+      "created_at": 1715340000000,
+      "updated_at": 1715340000000
+    }
+  ],
+  "recurring_transactions": [],
+  "gold_holdings": [],
+  "gold_prices": []
+}

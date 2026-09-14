@@ -1,5 +1,6 @@
 package dev.tuandoan.expensetracker.data.backup
 
+import dev.tuandoan.expensetracker.data.backup.model.BackupDocumentV1
 import dev.tuandoan.expensetracker.data.database.TransactionRunner
 import dev.tuandoan.expensetracker.data.database.dao.CategoryDao
 import dev.tuandoan.expensetracker.data.database.dao.GoldHoldingDao
@@ -114,7 +115,7 @@ class BackupRepositoryImplTest {
             val json = repository.exportBackupJson()
             val document = serializer.decode(json)!!
 
-            assertEquals(1, document.schemaVersion)
+            assertEquals(BackupDocumentV1.CURRENT_SCHEMA_VERSION, document.schemaVersion)
         }
 
     @Test
@@ -859,6 +860,7 @@ class BackupRepositoryImplTest {
                     createdAt = TestData.FIXED_TIME,
                     updatedAt = TestData.FIXED_TIME,
                     tripId = 1L,
+                    originalCategoryId = 99L,
                     amountForeignMinor = 1000L,
                 ),
             )
@@ -868,6 +870,7 @@ class BackupRepositoryImplTest {
 
             val txDto = document.transactions[0]
             assertEquals(1L, txDto.tripId)
+            assertEquals(99L, txDto.originalCategoryId)
             assertEquals(1000L, txDto.amountForeignMinor)
         }
 
@@ -909,6 +912,101 @@ class BackupRepositoryImplTest {
             val result = repository.importBackupJson(json)
 
             assertEquals(0, result.tripCount)
+        }
+
+    @Test
+    fun importBackupJson_pinnedV311Fixture_importsCleanlyWithNullTripFields() =
+        runTest {
+            val v311Json =
+                javaClass.classLoader!!
+                    .getResourceAsStream("fixtures/backup_v3_11.json")!!
+                    .bufferedReader()
+                    .use { it.readText() }
+
+            val result = repository.importBackupJson(v311Json)
+
+            assertEquals(2, result.categoryCount)
+            assertEquals(2, result.transactionCount)
+            assertEquals(0, result.tripCount)
+            assertEquals(0, fakeTripDao.trips.size)
+
+            assertEquals(2, fakeCategoryDao.allCategories.size)
+            assertEquals("Food & Dining", fakeCategoryDao.allCategories[0].name)
+            assertEquals("Salary", fakeCategoryDao.allCategories[1].name)
+
+            assertEquals(2, fakeTransactionDao.allTransactions.size)
+            val tx1 = fakeTransactionDao.allTransactions[0]
+            assertEquals(100L, tx1.id)
+            assertEquals(75000L, tx1.amount)
+            assertEquals(1L, tx1.categoryId)
+            org.junit.Assert.assertNull(tx1.tripId)
+            org.junit.Assert.assertNull(tx1.originalCategoryId)
+            org.junit.Assert.assertNull(tx1.amountForeignMinor)
+
+            val tx2 = fakeTransactionDao.allTransactions[1]
+            assertEquals(101L, tx2.id)
+            assertEquals(25000000L, tx2.amount)
+            assertEquals(2L, tx2.categoryId)
+            org.junit.Assert.assertNull(tx2.tripId)
+            org.junit.Assert.assertNull(tx2.originalCategoryId)
+            org.junit.Assert.assertNull(tx2.amountForeignMinor)
+        }
+
+    @Test
+    fun roundTrip_transactionWithOriginalCategoryId_preservesValueOnImport() =
+        runTest {
+            fakeCategoryDao.allCategories.add(TestData.expenseCategoryEntity)
+            fakeTripDao.trips.add(
+                TripEntity(
+                    id = 10L,
+                    name = "Trip 10",
+                    destination = null,
+                    startDateEpochDay = 20000L,
+                    endDateEpochDay = 20005L,
+                    foreignCurrencyCode = null,
+                    foreignToHomeRate = null,
+                    originalCategoryId = null,
+                    originalCategoryNameSnapshot = null,
+                    originalCategoryIconSnapshot = null,
+                    originalCategoryColorSnapshot = null,
+                    createdAt = TestData.FIXED_TIME,
+                ),
+            )
+            fakeTransactionDao.allTransactions.add(
+                TransactionEntity(
+                    id = 50L,
+                    type = 0,
+                    amount = 120000L,
+                    currencyCode = "VND",
+                    categoryId = TestData.expenseCategoryEntity.id,
+                    note = "Trip coffee",
+                    timestamp = TestData.FIXED_TIME,
+                    createdAt = TestData.FIXED_TIME,
+                    updatedAt = TestData.FIXED_TIME,
+                    tripId = 10L,
+                    originalCategoryId = 999L,
+                    amountForeignMinor = null,
+                ),
+            )
+
+            val json = repository.exportBackupJson()
+
+            // Wipe database before import
+            fakeCategoryDao.allCategories.clear()
+            fakeTripDao.trips.clear()
+            fakeTransactionDao.allTransactions.clear()
+
+            val result = repository.importBackupJson(json)
+
+            assertEquals(1, result.categoryCount)
+            assertEquals(1, result.tripCount)
+            assertEquals(1, result.transactionCount)
+
+            val restoredTx = fakeTransactionDao.allTransactions[0]
+            assertEquals(50L, restoredTx.id)
+            assertEquals(10L, restoredTx.tripId)
+            assertEquals(999L, restoredTx.originalCategoryId)
+            org.junit.Assert.assertNull(restoredTx.amountForeignMinor)
         }
 
     // Fakes
