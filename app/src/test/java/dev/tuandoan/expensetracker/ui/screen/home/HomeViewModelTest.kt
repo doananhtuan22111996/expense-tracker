@@ -115,6 +115,33 @@ class HomeViewModelTest {
         }
 
     @Test
+    fun toggleExcludeTrips_invertsPreference() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            val viewModel = createViewModel()
+            val job =
+                backgroundScope.launch(mainDispatcherRule.testDispatcher) {
+                    viewModel.isExcludeTripsEnabled.collect {}
+                }
+            advanceUntilIdle()
+
+            assertFalse(viewModel.isExcludeTripsEnabled.value)
+
+            viewModel.toggleExcludeTrips()
+            advanceUntilIdle()
+
+            assertTrue(viewModel.isExcludeTripsEnabled.value)
+            assertTrue(fakeTripPreferences.lastExcludeTrips)
+
+            viewModel.toggleExcludeTrips()
+            advanceUntilIdle()
+
+            assertFalse(viewModel.isExcludeTripsEnabled.value)
+            assertFalse(fakeTripPreferences.lastExcludeTrips)
+
+            job.cancel()
+        }
+
+    @Test
     fun init_emptyTransactions() =
         runTest(mainDispatcherRule.testDispatcher) {
             fakeRepository.transactionsToEmit = emptyList()

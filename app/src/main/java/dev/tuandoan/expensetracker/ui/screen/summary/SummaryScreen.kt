@@ -57,6 +57,7 @@ import dev.tuandoan.expensetracker.ui.component.BudgetProgressSection
 import dev.tuandoan.expensetracker.ui.component.DonutChart
 import dev.tuandoan.expensetracker.ui.component.EmptyStateMessage
 import dev.tuandoan.expensetracker.ui.component.ErrorStateMessage
+import dev.tuandoan.expensetracker.ui.component.ExcludeTripsToggleButton
 import dev.tuandoan.expensetracker.ui.component.MonthSelector
 import dev.tuandoan.expensetracker.ui.component.MonthYearPickerDialog
 import dev.tuandoan.expensetracker.ui.component.MonthlyBarChart
@@ -74,6 +75,7 @@ fun SummaryScreen(
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val insightsState by viewModel.insightsState.collectAsStateWithLifecycle()
+    val isExcludeTripsEnabled by viewModel.isExcludeTripsEnabled.collectAsStateWithLifecycle()
     var showMonthPicker by remember { mutableStateOf(false) }
     var showBudgetDialog by remember { mutableStateOf<String?>(null) }
 
@@ -101,6 +103,12 @@ fun SummaryScreen(
         topBar = {
             TopAppBar(
                 title = { Text(stringResource(R.string.screen_title_summary)) },
+                actions = {
+                    ExcludeTripsToggleButton(
+                        isExcluded = isExcludeTripsEnabled,
+                        onToggle = viewModel::toggleExcludeTrips,
+                    )
+                },
                 scrollBehavior = scrollBehavior,
             )
         },

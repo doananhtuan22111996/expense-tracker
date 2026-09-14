@@ -16,6 +16,7 @@ import dev.tuandoan.expensetracker.domain.model.BudgetStatusLevel
 import dev.tuandoan.expensetracker.domain.model.SupportedCurrencies
 import dev.tuandoan.expensetracker.domain.repository.BudgetAlertPreferences
 import dev.tuandoan.expensetracker.domain.repository.BudgetPreferences
+import dev.tuandoan.expensetracker.domain.repository.TripPreferences
 import kotlinx.coroutines.flow.first
 import java.time.Clock
 import java.time.YearMonth
@@ -41,6 +42,7 @@ class BudgetAlertWorker
         @Assisted workerParams: WorkerParameters,
         private val budgetPreferences: BudgetPreferences,
         private val budgetAlertPreferences: BudgetAlertPreferences,
+        private val tripPreferences: TripPreferences,
         private val transactionDao: TransactionDao,
         private val notificationHelper: NotificationHelper,
         private val currencyFormatter: CurrencyFormatter,
@@ -85,7 +87,8 @@ class BudgetAlertWorker
                     .toInstant()
                     .toEpochMilli()
 
-            val expenseTotals = transactionDao.getExpenseTotalsByCurrency(monthStart, monthEnd)
+            val excludeTrips = if (tripPreferences.excludeTrips.first()) 1 else 0
+            val expenseTotals = transactionDao.getExpenseTotalsByCurrency(monthStart, monthEnd, excludeTrips)
             val expenseMap = expenseTotals.associate { it.currencyCode to it.total }
 
             val lastMonth = budgetAlertPreferences.lastAlertMonth.first()
