@@ -29,6 +29,7 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.advanceTimeBy
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
@@ -154,6 +155,33 @@ class SummaryViewModelTest {
             advanceUntilIdle()
 
             assertTrue(fakeRepository.lastExcludeTrips)
+        }
+
+    @Test
+    fun toggleExcludeTrips_invertsPreference() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            val viewModel = createViewModel()
+            val job =
+                backgroundScope.launch(mainDispatcherRule.testDispatcher) {
+                    viewModel.isExcludeTripsEnabled.collect {}
+                }
+            advanceUntilIdle()
+
+            assertFalse(viewModel.isExcludeTripsEnabled.value)
+
+            viewModel.toggleExcludeTrips()
+            advanceUntilIdle()
+
+            assertTrue(viewModel.isExcludeTripsEnabled.value)
+            assertTrue(fakeTripPreferences.lastExcludeTrips)
+
+            viewModel.toggleExcludeTrips()
+            advanceUntilIdle()
+
+            assertFalse(viewModel.isExcludeTripsEnabled.value)
+            assertFalse(fakeTripPreferences.lastExcludeTrips)
+
+            job.cancel()
         }
 
     @Test

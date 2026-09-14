@@ -71,6 +71,28 @@ class SummaryViewModel
     ) : ViewModel() {
         private val _uiState = MutableStateFlow(SummaryUiState())
         val uiState: StateFlow<SummaryUiState> = _uiState.asStateFlow()
+
+        /**
+         * Whether trip transactions are excluded from totals and breakdowns (v3.13.0, T5.1/T5.4).
+         */
+        val isExcludeTripsEnabled: StateFlow<Boolean> =
+            tripPreferences.excludeTrips
+                .stateIn(
+                    scope = viewModelScope,
+                    started = SharingStarted.WhileSubscribed(5_000L),
+                    initialValue = false,
+                )
+
+        /**
+         * Inverts the [TripPreferences.excludeTrips] preference (v3.13.0, T5.4).
+         */
+        fun toggleExcludeTrips() {
+            viewModelScope.launch {
+                val current = tripPreferences.excludeTrips.first()
+                tripPreferences.setExcludeTrips(!current)
+            }
+        }
+
         private var summaryJob: Job? = null
 
         private var selectedYear: Int = dateRangeCalculator.currentYear()

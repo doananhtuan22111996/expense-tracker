@@ -137,6 +137,26 @@ class HomeViewModel
             )
 
         /**
+         * Whether trip transactions are excluded from totals and lists (v3.13.0, T5.1/T5.4).
+         */
+        val isExcludeTripsEnabled: StateFlow<Boolean> =
+            tripPreferences.excludeTrips.stateIn(
+                viewModelScope,
+                SharingStarted.WhileSubscribed(STOP_TIMEOUT_MS),
+                false,
+            )
+
+        /**
+         * Inverts the [TripPreferences.excludeTrips] preference (v3.13.0, T5.4).
+         */
+        fun toggleExcludeTrips() {
+            viewModelScope.launch {
+                val current = tripPreferences.excludeTrips.first()
+                tripPreferences.setExcludeTrips(!current)
+            }
+        }
+
+        /**
          * Persist dismissal of the v3.12.0 widget-quick-add banner. Called
          * from both the explicit Dismiss action and the CTA tap so that
          * either path retires the banner permanently.

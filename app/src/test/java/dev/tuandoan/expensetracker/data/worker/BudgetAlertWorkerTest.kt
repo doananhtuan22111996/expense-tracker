@@ -9,6 +9,7 @@ import dev.tuandoan.expensetracker.data.database.entity.CurrencySumRow
 import dev.tuandoan.expensetracker.data.preferences.FakeBudgetAlertPreferences
 import dev.tuandoan.expensetracker.domain.crash.NoOpCrashReporter
 import dev.tuandoan.expensetracker.domain.repository.BudgetPreferences
+import dev.tuandoan.expensetracker.testutil.FakeTripPreferences
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -31,6 +32,7 @@ import java.time.ZoneId
 class BudgetAlertWorkerTest {
     private lateinit var fakeBudgetPrefs: FakeBudgetPreferences
     private lateinit var fakeBudgetAlertPrefs: FakeBudgetAlertPreferences
+    private lateinit var fakeTripPreferences: FakeTripPreferences
     private lateinit var mockTransactionDao: TransactionDao
     private lateinit var mockNotificationHelper: NotificationHelper
     private lateinit var mockCurrencyFormatter: CurrencyFormatter
@@ -44,6 +46,7 @@ class BudgetAlertWorkerTest {
     fun setup() {
         fakeBudgetPrefs = FakeBudgetPreferences()
         fakeBudgetAlertPrefs = FakeBudgetAlertPreferences()
+        fakeTripPreferences = FakeTripPreferences()
         mockTransactionDao = mock()
         mockNotificationHelper = mock()
         mockCurrencyFormatter = mock()
@@ -65,6 +68,7 @@ class BudgetAlertWorkerTest {
             workerParams,
             fakeBudgetPrefs,
             fakeBudgetAlertPrefs,
+            fakeTripPreferences,
             mockTransactionDao,
             mockNotificationHelper,
             mockCurrencyFormatter,
@@ -249,6 +253,38 @@ class BudgetAlertWorkerTest {
                 eq(NotificationHelper.NOTIFICATION_ID_BUDGET_EXCEEDED),
             )
             assertEquals("OVER_BUDGET", fakeBudgetAlertPrefs.lastAlertLevelValue)
+        }
+
+    @Test
+    fun checkBudgets_tripsExcluded_passesExcludeTripsFlagToDao() =
+        runTest {
+            fakeBudgetAlertPrefs.setAlertsEnabled(true)
+            fakeBudgetPrefs.setBudget("VND", 1_000_000L)
+            fakeTripPreferences.setExcludeTrips(true)
+
+            whenever(mockTransactionDao.getExpenseTotalsByCurrency(any(), any(), eq(1)))
+                .thenReturn(listOf(CurrencySumRow("VND", 500_000L)))
+
+            val worker = createWorker()
+            worker.checkBudgets()
+
+            verify(mockTransactionDao).getExpenseTotalsByCurrency(any(), any(), eq(1))
+        }
+
+    @Test
+    fun checkBudgets_tripsIncluded_passesZeroToDao() =
+        runTest {
+            fakeBudgetAlertPrefs.setAlertsEnabled(true)
+            fakeBudgetPrefs.setBudget("VND", 1_000_000L)
+            fakeTripPreferences.setExcludeTrips(false)
+
+            whenever(mockTransactionDao.getExpenseTotalsByCurrency(any(), any(), eq(0)))
+                .thenReturn(listOf(CurrencySumRow("VND", 500_000L)))
+
+            val worker = createWorker()
+            worker.checkBudgets()
+
+            verify(mockTransactionDao).getExpenseTotalsByCurrency(any(), any(), eq(0))
         }
 
     @Test

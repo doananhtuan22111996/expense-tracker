@@ -17,6 +17,9 @@
     </plurals>
     <string name="settings_trips_title">Trips</string>
     <string name="settings_trips_subtitle">Track travel-time expenses</string>
+    <string name="exclude_trips_toggle_title">Exclude trips</string>
+    <string name="a11y_exclude_trips_enable">Trip expenses currently included. Tap to exclude from summary and totals.</string>
+    <string name="a11y_exclude_trips_disable">Trip expenses currently excluded. Tap to include in summary and totals.</string>
     <string name="screen_title_summary">Summary</string>
     <string name="screen_title_settings">Settings</string>
     <string name="summary_disclaimer">Totals are shown per currency. No currency conversion is applied.</string>

@@ -91,6 +91,7 @@ import dev.tuandoan.expensetracker.ui.component.AnalyticsOnlyConsentDialog
 import dev.tuandoan.expensetracker.ui.component.ConsentPromptDialogV2
 import dev.tuandoan.expensetracker.ui.component.EmptyStateMessage
 import dev.tuandoan.expensetracker.ui.component.ErrorStateMessage
+import dev.tuandoan.expensetracker.ui.component.ExcludeTripsToggleButton
 import dev.tuandoan.expensetracker.ui.component.MonthSelector
 import dev.tuandoan.expensetracker.ui.component.MonthYearPickerDialog
 import dev.tuandoan.expensetracker.ui.theme.DesignSystemElevation
@@ -113,6 +114,7 @@ fun HomeScreen(
     val incomeCategories by viewModel.incomeCategories.collectAsStateWithLifecycle()
     val consentPromptVariant by viewModel.consentPromptVariant.collectAsStateWithLifecycle()
     val showWidgetQuickAddBanner by viewModel.showWidgetQuickAddBanner.collectAsStateWithLifecycle()
+    val isExcludeTripsEnabled by viewModel.isExcludeTripsEnabled.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
     var showMonthPicker by remember { mutableStateOf(false) }
     var isSearchActive by remember { mutableStateOf(false) }
@@ -230,6 +232,10 @@ fun HomeScreen(
                     TopAppBar(
                         title = { Text(stringResource(R.string.app_name)) },
                         actions = {
+                            ExcludeTripsToggleButton(
+                                isExcluded = isExcludeTripsEnabled,
+                                onToggle = viewModel::toggleExcludeTrips,
+                            )
                             val searchDesc = stringResource(R.string.a11y_search_transactions)
                             IconButton(
                                 onClick = { isSearchActive = true },
