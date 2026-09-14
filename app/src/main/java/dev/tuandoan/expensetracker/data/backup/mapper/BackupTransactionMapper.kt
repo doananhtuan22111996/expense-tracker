@@ -15,6 +15,7 @@ fun TransactionEntity.toBackupDto(): BackupTransactionDto =
         createdAt = createdAt,
         updatedAt = updatedAt,
         tripId = tripId,
+        originalCategoryId = originalCategoryId,
         amountForeignMinor = amountForeignMinor,
     )
 
@@ -30,5 +31,6 @@ fun BackupTransactionDto.toEntity(): TransactionEntity =
         createdAt = createdAt,
         updatedAt = updatedAt,
         tripId = tripId,
+        originalCategoryId = originalCategoryId,
         amountForeignMinor = amountForeignMinor,
     )

@@ -2,6 +2,7 @@ package dev.tuandoan.expensetracker.data.backup
 
 import dev.tuandoan.expensetracker.data.backup.model.BackupCategoryDto
 import dev.tuandoan.expensetracker.data.backup.model.BackupTransactionDto
+import dev.tuandoan.expensetracker.data.backup.model.BackupTripDto
 import dev.tuandoan.expensetracker.domain.model.SupportedCurrencies
 import dev.tuandoan.expensetracker.testutil.TestData
 import org.junit.Assert.assertEquals
@@ -638,5 +639,294 @@ class BackupValidatorTest {
         assertTrue(result is BackupValidationResult.Invalid)
         val errors = (result as BackupValidationResult.Invalid).errors
         assertTrue(errors.any { it is BackupValidationError.OrphanedTransaction })
+    }
+
+    // Schema version tests (FR-34, FR-35, FR-36)
+
+    @Test
+    fun validate_schemaVersion1_returnsValid() {
+        val document = TestData.sampleBackupDocument.copy(schemaVersion = 1)
+        val result = validator.validate(document)
+        assertTrue(result is BackupValidationResult.Valid)
+    }
+
+    @Test
+    fun validate_schemaVersion2_returnsValid() {
+        val document = TestData.sampleBackupDocument.copy(schemaVersion = 2)
+        val result = validator.validate(document)
+        assertTrue(result is BackupValidationResult.Valid)
+    }
+
+    @Test
+    fun validate_schemaVersion0_returnsError() {
+        val document = TestData.sampleBackupDocument.copy(schemaVersion = 0)
+        val result = validator.validate(document)
+        assertTrue(result is BackupValidationResult.Invalid)
+        val error =
+            (result as BackupValidationResult.Invalid)
+                .errors
+                .filterIsInstance<BackupValidationError.UnsupportedSchemaVersion>()
+                .first()
+        assertEquals(0, error.version)
+    }
+
+    @Test
+    fun validate_schemaVersion3_returnsError() {
+        val document = TestData.sampleBackupDocument.copy(schemaVersion = 3)
+        val result = validator.validate(document)
+        assertTrue(result is BackupValidationResult.Invalid)
+        val error =
+            (result as BackupValidationResult.Invalid)
+                .errors
+                .filterIsInstance<BackupValidationError.UnsupportedSchemaVersion>()
+                .first()
+        assertEquals(3, error.version)
+    }
+
+    // Trip validation tests (T6.2)
+
+    private val sampleTrip =
+        BackupTripDto(
+            id = 1L,
+            name = "Tokyo",
+            destination = "Japan",
+            startDateEpochDay = 20000L,
+            endDateEpochDay = 20007L,
+            foreignCurrencyCode = "JPY",
+            foreignToHomeRate = 165.0,
+            originalCategoryId = null,
+            originalCategoryNameSnapshot = null,
+            originalCategoryIconSnapshot = null,
+            originalCategoryColorSnapshot = null,
+            createdAt = TestData.FIXED_TIME,
+        )
+
+    @Test
+    fun validate_validTrip_returnsValid() {
+        val document = TestData.sampleBackupDocument.copy(trips = listOf(sampleTrip))
+        val result = validator.validate(document)
+        assertTrue(result is BackupValidationResult.Valid)
+    }
+
+    @Test
+    fun validate_validConvertedTrip_withSnapshots_returnsValid() {
+        val convertedTrip =
+            sampleTrip.copy(
+                id = 2L,
+                name = "Da Nang",
+                destination = "Vietnam",
+                foreignCurrencyCode = null,
+                foreignToHomeRate = null,
+                originalCategoryId = 10L,
+                originalCategoryNameSnapshot = "Old Da Nang",
+                originalCategoryIconSnapshot = "beach_access",
+                originalCategoryColorSnapshot = "#2196F3",
+            )
+        val document = TestData.sampleBackupDocument.copy(trips = listOf(convertedTrip))
+        val result = validator.validate(document)
+        assertTrue(result is BackupValidationResult.Valid)
+    }
+
+    @Test
+    fun validate_duplicateTripIds_returnsError() {
+        val trips = listOf(sampleTrip.copy(id = 1L), sampleTrip.copy(id = 1L, name = "Osaka"))
+        val document = TestData.sampleBackupDocument.copy(trips = trips)
+        val result = validator.validate(document)
+        assertTrue(result is BackupValidationResult.Invalid)
+        val errors = (result as BackupValidationResult.Invalid).errors
+        assertTrue(errors.any { it is BackupValidationError.DuplicateTripId && it.id == 1L })
+    }
+
+    @Test
+    fun validate_blankTripName_returnsError() {
+        val trip = sampleTrip.copy(id = 5L, name = "   ")
+        val document = TestData.sampleBackupDocument.copy(trips = listOf(trip))
+        val result = validator.validate(document)
+        assertTrue(result is BackupValidationResult.Invalid)
+        val errors = (result as BackupValidationResult.Invalid).errors
+        assertTrue(errors.any { it is BackupValidationError.BlankTripName && it.tripId == 5L })
+    }
+
+    @Test
+    fun validate_invalidTripDateRange_endBeforeStart_returnsError() {
+        val trip = sampleTrip.copy(id = 6L, startDateEpochDay = 20005L, endDateEpochDay = 20001L)
+        val document = TestData.sampleBackupDocument.copy(trips = listOf(trip))
+        val result = validator.validate(document)
+        assertTrue(result is BackupValidationResult.Invalid)
+        val errors = (result as BackupValidationResult.Invalid).errors
+        assertTrue(errors.any { it is BackupValidationError.InvalidTripDateRange && it.tripId == 6L })
+    }
+
+    @Test
+    fun validate_validTripDateRange_sameDay_returnsValid() {
+        val trip = sampleTrip.copy(startDateEpochDay = 20005L, endDateEpochDay = 20005L)
+        val document = TestData.sampleBackupDocument.copy(trips = listOf(trip))
+        val result = validator.validate(document)
+        assertTrue(result is BackupValidationResult.Valid)
+    }
+
+    @Test
+    fun validate_unsupportedTripCurrencyCode_returnsError() {
+        val trip = sampleTrip.copy(id = 7L, foreignCurrencyCode = "XYZ", foreignToHomeRate = 1.0)
+        val document = TestData.sampleBackupDocument.copy(trips = listOf(trip))
+        val result = validator.validate(document)
+        assertTrue(result is BackupValidationResult.Invalid)
+        val errors = (result as BackupValidationResult.Invalid).errors
+        assertTrue(errors.any { it is BackupValidationError.UnsupportedTripCurrencyCode && it.tripId == 7L })
+    }
+
+    @Test
+    fun validate_tripForeignCurrencyWithNullRate_returnsError() {
+        val trip = sampleTrip.copy(id = 8L, foreignCurrencyCode = "EUR", foreignToHomeRate = null)
+        val document = TestData.sampleBackupDocument.copy(trips = listOf(trip))
+        val result = validator.validate(document)
+        assertTrue(result is BackupValidationResult.Invalid)
+        val errors = (result as BackupValidationResult.Invalid).errors
+        assertTrue(errors.any { it is BackupValidationError.InvalidTripRate && it.tripId == 8L })
+    }
+
+    @Test
+    fun validate_tripForeignCurrencyWithZeroRate_returnsError() {
+        val trip = sampleTrip.copy(id = 9L, foreignCurrencyCode = "EUR", foreignToHomeRate = 0.0)
+        val document = TestData.sampleBackupDocument.copy(trips = listOf(trip))
+        val result = validator.validate(document)
+        assertTrue(result is BackupValidationResult.Invalid)
+        val errors = (result as BackupValidationResult.Invalid).errors
+        assertTrue(errors.any { it is BackupValidationError.InvalidTripRate && it.tripId == 9L })
+    }
+
+    @Test
+    fun validate_tripForeignCurrencyWithNegativeRate_returnsError() {
+        val trip = sampleTrip.copy(id = 10L, foreignCurrencyCode = "EUR", foreignToHomeRate = -5.0)
+        val document = TestData.sampleBackupDocument.copy(trips = listOf(trip))
+        val result = validator.validate(document)
+        assertTrue(result is BackupValidationResult.Invalid)
+        val errors = (result as BackupValidationResult.Invalid).errors
+        assertTrue(errors.any { it is BackupValidationError.InvalidTripRate && it.tripId == 10L })
+    }
+
+    @Test
+    fun validate_tripHomeCurrencyWithNonNullRate_returnsError() {
+        val trip = sampleTrip.copy(id = 11L, foreignCurrencyCode = null, foreignToHomeRate = 1.0)
+        val document = TestData.sampleBackupDocument.copy(trips = listOf(trip))
+        val result = validator.validate(document)
+        assertTrue(result is BackupValidationResult.Invalid)
+        val errors = (result as BackupValidationResult.Invalid).errors
+        assertTrue(errors.any { it is BackupValidationError.InvalidTripRate && it.tripId == 11L })
+    }
+
+    @Test
+    fun validate_tripHomeCurrencyWithNullRate_returnsValid() {
+        val trip = sampleTrip.copy(foreignCurrencyCode = null, foreignToHomeRate = null)
+        val document = TestData.sampleBackupDocument.copy(trips = listOf(trip))
+        val result = validator.validate(document)
+        assertTrue(result is BackupValidationResult.Valid)
+    }
+
+    @Test
+    fun validate_convertedTripMissingNameSnapshot_returnsError() {
+        val trip =
+            sampleTrip.copy(
+                id = 12L,
+                foreignCurrencyCode = null,
+                foreignToHomeRate = null,
+                originalCategoryId = 10L,
+                originalCategoryNameSnapshot = null,
+                originalCategoryIconSnapshot = "flight",
+                originalCategoryColorSnapshot = "#FF0000",
+            )
+        val document = TestData.sampleBackupDocument.copy(trips = listOf(trip))
+        val result = validator.validate(document)
+        assertTrue(result is BackupValidationResult.Invalid)
+        val errors = (result as BackupValidationResult.Invalid).errors
+        assertTrue(errors.any { it is BackupValidationError.InvalidTripSnapshot && it.tripId == 12L })
+    }
+
+    @Test
+    fun validate_convertedTripBlankColorSnapshot_returnsError() {
+        val trip =
+            sampleTrip.copy(
+                id = 13L,
+                foreignCurrencyCode = null,
+                foreignToHomeRate = null,
+                originalCategoryId = 10L,
+                originalCategoryNameSnapshot = "Name",
+                originalCategoryIconSnapshot = "flight",
+                originalCategoryColorSnapshot = "  ",
+            )
+        val document = TestData.sampleBackupDocument.copy(trips = listOf(trip))
+        val result = validator.validate(document)
+        assertTrue(result is BackupValidationResult.Invalid)
+        val errors = (result as BackupValidationResult.Invalid).errors
+        assertTrue(errors.any { it is BackupValidationError.InvalidTripSnapshot && it.tripId == 13L })
+    }
+
+    @Test
+    fun validate_convertedTripMissingIconSnapshot_returnsError() {
+        val trip =
+            sampleTrip.copy(
+                id = 14L,
+                foreignCurrencyCode = null,
+                foreignToHomeRate = null,
+                originalCategoryId = 10L,
+                originalCategoryNameSnapshot = "Name",
+                originalCategoryIconSnapshot = null,
+                originalCategoryColorSnapshot = "#FF0000",
+            )
+        val document = TestData.sampleBackupDocument.copy(trips = listOf(trip))
+        val result = validator.validate(document)
+        assertTrue(result is BackupValidationResult.Invalid)
+        val errors = (result as BackupValidationResult.Invalid).errors
+        assertTrue(errors.any { it is BackupValidationError.InvalidTripSnapshot && it.tripId == 14L })
+    }
+
+    @Test
+    fun validate_nonConvertedTripWithSnapshotField_returnsError() {
+        val trip =
+            sampleTrip.copy(
+                id = 15L,
+                originalCategoryId = null,
+                originalCategoryNameSnapshot = "Sneaky Snapshot",
+                originalCategoryIconSnapshot = null,
+                originalCategoryColorSnapshot = null,
+            )
+        val document = TestData.sampleBackupDocument.copy(trips = listOf(trip))
+        val result = validator.validate(document)
+        assertTrue(result is BackupValidationResult.Invalid)
+        val errors = (result as BackupValidationResult.Invalid).errors
+        assertTrue(errors.any { it is BackupValidationError.InvalidTripSnapshot && it.tripId == 15L })
+    }
+
+    @Test
+    fun validate_transactionWithValidTripId_returnsValid() {
+        val trip = sampleTrip.copy(id = 1L)
+        val transaction = TestData.sampleBackupTransactionDto.copy(id = 20L, tripId = 1L)
+        val document =
+            TestData.sampleBackupDocument.copy(
+                trips = listOf(trip),
+                transactions = listOf(transaction),
+            )
+        val result = validator.validate(document)
+        assertTrue(result is BackupValidationResult.Valid)
+    }
+
+    @Test
+    fun validate_transactionWithOrphanedTripId_returnsError() {
+        val transaction = TestData.sampleBackupTransactionDto.copy(id = 21L, tripId = 999L)
+        val document =
+            TestData.sampleBackupDocument.copy(
+                trips = emptyList(),
+                transactions = listOf(transaction),
+            )
+        val result = validator.validate(document)
+        assertTrue(result is BackupValidationResult.Invalid)
+        val errors = (result as BackupValidationResult.Invalid).errors
+        assertTrue(
+            errors.any {
+                it is BackupValidationError.OrphanedTripTransaction &&
+                    it.transactionId == 21L &&
+                    it.tripId == 999L
+            },
+        )
     }
 }

@@ -4,6 +4,7 @@ import dev.tuandoan.expensetracker.data.backup.model.BackupDocumentV1
 import dev.tuandoan.expensetracker.data.backup.model.BackupGoldHoldingDto
 import dev.tuandoan.expensetracker.data.backup.model.BackupGoldPriceDto
 import dev.tuandoan.expensetracker.data.backup.model.BackupRecurringTransactionDto
+import dev.tuandoan.expensetracker.data.backup.model.BackupTripDto
 import dev.tuandoan.expensetracker.data.database.entity.CategoryEntity
 import dev.tuandoan.expensetracker.data.database.entity.TransactionEntity
 import dev.tuandoan.expensetracker.domain.model.GoldType
@@ -143,6 +144,39 @@ sealed class BackupValidationError {
         val unit: String,
         val currencyCode: String,
     ) : BackupValidationError()
+
+    data class DuplicateTripId(
+        val id: Long,
+    ) : BackupValidationError()
+
+    data class BlankTripName(
+        val tripId: Long,
+    ) : BackupValidationError()
+
+    data class InvalidTripDateRange(
+        val tripId: Long,
+        val startDateEpochDay: Long,
+        val endDateEpochDay: Long,
+    ) : BackupValidationError()
+
+    data class UnsupportedTripCurrencyCode(
+        val tripId: Long,
+        val currencyCode: String,
+    ) : BackupValidationError()
+
+    data class InvalidTripRate(
+        val tripId: Long,
+        val rate: Double?,
+    ) : BackupValidationError()
+
+    data class InvalidTripSnapshot(
+        val tripId: Long,
+    ) : BackupValidationError()
+
+    data class OrphanedTripTransaction(
+        val transactionId: Long,
+        val tripId: Long,
+    ) : BackupValidationError()
 }
 
 @Singleton
@@ -153,7 +187,7 @@ class BackupValidator
             val errors = mutableListOf<BackupValidationError>()
 
             // Validate schema version
-            if (document.schemaVersion != BackupDocumentV1.CURRENT_SCHEMA_VERSION) {
+            if (document.schemaVersion !in 1..BackupDocumentV1.CURRENT_SCHEMA_VERSION) {
                 errors.add(BackupValidationError.UnsupportedSchemaVersion(document.schemaVersion))
             }
 
@@ -164,6 +198,9 @@ class BackupValidator
                     errors.add(BackupValidationError.DuplicateCategoryId(category.id))
                 }
             }
+
+            // Validate trips
+            val tripIds = validateTrips(document.trips, errors)
 
             // Validate duplicate transaction IDs
             val transactionIds = mutableSetOf<Long>()
@@ -204,6 +241,11 @@ class BackupValidator
                 if (transaction.categoryId !in categoryIds) {
                     errors.add(
                         BackupValidationError.OrphanedTransaction(transaction.id, transaction.categoryId),
+                    )
+                }
+                if (transaction.tripId != null && transaction.tripId !in tripIds) {
+                    errors.add(
+                        BackupValidationError.OrphanedTripTransaction(transaction.id, transaction.tripId),
                     )
                 }
             }
@@ -329,5 +371,62 @@ class BackupValidator
                     )
                 }
             }
+        }
+
+        private fun validateTrips(
+            trips: List<BackupTripDto>,
+            errors: MutableList<BackupValidationError>,
+        ): Set<Long> {
+            val tripIds = mutableSetOf<Long>()
+            for (trip in trips) {
+                if (!tripIds.add(trip.id)) {
+                    errors.add(BackupValidationError.DuplicateTripId(trip.id))
+                }
+                if (trip.name.isBlank()) {
+                    errors.add(BackupValidationError.BlankTripName(trip.id))
+                }
+                if (trip.endDateEpochDay < trip.startDateEpochDay) {
+                    errors.add(
+                        BackupValidationError.InvalidTripDateRange(
+                            trip.id,
+                            trip.startDateEpochDay,
+                            trip.endDateEpochDay,
+                        ),
+                    )
+                }
+                if (trip.foreignCurrencyCode != null) {
+                    if (SupportedCurrencies.byCode(trip.foreignCurrencyCode) == null) {
+                        errors.add(
+                            BackupValidationError.UnsupportedTripCurrencyCode(
+                                trip.id,
+                                trip.foreignCurrencyCode,
+                            ),
+                        )
+                    }
+                    if (trip.foreignToHomeRate == null || trip.foreignToHomeRate <= 0.0) {
+                        errors.add(BackupValidationError.InvalidTripRate(trip.id, trip.foreignToHomeRate))
+                    }
+                } else {
+                    if (trip.foreignToHomeRate != null) {
+                        errors.add(BackupValidationError.InvalidTripRate(trip.id, trip.foreignToHomeRate))
+                    }
+                }
+                if (trip.originalCategoryId != null) {
+                    if (trip.originalCategoryNameSnapshot.isNullOrBlank() ||
+                        trip.originalCategoryColorSnapshot.isNullOrBlank() ||
+                        trip.originalCategoryIconSnapshot.isNullOrBlank()
+                    ) {
+                        errors.add(BackupValidationError.InvalidTripSnapshot(trip.id))
+                    }
+                } else {
+                    if (trip.originalCategoryNameSnapshot != null ||
+                        trip.originalCategoryColorSnapshot != null ||
+                        trip.originalCategoryIconSnapshot != null
+                    ) {
+                        errors.add(BackupValidationError.InvalidTripSnapshot(trip.id))
+                    }
+                }
+            }
+            return tripIds
         }
     }

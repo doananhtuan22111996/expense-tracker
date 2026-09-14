@@ -175,4 +175,54 @@ class BackupTransactionMapperTest {
         assertNull(backToEntity.tripId)
         assertNull(backToEntity.amountForeignMinor)
     }
+
+    @Test
+    fun roundTrip_preservesOriginalCategoryId() {
+        val original =
+            TransactionEntity(
+                id = 7L,
+                type = 0,
+                amount = 75000L,
+                currencyCode = "VND",
+                categoryId = 2L,
+                note = "Coffee",
+                timestamp = 1700000000000L,
+                createdAt = 1700000000000L,
+                updatedAt = 1700000000000L,
+                tripId = 4L,
+                originalCategoryId = 99L,
+                amountForeignMinor = null,
+            )
+
+        val dto = original.toBackupDto()
+        assertEquals(99L, dto.originalCategoryId)
+
+        val backToEntity = dto.toEntity()
+        assertEquals(99L, backToEntity.originalCategoryId)
+    }
+
+    @Test
+    fun roundTrip_nullOriginalCategoryId_remainsNull() {
+        val original =
+            TransactionEntity(
+                id = 8L,
+                type = 0,
+                amount = 75000L,
+                currencyCode = "VND",
+                categoryId = 2L,
+                note = null,
+                timestamp = 1700000000000L,
+                createdAt = 1700000000000L,
+                updatedAt = 1700000000000L,
+                tripId = null,
+                originalCategoryId = null,
+                amountForeignMinor = null,
+            )
+
+        val dto = original.toBackupDto()
+        assertNull(dto.originalCategoryId)
+
+        val backToEntity = dto.toEntity()
+        assertNull(backToEntity.originalCategoryId)
+    }
 }
