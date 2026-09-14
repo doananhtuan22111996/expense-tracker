@@ -6,6 +6,9 @@ import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dev.tuandoan.expensetracker.R
 import dev.tuandoan.expensetracker.core.util.UiText
+import dev.tuandoan.expensetracker.domain.analytics.Analytics
+import dev.tuandoan.expensetracker.domain.analytics.AnalyticsEvent
+import dev.tuandoan.expensetracker.domain.analytics.TransactionCountBucket
 import dev.tuandoan.expensetracker.domain.model.Category
 import dev.tuandoan.expensetracker.domain.model.ConversionDraft
 import dev.tuandoan.expensetracker.domain.model.SupportedCurrencies
@@ -77,6 +80,7 @@ data class ConversionWizardUiState(
  * Zero DB writes until [commit] is called. All state is held in-memory;
  * the wizard is abortable at any point.
  */
+
 @HiltViewModel
 class ConversionWizardViewModel
     @Inject
@@ -86,6 +90,7 @@ class ConversionWizardViewModel
         private val transactionRepository: TransactionRepository,
         private val currencyPreferenceRepository: CurrencyPreferenceRepository,
         private val tripRepository: TripRepository,
+        private val analytics: Analytics,
         clock: Clock,
     ) : ViewModel() {
         private val categoryId: Long = savedStateHandle["categoryId"] ?: 0L
@@ -181,6 +186,13 @@ class ConversionWizardViewModel
             viewModelScope.launch {
                 try {
                     tripRepository.commitConversion(draft)
+                    val migratedCount = draft.rowDecisions.count { it !is ConversionDraft.RowDecision.Skip }
+                    analytics.logEvent(
+                        AnalyticsEvent.TripConvertedFromCategory(
+                            transactionCount = TransactionCountBucket.fromCount(migratedCount),
+                            foreignCurrency = draft.tripMetadata.foreignCurrencyCode != null,
+                        ),
+                    )
                     _uiState.update { it.copy(isLoading = false, done = true) }
                 } catch (e: Exception) {
                     if (e is kotlinx.coroutines.CancellationException) throw e

@@ -62,6 +62,7 @@ class FirebaseAnalyticsImpl
                         mapOf(
                             PARAM_TYPE to type.wireValue,
                             PARAM_SOURCE to source.wireValue,
+                            PARAM_TRIP_ATTACHED to tripAttached.toString(),
                         )
                 AnalyticsEvent.TransactionUndone ->
                     EVENT_TRANSACTION_UNDONE to emptyMap()
@@ -71,6 +72,14 @@ class FirebaseAnalyticsImpl
                     EVENT_BACKUP_IMPORTED to mapOf(PARAM_FORMAT to format.wireValue)
                 is AnalyticsEvent.InsightShown ->
                     EVENT_INSIGHT_SHOWN to mapOf(PARAM_ROW_TYPE to rowType.wireValue)
+                is AnalyticsEvent.TripCreated ->
+                    EVENT_TRIP_CREATED to mapOf(PARAM_FOREIGN_CURRENCY to foreignCurrency.toString())
+                is AnalyticsEvent.TripConvertedFromCategory ->
+                    EVENT_TRIP_CONVERTED_FROM_CATEGORY to
+                        mapOf(
+                            PARAM_TRANSACTION_COUNT to transactionCount.wireValue,
+                            PARAM_FOREIGN_CURRENCY to foreignCurrency.toString(),
+                        )
             }
 
         companion object {
@@ -86,6 +95,8 @@ class FirebaseAnalyticsImpl
             const val EVENT_BACKUP_EXPORTED = "backup_exported"
             const val EVENT_BACKUP_IMPORTED = "backup_imported"
             const val EVENT_INSIGHT_SHOWN = "insight_shown"
+            const val EVENT_TRIP_CREATED = "trip_created"
+            const val EVENT_TRIP_CONVERTED_FROM_CATEGORY = "trip_converted_from_category"
 
             // Parameter names — match the PRD FR-A6 table column headers.
             const val PARAM_BUILD_TYPE = "build_type"
@@ -94,5 +105,8 @@ class FirebaseAnalyticsImpl
             const val PARAM_SOURCE = "source"
             const val PARAM_FORMAT = "format"
             const val PARAM_ROW_TYPE = "row_type"
+            const val PARAM_FOREIGN_CURRENCY = "foreign_currency"
+            const val PARAM_TRANSACTION_COUNT = "transaction_count"
+            const val PARAM_TRIP_ATTACHED = "trip_attached"
         }
     }

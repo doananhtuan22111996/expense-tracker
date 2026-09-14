@@ -1,6 +1,6 @@
 # Privacy Policy
 
-**Last updated:** 2026-05-04
+**Last updated:** 2026-09-14
 
 ## 1. Introduction
 
@@ -47,10 +47,12 @@ The app also includes **Firebase Analytics** to help me understand which feature
   - `app_open` (build type: debug or release)
   - `onboarding_completed`
   - `widget_added` (size: small or medium), `widget_removed`
-  - `transaction_added` (type: expense or income; source: manual, widget, or recurring — **no amount, no category, no note**)
+  - `transaction_added` (type: expense or income; source: manual, widget, or recurring; trip_attached: true or false — **no amount, no category, no note**)
   - `transaction_undone` (no parameters — fired when you undo a just-saved transaction)
   - `backup_exported` / `backup_imported` (format: json or encrypted)
   - `insight_shown` (which Insights row surfaced: biggest mover / daily pace / no-budget fallback / day-of-month)
+  - `trip_created` (foreign_currency: true or false)
+  - `trip_converted_from_category` (transaction_count: one_to_nine, ten_to_forty_nine, or fifty_plus; foreign_currency: true or false)
 - **What is never collected, regardless of your choice:** transaction amounts, category names, note text, dates of activity, currency codes that could correlate to your location, or any free-text you've entered. Firebase Analytics' automatic events (`screen_view`, `first_open`, `session_start`) are also **disabled** — only the events listed above ever fire. No user ID is ever set.
 - **Data retention:** event-level data is retained for **14 months** (Google Analytics 4 default), then automatically deleted.
 - **Data processor:** Google LLC (Firebase / Google Analytics). See [Firebase's privacy documentation](https://firebase.google.com/support/privacy) and [Google Analytics data retention](https://support.google.com/analytics/answer/7667196) for their handling of this data.

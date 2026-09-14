@@ -242,6 +242,7 @@ class QuickAddViewModelTest {
             // entry point. If a future refactor accidentally defaults source to
             // MANUAL, product adoption numbers would under-count the widget flow.
             assertEquals(TransactionSource.WIDGET, expense.single().source)
+            assertFalse(expense.single().tripAttached)
         }
 
     @Test

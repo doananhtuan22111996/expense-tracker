@@ -118,6 +118,7 @@ class RecurringTransactionRepositoryImpl
                     AnalyticsEvent.TransactionAdded(
                         type = type.toAnalyticsKind(),
                         source = TransactionSource.RECURRING,
+                        tripAttached = false,
                     ),
                 )
             }

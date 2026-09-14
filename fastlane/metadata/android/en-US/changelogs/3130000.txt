@@ -1,0 +1,6 @@
+What's new in v3.13:
+
+• Trips — organize vacation spending under dedicated trips with destinations, dates, and separate insights.
+• Foreign currencies — log expenses in foreign currency with custom exchange rates; home equivalent is tracked automatically.
+• Legacy category conversion — turn existing city categories into trips with full transaction re-categorization and revert support.
+• Exclude trips toggle — hide trip expenses from monthly totals and budgets anytime.

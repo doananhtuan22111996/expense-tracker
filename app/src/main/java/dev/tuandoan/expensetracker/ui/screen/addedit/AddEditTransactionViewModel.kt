@@ -218,6 +218,7 @@ class AddEditTransactionViewModel
                             AnalyticsEvent.TransactionAdded(
                                 type = state.type.toAnalyticsKind(),
                                 source = TransactionSource.MANUAL,
+                                tripAttached = tripId != null,
                             ),
                         )
                     }

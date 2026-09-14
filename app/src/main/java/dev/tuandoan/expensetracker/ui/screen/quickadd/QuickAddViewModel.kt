@@ -142,6 +142,7 @@ class QuickAddViewModel
                         AnalyticsEvent.TransactionAdded(
                             type = TransactionType.EXPENSE.toAnalyticsKind(),
                             source = TransactionSource.WIDGET,
+                            tripAttached = false,
                         ),
                     )
                     budgetAlertScheduler.scheduleImmediateCheck()
