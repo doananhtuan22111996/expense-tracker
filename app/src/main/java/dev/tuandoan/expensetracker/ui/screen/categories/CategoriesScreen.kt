@@ -230,7 +230,8 @@ fun CategoriesScreen(
                                 onEdit = { editingCategory = categoryWithCount },
                                 onDelete = { deletingCategory = categoryWithCount },
                                 onConvertToTrip =
-                                    if (categoryWithCount.category.type == TransactionType.EXPENSE &&
+                                    if (!categoryWithCount.category.isDefault &&
+                                        categoryWithCount.category.type == TransactionType.EXPENSE &&
                                         categoryWithCount.transactionCount > 0
                                     ) {
                                         { viewModel.onConvertToTripRequested(categoryWithCount.category.id) }

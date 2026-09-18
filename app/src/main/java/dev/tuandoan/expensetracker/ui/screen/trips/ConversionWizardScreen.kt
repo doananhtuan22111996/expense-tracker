@@ -2,7 +2,6 @@ package dev.tuandoan.expensetracker.ui.screen.trips
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -17,6 +16,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
@@ -55,6 +55,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
@@ -656,13 +657,16 @@ private fun WizardStep3PreviewBody(
                         Modifier
                             .fillMaxWidth()
                             .clip(RoundedCornerShape(DesignSystemSpacing.small))
-                            .clickable { onDispositionSelected(ConversionDraft.SourceDisposition.DELETE) }
-                            .padding(vertical = DesignSystemSpacing.xs),
+                            .selectable(
+                                selected = isDelete,
+                                onClick = { onDispositionSelected(ConversionDraft.SourceDisposition.DELETE) },
+                                role = Role.RadioButton,
+                            ).padding(vertical = DesignSystemSpacing.xs),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     RadioButton(
                         selected = isDelete,
-                        onClick = { onDispositionSelected(ConversionDraft.SourceDisposition.DELETE) },
+                        onClick = null,
                     )
                     Spacer(modifier = Modifier.width(DesignSystemSpacing.small))
                     Column(modifier = Modifier.weight(1f)) {
@@ -688,13 +692,16 @@ private fun WizardStep3PreviewBody(
                         Modifier
                             .fillMaxWidth()
                             .clip(RoundedCornerShape(DesignSystemSpacing.small))
-                            .clickable { onDispositionSelected(ConversionDraft.SourceDisposition.KEEP) }
-                            .padding(vertical = DesignSystemSpacing.xs),
+                            .selectable(
+                                selected = !isDelete,
+                                onClick = { onDispositionSelected(ConversionDraft.SourceDisposition.KEEP) },
+                                role = Role.RadioButton,
+                            ).padding(vertical = DesignSystemSpacing.xs),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     RadioButton(
                         selected = !isDelete,
-                        onClick = { onDispositionSelected(ConversionDraft.SourceDisposition.KEEP) },
+                        onClick = null,
                     )
                     Spacer(modifier = Modifier.width(DesignSystemSpacing.small))
                     Column(modifier = Modifier.weight(1f)) {
