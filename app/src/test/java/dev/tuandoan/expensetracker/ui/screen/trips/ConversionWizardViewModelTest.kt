@@ -102,12 +102,34 @@ class ConversionWizardViewModelTest {
         }
 
     @Test
-    fun init_startAndEndDatesPreseededWithToday() =
+    fun init_startAndEndDatesPreseededFromTransactions() =
         runTest(mainDispatcherRule.testDispatcher) {
+            val expectedDay =
+                LocalDate.ofInstant(java.time.Instant.ofEpochMilli(TestData.FIXED_TIME), ZoneOffset.UTC).toEpochDay()
+            val vm = newVm()
+            advanceUntilIdle()
+            assertEquals(expectedDay, vm.uiState.value.startEpochDay)
+            assertEquals(expectedDay, vm.uiState.value.endEpochDay)
+        }
+
+    @Test
+    fun init_noTransactions_startAndEndDatesPreseededWithToday() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            transactionRepo.transactionsByCategory[TestData.expenseCategory.id] = emptyList()
             val vm = newVm()
             advanceUntilIdle()
             assertEquals(today, vm.uiState.value.startEpochDay)
             assertEquals(today, vm.uiState.value.endEpochDay)
+        }
+
+    @Test
+    fun applyCategoryToAll_updatesAllRowDecisions() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            val vm = newVm()
+            advanceUntilIdle()
+            vm.applyCategoryToAll(99L)
+            val decisions = vm.uiState.value.rowDecisions
+            assertTrue(decisions.values.all { it is ConversionDraft.RowDecision.Migrate && it.newCategoryId == 99L })
         }
 
     @Test

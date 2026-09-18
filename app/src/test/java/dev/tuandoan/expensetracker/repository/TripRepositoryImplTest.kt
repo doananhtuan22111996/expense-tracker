@@ -477,6 +477,30 @@ class TripRepositoryImplTest {
             assertNotNull(categoryDao.getById(10L))
         }
 
+    @Test
+    fun commitConversion_keepsSourceCategory_whenTransactionsRemainEvenIfDispositionDelete() =
+        runTest {
+            categoryDao.seed(categoryEntity(id = 10L, name = "Food"))
+            transactionDao.seed(
+                TransactionEntity(
+                    id = 99L,
+                    type = 0,
+                    amount = 50_000L,
+                    categoryId = 10L,
+                    note = "Unmigrated",
+                    timestamp = 1000L,
+                    createdAt = 1000L,
+                    updatedAt = 1000L,
+                ),
+            )
+            val draft = conversionDraft(sourceId = 10L, disposition = ConversionDraft.SourceDisposition.DELETE)
+            repository.commitConversion(draft)
+            assertNotNull(
+                "Source category must not be deleted if transactions still reference it",
+                categoryDao.getById(10L),
+            )
+        }
+
     // ───────────────────────────────────────────────────────────
     //  Helpers
     // ───────────────────────────────────────────────────────────
@@ -775,6 +799,8 @@ private class FakeTransactionDao : TransactionDao {
     override suspend fun insertAll(list: List<TransactionEntity>) {
         entities = entities + list
     }
+
+    override suspend fun countByCategoryId(categoryId: Long): Int = entities.count { it.categoryId == categoryId }
 
     override suspend fun reassignCategory(
         fromId: Long,

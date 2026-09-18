@@ -17,6 +17,7 @@ fun TransactionEntity.toDomain(category: Category): Transaction =
         createdAt = createdAt,
         updatedAt = updatedAt,
         tripId = tripId,
+        originalCategoryId = originalCategoryId,
         amountForeignMinor = amountForeignMinor,
     )
 
@@ -32,5 +33,6 @@ fun Transaction.toEntity(): TransactionEntity =
         createdAt = createdAt,
         updatedAt = updatedAt,
         tripId = tripId,
+        originalCategoryId = originalCategoryId,
         amountForeignMinor = amountForeignMinor,
     )

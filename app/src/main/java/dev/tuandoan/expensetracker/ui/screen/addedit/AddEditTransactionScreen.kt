@@ -287,87 +287,96 @@ private fun TransactionForm(
             )
         }
 
-        // Amount (primary field — first for fastest input)
-        val currency = SupportedCurrencies.byCode(uiState.currencyCode) ?: SupportedCurrencies.default()
-        val amountPlaceholder =
-            if (currency.minorUnitDigits == 0) {
-                AmountFormatter.formatAmount(1000000L, currency.code)
-            } else {
-                AmountFormatter.formatAmount(100000L, currency.code)
-            }
+        if (!uiState.isForeignCurrencyMode) {
+            // Amount (primary field — first for fastest input)
+            val currency = SupportedCurrencies.byCode(uiState.currencyCode) ?: SupportedCurrencies.default()
+            val amountPlaceholder =
+                if (currency.minorUnitDigits == 0) {
+                    AmountFormatter.formatAmount(1000000L, currency.code)
+                } else {
+                    AmountFormatter.formatAmount(100000L, currency.code)
+                }
 
-        Column(verticalArrangement = Arrangement.spacedBy(DesignSystemSpacing.xs)) {
-            Text(
-                text = stringResource(R.string.label_amount),
-                style = MaterialTheme.typography.titleMedium,
-                color = MaterialTheme.colorScheme.onSurface,
-            )
+            Column(verticalArrangement = Arrangement.spacedBy(DesignSystemSpacing.xs)) {
+                Text(
+                    text = stringResource(R.string.label_amount),
+                    style = MaterialTheme.typography.titleMedium,
+                    color = MaterialTheme.colorScheme.onSurface,
+                )
 
-            OutlinedTextField(
-                value = uiState.amountText,
-                onValueChange = { input ->
-                    val cleanInput = input.replace("[^0-9]".toRegex(), "")
-                    viewModel.onAmountChanged(cleanInput)
-                },
-                label = { Text(stringResource(R.string.label_enter_amount, currency.code)) },
-                placeholder = { Text(amountPlaceholder) },
-                suffix = {
-                    Text(
-                        currency.symbol,
-                        style = MaterialTheme.typography.titleMedium,
-                        color = MaterialTheme.colorScheme.primary,
-                    )
-                },
-                visualTransformation =
-                    remember(currency.code) {
-                        CurrencyAmountVisualTransformation(currency.code)
+                OutlinedTextField(
+                    value = uiState.amountText,
+                    onValueChange = { input ->
+                        val cleanInput = input.replace("[^0-9]".toRegex(), "")
+                        viewModel.onAmountChanged(cleanInput)
                     },
-                keyboardOptions =
-                    KeyboardOptions(
-                        keyboardType = KeyboardType.Number,
-                        imeAction = ImeAction.Next,
-                    ),
-                keyboardActions =
-                    KeyboardActions(
-                        onNext = { focusManager.moveFocus(FocusDirection.Down) },
-                    ),
-                modifier =
-                    Modifier
-                        .fillMaxWidth()
-                        .focusRequester(amountFocusRequester),
-                isError = uiState.amountText.isNotBlank() && !uiState.isFormValid,
-                supportingText = {
-                    if (uiState.amountText.isNotBlank() && !uiState.isFormValid) {
+                    label = { Text(stringResource(R.string.label_enter_amount, currency.code)) },
+                    placeholder = { Text(amountPlaceholder) },
+                    suffix = {
                         Text(
-                            stringResource(R.string.error_invalid_amount),
-                            color = MaterialTheme.colorScheme.error,
+                            currency.symbol,
+                            style = MaterialTheme.typography.titleMedium,
+                            color = MaterialTheme.colorScheme.primary,
                         )
-                    } else if (uiState.amountText.isEmpty()) {
-                        if (currency.minorUnitDigits == 0) {
+                    },
+                    visualTransformation =
+                        remember(currency.code) {
+                            CurrencyAmountVisualTransformation(currency.code)
+                        },
+                    keyboardOptions =
+                        KeyboardOptions(
+                            keyboardType = KeyboardType.Number,
+                            imeAction = ImeAction.Next,
+                        ),
+                    keyboardActions =
+                        KeyboardActions(
+                            onNext = { focusManager.moveFocus(FocusDirection.Down) },
+                        ),
+                    modifier =
+                        Modifier
+                            .fillMaxWidth()
+                            .focusRequester(amountFocusRequester),
+                    isError = uiState.amountText.isNotBlank() && !uiState.isFormValid,
+                    supportingText = {
+                        if (uiState.amountText.isNotBlank() && !uiState.isFormValid) {
                             Text(
-                                stringResource(R.string.hint_amount_no_decimals, currency.code),
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                stringResource(R.string.error_invalid_amount),
+                                color = MaterialTheme.colorScheme.error,
                             )
-                        } else {
-                            Text(
-                                stringResource(R.string.hint_amount_minor_units, currency.code),
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            )
+                        } else if (uiState.amountText.isEmpty()) {
+                            if (currency.minorUnitDigits == 0) {
+                                Text(
+                                    stringResource(R.string.hint_amount_no_decimals, currency.code),
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                )
+                            } else {
+                                Text(
+                                    stringResource(R.string.hint_amount_minor_units, currency.code),
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                )
+                            }
                         }
-                    }
-                },
-                textStyle = MaterialTheme.typography.headlineSmall,
-            )
-        }
-
-        // Foreign-currency sub-form — shown only when the selected trip tracks a foreign currency
-        if (uiState.isForeignCurrencyMode) {
+                    },
+                    textStyle = MaterialTheme.typography.headlineSmall,
+                )
+            }
+        } else {
+            // Foreign-currency mode: Foreign amount is the primary input!
             val foreignCode = uiState.selectedTrip?.foreignCurrencyCode ?: ""
+            val homeAmount = AmountFormatter.parseAmount(uiState.amountText)
+            val homeEquivalentText =
+                if (homeAmount != null && homeAmount > 0L) {
+                    "≈ " + AmountFormatter.formatAmountWithCurrency(homeAmount, uiState.currencyCode)
+                } else {
+                    null
+                }
             ForeignAmountField(
                 foreignAmountText = uiState.amountForeignText,
                 foreignCurrencyCode = foreignCode,
+                homeEquivalentText = homeEquivalentText,
                 onForeignAmountChanged = viewModel::onForeignAmountChanged,
                 onImeNext = { focusManager.moveFocus(FocusDirection.Down) },
+                modifier = Modifier.focusRequester(amountFocusRequester),
             )
             RateOverrideField(
                 rateText = uiState.rateOverrideText,
@@ -883,6 +892,7 @@ private fun ForeignAmountField(
     onForeignAmountChanged: (String) -> Unit,
     onImeNext: () -> Unit,
     modifier: Modifier = Modifier,
+    homeEquivalentText: String? = null,
 ) {
     // foreignCurrencyCode is always a valid SupportedCurrencies entry here —
     // CreateEditTripViewModel.validate() enforces this at trip-creation time.
@@ -925,6 +935,13 @@ private fun ForeignAmountField(
                     Text(
                         stringResource(R.string.error_foreign_amount_invalid),
                         color = MaterialTheme.colorScheme.error,
+                    )
+                } else if (homeEquivalentText != null) {
+                    Text(
+                        homeEquivalentText,
+                        color = MaterialTheme.colorScheme.primary,
+                        style = MaterialTheme.typography.bodyMedium,
+                        fontWeight = FontWeight.Medium,
                     )
                 }
             },

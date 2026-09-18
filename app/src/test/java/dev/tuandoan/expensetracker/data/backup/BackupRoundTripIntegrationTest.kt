@@ -468,6 +468,8 @@ class BackupRoundTripIntegrationTest {
             entities = entities + list
         }
 
+        override suspend fun countByCategoryId(categoryId: Long): Int = entities.count { it.categoryId == categoryId }
+
         override suspend fun reassignCategory(
             fromId: Long,
             toId: Long,

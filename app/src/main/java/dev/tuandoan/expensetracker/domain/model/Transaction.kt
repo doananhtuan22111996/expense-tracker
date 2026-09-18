@@ -11,6 +11,7 @@ data class Transaction(
     val createdAt: Long,
     val updatedAt: Long,
     val tripId: Long? = null,
+    val originalCategoryId: Long? = null,
     val amountForeignMinor: Long? = null,
 )
 

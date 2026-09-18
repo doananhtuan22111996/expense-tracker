@@ -434,6 +434,8 @@ class RecurrenceSchedulerTest {
 
         override suspend fun getAllOrdered(): List<TransactionEntity> = emptyList()
 
+        override suspend fun countByCategoryId(categoryId: Long): Int = 0
+
         override suspend fun insertAll(list: List<TransactionEntity>) {}
 
         override suspend fun deleteAll() {}

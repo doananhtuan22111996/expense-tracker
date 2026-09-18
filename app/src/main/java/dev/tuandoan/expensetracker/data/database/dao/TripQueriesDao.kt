@@ -3,6 +3,7 @@ package dev.tuandoan.expensetracker.data.database.dao
 import androidx.room.Dao
 import androidx.room.Query
 import dev.tuandoan.expensetracker.data.database.entity.DailyTotalRow
+import dev.tuandoan.expensetracker.data.database.entity.TransactionEntity
 import dev.tuandoan.expensetracker.data.database.entity.TripCategorySumRow
 import kotlinx.coroutines.flow.Flow
 
@@ -17,7 +18,7 @@ import kotlinx.coroutines.flow.Flow
 @Dao
 interface TripQueriesDao {
     /** Total spend in home minor units. `null` when the trip has no transactions yet. */
-    @Query("SELECT SUM(amount) FROM transactions WHERE trip_id = :tripId")
+    @Query("SELECT SUM(amount) FROM transactions WHERE trip_id = :tripId AND type = ${TransactionEntity.TYPE_EXPENSE}")
     fun observeTotal(tripId: Long): Flow<Long?>
 
     /** Number of transactions attached to the trip. `0` when empty. */
@@ -34,7 +35,7 @@ interface TripQueriesDao {
             strftime('%Y-%m-%d', datetime(timestamp / 1000, 'unixepoch', 'localtime')) AS date,
             SUM(amount) AS total
         FROM transactions
-        WHERE trip_id = :tripId
+        WHERE trip_id = :tripId AND type = ${TransactionEntity.TYPE_EXPENSE}
         GROUP BY date
         ORDER BY date ASC
         """,
@@ -49,7 +50,7 @@ interface TripQueriesDao {
         """
         SELECT category_id AS categoryId, SUM(amount) AS total
         FROM transactions
-        WHERE trip_id = :tripId
+        WHERE trip_id = :tripId AND type = ${TransactionEntity.TYPE_EXPENSE}
         GROUP BY category_id
         ORDER BY total DESC
         """,

@@ -5,6 +5,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dev.tuandoan.expensetracker.R
+import dev.tuandoan.expensetracker.core.currency.AmountCalculator
 import dev.tuandoan.expensetracker.core.formatter.AmountFormatter
 import dev.tuandoan.expensetracker.core.util.ErrorUtils
 import dev.tuandoan.expensetracker.core.util.TimeProvider
@@ -92,8 +93,23 @@ class AddEditTransactionViewModel
             if (currencyCode == state.currencyCode) return
             if (SupportedCurrencies.byCode(currencyCode) == null) return
 
-            // amountText is raw digits — no reformatting needed on currency change
-            _uiState.value = state.copy(currencyCode = currencyCode)
+            val newAmountText =
+                if (state.isForeignCurrencyMode) {
+                    recalculateHomeAmount(
+                        foreignAmountText = state.amountForeignText,
+                        rateText = state.rateOverrideText,
+                        foreignCurrencyCode = state.selectedTrip?.foreignCurrencyCode,
+                        homeCurrencyCode = currencyCode,
+                    )
+                } else {
+                    state.amountText
+                }
+
+            _uiState.value =
+                state.copy(
+                    currencyCode = currencyCode,
+                    amountText = newAmountText,
+                )
         }
 
         fun onTripSelected(trip: Trip?) {
@@ -102,21 +118,60 @@ class AddEditTransactionViewModel
                     ?.foreignToHomeRate
                     ?.let { formatRate(it) }
                     ?: ""
+            val currentState = _uiState.value
+            val isNowForeign = !trip?.foreignCurrencyCode.isNullOrBlank()
+            val newAmountText =
+                if (isNowForeign) {
+                    recalculateHomeAmount(
+                        foreignAmountText = "",
+                        rateText = rateDefault,
+                        foreignCurrencyCode = trip.foreignCurrencyCode,
+                        homeCurrencyCode = currentState.currencyCode,
+                    )
+                } else {
+                    currentState.amountText
+                }
+
             _uiState.value =
-                _uiState.value.copy(
+                currentState.copy(
                     selectedTrip = trip,
-                    // Seed rate from trip; clear foreign amount so the user re-enters it
                     amountForeignText = "",
                     rateOverrideText = rateDefault,
+                    amountText = if (isNowForeign) newAmountText else currentState.amountText,
                 )
         }
 
         fun onForeignAmountChanged(text: String) {
-            _uiState.value = _uiState.value.copy(amountForeignText = text)
+            val cleanText = text.replace("[^0-9]".toRegex(), "")
+            val state = _uiState.value
+            val homeAmount =
+                recalculateHomeAmount(
+                    foreignAmountText = cleanText,
+                    rateText = state.rateOverrideText,
+                    foreignCurrencyCode = state.selectedTrip?.foreignCurrencyCode,
+                    homeCurrencyCode = state.currencyCode,
+                )
+            _uiState.value =
+                state.copy(
+                    amountForeignText = cleanText,
+                    amountText = if (state.isForeignCurrencyMode) homeAmount else state.amountText,
+                )
         }
 
         fun onRateOverrideChanged(text: String) {
-            _uiState.value = _uiState.value.copy(rateOverrideText = text)
+            val state = _uiState.value
+            val homeAmount =
+                recalculateHomeAmount(
+                    foreignAmountText = state.amountForeignText,
+                    rateText = text,
+                    foreignCurrencyCode = state.selectedTrip?.foreignCurrencyCode,
+                    homeCurrencyCode = state.currencyCode,
+                )
+            _uiState.value =
+                state.copy(
+                    rateOverrideText = text,
+                    amountText = if (state.isForeignCurrencyMode) homeAmount else state.amountText,
+                )
         }
 
         fun onBackPressed() {
@@ -193,6 +248,7 @@ class AddEditTransactionViewModel
                                 updatedAt = timeProvider.currentTimeMillis(),
                                 tripId = tripId,
                                 amountForeignMinor = amountForeignMinor,
+                                originalCategoryId = if (tripId == null) null else original.originalCategoryId,
                             )
                         transactionRepository.updateTransaction(updatedTransaction)
                     } else {
@@ -294,12 +350,18 @@ class AddEditTransactionViewModel
                         // (multiple active) picks the most-recently-created (first by
                         // the repo's createdAt DESC ordering).
                         val autoTrip = if (activeTrips.isNotEmpty()) activeTrips.first() else null
+                        val autoRate =
+                            autoTrip
+                                ?.foreignToHomeRate
+                                ?.let { formatRate(it) }
+                                ?: ""
                         _uiState.value =
                             _uiState.value.copy(
                                 type = TransactionType.EXPENSE,
                                 timestamp = timeProvider.currentTimeMillis(),
                                 currencyCode = defaultCurrency,
                                 selectedTrip = autoTrip,
+                                rateOverrideText = autoRate,
                             )
                         loadCategories(TransactionType.EXPENSE)
                     }
@@ -341,6 +403,27 @@ class AddEditTransactionViewModel
                 }
         }
 
+        private fun recalculateHomeAmount(
+            foreignAmountText: String,
+            rateText: String,
+            foreignCurrencyCode: String?,
+            homeCurrencyCode: String,
+        ): String {
+            if (foreignCurrencyCode.isNullOrBlank()) return ""
+            val foreignMinor = AmountFormatter.parseAmount(foreignAmountText) ?: return ""
+            val rate = parseRate(rateText) ?: return ""
+            val foreignDigits = SupportedCurrencies.byCode(foreignCurrencyCode)?.minorUnitDigits ?: 0
+            val homeDigits = SupportedCurrencies.byCode(homeCurrencyCode)?.minorUnitDigits ?: 0
+            val homeMinor =
+                AmountCalculator.toHomeMinor(
+                    foreignMinor = foreignMinor,
+                    foreignDigits = foreignDigits,
+                    homeDigits = homeDigits,
+                    rate = rate,
+                )
+            return if (homeMinor > 0L) homeMinor.toString() else ""
+        }
+
         override fun onCleared() {
             super.onCleared()
             categoryLoadingJob?.cancel()
@@ -379,12 +462,14 @@ data class AddEditTransactionUiState(
 
     val isFormValid: Boolean
         get() {
-            if (amountText.isBlank()) return false
             if (selectedCategory == null) return false
-            if (AmountFormatter.parseAmount(amountText)?.let { it > 0 } != true) return false
             if (isForeignCurrencyMode) {
                 if (AmountFormatter.parseAmount(amountForeignText)?.let { it > 0 } != true) return false
                 if (parseRate(rateOverrideText) == null) return false
+                if (AmountFormatter.parseAmount(amountText)?.let { it > 0 } != true) return false
+            } else {
+                if (amountText.isBlank()) return false
+                if (AmountFormatter.parseAmount(amountText)?.let { it > 0 } != true) return false
             }
             return true
         }

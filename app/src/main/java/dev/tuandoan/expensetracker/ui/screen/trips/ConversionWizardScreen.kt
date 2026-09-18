@@ -20,6 +20,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -52,6 +53,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import dev.tuandoan.expensetracker.R
 import dev.tuandoan.expensetracker.domain.model.Category
@@ -265,6 +267,67 @@ private fun WizardStep2RowDecisionsBody(
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = Modifier.padding(bottom = DesignSystemSpacing.small),
         )
+
+        if (uiState.availableCategories.isNotEmpty()) {
+            var expandedDropdown by remember { mutableStateOf(false) }
+            var selectedCategory by remember { mutableStateOf(uiState.availableCategories.first()) }
+
+            Card(
+                modifier =
+                    Modifier
+                        .fillMaxWidth()
+                        .padding(bottom = DesignSystemSpacing.medium),
+                colors =
+                    CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                    ),
+            ) {
+                Row(
+                    modifier =
+                        Modifier
+                            .fillMaxWidth()
+                            .padding(DesignSystemSpacing.medium),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                ) {
+                    Box {
+                        FilterChip(
+                            selected = true,
+                            onClick = { expandedDropdown = true },
+                            label = { Text(selectedCategory.name) },
+                            trailingIcon = {
+                                Icon(
+                                    Icons.Default.KeyboardArrowDown,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(16.dp),
+                                )
+                            },
+                        )
+                        DropdownMenu(
+                            expanded = expandedDropdown,
+                            onDismissRequest = { expandedDropdown = false },
+                        ) {
+                            uiState.availableCategories.forEach { category ->
+                                DropdownMenuItem(
+                                    text = { Text(category.name) },
+                                    onClick = {
+                                        selectedCategory = category
+                                        expandedDropdown = false
+                                    },
+                                )
+                            }
+                        }
+                    }
+                    Button(
+                        onClick = { viewModel.applyCategoryToAll(selectedCategory.id) },
+                        contentPadding = ButtonDefaults.TextButtonContentPadding,
+                    ) {
+                        Text(stringResource(R.string.conversion_wizard_apply_to_all))
+                    }
+                }
+            }
+        }
+
         LazyColumn(modifier = Modifier.weight(1f)) {
             items(uiState.transactions, key = { it.id }) { tx ->
                 val decision = uiState.rowDecisions[tx.id]

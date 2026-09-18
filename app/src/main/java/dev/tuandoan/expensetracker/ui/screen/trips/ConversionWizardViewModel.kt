@@ -91,7 +91,7 @@ class ConversionWizardViewModel
         private val currencyPreferenceRepository: CurrencyPreferenceRepository,
         private val tripRepository: TripRepository,
         private val analytics: Analytics,
-        clock: Clock,
+        private val clock: Clock,
     ) : ViewModel() {
         private val categoryId: Long = savedStateHandle["categoryId"] ?: 0L
 
@@ -174,6 +174,16 @@ class ConversionWizardViewModel
         ) {
             _uiState.update {
                 it.copy(rowDecisions = it.rowDecisions + (transactionId to decision))
+            }
+        }
+
+        fun applyCategoryToAll(targetCategoryId: Long) {
+            _uiState.update { state ->
+                val updated =
+                    state.rowDecisions.mapValues { (id, _) ->
+                        ConversionDraft.RowDecision.Migrate(id, targetCategoryId)
+                    }
+                state.copy(rowDecisions = updated)
             }
         }
 
@@ -296,6 +306,25 @@ class ConversionWizardViewModel
                                 )
                         }
 
+                    val minEpochDay =
+                        transactions
+                            .minOfOrNull {
+                                java.time.Instant
+                                    .ofEpochMilli(it.timestamp)
+                                    .atZone(clock.zone)
+                                    .toLocalDate()
+                                    .toEpochDay()
+                            } ?: today
+                    val maxEpochDay =
+                        transactions
+                            .maxOfOrNull {
+                                java.time.Instant
+                                    .ofEpochMilli(it.timestamp)
+                                    .atZone(clock.zone)
+                                    .toLocalDate()
+                                    .toEpochDay()
+                            } ?: today
+
                     _uiState.update {
                         it.copy(
                             isLoading = false,
@@ -309,8 +338,8 @@ class ConversionWizardViewModel
                             rowDecisions = initialDecisions,
                             homeCurrencyCode = home,
                             tripName = category.name,
-                            startEpochDay = today,
-                            endEpochDay = today,
+                            startEpochDay = minEpochDay,
+                            endEpochDay = maxEpochDay,
                         )
                     }
                 } catch (e: Exception) {

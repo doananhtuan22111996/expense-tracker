@@ -573,6 +573,8 @@
     <string name="conversion_wizard_preview_label_skip">%1$d staying in</string>
     <string name="conversion_wizard_next">Next</string>
     <string name="conversion_wizard_commit">Commit</string>
+    <string name="conversion_wizard_apply_to_all">Apply to all</string>
+    <string name="conversion_wizard_default_category">Default category</string>
 
     <!-- Accessibility: Recurring -->
     <string name="a11y_add_recurring">Add recurring transaction</string>
