@@ -18,8 +18,6 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
-import kotlinx.coroutines.flow.flatMapLatest
-import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
@@ -65,21 +63,30 @@ class TripsViewModel
 
         private fun observeTrips(nowEpochDay: Long) {
             viewModelScope.launch {
-                combine(
-                    tripRepository.observeTrips(TripFilter.Active(nowEpochDay)),
-                    tripRepository.observeTrips(TripFilter.Upcoming(nowEpochDay)),
-                    tripRepository.observeTrips(TripFilter.Past(nowEpochDay)),
-                ) { active, upcoming, past ->
-                    Sections(active = active, upcoming = upcoming, past = past)
-                }.flatMapLatest { sections ->
-                    val allTrips = sections.active + sections.upcoming + sections.past
-                    if (allTrips.isEmpty()) {
-                        // combine() over an empty list never emits — short-circuit so
-                        // the empty state surfaces instead of hanging on isLoading.
-                        flowOf(sections to emptyMap())
-                    } else {
-                        enrichmentFlow(allTrips).map { aggMap -> sections to aggMap }
+                val sectionsFlow: Flow<Sections> =
+                    combine(
+                        tripRepository.observeTrips(TripFilter.Active(nowEpochDay)),
+                        tripRepository.observeTrips(TripFilter.Upcoming(nowEpochDay)),
+                        tripRepository.observeTrips(TripFilter.Past(nowEpochDay)),
+                    ) { active, upcoming, past ->
+                        Sections(active = active, upcoming = upcoming, past = past)
                     }
+
+                val aggregatesFlow: Flow<Map<Long, TripAggregates>> =
+                    combine(
+                        tripRepository.observeAllTripSummaries(),
+                        currencyPreferenceRepository.observeDefaultCurrency().distinctUntilChanged(),
+                    ) { summaryMap, code ->
+                        summaryMap.mapValues { (_, summary) ->
+                            TripAggregates(
+                                totalLabel = summary.totalMinor?.let { currencyFormatter.format(it, code) },
+                                transactionCount = summary.transactionCount,
+                            )
+                        }
+                    }
+
+                combine(sectionsFlow, aggregatesFlow) { sections, aggMap ->
+                    sections to aggMap
                 }.catch { e ->
                     _uiState.update {
                         it.copy(
@@ -96,31 +103,6 @@ class TripsViewModel
                             past = sections.past.map { trip -> trip.toUi(aggMap) },
                         )
                     }
-                }
-            }
-        }
-
-        // Currency stream lives in the SAME outer combine as totals/counts so
-        // a currency switch only re-emits the format step — it does NOT cancel
-        // and re-attach every per-trip Room observer (the older flatMapLatest
-        // shape did, which is needlessly expensive for a Settings-rare event).
-        private fun enrichmentFlow(trips: List<Trip>): Flow<Map<Long, TripAggregates>> {
-            val ids = trips.map { it.id }
-            val totalsFlow: Flow<List<Long?>> =
-                combine(ids.map { tripRepository.observeTripTotal(it) }) { it.toList() }
-            val countsFlow: Flow<List<Int>> =
-                combine(ids.map { tripRepository.observeTripTransactionCount(it) }) { it.toList() }
-            val currencyFlow: Flow<String> =
-                currencyPreferenceRepository
-                    .observeDefaultCurrency()
-                    .distinctUntilChanged()
-            return combine(totalsFlow, countsFlow, currencyFlow) { totals, counts, code ->
-                ids.indices.associate { i ->
-                    ids[i] to
-                        TripAggregates(
-                            totalLabel = totals[i]?.let { currencyFormatter.format(it, code) },
-                            transactionCount = counts[i],
-                        )
                 }
             }
         }

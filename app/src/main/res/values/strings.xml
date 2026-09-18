@@ -575,6 +575,11 @@
     <string name="conversion_wizard_commit">Commit</string>
     <string name="conversion_wizard_apply_to_all">Apply to all</string>
     <string name="conversion_wizard_default_category">Default category</string>
+    <string name="conversion_wizard_disposition_header">Source category</string>
+    <string name="conversion_wizard_disposition_delete">Delete \"%1$s\" (Recommended)</string>
+    <string name="conversion_wizard_disposition_delete_desc">Category will be deleted as all transactions were converted.</string>
+    <string name="conversion_wizard_disposition_keep">Keep \"%1$s\"</string>
+    <string name="conversion_wizard_disposition_keep_desc">Keep the empty category in your categories list.</string>
 
     <!-- Accessibility: Recurring -->
     <string name="a11y_add_recurring">Add recurring transaction</string>
@@ -765,6 +770,12 @@
     <string name="trip_detail_status_active">Active</string>
     <string name="trip_detail_status_upcoming">Upcoming</string>
     <string name="trip_detail_status_past">Past</string>
+    <string name="trip_detail_days_active_single_left">Day %1$d of %2$d • 1 day left</string>
+    <string name="trip_detail_days_active_multiple_left">Day %1$d of %2$d • %3$d days left</string>
+    <string name="trip_detail_days_active_last_day">Day %1$d of %2$d • Last day</string>
+    <string name="trip_detail_days_upcoming_single">Starts tomorrow • %1$d days total</string>
+    <string name="trip_detail_days_upcoming_multiple">Starts in %1$d days • %2$d days total</string>
+    <string name="trip_detail_days_past">%1$d days total</string>
     <string name="trip_detail_kpi_total">Total</string>
     <string name="trip_detail_kpi_daily_avg">Daily avg</string>
     <string name="trip_detail_kpi_count">Transactions</string>

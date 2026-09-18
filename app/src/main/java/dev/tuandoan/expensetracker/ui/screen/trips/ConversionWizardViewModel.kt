@@ -59,14 +59,15 @@ data class ConversionWizardUiState(
     val rateError: UiText? = null,
     val isLoading: Boolean = true,
     val errorMessage: UiText? = null,
+    val userDispositionOverride: ConversionDraft.SourceDisposition? = null,
 ) {
-    /** Auto-derives KEEP when any row is skipped; DELETE otherwise. */
+    /** Auto-derives KEEP when any row is skipped; otherwise user override or default DELETE. */
     val sourceDisposition: ConversionDraft.SourceDisposition
         get() =
-            if (rowDecisions.values.any { it is ConversionDraft.RowDecision.Skip }) {
-                ConversionDraft.SourceDisposition.KEEP
-            } else {
-                ConversionDraft.SourceDisposition.DELETE
+            when {
+                skippedCount > 0 -> ConversionDraft.SourceDisposition.KEEP
+                userDispositionOverride != null -> userDispositionOverride
+                else -> ConversionDraft.SourceDisposition.DELETE
             }
 
     val migratedCount: Int get() = rowDecisions.values.count { it is ConversionDraft.RowDecision.Migrate }
@@ -185,6 +186,13 @@ class ConversionWizardViewModel
                     }
                 state.copy(rowDecisions = updated)
             }
+        }
+
+        // ── Step 3 — Preview decisions ───────────────────────────────────────────
+
+        fun onDispositionSelected(disposition: ConversionDraft.SourceDisposition) {
+            if (_uiState.value.skippedCount > 0) return
+            _uiState.update { it.copy(userDispositionOverride = disposition) }
         }
 
         // ── Commit ───────────────────────────────────────────────────────────────

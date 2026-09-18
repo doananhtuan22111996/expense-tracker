@@ -1,8 +1,10 @@
 package dev.tuandoan.expensetracker.ui.screen.categories
 
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -293,6 +295,7 @@ fun CategoriesScreen(
     }
 }
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun CategoryRow(
     categoryWithCount: CategoryWithCount,
@@ -308,7 +311,21 @@ private fun CategoryRow(
     var menuExpanded by remember { mutableStateOf(false) }
 
     Card(
-        modifier = modifier.fillMaxWidth(),
+        modifier =
+            modifier
+                .fillMaxWidth()
+                .then(
+                    if (onConvertToTrip != null) {
+                        Modifier.combinedClickable(
+                            onClick = { if (!category.isDefault) onEdit() },
+                            onLongClick = onConvertToTrip,
+                        )
+                    } else if (!category.isDefault) {
+                        Modifier.clickable(onClick = onEdit)
+                    } else {
+                        Modifier
+                    },
+                ),
         elevation = CardDefaults.cardElevation(defaultElevation = DesignSystemElevation.low),
     ) {
         Row(

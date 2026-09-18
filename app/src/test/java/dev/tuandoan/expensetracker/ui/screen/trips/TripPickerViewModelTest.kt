@@ -313,6 +313,9 @@ private class PickerFakeTripRepository : TripRepository {
 
     override fun observeTripTransactionCount(tripId: Long): Flow<Int> = error("not used")
 
+    override fun observeAllTripSummaries(): Flow<Map<Long, dev.tuandoan.expensetracker.domain.repository.TripSummary>> =
+        error("not used")
+
     override fun observeTripDailyTotals(tripId: Long): Flow<List<DailyTotalRow>> = error("not used")
 
     override fun observeTripCategoryBreakdown(tripId: Long): Flow<List<TripCategorySumRow>> = error("not used")

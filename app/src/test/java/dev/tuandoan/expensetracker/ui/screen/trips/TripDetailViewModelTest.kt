@@ -188,6 +188,90 @@ class TripDetailViewModelTest {
 
             assertNull(repo.lastDeletedId)
         }
+
+    @Test
+    fun observeDetail_activeTrip_computesDaysElapsedAndRemainingCorrectly() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            val vm = newVm(baseTrip)
+            advanceUntilIdle()
+
+            val state = vm.uiState.value
+            assertEquals(TripStatus.ACTIVE, state.tripStatus)
+            assertEquals(8, state.totalDays)
+            assertEquals(4, state.daysElapsed)
+            assertEquals(4, state.daysRemaining)
+            assertEquals(0, state.daysUntilStart)
+        }
+
+    @Test
+    fun observeDetail_upcomingTrip_computesDaysCorrectly() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            val upcomingTrip =
+                baseTrip.copy(
+                    id = 3L,
+                    startDateEpochDay = fixedDate.plusDays(2).toEpochDay(),
+                    endDateEpochDay = fixedDate.plusDays(5).toEpochDay(),
+                )
+            val vm = newVm(upcomingTrip)
+            advanceUntilIdle()
+
+            val state = vm.uiState.value
+            assertEquals(TripStatus.UPCOMING, state.tripStatus)
+            assertEquals(4, state.totalDays)
+            assertEquals(0, state.daysElapsed)
+            assertEquals(4, state.daysRemaining)
+            assertEquals(2, state.daysUntilStart)
+        }
+
+    @Test
+    fun observeDetail_pastTrip_computesDaysCorrectly() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            val pastTrip =
+                baseTrip.copy(
+                    id = 4L,
+                    startDateEpochDay = fixedDate.minusDays(10).toEpochDay(),
+                    endDateEpochDay = fixedDate.minusDays(2).toEpochDay(),
+                )
+            val vm = newVm(pastTrip)
+            advanceUntilIdle()
+
+            val state = vm.uiState.value
+            assertEquals(TripStatus.PAST, state.tripStatus)
+            assertEquals(9, state.totalDays)
+            assertEquals(9, state.daysElapsed)
+            assertEquals(0, state.daysRemaining)
+            assertEquals(0, state.daysUntilStart)
+        }
+
+    @Test
+    fun onCategoryClick_togglesSelectionAndClears() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            val vm = newVm(baseTrip)
+            advanceUntilIdle()
+
+            val testCategory =
+                Category(
+                    id = 42L,
+                    name = "Food",
+                    type = TransactionType.EXPENSE,
+                    colorKey = "blue",
+                )
+
+            assertNull(vm.uiState.value.selectedCategoryId)
+
+            vm.onCategoryClick(testCategory)
+            assertEquals(42L, vm.uiState.value.selectedCategoryId)
+
+            // Clicking again toggles off
+            vm.onCategoryClick(testCategory)
+            assertNull(vm.uiState.value.selectedCategoryId)
+
+            // Clicking and explicit clear
+            vm.onCategoryClick(testCategory)
+            assertEquals(42L, vm.uiState.value.selectedCategoryId)
+            vm.clearCategoryFilter()
+            assertNull(vm.uiState.value.selectedCategoryId)
+        }
 }
 
 // --- Local fakes (narrow scope — only what TripDetailViewModel needs) ---
@@ -240,6 +324,9 @@ private class FakeDetailTripRepository(
     override fun observeTripTransactions(tripId: Long): Flow<List<Transaction>> = MutableStateFlow(emptyList())
 
     override fun observeHasForeignTransactions(tripId: Long): Flow<Boolean> = MutableStateFlow(false)
+
+    override fun observeAllTripSummaries(): Flow<Map<Long, dev.tuandoan.expensetracker.domain.repository.TripSummary>> =
+        MutableStateFlow(emptyMap())
 
     override suspend fun commitConversion(draft: dev.tuandoan.expensetracker.domain.model.ConversionDraft): Long =
         error("not used")
