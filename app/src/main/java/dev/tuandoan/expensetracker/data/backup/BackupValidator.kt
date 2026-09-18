@@ -413,8 +413,7 @@ class BackupValidator
                 }
                 if (trip.originalCategoryId != null) {
                     if (trip.originalCategoryNameSnapshot.isNullOrBlank() ||
-                        trip.originalCategoryColorSnapshot.isNullOrBlank() ||
-                        trip.originalCategoryIconSnapshot.isNullOrBlank()
+                        trip.originalCategoryColorSnapshot.isNullOrBlank()
                     ) {
                         errors.add(BackupValidationError.InvalidTripSnapshot(trip.id))
                     }

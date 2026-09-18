@@ -198,6 +198,7 @@ fun TripDetailScreen(
                 items(uiState.transactions, key = { it.id }) { tx ->
                     TripTransactionItem(
                         transaction = tx,
+                        foreignCurrencyCode = uiState.trip?.foreignCurrencyCode,
                         onClick = { onNavigateToEditTransaction(tx.id) },
                     )
                 }
@@ -447,6 +448,7 @@ private fun DailyBarChart(
 @Composable
 private fun TripTransactionItem(
     transaction: Transaction,
+    foreignCurrencyCode: String?,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -487,16 +489,41 @@ private fun TripTransactionItem(
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
-            Text(
-                text =
-                    AmountFormatter.formatAmountWithCurrency(
-                        transaction.amount,
-                        transaction.currencyCode,
-                    ),
-                style = MaterialTheme.typography.bodyMedium,
-                fontWeight = FontWeight.Medium,
+            Column(
+                horizontalAlignment = Alignment.End,
                 modifier = Modifier.padding(start = DesignSystemSpacing.medium),
-            )
+            ) {
+                if (transaction.amountForeignMinor != null && !foreignCurrencyCode.isNullOrBlank()) {
+                    Text(
+                        text =
+                            AmountFormatter.formatAmountWithCurrency(
+                                transaction.amountForeignMinor,
+                                foreignCurrencyCode,
+                            ),
+                        style = MaterialTheme.typography.bodyMedium,
+                        fontWeight = FontWeight.Medium,
+                    )
+                    Text(
+                        text =
+                            AmountFormatter.formatAmountWithCurrency(
+                                transaction.amount,
+                                transaction.currencyCode,
+                            ),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                } else {
+                    Text(
+                        text =
+                            AmountFormatter.formatAmountWithCurrency(
+                                transaction.amount,
+                                transaction.currencyCode,
+                            ),
+                        style = MaterialTheme.typography.bodyMedium,
+                        fontWeight = FontWeight.Medium,
+                    )
+                }
+            }
         }
     }
 }

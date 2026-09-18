@@ -1038,6 +1038,12 @@ class BackupRepositoryImplTest {
 
         override suspend fun getAllOrdered(): List<TransactionEntity> = allTransactions.sortedBy { it.timestamp }
 
+        override suspend fun countByCategoryId(categoryId: Long): Int =
+            allTransactions.count {
+                it.categoryId ==
+                    categoryId
+            }
+
         override suspend fun insertAll(list: List<TransactionEntity>) {
             allTransactions.addAll(list)
         }

@@ -866,6 +866,51 @@ class AddEditTransactionViewModelTest {
         }
 
     @Test
+    fun fxTrip_onForeignAmountChanged_calculatesHomeAmountDynamically() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            fakeCategoryRepo.categoriesToEmit = listOf(TestData.expenseCategory)
+            val fxTrip =
+                trip(id = 3L, name = "Tokyo").copy(
+                    foreignCurrencyCode = "JPY",
+                    foreignToHomeRate = 165.0,
+                )
+            fakeTripRepo.activeTrips = listOf(fxTrip)
+            val viewModel = createViewModel()
+            advanceUntilIdle()
+
+            viewModel.onForeignAmountChanged("1000")
+            assertEquals("165000", viewModel.uiState.value.amountText)
+
+            viewModel.onRateOverrideChanged("170")
+            assertEquals("170000", viewModel.uiState.value.amountText)
+        }
+
+    @Test
+    fun editMode_preservesOriginalCategoryId() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            val existingTx =
+                TestData.sampleExpenseTransaction.copy(
+                    tripId = 3L,
+                    originalCategoryId = 42L,
+                    amountForeignMinor = 500L,
+                )
+            fakeTransactionRepo.transactionById = existingTx
+            fakeTripRepo.tripsById = mapOf(3L to trip(id = 3L, name = "Tokyo"))
+            fakeCategoryRepo.categoriesToEmit = listOf(TestData.expenseCategory)
+
+            val viewModel = createViewModel(transactionId = 1L)
+            advanceUntilIdle()
+
+            viewModel.onNoteChanged("Updated note")
+            viewModel.saveTransaction { }
+            advanceUntilIdle()
+
+            val updated = fakeTransactionRepo.lastUpdatedTransaction
+            assertNotNull(updated)
+            assertEquals(42L, updated!!.originalCategoryId)
+        }
+
+    @Test
     fun editMode_tripIdNotFound_selectedTripIsNull() =
         runTest(mainDispatcherRule.testDispatcher) {
             val existingTx = TestData.sampleExpenseTransaction.copy(tripId = 99L)

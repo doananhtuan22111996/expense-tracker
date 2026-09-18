@@ -862,7 +862,7 @@ class BackupValidatorTest {
     }
 
     @Test
-    fun validate_convertedTripMissingIconSnapshot_returnsError() {
+    fun validate_convertedTripMissingIconSnapshot_isValid() {
         val trip =
             sampleTrip.copy(
                 id = 14L,
@@ -875,9 +875,7 @@ class BackupValidatorTest {
             )
         val document = TestData.sampleBackupDocument.copy(trips = listOf(trip))
         val result = validator.validate(document)
-        assertTrue(result is BackupValidationResult.Invalid)
-        val errors = (result as BackupValidationResult.Invalid).errors
-        assertTrue(errors.any { it is BackupValidationError.InvalidTripSnapshot && it.tripId == 14L })
+        assertTrue(result is BackupValidationResult.Valid)
     }
 
     @Test

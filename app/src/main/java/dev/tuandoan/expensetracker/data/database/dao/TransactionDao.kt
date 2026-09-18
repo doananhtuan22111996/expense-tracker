@@ -92,6 +92,9 @@ interface TransactionDao {
     @Insert
     suspend fun insertAll(list: List<TransactionEntity>)
 
+    @Query("SELECT COUNT(*) FROM transactions WHERE category_id = :categoryId")
+    suspend fun countByCategoryId(categoryId: Long): Int
+
     @Query("UPDATE transactions SET category_id = :toId WHERE category_id = :fromId")
     suspend fun reassignCategory(
         fromId: Long,
@@ -117,23 +120,31 @@ interface TransactionDao {
     )
 
     /**
-     * REVERT_TO_ORIGINAL_CATEGORY path of `TripRepository.deleteTrip` (ADR-001). For every
-     * transaction in the trip: restore `category_id` to the caller-supplied snapshot id,
-     * then clear `trip_id`, `original_category_id`, and `amount_foreign_minor`. Atomic
-     * per row; the surrounding `runInTransaction` block makes the cross-row revert
-     * all-or-nothing.
+     * REVERT_TO_ORIGINAL_CATEGORY path of `TripRepository.deleteTrip` (ADR-001).
+     * For transactions that were migrated during category-to-trip conversion
+     * (`original_category_id IS NOT NULL`): restore `category_id` to the caller-supplied
+     * snapshot id, and clear `original_category_id` and `amount_foreign_minor`.
      *
-     * `restoredCategoryId` is the id of the recreated (or still-present) category;
-     * normally equal to the trip's `originalCategoryId` snapshot, but the caller passes
-     * it explicitly to handle the rare reuse-of-id edge case.
+     * For any transactions added to the trip after conversion (`original_category_id IS NULL`),
+     * their user-selected category and foreign amounts are preserved intact; they are simply
+     * untagged from the trip (`trip_id = NULL`).
+     *
+     * Atomic per row; the surrounding `runInTransaction` block makes the cross-row revert
+     * all-or-nothing.
      */
     @Query(
         """
         UPDATE transactions
-        SET category_id = :restoredCategoryId,
+        SET category_id = CASE
+                WHEN original_category_id IS NOT NULL THEN :restoredCategoryId
+                ELSE category_id
+            END,
+            amount_foreign_minor = CASE
+                WHEN original_category_id IS NOT NULL THEN NULL
+                ELSE amount_foreign_minor
+            END,
             trip_id = NULL,
             original_category_id = NULL,
-            amount_foreign_minor = NULL,
             updated_at = :now
         WHERE trip_id = :tripId
         """,

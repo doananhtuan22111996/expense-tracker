@@ -208,9 +208,12 @@ class TripRepositoryImpl
                     // Skip rows are left untouched.
                 }
 
-                // 3 — Delete source category when all rows migrated.
+                // 3 — Delete source category when all rows migrated (no transactions remain referencing it).
                 if (draft.sourceDisposition == ConversionDraft.SourceDisposition.DELETE) {
-                    categoryDao.deleteNonDefault(draft.sourceCategoryId)
+                    val remaining = transactionDao.countByCategoryId(draft.sourceCategoryId)
+                    if (remaining == 0) {
+                        categoryDao.deleteNonDefault(draft.sourceCategoryId)
+                    }
                 }
 
                 tripId
