@@ -21,6 +21,7 @@ import dev.tuandoan.expensetracker.domain.repository.BudgetAlertScheduler
 import dev.tuandoan.expensetracker.domain.repository.CategoryRepository
 import dev.tuandoan.expensetracker.domain.repository.TransactionRepository
 import dev.tuandoan.expensetracker.domain.repository.TripRepository
+import dev.tuandoan.expensetracker.domain.repository.TripSummary
 import dev.tuandoan.expensetracker.testutil.FakeCurrencyPreferenceRepository
 import dev.tuandoan.expensetracker.testutil.FakeTimeProvider
 import dev.tuandoan.expensetracker.testutil.MainDispatcherRule
@@ -1127,6 +1128,8 @@ class AddEditTransactionViewModelTest {
         override fun observeTripTotal(tripId: Long): Flow<Long?> = error("not used")
 
         override fun observeTripTransactionCount(tripId: Long): Flow<Int> = error("not used")
+
+        override fun observeAllTripSummaries(): Flow<Map<Long, TripSummary>> = error("not used")
 
         override fun observeTripDailyTotals(tripId: Long): Flow<List<DailyTotalRow>> = error("not used")
 

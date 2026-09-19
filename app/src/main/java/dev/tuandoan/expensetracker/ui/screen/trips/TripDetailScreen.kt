@@ -14,6 +14,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
@@ -22,6 +23,7 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -145,9 +147,16 @@ fun TripDetailScreen(
                     .padding(horizontal = DesignSystemSpacing.screenPadding),
             verticalArrangement = Arrangement.spacedBy(DesignSystemSpacing.xl),
         ) {
-            // Header: destination, date range, status chip
+            // Header: destination, date range, status chip, duration
             item {
-                TripDetailHeader(trip = trip, tripStatus = uiState.tripStatus)
+                TripDetailHeader(
+                    trip = trip,
+                    tripStatus = uiState.tripStatus,
+                    totalDays = uiState.totalDays,
+                    daysElapsed = uiState.daysElapsed,
+                    daysRemaining = uiState.daysRemaining,
+                    daysUntilStart = uiState.daysUntilStart,
+                )
             }
 
             // KPI row
@@ -165,6 +174,8 @@ fun TripDetailScreen(
                     SectionTitle(title = stringResource(R.string.trip_detail_section_spending))
                     DonutChart(
                         categories = uiState.categoryTotals,
+                        selectedCategoryId = uiState.selectedCategoryId,
+                        onCategoryClick = viewModel::onCategoryClick,
                         modifier = Modifier.fillMaxWidth(),
                     )
                 }
@@ -183,7 +194,37 @@ fun TripDetailScreen(
 
             // Transaction list
             item {
-                SectionTitle(title = stringResource(R.string.trip_detail_section_transactions))
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    SectionTitle(title = stringResource(R.string.trip_detail_section_transactions))
+                    if (uiState.selectedCategoryId != null) {
+                        val selectedCategory =
+                            uiState.categoryTotals
+                                .firstOrNull { it.category.id == uiState.selectedCategoryId }
+                                ?.category
+                        if (selectedCategory != null) {
+                            FilterChip(
+                                selected = true,
+                                onClick = viewModel::clearCategoryFilter,
+                                label = { Text(selectedCategory.name) },
+                                trailingIcon = {
+                                    Icon(
+                                        imageVector = Icons.Default.Close,
+                                        contentDescription =
+                                            stringResource(
+                                                R.string.a11y_clear_filter,
+                                                selectedCategory.name,
+                                            ),
+                                        modifier = Modifier.padding(start = 2.dp),
+                                    )
+                                },
+                            )
+                        }
+                    }
+                }
             }
 
             if (uiState.transactions.isEmpty()) {
@@ -196,9 +237,13 @@ fun TripDetailScreen(
                 }
             } else {
                 items(uiState.transactions, key = { it.id }) { tx ->
+                    val isSelectedCategory = uiState.selectedCategoryId != null
+                    val matchesCategory = tx.category.id == uiState.selectedCategoryId
                     TripTransactionItem(
                         transaction = tx,
                         foreignCurrencyCode = uiState.trip?.foreignCurrencyCode,
+                        isHighlighted = isSelectedCategory && matchesCategory,
+                        isDimmed = isSelectedCategory && !matchesCategory,
                         onClick = { onNavigateToEditTransaction(tx.id) },
                     )
                 }
@@ -290,6 +335,10 @@ private fun TripDetailTopBar(
 private fun TripDetailHeader(
     trip: Trip,
     tripStatus: TripStatus,
+    totalDays: Int,
+    daysElapsed: Int,
+    daysRemaining: Int,
+    daysUntilStart: Int,
     modifier: Modifier = Modifier,
 ) {
     val dateRange = formatTripDateRange(trip.startDateEpochDay, trip.endDateEpochDay)
@@ -312,6 +361,32 @@ private fun TripDetailHeader(
             TripStatus.PAST -> MaterialTheme.colorScheme.onSurfaceVariant
         }
     val statusDesc = stringResource(R.string.a11y_trip_status, statusLabel)
+    val durationLabel =
+        when (tripStatus) {
+            TripStatus.ACTIVE -> {
+                when (daysRemaining) {
+                    0 -> stringResource(R.string.trip_detail_days_active_last_day, daysElapsed, totalDays)
+                    1 -> stringResource(R.string.trip_detail_days_active_single_left, daysElapsed, totalDays)
+                    else ->
+                        stringResource(
+                            R.string.trip_detail_days_active_multiple_left,
+                            daysElapsed,
+                            totalDays,
+                            daysRemaining,
+                        )
+                }
+            }
+            TripStatus.UPCOMING -> {
+                if (daysUntilStart == 1) {
+                    stringResource(R.string.trip_detail_days_upcoming_single, totalDays)
+                } else {
+                    stringResource(R.string.trip_detail_days_upcoming_multiple, daysUntilStart, totalDays)
+                }
+            }
+            TripStatus.PAST -> {
+                stringResource(R.string.trip_detail_days_past, totalDays)
+            }
+        }
 
     Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(DesignSystemSpacing.small)) {
         if (!trip.destination.isNullOrBlank()) {
@@ -326,17 +401,27 @@ private fun TripDetailHeader(
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
-        SuggestionChip(
-            onClick = {},
-            label = { Text(text = statusLabel, style = MaterialTheme.typography.labelMedium) },
-            modifier = Modifier.semantics { contentDescription = statusDesc },
-            colors =
-                SuggestionChipDefaults.suggestionChipColors(
-                    containerColor = statusContainerColor,
-                    labelColor = statusContentColor,
-                ),
-            border = null,
-        )
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(DesignSystemSpacing.small),
+        ) {
+            SuggestionChip(
+                onClick = {},
+                label = { Text(text = statusLabel, style = MaterialTheme.typography.labelMedium) },
+                modifier = Modifier.semantics { contentDescription = statusDesc },
+                colors =
+                    SuggestionChipDefaults.suggestionChipColors(
+                        containerColor = statusContainerColor,
+                        labelColor = statusContentColor,
+                    ),
+                border = null,
+            )
+            Text(
+                text = durationLabel,
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
     }
 }
 
@@ -451,11 +536,22 @@ private fun TripTransactionItem(
     foreignCurrencyCode: String?,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
+    isHighlighted: Boolean = false,
+    isDimmed: Boolean = false,
 ) {
     val formattedDate = DateTimeUtil.formatShortDate(transaction.timestamp)
+    val cardAlpha = if (isDimmed) 0.35f else 1f
+    val containerColor =
+        if (isHighlighted) {
+            MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.35f)
+        } else {
+            MaterialTheme.colorScheme.surface
+        }
+
     Card(
         onClick = onClick,
         modifier = modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(containerColor = containerColor),
         elevation = CardDefaults.cardElevation(defaultElevation = DesignSystemElevation.low),
     ) {
         Row(
@@ -471,6 +567,7 @@ private fun TripTransactionItem(
                     text = transaction.category.name,
                     style = MaterialTheme.typography.bodyMedium,
                     fontWeight = FontWeight.Medium,
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = cardAlpha),
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                 )
@@ -478,7 +575,7 @@ private fun TripTransactionItem(
                     Text(
                         text = transaction.note,
                         style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = cardAlpha),
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
                     )
@@ -486,7 +583,7 @@ private fun TripTransactionItem(
                 Text(
                     text = formattedDate,
                     style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = cardAlpha),
                 )
             }
             Column(
@@ -502,6 +599,7 @@ private fun TripTransactionItem(
                             ),
                         style = MaterialTheme.typography.bodyMedium,
                         fontWeight = FontWeight.Medium,
+                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = cardAlpha),
                     )
                     Text(
                         text =
@@ -510,7 +608,7 @@ private fun TripTransactionItem(
                                 transaction.currencyCode,
                             ),
                         style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = cardAlpha),
                     )
                 } else {
                     Text(
@@ -521,6 +619,7 @@ private fun TripTransactionItem(
                             ),
                         style = MaterialTheme.typography.bodyMedium,
                         fontWeight = FontWeight.Medium,
+                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = cardAlpha),
                     )
                 }
             }

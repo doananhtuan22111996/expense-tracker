@@ -90,6 +90,7 @@ class CreateEditTripViewModel
         }
 
         fun onToggleForeignCurrency(enabled: Boolean) {
+            if (_uiState.value.isFxCurrencyLocked) return
             _uiState.update { state ->
                 if (enabled) {
                     val initial =

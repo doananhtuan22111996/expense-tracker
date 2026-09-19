@@ -14,6 +14,7 @@ import dev.tuandoan.expensetracker.data.database.entity.MonthlyTotalRow
 import dev.tuandoan.expensetracker.data.database.entity.TransactionEntity
 import dev.tuandoan.expensetracker.data.database.entity.TripCategorySumRow
 import dev.tuandoan.expensetracker.data.database.entity.TripEntity
+import dev.tuandoan.expensetracker.data.database.entity.TripSummaryRow
 import dev.tuandoan.expensetracker.domain.model.ConversionDraft
 import dev.tuandoan.expensetracker.domain.model.DeleteTripBehavior
 import dev.tuandoan.expensetracker.domain.model.Trip
@@ -501,6 +502,23 @@ class TripRepositoryImplTest {
             )
         }
 
+    @Test
+    fun observeAllTripSummaries_mapsRowsToSummaryMap() =
+        runTest {
+            tripQueriesDao.allSummariesFlow.value =
+                listOf(
+                    TripSummaryRow(tripId = 1L, total = 150_000L, count = 4),
+                    TripSummaryRow(tripId = 2L, total = null, count = 0),
+                )
+
+            val summaries = repository.observeAllTripSummaries().first()
+            assertEquals(2, summaries.size)
+            assertEquals(150_000L, summaries[1L]?.totalMinor)
+            assertEquals(4, summaries[1L]?.transactionCount)
+            assertNull(summaries[2L]?.totalMinor)
+            assertEquals(0, summaries[2L]?.transactionCount)
+        }
+
     // ───────────────────────────────────────────────────────────
     //  Helpers
     // ───────────────────────────────────────────────────────────
@@ -935,4 +953,8 @@ private class FakeTripQueriesDao : TripQueriesDao {
         MutableStateFlow(breakdownByTrip[tripId] ?: emptyList())
 
     override fun observeHasForeignTransactions(tripId: Long): Flow<Boolean> = MutableStateFlow(false)
+
+    val allSummariesFlow = MutableStateFlow<List<TripSummaryRow>>(emptyList())
+
+    override fun observeAllTripSummaries(): Flow<List<TripSummaryRow>> = allSummariesFlow
 }

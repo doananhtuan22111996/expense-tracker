@@ -17,6 +17,7 @@ import dev.tuandoan.expensetracker.domain.model.TransactionType
 import dev.tuandoan.expensetracker.domain.model.Trip
 import dev.tuandoan.expensetracker.domain.model.TripFilter
 import dev.tuandoan.expensetracker.domain.repository.TripRepository
+import dev.tuandoan.expensetracker.domain.repository.TripSummary
 import dev.tuandoan.expensetracker.repository.mapper.toDomain
 import dev.tuandoan.expensetracker.repository.mapper.toEntity
 import kotlinx.coroutines.flow.Flow
@@ -155,6 +156,18 @@ class TripRepositoryImpl
             requirePositiveTripId(tripId)
             return tripQueriesDao.observeHasForeignTransactions(tripId)
         }
+
+        override fun observeAllTripSummaries(): Flow<Map<Long, TripSummary>> =
+            tripQueriesDao.observeAllTripSummaries().map { rows ->
+                rows.associate { row ->
+                    row.tripId to
+                        TripSummary(
+                            tripId = row.tripId,
+                            totalMinor = row.total,
+                            transactionCount = row.count,
+                        )
+                }
+            }
 
         override fun observeTripTransactions(tripId: Long): Flow<List<Transaction>> {
             requirePositiveTripId(tripId)

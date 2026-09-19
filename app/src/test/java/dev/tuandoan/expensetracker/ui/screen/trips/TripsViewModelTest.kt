@@ -264,13 +264,47 @@ private class FakeTripRepository : TripRepository {
     val pastFlow = MutableStateFlow<List<Trip>>(emptyList())
     val observedFilters = mutableListOf<TripFilter>()
 
-    val totalsByTrip = mutableMapOf<Long, Long?>()
-    val countsByTrip = mutableMapOf<Long, Int>()
+    fun updateSummaries() {
+        val allIds = totalsByTrip.keys + countsByTrip.keys
+        summariesFlow.value =
+            allIds.associateWith { id ->
+                dev.tuandoan.expensetracker.domain.repository.TripSummary(
+                    tripId = id,
+                    totalMinor = totalsByTrip[id],
+                    transactionCount = countsByTrip[id] ?: 0,
+                )
+            }
+    }
+
+    val totalsByTrip =
+        object : LinkedHashMap<Long, Long?>() {
+            override fun put(
+                key: Long,
+                value: Long?,
+            ): Long? {
+                val prev = super.put(key, value)
+                updateSummaries()
+                return prev
+            }
+        }
+    val countsByTrip =
+        object : LinkedHashMap<Long, Int>() {
+            override fun put(
+                key: Long,
+                value: Int,
+            ): Int? {
+                val prev = super.put(key, value)
+                updateSummaries()
+                return prev
+            }
+        }
 
     // Per-id MutableStateFlow caches so post-init mutations bubble to active
     // collectors (used by tests that change a value AFTER newVm()).
     private val totalFlows = mutableMapOf<Long, MutableStateFlow<Long?>>()
     private val countFlows = mutableMapOf<Long, MutableStateFlow<Int>>()
+    val summariesFlow =
+        MutableStateFlow<Map<Long, dev.tuandoan.expensetracker.domain.repository.TripSummary>>(emptyMap())
 
     fun setTripTotal(
         tripId: Long,
@@ -278,6 +312,7 @@ private class FakeTripRepository : TripRepository {
     ) {
         totalsByTrip[tripId] = value
         totalFlows.getOrPut(tripId) { MutableStateFlow(value) }.value = value
+        updateSummaries()
     }
 
     fun setTripTransactionCount(
@@ -286,6 +321,7 @@ private class FakeTripRepository : TripRepository {
     ) {
         countsByTrip[tripId] = value
         countFlows.getOrPut(tripId) { MutableStateFlow(value) }.value = value
+        updateSummaries()
     }
 
     var failingFilter: ((Long) -> TripFilter)? = null
@@ -329,6 +365,11 @@ private class FakeTripRepository : TripRepository {
 
     override fun observeTripTransactionCount(tripId: Long): Flow<Int> =
         countFlows.getOrPut(tripId) { MutableStateFlow(countsByTrip[tripId] ?: 0) }
+
+    override fun observeAllTripSummaries(): Flow<Map<Long, dev.tuandoan.expensetracker.domain.repository.TripSummary>> {
+        updateSummaries()
+        return summariesFlow
+    }
 
     override fun observeTripDailyTotals(tripId: Long): Flow<List<DailyTotalRow>> = error("not used")
 

@@ -12,9 +12,12 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.selection.selectable
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
@@ -32,6 +35,7 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
@@ -44,12 +48,14 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
@@ -133,7 +139,12 @@ fun ConversionWizardScreen(
                 }
                 uiState.step == WizardStep.Preview -> {
                     WizardStepScaffold(
-                        content = { WizardStep3PreviewBody(uiState = uiState) },
+                        content = {
+                            WizardStep3PreviewBody(
+                                uiState = uiState,
+                                onDispositionSelected = viewModel::onDispositionSelected,
+                            )
+                        },
                         nextLabel = stringResource(R.string.conversion_wizard_commit),
                         onNext = viewModel::onNext,
                     )
@@ -548,7 +559,10 @@ private fun RowCategoryPicker(
 // ── Step 3 — Preview ─────────────────────────────────────────────────────────
 
 @Composable
-private fun WizardStep3PreviewBody(uiState: ConversionWizardUiState) {
+private fun WizardStep3PreviewBody(
+    uiState: ConversionWizardUiState,
+    onDispositionSelected: (ConversionDraft.SourceDisposition) -> Unit,
+) {
     Column(
         modifier =
             Modifier
@@ -619,41 +633,95 @@ private fun WizardStep3PreviewBody(uiState: ConversionWizardUiState) {
         }
 
         // Source category fate
-        val isDelete = uiState.sourceDisposition == ConversionDraft.SourceDisposition.DELETE
-        Card(
-            modifier = Modifier.fillMaxWidth(),
-            colors =
-                CardDefaults.cardColors(
-                    containerColor =
-                        if (isDelete) {
-                            MaterialTheme.colorScheme.errorContainer
-                        } else {
-                            MaterialTheme.colorScheme.secondaryContainer
-                        },
-                ),
-        ) {
-            Text(
-                text =
-                    if (isDelete) {
-                        stringResource(
-                            R.string.conversion_wizard_source_will_be_deleted_named,
-                            uiState.sourceCategoryName,
-                        )
-                    } else {
+        if (uiState.skippedCount > 0) {
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer),
+            ) {
+                Text(
+                    text =
                         stringResource(
                             R.string.conversion_wizard_source_will_be_kept_named,
                             uiState.sourceCategoryName,
+                        ),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSecondaryContainer,
+                    modifier = Modifier.padding(DesignSystemSpacing.large),
+                )
+            }
+        } else {
+            PreviewSection(title = stringResource(R.string.conversion_wizard_disposition_header)) {
+                val isDelete = uiState.sourceDisposition == ConversionDraft.SourceDisposition.DELETE
+                Row(
+                    modifier =
+                        Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(DesignSystemSpacing.small))
+                            .selectable(
+                                selected = isDelete,
+                                onClick = { onDispositionSelected(ConversionDraft.SourceDisposition.DELETE) },
+                                role = Role.RadioButton,
+                            ).padding(vertical = DesignSystemSpacing.xs),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    RadioButton(
+                        selected = isDelete,
+                        onClick = null,
+                    )
+                    Spacer(modifier = Modifier.width(DesignSystemSpacing.small))
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text =
+                                stringResource(
+                                    R.string.conversion_wizard_disposition_delete,
+                                    uiState.sourceCategoryName,
+                                ),
+                            style = MaterialTheme.typography.bodyMedium,
+                            fontWeight = FontWeight.Medium,
                         )
-                    },
-                style = MaterialTheme.typography.bodyMedium,
-                color =
-                    if (isDelete) {
-                        MaterialTheme.colorScheme.onErrorContainer
-                    } else {
-                        MaterialTheme.colorScheme.onSecondaryContainer
-                    },
-                modifier = Modifier.padding(DesignSystemSpacing.large),
-            )
+                        Text(
+                            text = stringResource(R.string.conversion_wizard_disposition_delete_desc),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                }
+                HorizontalDivider(modifier = Modifier.padding(vertical = DesignSystemSpacing.xs))
+                Row(
+                    modifier =
+                        Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(DesignSystemSpacing.small))
+                            .selectable(
+                                selected = !isDelete,
+                                onClick = { onDispositionSelected(ConversionDraft.SourceDisposition.KEEP) },
+                                role = Role.RadioButton,
+                            ).padding(vertical = DesignSystemSpacing.xs),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    RadioButton(
+                        selected = !isDelete,
+                        onClick = null,
+                    )
+                    Spacer(modifier = Modifier.width(DesignSystemSpacing.small))
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text =
+                                stringResource(
+                                    R.string.conversion_wizard_disposition_keep,
+                                    uiState.sourceCategoryName,
+                                ),
+                            style = MaterialTheme.typography.bodyMedium,
+                            fontWeight = FontWeight.Medium,
+                        )
+                        Text(
+                            text = stringResource(R.string.conversion_wizard_disposition_keep_desc),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                }
+            }
         }
     }
 }

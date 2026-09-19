@@ -534,6 +534,38 @@ class CreateEditTripViewModelTest {
         }
 
     @Test
+    fun editMode_fxCurrencyLocked_onToggleForeignCurrency_isIgnored() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            val trip =
+                Trip(
+                    id = 7L,
+                    name = "Tokyo",
+                    destination = null,
+                    startDateEpochDay = today,
+                    endDateEpochDay = today + 7,
+                    foreignCurrencyCode = "JPY",
+                    foreignToHomeRate = 165.0,
+                    originalCategoryId = null,
+                    originalCategoryNameSnapshot = null,
+                    originalCategoryIconSnapshot = null,
+                    originalCategoryColorSnapshot = null,
+                    createdAt = 0L,
+                )
+            repo.tripsById[7L] = trip
+            repo.hasForeignTransactionsByTripId[7L] = true
+
+            val vm = newVm(tripId = 7L)
+            advanceUntilIdle()
+
+            vm.onToggleForeignCurrency(false)
+            advanceUntilIdle()
+
+            // Should remain foreign currency enabled and JPY — toggle was blocked by the lock
+            assertTrue(vm.uiState.value.isForeignCurrency)
+            assertEquals("JPY", vm.uiState.value.foreignCurrencyCode)
+        }
+
+    @Test
     fun save_addMode_homeCurrency_logsTripCreatedWithForeignCurrencyFalse() =
         runTest(mainDispatcherRule.testDispatcher) {
             val vm = newVm()
@@ -667,6 +699,9 @@ private class FakeCreateEditTripRepository : TripRepository {
     override fun observeTripTotal(tripId: Long): Flow<Long?> = MutableStateFlow(null)
 
     override fun observeTripTransactionCount(tripId: Long): Flow<Int> = MutableStateFlow(0)
+
+    override fun observeAllTripSummaries(): Flow<Map<Long, dev.tuandoan.expensetracker.domain.repository.TripSummary>> =
+        MutableStateFlow(emptyMap())
 
     override fun observeTripDailyTotals(tripId: Long): Flow<List<DailyTotalRow>> = MutableStateFlow(emptyList())
 

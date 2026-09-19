@@ -93,6 +93,12 @@ interface TripRepository {
     fun observeHasForeignTransactions(tripId: Long): Flow<Boolean>
 
     /**
+     * Batch-observes summaries (total spend and transaction count) for all trips.
+     * Maps tripId to [TripSummary]. Trips without transactions are omitted from the map.
+     */
+    fun observeAllTripSummaries(): Flow<Map<Long, TripSummary>>
+
+    /**
      * Atomic conversion-wizard commit (T4.6). Inside a single DB transaction:
      * 1. Inserts a new trip row with [ConversionDraft.TripMetadata] and the source
      *    category snapshot (for ADR-001 REVERT support).
@@ -107,3 +113,9 @@ interface TripRepository {
      */
     suspend fun commitConversion(draft: ConversionDraft): Long
 }
+
+data class TripSummary(
+    val tripId: Long,
+    val totalMinor: Long?,
+    val transactionCount: Int,
+)

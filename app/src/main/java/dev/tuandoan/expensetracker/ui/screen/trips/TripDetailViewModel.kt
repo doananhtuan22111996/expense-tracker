@@ -99,6 +99,17 @@ class TripDetailViewModel
             performDelete(behavior)
         }
 
+        fun onCategoryClick(category: Category) {
+            _uiState.update { state ->
+                val next = if (state.selectedCategoryId == category.id) null else category.id
+                state.copy(selectedCategoryId = next)
+            }
+        }
+
+        fun clearCategoryFilter() {
+            _uiState.update { it.copy(selectedCategoryId = null) }
+        }
+
         private fun performDelete(behavior: DeleteTripBehavior) {
             viewModelScope.launch {
                 try {
@@ -135,11 +146,36 @@ class TripDetailViewModel
                                 )
                             }
                         } else {
+                            val status = trip.statusAt(nowEpochDay)
+                            val totalDays = maxOf(1, (trip.endDateEpochDay - trip.startDateEpochDay + 1L).toInt())
+                            val (elapsed, remaining, untilStart) =
+                                when (status) {
+                                    TripStatus.ACTIVE -> {
+                                        val el =
+                                            (nowEpochDay - trip.startDateEpochDay + 1L).toInt().coerceIn(
+                                                1,
+                                                totalDays,
+                                            )
+                                        val rem = maxOf(0, (trip.endDateEpochDay - nowEpochDay).toInt())
+                                        Triple(el, rem, 0)
+                                    }
+                                    TripStatus.UPCOMING -> {
+                                        val until = (trip.startDateEpochDay - nowEpochDay).toInt().coerceAtLeast(1)
+                                        Triple(0, totalDays, until)
+                                    }
+                                    TripStatus.PAST -> {
+                                        Triple(totalDays, 0, 0)
+                                    }
+                                }
                             _uiState.update {
                                 it.copy(
                                     isLoading = false,
                                     trip = trip,
-                                    tripStatus = trip.statusAt(nowEpochDay),
+                                    tripStatus = status,
+                                    totalDays = totalDays,
+                                    daysElapsed = elapsed,
+                                    daysRemaining = remaining,
+                                    daysUntilStart = untilStart,
                                     totalLabel = agg.totalMinor?.let { currencyFormatter.format(it, agg.currencyCode) },
                                     dailyAvgLabel = computeDailyAvg(agg.totalMinor, trip, agg.currencyCode),
                                     transactionCount = agg.transactionCount,
@@ -266,6 +302,10 @@ data class TripDetailUiState(
     val isLoading: Boolean = true,
     val trip: Trip? = null,
     val tripStatus: TripStatus = TripStatus.UPCOMING,
+    val totalDays: Int = 0,
+    val daysElapsed: Int = 0,
+    val daysRemaining: Int = 0,
+    val daysUntilStart: Int = 0,
     val totalLabel: String? = null,
     val dailyAvgLabel: String? = null,
     val transactionCount: Int = 0,
@@ -277,4 +317,5 @@ data class TripDetailUiState(
     val tripGone: Boolean = false,
     /** Non-null while a destructive-action confirmation dialog is shown. */
     val pendingAction: PendingTripAction? = null,
+    val selectedCategoryId: Long? = null,
 )

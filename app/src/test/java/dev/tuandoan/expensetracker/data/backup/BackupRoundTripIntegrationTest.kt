@@ -20,6 +20,7 @@ import dev.tuandoan.expensetracker.data.database.entity.RecurringTransactionEnti
 import dev.tuandoan.expensetracker.data.database.entity.TransactionEntity
 import dev.tuandoan.expensetracker.data.database.entity.TripCategorySumRow
 import dev.tuandoan.expensetracker.data.database.entity.TripEntity
+import dev.tuandoan.expensetracker.data.database.entity.TripSummaryRow
 import dev.tuandoan.expensetracker.data.export.CsvExporter
 import dev.tuandoan.expensetracker.domain.analytics.NoOpAnalytics
 import dev.tuandoan.expensetracker.domain.crash.NoOpCrashReporter
@@ -630,6 +631,8 @@ class BackupRoundTripIntegrationTest {
             MutableStateFlow(emptyList())
 
         override fun observeHasForeignTransactions(tripId: Long): Flow<Boolean> = MutableStateFlow(false)
+
+        override fun observeAllTripSummaries(): Flow<List<TripSummaryRow>> = MutableStateFlow(emptyList())
     }
 
     private class FakeRecurringDao : RecurringTransactionDao {

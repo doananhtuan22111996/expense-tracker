@@ -5,6 +5,7 @@ import androidx.room.Query
 import dev.tuandoan.expensetracker.data.database.entity.DailyTotalRow
 import dev.tuandoan.expensetracker.data.database.entity.TransactionEntity
 import dev.tuandoan.expensetracker.data.database.entity.TripCategorySumRow
+import dev.tuandoan.expensetracker.data.database.entity.TripSummaryRow
 import kotlinx.coroutines.flow.Flow
 
 /**
@@ -67,4 +68,21 @@ interface TripQueriesDao {
         "SELECT COUNT(*) > 0 FROM transactions WHERE trip_id = :tripId AND amount_foreign_minor IS NOT NULL",
     )
     fun observeHasForeignTransactions(tripId: Long): Flow<Boolean>
+
+    /**
+     * Batch summary for all trips: total spend (expenses only) and transaction count.
+     * Replaces 2N individual Room Flow queries on the trips screen with a single query.
+     */
+    @Query(
+        """
+        SELECT
+            trip_id AS tripId,
+            SUM(CASE WHEN type = ${TransactionEntity.TYPE_EXPENSE} THEN amount ELSE NULL END) AS total,
+            COUNT(*) AS count
+        FROM transactions
+        WHERE trip_id IS NOT NULL
+        GROUP BY trip_id
+        """,
+    )
+    fun observeAllTripSummaries(): Flow<List<TripSummaryRow>>
 }

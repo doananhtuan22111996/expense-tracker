@@ -300,6 +300,34 @@ class ConversionWizardViewModelTest {
         }
 
     @Test
+    fun sourceDisposition_userOverrideKeep_whenAllMigrated_isKeep() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            val vm = newVm()
+            advanceUntilIdle()
+            assertEquals(ConversionDraft.SourceDisposition.DELETE, vm.uiState.value.sourceDisposition)
+
+            vm.onDispositionSelected(ConversionDraft.SourceDisposition.KEEP)
+            assertEquals(ConversionDraft.SourceDisposition.KEEP, vm.uiState.value.sourceDisposition)
+
+            vm.onDispositionSelected(ConversionDraft.SourceDisposition.DELETE)
+            assertEquals(ConversionDraft.SourceDisposition.DELETE, vm.uiState.value.sourceDisposition)
+        }
+
+    @Test
+    fun sourceDisposition_userOverrideIgnored_whenRowSkipped_remainsKeep() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            val vm = newVm()
+            advanceUntilIdle()
+            val txId = TestData.sampleExpenseTransaction.id
+            vm.onDecisionChanged(txId, ConversionDraft.RowDecision.Skip(txId))
+            assertEquals(ConversionDraft.SourceDisposition.KEEP, vm.uiState.value.sourceDisposition)
+
+            // Attempting to override to DELETE is blocked
+            vm.onDispositionSelected(ConversionDraft.SourceDisposition.DELETE)
+            assertEquals(ConversionDraft.SourceDisposition.KEEP, vm.uiState.value.sourceDisposition)
+        }
+
+    @Test
     fun sourceDisposition_skipThenMigrateBack_isDelete() =
         runTest(mainDispatcherRule.testDispatcher) {
             val vm = newVm()
@@ -561,6 +589,9 @@ class ConversionWizardViewModelTest {
         override fun observeTripTotal(tripId: Long) = MutableStateFlow<Long?>(null)
 
         override fun observeTripTransactionCount(tripId: Long) = MutableStateFlow(0)
+
+        override fun observeAllTripSummaries() =
+            MutableStateFlow(emptyMap<Long, dev.tuandoan.expensetracker.domain.repository.TripSummary>())
 
         override fun observeTripDailyTotals(tripId: Long) =
             MutableStateFlow(emptyList<dev.tuandoan.expensetracker.data.database.entity.DailyTotalRow>())
