@@ -81,9 +81,11 @@ fun TripDetailScreen(
     val snackbarHostState = remember { SnackbarHostState() }
     val context = LocalContext.current
 
+    val tripGoneMessage = stringResource(R.string.trip_gone_message)
+
     LaunchedEffect(uiState.tripGone) {
         if (uiState.tripGone) {
-            snackbarHostState.showSnackbar(context.getString(R.string.trip_gone_message))
+            snackbarHostState.showSnackbar(tripGoneMessage)
             onNavigateBack()
         }
     }

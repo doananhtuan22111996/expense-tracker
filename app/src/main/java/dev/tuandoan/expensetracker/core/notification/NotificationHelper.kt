@@ -1,6 +1,7 @@
 package dev.tuandoan.expensetracker.core.notification
 
 import android.Manifest
+import android.annotation.SuppressLint
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
@@ -63,6 +64,7 @@ class NotificationHelper
                 description = context.getString(R.string.notification_channel_quick_add_confirmation_description)
             }
 
+        @SuppressLint("MissingPermission")
         fun showBudgetAlert(
             title: String,
             message: String,
@@ -136,6 +138,7 @@ class NotificationHelper
          * of the app — category + amount together could infer activity
          * patterns an observer shouldn't see.
          */
+        @SuppressLint("MissingPermission")
         override fun showQuickAddConfirmation(
             transactionId: Long,
             amountFormatted: String,
@@ -166,6 +169,7 @@ class NotificationHelper
          * in v3.12.0's Design doc as the cost of the low-infrastructure
          * 10-second window. Documented in T7.1 manual QA.
          */
+        @SuppressLint("MissingPermission")
         override fun updateQuickAddConfirmationWithoutUndo(
             notificationId: Int,
             amountFormatted: String,
@@ -206,6 +210,7 @@ class NotificationHelper
          * update quiet and lock-screen-safe even if the user manually
          * promoted the channel's importance.
          */
+        @SuppressLint("MissingPermission")
         override fun updateQuickAddConfirmationToUndone(notificationId: Int) {
             if (!hasNotificationPermission()) return
             val notification =

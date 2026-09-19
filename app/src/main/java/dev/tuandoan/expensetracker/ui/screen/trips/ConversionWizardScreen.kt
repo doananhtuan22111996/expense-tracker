@@ -62,6 +62,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import dev.tuandoan.expensetracker.R
+import dev.tuandoan.expensetracker.core.util.DateTimeUtil
 import dev.tuandoan.expensetracker.domain.model.Category
 import dev.tuandoan.expensetracker.domain.model.ConversionDraft
 import dev.tuandoan.expensetracker.domain.model.Transaction
@@ -69,11 +70,6 @@ import dev.tuandoan.expensetracker.ui.component.AmountText
 import dev.tuandoan.expensetracker.ui.theme.ChartColors
 import dev.tuandoan.expensetracker.ui.theme.DesignSystemElevation
 import dev.tuandoan.expensetracker.ui.theme.DesignSystemSpacing
-import java.time.Instant
-import java.time.LocalDate
-import java.time.ZoneId
-import java.time.format.DateTimeFormatter
-import java.time.format.FormatStyle
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -381,13 +377,7 @@ private fun DecisionRow(
     onSkip: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val dateFormatter = remember { DateTimeFormatter.ofLocalizedDate(FormatStyle.MEDIUM) }
-    val dateText =
-        remember(transaction.timestamp) {
-            LocalDate
-                .ofInstant(Instant.ofEpochMilli(transaction.timestamp), ZoneId.systemDefault())
-                .format(dateFormatter)
-        }
+    val dateText = remember(transaction.timestamp) { DateTimeUtil.formatShortDate(transaction.timestamp) }
     Column(
         modifier =
             modifier
