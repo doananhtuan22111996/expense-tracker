@@ -1,5 +1,4 @@
 import java.io.FileInputStream
-import java.time.Instant
 import java.util.Properties
 
 plugins {
@@ -13,6 +12,66 @@ plugins {
     alias(libs.plugins.firebase.crashlytics)
 }
 
+val currentVersionName = "3.13.0"
+
+/**
+ * Calculates a sustainable versionCode from versionName using semantic versioning.
+ *
+ * Scheme: major * 1_000_000 + minor * 10_000 + patch * 100 + buildNumber
+ * Examples:
+ *   "3.13.0" -> 3_130_000 (matches fastlane changelog 3130000.txt)
+ *   "3.2.5"  -> 3_020_500 (matches fastlane changelog 3020500.txt)
+ *
+ * Supported overrides:
+ *   - -PversionCode=<int> or env VERSION_CODE: explicit override
+ *   - -PbuildNumber=<int> or env BUILD_NUMBER: build / hotfix number (0..99)
+ *   - -PversionCodeOffset=<int> or gradle.properties versionCodeOffset: base offset if needed
+ */
+fun calculateVersionCode(
+    versionName: String,
+    project: Project,
+): Int {
+    val explicitCode =
+        project.findProperty("versionCode")?.toString()?.toIntOrNull()
+            ?: System.getenv("VERSION_CODE")?.toIntOrNull()
+    if (explicitCode != null) {
+        require(explicitCode <= 2_100_000_000) {
+            "versionCode ($explicitCode) exceeds Google Play maximum limit of 2,100,000,000"
+        }
+        return explicitCode
+    }
+
+    val semverRegex = Regex("""^(\d+)\.(\d+)(?:\.(\d+))?""")
+    val match =
+        semverRegex.find(versionName)
+            ?: error("Invalid versionName '$versionName'. Expected semver format 'MAJOR.MINOR.PATCH'.")
+
+    val major = match.groupValues[1].toInt()
+    val minor = match.groupValues[2].toInt()
+    val patch =
+        match.groupValues
+            .getOrNull(3)
+            ?.takeIf { it.isNotEmpty() }
+            ?.toInt() ?: 0
+
+    val buildNumber =
+        project.findProperty("buildNumber")?.toString()?.toIntOrNull()
+            ?: System.getenv("BUILD_NUMBER")?.toIntOrNull()
+            ?: 0
+
+    val offset =
+        project.findProperty("versionCodeOffset")?.toString()?.toIntOrNull()
+            ?: System.getenv("VERSION_CODE_OFFSET")?.toIntOrNull()
+            ?: 0
+
+    val computed = major * 1_000_000 + minor * 10_000 + patch * 100 + buildNumber + offset
+
+    require(computed <= 2_100_000_000) {
+        "Computed versionCode ($computed) exceeds Google Play maximum limit of 2,100,000,000"
+    }
+    return computed
+}
+
 android {
     namespace = "dev.tuandoan.expensetracker"
     compileSdk = 36
@@ -21,8 +80,8 @@ android {
         applicationId = "dev.tuandoan.expensetracker"
         minSdk = 26
         targetSdk = 36
-        versionCode = Instant.now().epochSecond.toInt() // Epoch seconds: safe until 2038, always increasing
-        versionName = "3.13.0"
+        versionCode = calculateVersionCode(currentVersionName, project)
+        versionName = currentVersionName
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
