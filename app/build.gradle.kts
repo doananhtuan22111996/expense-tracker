@@ -15,17 +15,28 @@ plugins {
 val currentVersionName = "3.13.0"
 
 /**
- * Calculates a sustainable versionCode from versionName using semantic versioning.
+ * Baseline versionCode from Google Play Console production release (v3.12.0).
+ * Google Play requires all subsequent releases to be strictly greater than this value.
+ */
+val productionBaseVersionCode = 1_778_932_594
+val productionBaseSemverValue = 3_120_000
+val googlePlayMaxVersionCode = 2_100_000_000
+
+/**
+ * Calculates a sustainable, monotonic versionCode from versionName.
  *
- * Scheme: major * 1_000_000 + minor * 10_000 + patch * 100 + buildNumber
+ * Starts from the production baseline (1,778,932,594 from v3.12.0) and increments
+ * predictably using semantic versioning deltas:
+ *   versionCode = PRODUCTION_BASE_VERSION_CODE + (semverValue - PRODUCTION_BASE_SEMVER_VALUE) + buildNumber
+ *
  * Examples:
- *   "3.13.0" -> 3_130_000 (matches fastlane changelog 3130000.txt)
- *   "3.2.5"  -> 3_020_500 (matches fastlane changelog 3020500.txt)
+ *   "3.13.0" -> 1_778_942_594 (+10,000 delta for minor bump, leaving >320M headroom to 2.1B ceiling)
+ *   "3.13.1" -> 1_778_942_694 (+100 delta for patch bump)
+ *   "3.14.0" -> 1_778_952_594 (+10,000 delta for next minor)
  *
  * Supported overrides:
- *   - -PversionCode=<int> or env VERSION_CODE: explicit override
+ *   - -PversionCode=<int> or env VERSION_CODE: explicit override (> PRODUCTION_BASE_VERSION_CODE)
  *   - -PbuildNumber=<int> or env BUILD_NUMBER: build / hotfix number (0..99)
- *   - -PversionCodeOffset=<int> or gradle.properties versionCodeOffset: base offset if needed
  */
 fun calculateVersionCode(
     versionName: String,
@@ -35,8 +46,11 @@ fun calculateVersionCode(
         project.findProperty("versionCode")?.toString()?.toIntOrNull()
             ?: System.getenv("VERSION_CODE")?.toIntOrNull()
     if (explicitCode != null) {
-        require(explicitCode <= 2_100_000_000) {
-            "versionCode ($explicitCode) exceeds Google Play maximum limit of 2,100,000,000"
+        require(explicitCode > productionBaseVersionCode) {
+            "versionCode ($explicitCode) must be greater than current production versionCode ($productionBaseVersionCode)"
+        }
+        require(explicitCode <= googlePlayMaxVersionCode) {
+            "versionCode ($explicitCode) exceeds Google Play maximum limit of $googlePlayMaxVersionCode"
         }
         return explicitCode
     }
@@ -59,15 +73,16 @@ fun calculateVersionCode(
             ?: System.getenv("BUILD_NUMBER")?.toIntOrNull()
             ?: 0
 
-    val offset =
-        project.findProperty("versionCodeOffset")?.toString()?.toIntOrNull()
-            ?: System.getenv("VERSION_CODE_OFFSET")?.toIntOrNull()
-            ?: 0
+    val semverValue = major * 1_000_000 + minor * 10_000 + patch * 100
+    val semverDelta = semverValue - productionBaseSemverValue
 
-    val computed = major * 1_000_000 + minor * 10_000 + patch * 100 + buildNumber + offset
+    val computed = productionBaseVersionCode + semverDelta + buildNumber
 
-    require(computed <= 2_100_000_000) {
-        "Computed versionCode ($computed) exceeds Google Play maximum limit of 2,100,000,000"
+    require(computed > productionBaseVersionCode) {
+        "Computed versionCode ($computed) must be greater than current production versionCode ($productionBaseVersionCode)"
+    }
+    require(computed <= googlePlayMaxVersionCode) {
+        "Computed versionCode ($computed) exceeds Google Play maximum limit of $googlePlayMaxVersionCode"
     }
     return computed
 }
