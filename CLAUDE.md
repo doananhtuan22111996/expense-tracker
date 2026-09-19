@@ -193,7 +193,7 @@ Before any code is considered ready:
 
 ## Version & Release
 
-- Version in `app/build.gradle.kts`: `versionName` (semver), `versionCode` (epoch seconds, auto-generated)
+- Version in `app/build.gradle.kts`: `versionName` (semver), `versionCode` (semver auto-calculated: `major*1000000 + minor*10000 + patch*100 + buildNumber`)
 - Room schema version: 5 (migrations in `data/database/migration/Migrations.kt`)
 - Dependencies managed via `gradle/libs.versions.toml`
 - Fastlane metadata in `fastlane/metadata/android/` (en-US, vi-VN)
