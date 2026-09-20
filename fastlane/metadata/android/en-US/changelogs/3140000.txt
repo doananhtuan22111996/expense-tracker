@@ -1,0 +1,6 @@
+What's new in v3.14:
+
+• Dedicated Trips Tab — Trips is now a first-class bottom navigation tab for immediate access to your travels.
+• Travel Summary Card — Track lifetime travel spend, active/upcoming/past trip counts, and total travel transactions in one place.
+• Active Trip Spotlight — Live banner showing ongoing journey progress (Day X of Y) and spending so far.
+• Refined Navigation — Jump seamlessly between your financial overview, trips portfolio, and settings.
