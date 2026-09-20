@@ -5,6 +5,7 @@ import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Paid
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.outlined.BarChart
+import androidx.compose.material.icons.outlined.Luggage
 import androidx.compose.material.icons.outlined.Paid
 import androidx.compose.ui.graphics.vector.ImageVector
 
@@ -28,6 +29,12 @@ sealed class BottomNavDestination(
         icon = Icons.Outlined.BarChart,
     )
 
+    data object Trips : BottomNavDestination(
+        route = "main/trips",
+        title = "Trips",
+        icon = Icons.Outlined.Luggage,
+    )
+
     data object Gold : BottomNavDestination(
         route = "main/gold",
         title = "Gold",
@@ -41,7 +48,7 @@ sealed class BottomNavDestination(
     )
 
     companion object {
-        val allDestinations = listOf(Home, Summary, Gold, Settings)
+        val allDestinations = listOf(Home, Summary, Trips, Gold, Settings)
         const val MAIN_GRAPH_ROUTE = "main_graph"
     }
 }
