@@ -6,8 +6,10 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import dev.tuandoan.expensetracker.core.formatter.CurrencyFormatter
 import dev.tuandoan.expensetracker.core.util.ErrorUtils
 import dev.tuandoan.expensetracker.core.util.UiText
+import dev.tuandoan.expensetracker.domain.model.ActiveTripHighlight
 import dev.tuandoan.expensetracker.domain.model.Trip
 import dev.tuandoan.expensetracker.domain.model.TripFilter
+import dev.tuandoan.expensetracker.domain.model.TripPortfolioSummary
 import dev.tuandoan.expensetracker.domain.repository.CurrencyPreferenceRepository
 import dev.tuandoan.expensetracker.domain.repository.TripRepository
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -26,9 +28,9 @@ import java.time.LocalDate
 import javax.inject.Inject
 
 /**
- * Backs [TripsScreen] (v3.13.0, T2.2 + T2.3). Combines the three time-relative
- * [TripFilter] streams into one [TripsUiState] so the screen can render
- * Active / Upcoming / Past sections without re-deriving `now` per row.
+ * Backs [TripsScreen] (v3.13.0, T2.2 + T2.3, enhanced with portfolio summary).
+ * Combines the three time-relative [TripFilter] streams into one [TripsUiState]
+ * with an aggregated [TripPortfolioSummary], mirroring the Gold Portfolio scope.
  *
  * Each row carries a [TripCardUi] with a pre-formatted home-currency total +
  * transaction count (T2.3). Aggregations are sourced from the per-trip flows
@@ -72,21 +74,24 @@ class TripsViewModel
                         Sections(active = active, upcoming = upcoming, past = past)
                     }
 
-                val aggregatesFlow: Flow<Map<Long, TripAggregates>> =
+                val aggregatesFlow: Flow<Pair<String, Map<Long, TripAggregates>>> =
                     combine(
                         tripRepository.observeAllTripSummaries(),
                         currencyPreferenceRepository.observeDefaultCurrency().distinctUntilChanged(),
                     ) { summaryMap, code ->
-                        summaryMap.mapValues { (_, summary) ->
-                            TripAggregates(
-                                totalLabel = summary.totalMinor?.let { currencyFormatter.format(it, code) },
-                                transactionCount = summary.transactionCount,
-                            )
-                        }
+                        val aggMap =
+                            summaryMap.mapValues { (_, summary) ->
+                                TripAggregates(
+                                    totalMinor = summary.totalMinor,
+                                    totalLabel = summary.totalMinor?.let { currencyFormatter.format(it, code) },
+                                    transactionCount = summary.transactionCount,
+                                )
+                            }
+                        code to aggMap
                     }
 
-                combine(sectionsFlow, aggregatesFlow) { sections, aggMap ->
-                    sections to aggMap
+                combine(sectionsFlow, aggregatesFlow) { sections, (currencyCode, aggMap) ->
+                    Triple(sections, currencyCode, aggMap)
                 }.catch { e ->
                     _uiState.update {
                         it.copy(
@@ -94,13 +99,47 @@ class TripsViewModel
                             errorMessage = ErrorUtils.getErrorMessage(e),
                         )
                     }
-                }.collect { (sections, aggMap) ->
+                }.collect { (sections, currencyCode, aggMap) ->
+                    val allTrips = sections.active + sections.upcoming + sections.past
+                    val totalSpend = allTrips.sumOf { aggMap[it.id]?.totalMinor ?: 0L }
+                    val totalTxCount = allTrips.sumOf { aggMap[it.id]?.transactionCount ?: 0 }
+
+                    val activeHighlight =
+                        sections.active.firstOrNull()?.let { activeTrip ->
+                            val totalDays =
+                                maxOf(
+                                    1,
+                                    (activeTrip.endDateEpochDay - activeTrip.startDateEpochDay + 1L).toInt(),
+                                )
+                            val currentDay =
+                                (nowEpochDay - activeTrip.startDateEpochDay + 1L).toInt().coerceIn(1, totalDays)
+                            val totalLabel = aggMap[activeTrip.id]?.totalLabel
+                            ActiveTripHighlight(
+                                trip = activeTrip,
+                                totalSpentLabel = totalLabel,
+                                totalDays = totalDays,
+                                currentDay = currentDay,
+                            )
+                        }
+
+                    val portfolioSummary =
+                        TripPortfolioSummary(
+                            totalSpend = totalSpend,
+                            currencyCode = currencyCode,
+                            activeTripsCount = sections.active.size,
+                            upcomingTripsCount = sections.upcoming.size,
+                            pastTripsCount = sections.past.size,
+                            totalTransactionsCount = totalTxCount,
+                            activeTripHighlight = activeHighlight,
+                        )
+
                     _uiState.update {
                         it.copy(
                             isLoading = false,
                             active = sections.active.map { trip -> trip.toUi(aggMap) },
                             upcoming = sections.upcoming.map { trip -> trip.toUi(aggMap) },
                             past = sections.past.map { trip -> trip.toUi(aggMap) },
+                            summary = portfolioSummary,
                         )
                     }
                 }
@@ -123,6 +162,7 @@ class TripsViewModel
         )
 
         private data class TripAggregates(
+            val totalMinor: Long?,
             val totalLabel: String?,
             val transactionCount: Int,
         )
@@ -138,6 +178,7 @@ data class TripsUiState(
     val active: List<TripCardUi> = emptyList(),
     val upcoming: List<TripCardUi> = emptyList(),
     val past: List<TripCardUi> = emptyList(),
+    val summary: TripPortfolioSummary? = null,
     val isLoading: Boolean = true,
     val errorMessage: UiText? = null,
 ) {

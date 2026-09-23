@@ -2,6 +2,17 @@
 
 ## [Unreleased]
 
+## [3.14.0] - 2026-09-20
+
+### Added
+- Dedicated Trips Tab & Travel Portfolio Summary (PR #185).
+  - Elevates Travel Money Tracking (Trips) to a first-class bottom navigation destination (`main/trips`, `Icons.Outlined.Luggage`) alongside Home, Summary, Gold, and Settings.
+  - New Material 3 `TripPortfolioSummaryCard` displaying aggregate travel spending in the default currency, status counter badges (Active, Upcoming, Past, total transactions), and an active trip spotlight banner with day progress ("Day X of Y") and spending so far.
+  - Added `TripPortfolioSummary` and `ActiveTripHighlight` reactive domain models; extended `TripsViewModel` to combine trip streams and currency preferences reactively.
+  - Added edge-to-edge system insets and bottom content padding handling for FAB, SnackbarHost, and empty/loading states in `TripsScreen`.
+  - Added comprehensive unit tests in `TripsViewModelTest`.
+- Release cut v3.14.0: Bumped `versionName = "3.14.0"` in `app/build.gradle.kts`. Added fastlane Play Store release notes (`1778952594.txt`, `3140000.txt`).
+
 ## [3.13.0] - 2026-09-14
 
 ### Added

@@ -84,6 +84,18 @@ class TripsViewModelTest {
             assertTrue(state.past.isEmpty())
             assertFalse(state.isEmpty)
             assertNull(state.errorMessage)
+
+            val summary = state.summary
+            assertNotNull(summary)
+            assertEquals(1_450_000L, summary?.totalSpend)
+            assertEquals("VND", summary?.currencyCode)
+            assertEquals(1, summary?.activeTripsCount)
+            assertEquals(2, summary?.upcomingTripsCount)
+            assertEquals(0, summary?.pastTripsCount)
+            assertEquals(21, summary?.totalTransactionsCount)
+            assertNotNull(summary?.activeTripHighlight)
+            assertEquals("Da Nang", summary?.activeTripHighlight?.trip?.name)
+            assertEquals("250000 VND", summary?.activeTripHighlight?.totalSpentLabel)
         }
 
     @Test
@@ -236,18 +248,96 @@ class TripsViewModelTest {
             assertEquals(1L, card.trip.id)
         }
 
+    @Test
+    fun init_withActiveTrip_computesActiveHighlightDays() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            // today is 2026-05-19. trip from 2026-05-17 to 2026-05-23 (7 days, day 3).
+            val active =
+                trip(
+                    id = 1L,
+                    name = "Da Nang",
+                    startDateEpochDay = LocalDate.of(2026, 5, 17).toEpochDay(),
+                    endDateEpochDay = LocalDate.of(2026, 5, 23).toEpochDay(),
+                )
+            repo.activeFlow.value = listOf(active)
+            repo.totalsByTrip[1L] = 500_000L
+            repo.countsByTrip[1L] = 5
+
+            val vm = newVm()
+            advanceUntilIdle()
+
+            val highlight =
+                vm.uiState.value.summary
+                    ?.activeTripHighlight
+            assertNotNull(highlight)
+            assertEquals(7, highlight?.totalDays)
+            assertEquals(3, highlight?.currentDay)
+            assertEquals("500000 VND", highlight?.totalSpentLabel)
+        }
+
+    @Test
+    fun init_currencyChange_updatesSummaryCurrencyCode() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            val active = trip(id = 1L, name = "Da Nang")
+            repo.activeFlow.value = listOf(active)
+            repo.totalsByTrip[1L] = 100_000L
+            repo.countsByTrip[1L] = 2
+
+            val vm = newVm()
+            advanceUntilIdle()
+
+            assertEquals(
+                "VND",
+                vm.uiState.value.summary
+                    ?.currencyCode,
+            )
+
+            currencyRepo.currencyFlow.value = "USD"
+            advanceUntilIdle()
+
+            assertEquals(
+                "USD",
+                vm.uiState.value.summary
+                    ?.currencyCode,
+            )
+            assertEquals(
+                "100000 USD",
+                vm.uiState.value.summary
+                    ?.activeTripHighlight
+                    ?.totalSpentLabel,
+            )
+        }
+
+    @Test
+    fun init_noTrips_summaryHasZeroValuesAndNullHighlight() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            val vm = newVm()
+            advanceUntilIdle()
+
+            val summary = vm.uiState.value.summary
+            assertNotNull(summary)
+            assertEquals(0L, summary?.totalSpend)
+            assertEquals(0, summary?.totalTransactionsCount)
+            assertEquals(0, summary?.activeTripsCount)
+            assertEquals(0, summary?.upcomingTripsCount)
+            assertEquals(0, summary?.pastTripsCount)
+            assertNull(summary?.activeTripHighlight)
+        }
+
     private fun newVm(): TripsViewModel = TripsViewModel(repo, currencyRepo, formatter, clock)
 
     private fun trip(
         id: Long,
         name: String,
+        startDateEpochDay: Long = today,
+        endDateEpochDay: Long = today + 5,
     ): Trip =
         Trip(
             id = id,
             name = name,
             destination = null,
-            startDateEpochDay = today,
-            endDateEpochDay = today + 5,
+            startDateEpochDay = startDateEpochDay,
+            endDateEpochDay = endDateEpochDay,
             foreignCurrencyCode = null,
             foreignToHomeRate = null,
             originalCategoryId = null,

@@ -117,9 +117,6 @@ fun ExpenseTrackerApp(
                 onNavigateToRecurring = {
                     navController.navigate(ModalDestination.Recurring.route)
                 },
-                onNavigateToTrips = {
-                    navController.navigate(ModalDestination.Trips.route)
-                },
                 onNavigateToWidgetCategories = {
                     navController.navigate(ModalDestination.WidgetCategories.route)
                 },
@@ -131,6 +128,12 @@ fun ExpenseTrackerApp(
                 },
                 onNavigateToDebugPanel = {
                     navController.navigate(ModalDestination.DebugPanel.route)
+                },
+                onNavigateToAddTrip = {
+                    navController.navigate(ModalNavRoutes.addTripRoute())
+                },
+                onNavigateToTripDetail = { tripId ->
+                    navController.navigate(ModalNavRoutes.tripDetailRoute(tripId))
                 },
             )
         }
@@ -373,11 +376,12 @@ private fun Home(
     onNavigateToEditTransaction: (transactionId: Long) -> Unit,
     onNavigateToCategories: () -> Unit,
     onNavigateToRecurring: () -> Unit = {},
-    onNavigateToTrips: () -> Unit = {},
     onNavigateToWidgetCategories: () -> Unit = {},
     onNavigateToAddGoldHolding: () -> Unit = {},
     onNavigateToEditGoldHolding: (holdingId: Long) -> Unit = {},
     onNavigateToDebugPanel: () -> Unit = {},
+    onNavigateToAddTrip: () -> Unit = {},
+    onNavigateToTripDetail: (tripId: Long) -> Unit = {},
 ) {
     val navController = rememberNavController()
     val navBackStackEntry by navController.currentBackStackEntryAsState()
@@ -410,11 +414,21 @@ private fun Home(
             onNavigateToEditTransaction = onNavigateToEditTransaction,
             onNavigateToCategories = onNavigateToCategories,
             onNavigateToRecurring = onNavigateToRecurring,
-            onNavigateToTrips = onNavigateToTrips,
+            onNavigateToTrips = {
+                navController.navigate(BottomNavDestination.Trips.route) {
+                    popUpTo(navController.graph.findStartDestination().id) {
+                        saveState = true
+                    }
+                    launchSingleTop = true
+                    restoreState = true
+                }
+            },
             onNavigateToWidgetCategories = onNavigateToWidgetCategories,
             onNavigateToAddGoldHolding = onNavigateToAddGoldHolding,
             onNavigateToEditGoldHolding = onNavigateToEditGoldHolding,
             onNavigateToDebugPanel = onNavigateToDebugPanel,
+            onNavigateToAddTrip = onNavigateToAddTrip,
+            onNavigateToTripDetail = onNavigateToTripDetail,
         )
     }
 }

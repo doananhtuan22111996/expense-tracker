@@ -3,7 +3,9 @@ package dev.tuandoan.expensetracker.ui.screen.trips
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -25,18 +27,22 @@ import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import dev.tuandoan.expensetracker.R
 import dev.tuandoan.expensetracker.ui.component.EmptyStateMessage
@@ -49,11 +55,13 @@ import java.time.format.FormatStyle
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun TripsScreen(
-    onNavigateBack: () -> Unit,
+    onNavigateBack: () -> Unit = {},
     onNavigateToCreate: () -> Unit,
     onNavigateToDetail: (Long) -> Unit,
     viewModel: TripsViewModel,
     modifier: Modifier = Modifier,
+    bottomContentPadding: Dp = 0.dp,
+    isTopLevelTab: Boolean = false,
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
@@ -66,22 +74,26 @@ fun TripsScreen(
         }
     }
 
+    val scrollBehavior = TopAppBarDefaults.pinnedScrollBehavior()
     Scaffold(
         topBar = {
             TopAppBar(
                 title = { Text(stringResource(R.string.trips)) },
                 navigationIcon = {
-                    val goBackDesc = stringResource(R.string.a11y_go_back)
-                    IconButton(
-                        onClick = onNavigateBack,
-                        modifier =
-                            Modifier.semantics {
-                                contentDescription = goBackDesc
-                            },
-                    ) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = null)
+                    if (!isTopLevelTab) {
+                        val goBackDesc = stringResource(R.string.a11y_go_back)
+                        IconButton(
+                            onClick = onNavigateBack,
+                            modifier =
+                                Modifier.semantics {
+                                    contentDescription = goBackDesc
+                                },
+                        ) {
+                            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = null)
+                        }
                     }
                 },
+                scrollBehavior = scrollBehavior,
             )
         },
         floatingActionButton = {
@@ -89,15 +101,23 @@ fun TripsScreen(
             FloatingActionButton(
                 onClick = onNavigateToCreate,
                 modifier =
-                    Modifier.semantics {
-                        contentDescription = addTripDesc
-                    },
+                    Modifier
+                        .padding(bottom = bottomContentPadding)
+                        .semantics {
+                            contentDescription = addTripDesc
+                        },
             ) {
                 Icon(Icons.Default.Add, contentDescription = null)
             }
         },
-        snackbarHost = { SnackbarHost(snackbarHostState) },
-        modifier = modifier,
+        snackbarHost = {
+            SnackbarHost(
+                hostState = snackbarHostState,
+                modifier = Modifier.padding(bottom = bottomContentPadding),
+            )
+        },
+        contentWindowInsets = WindowInsets(0, 0, 0, 0),
+        modifier = modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
     ) { innerPadding ->
         when {
             uiState.isLoading -> {
@@ -105,7 +125,8 @@ fun TripsScreen(
                     modifier =
                         Modifier
                             .fillMaxSize()
-                            .padding(innerPadding),
+                            .padding(innerPadding)
+                            .padding(bottom = bottomContentPadding),
                     contentAlignment = Alignment.Center,
                 ) {
                     val loadingDesc = stringResource(R.string.a11y_loading_trips)
@@ -122,7 +143,10 @@ fun TripsScreen(
                 EmptyStateMessage(
                     title = stringResource(R.string.trips_empty_title),
                     subtitle = stringResource(R.string.trips_empty_subtitle),
-                    modifier = Modifier.padding(innerPadding),
+                    modifier =
+                        Modifier
+                            .padding(innerPadding)
+                            .padding(bottom = bottomContentPadding),
                 )
             }
 
@@ -133,8 +157,22 @@ fun TripsScreen(
                             .fillMaxSize()
                             .padding(innerPadding)
                             .padding(horizontal = DesignSystemSpacing.screenPadding),
+                    contentPadding = PaddingValues(bottom = bottomContentPadding + DesignSystemSpacing.fabClearance),
                     verticalArrangement = Arrangement.spacedBy(DesignSystemSpacing.small),
                 ) {
+                    uiState.summary?.let { summary ->
+                        item(key = "summary") {
+                            TripPortfolioSummaryCard(
+                                summary = summary,
+                                onActiveTripClick = onNavigateToDetail,
+                                modifier =
+                                    Modifier
+                                        .fillMaxWidth()
+                                        .padding(bottom = DesignSystemSpacing.small),
+                            )
+                        }
+                    }
+
                     tripSection(
                         titleRes = R.string.trips_section_active,
                         cards = uiState.active,

@@ -12,6 +12,7 @@ import dev.tuandoan.expensetracker.ui.screen.gold.GoldPortfolioScreen
 import dev.tuandoan.expensetracker.ui.screen.home.HomeScreen
 import dev.tuandoan.expensetracker.ui.screen.settings.SettingsScreen
 import dev.tuandoan.expensetracker.ui.screen.summary.SummaryScreen
+import dev.tuandoan.expensetracker.ui.screen.trips.TripsScreen
 
 /**
  * Main Navigation Host with stable, single NavController architecture
@@ -31,6 +32,8 @@ fun ExpenseTrackerNavigation(
     onNavigateToAddGoldHolding: () -> Unit = {},
     onNavigateToEditGoldHolding: (holdingId: Long) -> Unit = {},
     onNavigateToDebugPanel: () -> Unit = {},
+    onNavigateToAddTrip: () -> Unit = {},
+    onNavigateToTripDetail: (tripId: Long) -> Unit = {},
 ) {
     NavHost(
         navController = navController,
@@ -50,6 +53,17 @@ fun ExpenseTrackerNavigation(
         composable(BottomNavDestination.Summary.route) {
             SummaryScreen(
                 bottomContentPadding = bottomContentPadding,
+                viewModel = hiltViewModel(),
+            )
+        }
+
+        composable(BottomNavDestination.Trips.route) {
+            TripsScreen(
+                onNavigateBack = {},
+                onNavigateToCreate = onNavigateToAddTrip,
+                onNavigateToDetail = onNavigateToTripDetail,
+                bottomContentPadding = bottomContentPadding,
+                isTopLevelTab = true,
                 viewModel = hiltViewModel(),
             )
         }
