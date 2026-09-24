@@ -20,6 +20,7 @@ private val ALL_MIGRATIONS =
         MIGRATION_5_6,
         MIGRATION_6_7,
         MIGRATION_7_8,
+        MIGRATION_8_9,
     )
 
 /**
@@ -693,6 +694,53 @@ class MigrationTest {
     }
 
     // ───────────────────────────────────────────────────────────
+    //  v8 → v9: adds budget_amount column to trips
+    // ───────────────────────────────────────────────────────────
+
+    @Test
+    fun migration8To9_addsBudgetAmountColumnToTrips() {
+        createV8Database()
+
+        val db =
+            Room
+                .databaseBuilder(context, AppDatabase::class.java, testDbName)
+                .addMigrations(*ALL_MIGRATIONS)
+                .build()
+
+        val cursor = db.openHelper.readableDatabase.query("PRAGMA table_info(trips)")
+        val columnNames = mutableListOf<String>()
+        while (cursor.moveToNext()) {
+            columnNames.add(cursor.getString(cursor.getColumnIndexOrThrow("name")))
+        }
+        cursor.close()
+
+        assertTrue(
+            "Expected budget_amount on trips. Found: $columnNames",
+            columnNames.contains("budget_amount"),
+        )
+
+        db.close()
+    }
+
+    @Test
+    fun migration8To9_existingTripsHaveNullBudgetAmount() {
+        createV8Database()
+
+        val db =
+            Room
+                .databaseBuilder(context, AppDatabase::class.java, testDbName)
+                .addMigrations(*ALL_MIGRATIONS)
+                .build()
+
+        val cursor = db.openHelper.readableDatabase.query("SELECT budget_amount FROM trips WHERE id = 1")
+        assertTrue(cursor.moveToFirst())
+        assertTrue("Expected NULL budget_amount for pre-v9 trip", cursor.isNull(0))
+        cursor.close()
+
+        db.close()
+    }
+
+    // ───────────────────────────────────────────────────────────
     //  Helper: create databases at specific versions
     // ───────────────────────────────────────────────────────────
 
@@ -1089,6 +1137,48 @@ class MigrationTest {
         )
 
         db.version = 7
+        db.close()
+    }
+
+    /**
+     * Creates a raw SQLite database matching the v8 schema (trips table + trip transaction columns).
+     * Inserts a minimal trip so v8 → v9 migration can be validated.
+     */
+    private fun createV8Database() {
+        createV7Database()
+        val db = context.openOrCreateDatabase(testDbName, 0, null)
+
+        db.execSQL(
+            """
+            CREATE TABLE IF NOT EXISTS trips (
+                id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                name TEXT NOT NULL,
+                destination TEXT,
+                start_date_epoch_day INTEGER NOT NULL,
+                end_date_epoch_day INTEGER NOT NULL,
+                foreign_currency_code TEXT,
+                foreign_to_home_rate REAL,
+                original_category_id INTEGER,
+                original_category_name_snapshot TEXT,
+                original_category_icon_snapshot TEXT,
+                original_category_color_snapshot TEXT,
+                created_at INTEGER NOT NULL
+            )
+            """.trimIndent(),
+        )
+        db.execSQL("ALTER TABLE transactions ADD COLUMN trip_id INTEGER DEFAULT NULL")
+        db.execSQL("ALTER TABLE transactions ADD COLUMN original_category_id INTEGER DEFAULT NULL")
+        db.execSQL("ALTER TABLE transactions ADD COLUMN amount_foreign_minor INTEGER DEFAULT NULL")
+        db.execSQL("CREATE INDEX IF NOT EXISTS index_transactions_trip_id ON transactions (trip_id)")
+
+        db.execSQL(
+            """
+            INSERT INTO trips (id, name, destination, start_date_epoch_day, end_date_epoch_day, foreign_currency_code, foreign_to_home_rate, original_category_id, original_category_name_snapshot, original_category_icon_snapshot, original_category_color_snapshot, created_at)
+            VALUES (1, 'Japan 2026', 'Tokyo', 20500, 20510, 'JPY', 165.0, NULL, NULL, NULL, NULL, 1700000000000)
+            """.trimIndent(),
+        )
+
+        db.version = 8
         db.close()
     }
 }

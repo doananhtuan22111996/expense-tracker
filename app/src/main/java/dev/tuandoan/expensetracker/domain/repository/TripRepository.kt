@@ -38,6 +38,7 @@ interface TripRepository {
         endDateEpochDay: Long,
         foreignCurrencyCode: String?,
         foreignToHomeRate: Double?,
+        budgetAmount: Long? = null,
     ): Long
 
     /**

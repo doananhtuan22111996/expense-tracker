@@ -241,3 +241,16 @@ val MIGRATION_7_8 =
             )
         }
     }
+
+/**
+ * Migration from version 8 to version 9.
+ *
+ * Adds optional budget_amount column to the trips table for Trip-level budget tracking (v3.15.0).
+ * Existing rows receive NULL, preserving unbudgeted trip behavior.
+ */
+val MIGRATION_8_9 =
+    object : Migration(8, 9) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            db.execSQL("ALTER TABLE `trips` ADD COLUMN `budget_amount` INTEGER DEFAULT NULL")
+        }
+    }

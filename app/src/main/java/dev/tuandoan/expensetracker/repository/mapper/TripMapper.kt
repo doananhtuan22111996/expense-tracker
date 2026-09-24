@@ -17,6 +17,7 @@ fun TripEntity.toDomain(): Trip =
         originalCategoryIconSnapshot = originalCategoryIconSnapshot,
         originalCategoryColorSnapshot = originalCategoryColorSnapshot,
         createdAt = createdAt,
+        budgetAmount = budgetAmount,
     )
 
 fun Trip.toEntity(): TripEntity =
@@ -33,4 +34,5 @@ fun Trip.toEntity(): TripEntity =
         originalCategoryIconSnapshot = originalCategoryIconSnapshot,
         originalCategoryColorSnapshot = originalCategoryColorSnapshot,
         createdAt = createdAt,
+        budgetAmount = budgetAmount,
     )

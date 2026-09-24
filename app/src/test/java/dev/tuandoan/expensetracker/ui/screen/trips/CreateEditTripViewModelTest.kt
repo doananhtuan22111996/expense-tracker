@@ -653,6 +653,7 @@ private class FakeCreateEditTripRepository : TripRepository {
         val endEpochDay: Long,
         val foreignCurrencyCode: String?,
         val foreignToHomeRate: Double?,
+        val budgetAmount: Long? = null,
     )
 
     override fun observeTrips(filter: TripFilter): Flow<List<Trip>> = MutableStateFlow(emptyList())
@@ -671,6 +672,7 @@ private class FakeCreateEditTripRepository : TripRepository {
         endDateEpochDay: Long,
         foreignCurrencyCode: String?,
         foreignToHomeRate: Double?,
+        budgetAmount: Long?,
     ): Long {
         if (failOnCreate) throw IllegalStateException("forced create failure")
         createdTrips.add(
@@ -681,6 +683,7 @@ private class FakeCreateEditTripRepository : TripRepository {
                 endEpochDay = endDateEpochDay,
                 foreignCurrencyCode = foreignCurrencyCode,
                 foreignToHomeRate = foreignToHomeRate,
+                budgetAmount = budgetAmount,
             ),
         )
         return createdTrips.size.toLong()
