@@ -176,6 +176,15 @@ fun CreateEditTripScreen(
                     onClick = { showDatePicker = true },
                 )
 
+                TripBudgetField(
+                    value = uiState.budgetInput,
+                    homeCurrencyCode = uiState.homeCurrencyCode,
+                    foreignPreview = uiState.foreignBudgetEquivalent,
+                    error = uiState.budgetError?.asString(context),
+                    onChange = viewModel::onBudgetChange,
+                    onImeNext = { focusManager.moveFocus(FocusDirection.Down) },
+                )
+
                 TripForeignCurrencyToggle(
                     enabled = uiState.isForeignCurrency,
                     onChange = viewModel::onToggleForeignCurrency,

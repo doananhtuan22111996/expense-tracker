@@ -772,6 +772,11 @@
     <string name="error_trip_end_before_start">End date must be on or after start date</string>
     <string name="error_trip_rate_invalid">Enter a positive rate</string>
     <string name="error_load_category">Failed to load category</string>
+    <string name="create_edit_trip_label_budget">Trip budget (optional)</string>
+    <string name="create_edit_trip_hint_budget">Total budget in %1$s</string>
+    <string name="create_edit_trip_budget_foreign_preview">≈ %1$s</string>
+    <string name="error_trip_budget_invalid">Enter a positive budget amount</string>
+    <string name="error_trip_budget_too_large">Budget amount is too large</string>
     <string name="a11y_create_edit_trip_dates">Trip dates: %1$s. Double-tap to change.</string>
 
     <!-- Trip detail (T2.6) -->

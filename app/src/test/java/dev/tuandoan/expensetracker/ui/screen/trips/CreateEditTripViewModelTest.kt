@@ -101,6 +101,7 @@ class CreateEditTripViewModelTest {
             assertEquals(today + 5, created.endEpochDay)
             assertNull(created.foreignCurrencyCode)
             assertNull(created.foreignToHomeRate)
+            assertNull(created.budgetAmount)
         }
 
     @Test
@@ -625,6 +626,239 @@ class CreateEditTripViewModelTest {
             advanceUntilIdle()
 
             assertTrue(analytics.events.filterIsInstance<AnalyticsEvent.TripCreated>().isEmpty())
+        }
+
+    @Test
+    fun addMode_emptyBudget_persistsNullBudgetAmount() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            val vm = newVm()
+            advanceUntilIdle()
+            vm.onNameChange("Tokyo")
+            vm.onDatesSelected(today, today + 5)
+
+            vm.save { }
+            advanceUntilIdle()
+
+            assertNull(repo.createdTrips.single().budgetAmount)
+        }
+
+    @Test
+    fun addMode_validBudget_persistsBudgetAmount() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            val vm = newVm()
+            advanceUntilIdle()
+            vm.onNameChange("Tokyo")
+            vm.onDatesSelected(today, today + 5)
+            vm.onBudgetChange("15000000")
+
+            assertEquals(15_000_000L, vm.uiState.value.budgetAmount)
+            assertNull(vm.uiState.value.budgetError)
+            assertTrue(vm.uiState.value.isValid)
+
+            vm.save { }
+            advanceUntilIdle()
+
+            assertEquals(15_000_000L, repo.createdTrips.single().budgetAmount)
+        }
+
+    @Test
+    fun addMode_zeroBudget_showsBudgetErrorAndDisablesSave() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            val vm = newVm()
+            advanceUntilIdle()
+            vm.onNameChange("Tokyo")
+            vm.onDatesSelected(today, today + 5)
+            vm.onBudgetChange("0")
+
+            assertNotNull(vm.uiState.value.budgetError)
+            assertFalse(vm.uiState.value.isValid)
+        }
+
+    @Test
+    fun addMode_budgetExceedsMax_showsBudgetErrorAndDisablesSave() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            val vm = newVm()
+            advanceUntilIdle()
+            vm.onNameChange("Tokyo")
+            vm.onDatesSelected(today, today + 5)
+            vm.onBudgetChange("1000000000001")
+
+            assertNotNull(vm.uiState.value.budgetError)
+            assertFalse(vm.uiState.value.isValid)
+        }
+
+    @Test
+    fun addMode_budgetInput_cleansNonDigits() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            val vm = newVm()
+            advanceUntilIdle()
+            vm.onBudgetChange("15,000.000")
+
+            assertEquals("15000000", vm.uiState.value.budgetInput)
+            assertEquals(15_000_000L, vm.uiState.value.budgetAmount)
+        }
+
+    @Test
+    fun editMode_preFillsExistingBudgetAmount() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            val existing =
+                Trip(
+                    id = 7L,
+                    name = "Tokyo",
+                    destination = null,
+                    startDateEpochDay = today,
+                    endDateEpochDay = today + 2,
+                    foreignCurrencyCode = null,
+                    foreignToHomeRate = null,
+                    originalCategoryId = null,
+                    originalCategoryNameSnapshot = null,
+                    originalCategoryIconSnapshot = null,
+                    originalCategoryColorSnapshot = null,
+                    createdAt = 0L,
+                    budgetAmount = 20_000_000L,
+                )
+            repo.tripsById[7L] = existing
+            val vm = newVm(tripId = 7L)
+            advanceUntilIdle()
+
+            assertEquals("20000000", vm.uiState.value.budgetInput)
+            assertEquals(20_000_000L, vm.uiState.value.budgetAmount)
+            assertFalse(vm.uiState.value.hasUnsavedChanges)
+        }
+
+    @Test
+    fun editMode_nullBudget_preFillsEmptyBudgetInput() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            val existing =
+                Trip(
+                    id = 7L,
+                    name = "Tokyo",
+                    destination = null,
+                    startDateEpochDay = today,
+                    endDateEpochDay = today + 2,
+                    foreignCurrencyCode = null,
+                    foreignToHomeRate = null,
+                    originalCategoryId = null,
+                    originalCategoryNameSnapshot = null,
+                    originalCategoryIconSnapshot = null,
+                    originalCategoryColorSnapshot = null,
+                    createdAt = 0L,
+                    budgetAmount = null,
+                )
+            repo.tripsById[7L] = existing
+            val vm = newVm(tripId = 7L)
+            advanceUntilIdle()
+
+            assertEquals("", vm.uiState.value.budgetInput)
+            assertNull(vm.uiState.value.budgetAmount)
+        }
+
+    @Test
+    fun editMode_clearingBudget_persistsNullBudget() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            val existing =
+                Trip(
+                    id = 7L,
+                    name = "Tokyo",
+                    destination = null,
+                    startDateEpochDay = today,
+                    endDateEpochDay = today + 2,
+                    foreignCurrencyCode = null,
+                    foreignToHomeRate = null,
+                    originalCategoryId = null,
+                    originalCategoryNameSnapshot = null,
+                    originalCategoryIconSnapshot = null,
+                    originalCategoryColorSnapshot = null,
+                    createdAt = 0L,
+                    budgetAmount = 20_000_000L,
+                )
+            repo.tripsById[7L] = existing
+            val vm = newVm(tripId = 7L)
+            advanceUntilIdle()
+
+            vm.onBudgetChange("")
+            assertTrue(vm.uiState.value.hasUnsavedChanges)
+
+            vm.save { }
+            advanceUntilIdle()
+
+            assertNull(repo.updatedTrips.single().budgetAmount)
+        }
+
+    @Test
+    fun editMode_updatingBudget_persistsUpdatedBudget() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            val existing =
+                Trip(
+                    id = 7L,
+                    name = "Tokyo",
+                    destination = null,
+                    startDateEpochDay = today,
+                    endDateEpochDay = today + 2,
+                    foreignCurrencyCode = null,
+                    foreignToHomeRate = null,
+                    originalCategoryId = null,
+                    originalCategoryNameSnapshot = null,
+                    originalCategoryIconSnapshot = null,
+                    originalCategoryColorSnapshot = null,
+                    createdAt = 0L,
+                    budgetAmount = 20_000_000L,
+                )
+            repo.tripsById[7L] = existing
+            val vm = newVm(tripId = 7L)
+            advanceUntilIdle()
+
+            vm.onBudgetChange("25000000")
+            assertTrue(vm.uiState.value.hasUnsavedChanges)
+
+            vm.save { }
+            advanceUntilIdle()
+
+            assertEquals(25_000_000L, repo.updatedTrips.single().budgetAmount)
+        }
+
+    @Test
+    fun foreignBudgetPreview_calculatesCorrectEquivalentWithExchangeRate() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            val vm = newVm()
+            advanceUntilIdle()
+            vm.onBudgetChange("198000")
+            vm.onToggleForeignCurrency(true)
+            vm.onForeignCurrencyChange("JPY")
+            vm.onRateTextChange("165.0")
+
+            assertEquals("¥1,200", vm.uiState.value.foreignBudgetEquivalent)
+        }
+
+    @Test
+    fun foreignBudgetPreview_nullWhenNotForeignOrInvalidRate() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            val vm = newVm()
+            advanceUntilIdle()
+            vm.onBudgetChange("198000")
+            assertNull(vm.uiState.value.foreignBudgetEquivalent)
+
+            vm.onToggleForeignCurrency(true)
+            vm.onForeignCurrencyChange("JPY")
+            vm.onRateTextChange("")
+            assertNull(vm.uiState.value.foreignBudgetEquivalent)
+
+            vm.onRateTextChange("0")
+            assertNull(vm.uiState.value.foreignBudgetEquivalent)
+        }
+
+    @Test
+    fun hasUnsavedChanges_tracksBudgetModificationsInAddAndEditMode() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            val vm = newVm()
+            advanceUntilIdle()
+            assertFalse(vm.uiState.value.hasUnsavedChanges)
+
+            vm.onBudgetChange("500000")
+            assertTrue(vm.uiState.value.hasUnsavedChanges)
+
+            vm.onBudgetChange("")
+            assertFalse(vm.uiState.value.hasUnsavedChanges)
         }
 }
 

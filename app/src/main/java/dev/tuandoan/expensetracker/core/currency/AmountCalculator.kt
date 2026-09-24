@@ -39,4 +39,33 @@ object AmountCalculator {
             }
         return scaled.setScale(0, RoundingMode.HALF_EVEN).toLong()
     }
+
+    /**
+     * Convert home minor units → foreign minor units using HALF_EVEN rounding.
+     *
+     * @param homeMinor home amount in minor units
+     * @param homeDigits decimal places for home minor units (e.g. 0 for VND, 2 for USD)
+     * @param foreignDigits decimal places for foreign minor units (e.g. 2 for USD, 0 for JPY)
+     * @param rate exchange rate as "1 <foreign> = X <home>" in major units
+     * @return foreign currency equivalent in minor units
+     */
+    fun toForeignMinor(
+        homeMinor: Long,
+        homeDigits: Int,
+        foreignDigits: Int,
+        rate: Double,
+    ): Long {
+        if (homeMinor <= 0L || rate <= 0.0) return 0L
+        val homeAmount = BigDecimal.valueOf(homeMinor)
+        val rateBd = BigDecimal.valueOf(rate)
+        val exponent = foreignDigits - homeDigits
+        val scaleBd = BigDecimal.TEN.pow(abs(exponent))
+        val scaled =
+            if (exponent >= 0) {
+                homeAmount.multiply(scaleBd).divide(rateBd, 10, RoundingMode.HALF_EVEN)
+            } else {
+                homeAmount.divide(scaleBd, 10, RoundingMode.HALF_EVEN).divide(rateBd, 10, RoundingMode.HALF_EVEN)
+            }
+        return scaled.setScale(0, RoundingMode.HALF_EVEN).toLong()
+    }
 }
