@@ -905,6 +905,39 @@ class BackupRepositoryImplTest {
         }
 
     @Test
+    fun exportAndImport_tripWithBudgetAmount_roundTripsCorrectly() =
+        runTest {
+            val tripEntity =
+                TripEntity(
+                    id = 3L,
+                    name = "Tokyo",
+                    destination = "Japan",
+                    startDateEpochDay = 20100L,
+                    endDateEpochDay = 20107L,
+                    foreignCurrencyCode = "JPY",
+                    foreignToHomeRate = 0.0067,
+                    originalCategoryId = null,
+                    originalCategoryNameSnapshot = null,
+                    originalCategoryIconSnapshot = null,
+                    originalCategoryColorSnapshot = null,
+                    createdAt = TestData.FIXED_TIME,
+                    budgetAmount = 15_000_000L,
+                )
+            fakeTripDao.trips.add(tripEntity)
+
+            val json = repository.exportBackupJson()
+            fakeTripDao.trips.clear()
+
+            val result = repository.importBackupJson(json)
+
+            assertEquals(1, result.tripCount)
+            assertEquals(1, fakeTripDao.trips.size)
+            val restored = fakeTripDao.trips[0]
+            assertEquals("Tokyo", restored.name)
+            assertEquals(15_000_000L, restored.budgetAmount)
+        }
+
+    @Test
     fun importBackupJson_legacyBackupWithoutTrips_importsCleanly() =
         runTest {
             // A backup document with no trips field (default emptyList) should import without error.

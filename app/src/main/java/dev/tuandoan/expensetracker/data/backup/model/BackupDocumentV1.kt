@@ -43,6 +43,7 @@ data class BackupTripDto(
     @SerialName("original_category_icon_snapshot") val originalCategoryIconSnapshot: String? = null,
     @SerialName("original_category_color_snapshot") val originalCategoryColorSnapshot: String? = null,
     @SerialName("created_at") val createdAt: Long,
+    @SerialName("budget_amount") val budgetAmount: Long? = null,
 )
 
 @Serializable

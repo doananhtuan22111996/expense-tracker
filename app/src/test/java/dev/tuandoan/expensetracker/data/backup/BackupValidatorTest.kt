@@ -927,4 +927,32 @@ class BackupValidatorTest {
             },
         )
     }
+
+    @Test
+    fun validate_validTrip_withBudgetAmount_returnsValid() {
+        val trip = sampleTrip.copy(budgetAmount = 5_000_000L)
+        val document = TestData.sampleBackupDocument.copy(trips = listOf(trip))
+
+        val result = validator.validate(document)
+
+        assertTrue(result is BackupValidationResult.Valid)
+    }
+
+    @Test
+    fun validate_tripWithNegativeBudget_returnsError() {
+        val trip = sampleTrip.copy(id = 16L, budgetAmount = -100L)
+        val document = TestData.sampleBackupDocument.copy(trips = listOf(trip))
+
+        val result = validator.validate(document)
+
+        assertTrue(result is BackupValidationResult.Invalid)
+        val errors = (result as BackupValidationResult.Invalid).errors
+        assertTrue(
+            errors.any {
+                it is BackupValidationError.NegativeTripBudget &&
+                    it.tripId == 16L &&
+                    it.budgetAmount == -100L
+            },
+        )
+    }
 }

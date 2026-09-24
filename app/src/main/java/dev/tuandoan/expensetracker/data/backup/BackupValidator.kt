@@ -177,6 +177,11 @@ sealed class BackupValidationError {
         val transactionId: Long,
         val tripId: Long,
     ) : BackupValidationError()
+
+    data class NegativeTripBudget(
+        val tripId: Long,
+        val budgetAmount: Long,
+    ) : BackupValidationError()
 }
 
 @Singleton
@@ -424,6 +429,14 @@ class BackupValidator
                     ) {
                         errors.add(BackupValidationError.InvalidTripSnapshot(trip.id))
                     }
+                }
+                if (trip.budgetAmount != null && trip.budgetAmount < 0L) {
+                    errors.add(
+                        BackupValidationError.NegativeTripBudget(
+                            trip.id,
+                            trip.budgetAmount,
+                        ),
+                    )
                 }
             }
             return tripIds
