@@ -15,6 +15,7 @@ import dev.tuandoan.expensetracker.domain.model.DeleteTripBehavior
 import dev.tuandoan.expensetracker.domain.model.Transaction
 import dev.tuandoan.expensetracker.domain.model.TransactionType
 import dev.tuandoan.expensetracker.domain.model.Trip
+import dev.tuandoan.expensetracker.domain.model.TripBudgetStatus
 import dev.tuandoan.expensetracker.domain.repository.CategoryRepository
 import dev.tuandoan.expensetracker.domain.repository.CurrencyPreferenceRepository
 import dev.tuandoan.expensetracker.domain.repository.TripRepository
@@ -167,6 +168,20 @@ class TripDetailViewModel
                                         Triple(totalDays, 0, 0)
                                     }
                                 }
+                            val budgetStatus = TripBudgetStatus.calculate(trip, agg.totalMinor ?: 0L, nowEpochDay)
+                            val budgetLabel =
+                                budgetStatus?.let {
+                                    currencyFormatter.format(
+                                        it.budgetAmount,
+                                        agg.currencyCode,
+                                    )
+                                }
+                            val budgetRemainingLabel =
+                                budgetStatus?.let {
+                                    currencyFormatter.format(kotlin.math.abs(it.remainingAmount), agg.currencyCode)
+                                }
+                            val dailyAllowanceLabel =
+                                budgetStatus?.dailyAllowance?.let { currencyFormatter.format(it, agg.currencyCode) }
                             _uiState.update {
                                 it.copy(
                                     isLoading = false,
@@ -182,6 +197,10 @@ class TripDetailViewModel
                                     categoryTotals = buildCategoryTotals(agg.categoryBreakdown, agg.categoryMap),
                                     dailyPoints = buildDailyPoints(agg.dailyTotals, trip),
                                     transactions = agg.transactions,
+                                    budgetStatus = budgetStatus,
+                                    budgetLabel = budgetLabel,
+                                    budgetRemainingLabel = budgetRemainingLabel,
+                                    dailyAllowanceLabel = dailyAllowanceLabel,
                                 )
                             }
                         }
@@ -318,4 +337,8 @@ data class TripDetailUiState(
     /** Non-null while a destructive-action confirmation dialog is shown. */
     val pendingAction: PendingTripAction? = null,
     val selectedCategoryId: Long? = null,
+    val budgetStatus: TripBudgetStatus? = null,
+    val budgetLabel: String? = null,
+    val budgetRemainingLabel: String? = null,
+    val dailyAllowanceLabel: String? = null,
 )

@@ -3,6 +3,7 @@ package dev.tuandoan.expensetracker.ui.screen.trips
 import androidx.lifecycle.SavedStateHandle
 import dev.tuandoan.expensetracker.data.database.entity.DailyTotalRow
 import dev.tuandoan.expensetracker.data.database.entity.TripCategorySumRow
+import dev.tuandoan.expensetracker.domain.model.BudgetStatusLevel
 import dev.tuandoan.expensetracker.domain.model.Category
 import dev.tuandoan.expensetracker.domain.model.CategoryWithCount
 import dev.tuandoan.expensetracker.domain.model.DeleteTripBehavior
@@ -272,6 +273,162 @@ class TripDetailViewModelTest {
             vm.clearCategoryFilter()
             assertNull(vm.uiState.value.selectedCategoryId)
         }
+
+    // --- Trip budget and daily allowance (T1.4) ---
+
+    @Test
+    fun budgetStatus_nullWhenTripHasNoBudget() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            val vm = newVm(baseTrip)
+            advanceUntilIdle()
+
+            val state = vm.uiState.value
+            assertNull(state.budgetStatus)
+            assertNull(state.budgetLabel)
+            assertNull(state.budgetRemainingLabel)
+            assertNull(state.dailyAllowanceLabel)
+        }
+
+    @Test
+    fun budgetStatus_calculatedForActiveTrip_withZeroSpend() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            val budgetedTrip = baseTrip.copy(budgetAmount = 800_000L)
+            val vm = newVm(budgetedTrip)
+            advanceUntilIdle()
+
+            val state = vm.uiState.value
+            assertNotNull(state.budgetStatus)
+            assertEquals(800_000L, state.budgetStatus?.budgetAmount)
+            assertEquals(0L, state.budgetStatus?.spentAmount)
+            assertEquals(800_000L, state.budgetStatus?.remainingAmount)
+            assertEquals(160_000L, state.budgetStatus?.dailyAllowance)
+            assertEquals(5, state.budgetStatus?.remainingDays)
+            assertEquals(BudgetStatusLevel.OK, state.budgetStatus?.status)
+            assertEquals("800000 VND", state.budgetLabel)
+            assertEquals("800000 VND", state.budgetRemainingLabel)
+            assertEquals("160000 VND", state.dailyAllowanceLabel)
+        }
+
+    @Test
+    fun budgetStatus_reactivelyUpdates_whenTripTotalChanges() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            val budgetedTrip = baseTrip.copy(budgetAmount = 1_000_000L)
+            val repo = FakeDetailTripRepository(budgetedTrip)
+            repo.tripTotalFlow.value = 200_000L
+            val vm = newVm(budgetedTrip, repo)
+            advanceUntilIdle()
+
+            assertEquals(
+                200_000L,
+                vm.uiState.value.budgetStatus
+                    ?.spentAmount,
+            )
+            assertEquals(
+                800_000L,
+                vm.uiState.value.budgetStatus
+                    ?.remainingAmount,
+            )
+            assertEquals(
+                BudgetStatusLevel.OK,
+                vm.uiState.value.budgetStatus
+                    ?.status,
+            )
+
+            // Emit updated spend
+            repo.tripTotalFlow.value = 850_000L
+            advanceUntilIdle()
+
+            assertEquals(
+                850_000L,
+                vm.uiState.value.budgetStatus
+                    ?.spentAmount,
+            )
+            assertEquals(
+                150_000L,
+                vm.uiState.value.budgetStatus
+                    ?.remainingAmount,
+            )
+            assertEquals(
+                BudgetStatusLevel.WARNING,
+                vm.uiState.value.budgetStatus
+                    ?.status,
+            )
+        }
+
+    @Test
+    fun budgetStatus_warningLevel_whenEightyPercentSpent() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            val budgetedTrip = baseTrip.copy(budgetAmount = 1_000_000L)
+            val repo = FakeDetailTripRepository(budgetedTrip)
+            repo.tripTotalFlow.value = 800_000L
+            val vm = newVm(budgetedTrip, repo)
+            advanceUntilIdle()
+
+            assertEquals(
+                BudgetStatusLevel.WARNING,
+                vm.uiState.value.budgetStatus
+                    ?.status,
+            )
+        }
+
+    @Test
+    fun budgetStatus_overBudget_whenSpentExceedsBudget() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            val budgetedTrip = baseTrip.copy(budgetAmount = 1_000_000L)
+            val repo = FakeDetailTripRepository(budgetedTrip)
+            repo.tripTotalFlow.value = 1_200_000L
+            val vm = newVm(budgetedTrip, repo)
+            advanceUntilIdle()
+
+            val status = vm.uiState.value.budgetStatus
+            assertNotNull(status)
+            assertEquals(BudgetStatusLevel.OVER_BUDGET, status?.status)
+            assertEquals(-200_000L, status?.remainingAmount)
+            assertEquals(0L, status?.dailyAllowance)
+            assertEquals("200000 VND", vm.uiState.value.budgetRemainingLabel)
+        }
+
+    @Test
+    fun budgetStatus_upcomingTrip_calculatesPlannedAllowanceAcrossTotalDays() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            val upcomingTrip =
+                baseTrip.copy(
+                    id = 3L,
+                    startDateEpochDay = fixedDate.plusDays(2).toEpochDay(),
+                    endDateEpochDay = fixedDate.plusDays(5).toEpochDay(),
+                    budgetAmount = 400_000L,
+                )
+            val vm = newVm(upcomingTrip)
+            advanceUntilIdle()
+
+            val status = vm.uiState.value.budgetStatus
+            assertNotNull(status)
+            assertEquals(4, status?.remainingDays)
+            assertEquals(100_000L, status?.dailyAllowance)
+            assertEquals("100000 VND", vm.uiState.value.dailyAllowanceLabel)
+        }
+
+    @Test
+    fun budgetStatus_pastTrip_nullDailyAllowance() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            val pastTrip =
+                baseTrip.copy(
+                    id = 4L,
+                    startDateEpochDay = fixedDate.minusDays(10).toEpochDay(),
+                    endDateEpochDay = fixedDate.minusDays(2).toEpochDay(),
+                    budgetAmount = 500_000L,
+                )
+            val repo = FakeDetailTripRepository(pastTrip)
+            repo.tripTotalFlow.value = 400_000L
+            val vm = newVm(pastTrip, repo)
+            advanceUntilIdle()
+
+            val status = vm.uiState.value.budgetStatus
+            assertNotNull(status)
+            assertEquals(0, status?.remainingDays)
+            assertNull(status?.dailyAllowance)
+            assertNull(vm.uiState.value.dailyAllowanceLabel)
+        }
 }
 
 // --- Local fakes (narrow scope — only what TripDetailViewModel needs) ---
@@ -281,6 +438,7 @@ private class FakeDetailTripRepository(
     private val deleteThrows: Boolean = false,
 ) : TripRepository {
     private val tripFlow = MutableStateFlow<Trip?>(trip)
+    val tripTotalFlow = MutableStateFlow<Long?>(null)
 
     var lastDeletedId: Long? = null
     var lastDeletedBehavior: DeleteTripBehavior? = null
@@ -313,7 +471,7 @@ private class FakeDetailTripRepository(
 
     override suspend fun updateTrip(trip: Trip) = error("unused")
 
-    override fun observeTripTotal(tripId: Long): Flow<Long?> = MutableStateFlow(null)
+    override fun observeTripTotal(tripId: Long): Flow<Long?> = tripTotalFlow
 
     override fun observeTripTransactionCount(tripId: Long): Flow<Int> = MutableStateFlow(0)
 
