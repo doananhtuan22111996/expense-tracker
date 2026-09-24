@@ -4,6 +4,7 @@ import dev.tuandoan.expensetracker.core.formatter.CurrencyFormatter
 import dev.tuandoan.expensetracker.core.util.UiText
 import dev.tuandoan.expensetracker.data.database.entity.DailyTotalRow
 import dev.tuandoan.expensetracker.data.database.entity.TripCategorySumRow
+import dev.tuandoan.expensetracker.domain.model.BudgetStatusLevel
 import dev.tuandoan.expensetracker.domain.model.DeleteTripBehavior
 import dev.tuandoan.expensetracker.domain.model.Transaction
 import dev.tuandoan.expensetracker.domain.model.Trip
@@ -324,6 +325,88 @@ class TripsViewModelTest {
             assertNull(summary?.activeTripHighlight)
         }
 
+    @Test
+    fun init_withActiveBudget_aggregatesActiveTripsTotalBudgetAndSpend() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            val active1 = trip(id = 1L, name = "Da Nang", budgetAmount = 2_000_000L)
+            val active2 = trip(id = 2L, name = "Phu Quoc", budgetAmount = 3_000_000L)
+            val upcoming = trip(id = 3L, name = "Tokyo", budgetAmount = 1_000_000L)
+            repo.activeFlow.value = listOf(active1, active2)
+            repo.upcomingFlow.value = listOf(upcoming)
+            repo.totalsByTrip[1L] = 500_000L
+            repo.totalsByTrip[2L] = 1_000_000L
+            repo.totalsByTrip[3L] = 200_000L
+
+            val vm = newVm()
+            advanceUntilIdle()
+
+            val summary = vm.uiState.value.summary
+            assertNotNull(summary)
+            assertEquals(5_000_000L, summary?.activeTripsTotalBudget)
+            assertEquals(1_500_000L, summary?.activeTripsTotalSpend)
+            assertEquals(1_700_000L, summary?.totalSpend)
+        }
+
+    @Test
+    fun init_withActiveTripBudget_populatesActiveHighlightDailyAllowance() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            // today is today, trip is today..today + 4 -> 5 days remaining
+            val active =
+                trip(
+                    id = 1L,
+                    name = "Da Nang",
+                    startDateEpochDay = today,
+                    endDateEpochDay = today + 4,
+                    budgetAmount = 1_000_000L,
+                )
+            repo.activeFlow.value = listOf(active)
+            repo.totalsByTrip[1L] = 0L
+
+            val vm = newVm()
+            advanceUntilIdle()
+
+            val highlight =
+                vm.uiState.value.summary
+                    ?.activeTripHighlight
+            assertNotNull(highlight)
+            assertNotNull(highlight?.budgetStatus)
+            assertEquals("200000 VND", highlight?.dailyAllowanceLabel)
+        }
+
+    @Test
+    fun init_withBudgetedTrips_enrichesTripCardUiWithBudgetStatus() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            val active = trip(id = 1L, name = "Da Nang", budgetAmount = 1_000_000L)
+            repo.activeFlow.value = listOf(active)
+            repo.totalsByTrip[1L] = 850_000L
+
+            val vm = newVm()
+            advanceUntilIdle()
+
+            val card =
+                vm.uiState.value.active
+                    .first()
+            assertNotNull(card.budgetStatus)
+            assertEquals(BudgetStatusLevel.WARNING, card.budgetStatus?.status)
+            assertEquals("1000000 VND", card.budgetLabel)
+        }
+
+    @Test
+    fun init_activeTripsWithoutBudget_hasNullActiveTripsTotalBudget() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            val active = trip(id = 1L, name = "Da Nang", budgetAmount = null)
+            repo.activeFlow.value = listOf(active)
+
+            val vm = newVm()
+            advanceUntilIdle()
+
+            val summary = vm.uiState.value.summary
+            assertNotNull(summary)
+            assertNull(summary?.activeTripsTotalBudget)
+            assertNull(summary?.activeTripHighlight?.dailyAllowanceLabel)
+            assertNull(summary?.activeTripHighlight?.budgetStatus)
+        }
+
     private fun newVm(): TripsViewModel = TripsViewModel(repo, currencyRepo, formatter, clock)
 
     private fun trip(
@@ -331,6 +414,7 @@ class TripsViewModelTest {
         name: String,
         startDateEpochDay: Long = today,
         endDateEpochDay: Long = today + 5,
+        budgetAmount: Long? = null,
     ): Trip =
         Trip(
             id = id,
@@ -345,6 +429,7 @@ class TripsViewModelTest {
             originalCategoryIconSnapshot = null,
             originalCategoryColorSnapshot = null,
             createdAt = 0L,
+            budgetAmount = budgetAmount,
         )
 }
 

@@ -826,6 +826,15 @@
     <string name="trip_detail_budget_status_over">Over Budget</string>
     <string name="a11y_trip_budget_progress">Trip budget: %1$d%% spent, %2$s of %3$s</string>
 
+    <!-- Trip portfolio and row budget metrics (T1.5) -->
+    <string name="trips_portfolio_active_budget_title">Active trip budget</string>
+    <string name="trips_portfolio_active_budget_progress">%1$s of %2$s (%3$d%%)</string>
+    <string name="a11y_trips_portfolio_active_budget">Active trip budget: %1$d%% spent, %2$s of %3$s</string>
+    <string name="trip_row_budget_chip">Budget: %1$s • %2$d%%</string>
+    <string name="trip_row_budget_chip_over">Over budget • %1$s</string>
+    <string name="a11y_trip_row_budget">Budget: %1$s, %2$d%% spent</string>
+    <string name="a11y_trip_row_budget_over">Over budget by %1$s</string>
+
     <!-- Trip picker bottom sheet (T3.1) -->
     <string name="trip_picker_title">Attach trip</string>
     <string name="trip_picker_none">No trip</string>

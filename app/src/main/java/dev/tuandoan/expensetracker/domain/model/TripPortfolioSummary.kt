@@ -12,6 +12,8 @@ data class TripPortfolioSummary(
     val pastTripsCount: Int,
     val totalTransactionsCount: Int,
     val activeTripHighlight: ActiveTripHighlight? = null,
+    val activeTripsTotalBudget: Long? = null,
+    val activeTripsTotalSpend: Long = 0L,
 )
 
 /**
@@ -22,4 +24,6 @@ data class ActiveTripHighlight(
     val totalSpentLabel: String?,
     val totalDays: Int,
     val currentDay: Int,
+    val dailyAllowanceLabel: String? = null,
+    val budgetStatus: TripBudgetStatus? = null,
 )
