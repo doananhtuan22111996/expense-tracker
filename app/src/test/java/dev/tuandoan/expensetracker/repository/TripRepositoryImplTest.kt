@@ -107,6 +107,43 @@ class TripRepositoryImplTest {
         }
 
     @Test
+    fun createTrip_withBudget_persistsBudgetAmount() =
+        runTest {
+            val id =
+                repository.createTrip(
+                    name = "Da Nang",
+                    destination = "Da Nang",
+                    startDateEpochDay = 100L,
+                    endDateEpochDay = 105L,
+                    foreignCurrencyCode = null,
+                    foreignToHomeRate = null,
+                    budgetAmount = 10_000_000L,
+                )
+            val trip = repository.getTripById(id)
+            assertNotNull(trip)
+            assertEquals(10_000_000L, trip!!.budgetAmount)
+        }
+
+    @Test
+    fun updateTrip_updatesBudgetAmount() =
+        runTest {
+            val id =
+                repository.createTrip(
+                    name = "Da Nang",
+                    destination = "Da Nang",
+                    startDateEpochDay = 100L,
+                    endDateEpochDay = 105L,
+                    foreignCurrencyCode = null,
+                    foreignToHomeRate = null,
+                    budgetAmount = 10_000_000L,
+                )
+            val original = repository.getTripById(id)!!
+            repository.updateTrip(original.copy(budgetAmount = 15_000_000L))
+            val updated = repository.getTripById(id)!!
+            assertEquals(15_000_000L, updated.budgetAmount)
+        }
+
+    @Test
     fun observeTripById_emitsNullForMissingThenValueAfterInsert() =
         runTest {
             assertNull(repository.observeTripById(42L).first())

@@ -41,4 +41,8 @@ data class TripEntity(
     val originalCategoryColorSnapshot: String?,
     @ColumnInfo(name = "created_at")
     val createdAt: Long, // Epoch millis (matches TransactionEntity / RecurringTransactionEntity / Gold* convention)
+    // Trip spending ceiling in primary/home currency minor units (v3.15.0).
+    // Nullable: trips without an explicit budget leave it null.
+    @ColumnInfo(name = "budget_amount")
+    val budgetAmount: Long? = null,
 )

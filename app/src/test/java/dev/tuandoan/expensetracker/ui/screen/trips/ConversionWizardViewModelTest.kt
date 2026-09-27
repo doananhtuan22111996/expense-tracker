@@ -577,6 +577,7 @@ class ConversionWizardViewModelTest {
             endDateEpochDay: Long,
             foreignCurrencyCode: String?,
             foreignToHomeRate: Double?,
+            budgetAmount: Long?,
         ) = nextTripId++
 
         override suspend fun updateTrip(trip: dev.tuandoan.expensetracker.domain.model.Trip) = Unit

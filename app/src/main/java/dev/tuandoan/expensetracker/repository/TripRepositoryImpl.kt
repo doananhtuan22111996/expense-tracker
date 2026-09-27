@@ -59,6 +59,7 @@ class TripRepositoryImpl
             endDateEpochDay: Long,
             foreignCurrencyCode: String?,
             foreignToHomeRate: Double?,
+            budgetAmount: Long?,
         ): Long {
             val now = timeProvider.currentTimeMillis()
             val entity =
@@ -74,6 +75,7 @@ class TripRepositoryImpl
                     originalCategoryIconSnapshot = null,
                     originalCategoryColorSnapshot = null,
                     createdAt = now,
+                    budgetAmount = budgetAmount,
                 )
             return tripDao.insert(entity)
         }

@@ -23,6 +23,7 @@ data class Trip(
     val originalCategoryIconSnapshot: String?,
     val originalCategoryColorSnapshot: String?,
     val createdAt: Long,
+    val budgetAmount: Long? = null,
 ) {
     /** True when this trip was produced by the conversion wizard and supports revert. */
     val isConversionOrigin: Boolean

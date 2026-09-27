@@ -300,6 +300,7 @@ private class PickerFakeTripRepository : TripRepository {
         endDateEpochDay: Long,
         foreignCurrencyCode: String?,
         foreignToHomeRate: Double?,
+        budgetAmount: Long?,
     ): Long = error("not used")
 
     override suspend fun updateTrip(trip: Trip) = error("not used")

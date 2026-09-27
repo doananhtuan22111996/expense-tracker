@@ -308,6 +308,7 @@ private class FakeDetailTripRepository(
         endDateEpochDay: Long,
         foreignCurrencyCode: String?,
         foreignToHomeRate: Double?,
+        budgetAmount: Long?,
     ): Long = error("unused")
 
     override suspend fun updateTrip(trip: Trip) = error("unused")

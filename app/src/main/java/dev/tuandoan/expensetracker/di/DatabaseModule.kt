@@ -23,6 +23,7 @@ import dev.tuandoan.expensetracker.data.database.migration.MIGRATION_4_5
 import dev.tuandoan.expensetracker.data.database.migration.MIGRATION_5_6
 import dev.tuandoan.expensetracker.data.database.migration.MIGRATION_6_7
 import dev.tuandoan.expensetracker.data.database.migration.MIGRATION_7_8
+import dev.tuandoan.expensetracker.data.database.migration.MIGRATION_8_9
 import javax.inject.Singleton
 
 @Module
@@ -46,6 +47,7 @@ object DatabaseModule {
                 MIGRATION_5_6,
                 MIGRATION_6_7,
                 MIGRATION_7_8,
+                MIGRATION_8_9,
             ).build()
 
     @Provides
