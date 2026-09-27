@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
@@ -25,6 +26,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
@@ -45,6 +47,8 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import dev.tuandoan.expensetracker.R
+import dev.tuandoan.expensetracker.domain.model.BudgetStatusLevel
+import dev.tuandoan.expensetracker.domain.model.TripBudgetStatus
 import dev.tuandoan.expensetracker.ui.component.EmptyStateMessage
 import dev.tuandoan.expensetracker.ui.theme.DesignSystemElevation
 import dev.tuandoan.expensetracker.ui.theme.DesignSystemSpacing
@@ -279,6 +283,15 @@ private fun TripRow(
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.padding(top = DesignSystemSpacing.xs),
                 )
+                card.budgetStatus?.let { status ->
+                    card.budgetLabel?.let { budgetLabel ->
+                        TripBudgetBadge(
+                            budgetStatus = status,
+                            budgetLabel = budgetLabel,
+                            modifier = Modifier.padding(top = DesignSystemSpacing.xs),
+                        )
+                    }
+                }
             }
             if (!trip.foreignCurrencyCode.isNullOrBlank()) {
                 Text(
@@ -290,6 +303,52 @@ private fun TripRow(
                 )
             }
         }
+    }
+}
+
+@Composable
+private fun TripBudgetBadge(
+    budgetStatus: TripBudgetStatus,
+    budgetLabel: String,
+    modifier: Modifier = Modifier,
+) {
+    val progressPercent = (budgetStatus.progressFraction * 100).toInt()
+    val isOver = budgetStatus.status == BudgetStatusLevel.OVER_BUDGET
+    val chipText =
+        if (isOver) {
+            stringResource(R.string.trip_row_budget_chip_over, budgetLabel)
+        } else {
+            stringResource(R.string.trip_row_budget_chip, budgetLabel, progressPercent)
+        }
+    val a11yDesc =
+        if (isOver) {
+            stringResource(R.string.a11y_trip_row_budget_over, budgetLabel)
+        } else {
+            stringResource(R.string.a11y_trip_row_budget, budgetLabel, progressPercent)
+        }
+
+    val (containerColor, contentColor) =
+        when (budgetStatus.status) {
+            BudgetStatusLevel.OVER_BUDGET ->
+                MaterialTheme.colorScheme.errorContainer to MaterialTheme.colorScheme.onErrorContainer
+            BudgetStatusLevel.WARNING ->
+                MaterialTheme.colorScheme.tertiaryContainer to MaterialTheme.colorScheme.onTertiaryContainer
+            BudgetStatusLevel.OK ->
+                MaterialTheme.colorScheme.surfaceVariant to MaterialTheme.colorScheme.onSurfaceVariant
+        }
+
+    Surface(
+        shape = RoundedCornerShape(6.dp),
+        color = containerColor,
+        modifier = modifier.semantics { contentDescription = a11yDesc },
+    ) {
+        Text(
+            text = chipText,
+            style = MaterialTheme.typography.labelSmall,
+            fontWeight = FontWeight.Medium,
+            color = contentColor,
+            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
+        )
     }
 }
 

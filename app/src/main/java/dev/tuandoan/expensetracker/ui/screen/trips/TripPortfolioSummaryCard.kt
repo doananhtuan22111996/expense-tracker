@@ -17,12 +17,14 @@ import androidx.compose.material.icons.filled.FlightTakeoff
 import androidx.compose.material3.ElevatedCard
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
@@ -32,6 +34,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import dev.tuandoan.expensetracker.R
+import dev.tuandoan.expensetracker.core.formatter.AmountFormatter
 import dev.tuandoan.expensetracker.domain.model.ActiveTripHighlight
 import dev.tuandoan.expensetracker.domain.model.TripPortfolioSummary
 import dev.tuandoan.expensetracker.ui.component.AmountText
@@ -123,6 +126,18 @@ fun TripPortfolioSummaryCard(
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
+            }
+
+            // Active Trip Budget Progress (T1.5)
+            summary.activeTripsTotalBudget?.let { budgetAmount ->
+                if (budgetAmount > 0L) {
+                    Spacer(Modifier.height(DesignSystemSpacing.medium))
+                    ActiveBudgetProgressSection(
+                        spentAmount = summary.activeTripsTotalSpend,
+                        budgetAmount = budgetAmount,
+                        currencyCode = summary.currencyCode,
+                    )
+                }
             }
 
             // Active Trip Highlight Banner
@@ -220,8 +235,14 @@ private fun ActiveTripBanner(
                             highlight.totalDays,
                         )
                     val spentText = highlight.totalSpentLabel ?: stringResource(R.string.trip_row_no_spending)
+                    val bannerSubtitle =
+                        if (highlight.dailyAllowanceLabel != null) {
+                            "$dayProgress • $spentText • ${highlight.dailyAllowanceLabel}/day"
+                        } else {
+                            "$dayProgress • $spentText"
+                        }
                     Text(
-                        text = "$dayProgress • $spentText",
+                        text = bannerSubtitle,
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         maxLines = 1,
@@ -235,5 +256,77 @@ private fun ActiveTripBanner(
                 tint = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }
+    }
+}
+
+@Composable
+private fun ActiveBudgetProgressSection(
+    spentAmount: Long,
+    budgetAmount: Long,
+    currencyCode: String,
+    modifier: Modifier = Modifier,
+) {
+    val progressFraction =
+        if (budgetAmount <= 0L) 0f else (spentAmount.toFloat() / budgetAmount.toFloat()).coerceAtLeast(0f)
+    val progressPercent = (progressFraction * 100).toInt()
+
+    val statusColor =
+        when {
+            progressFraction >= 1.0f -> MaterialTheme.colorScheme.error
+            progressFraction >= 0.8f -> MaterialTheme.colorScheme.tertiary
+            else -> MaterialTheme.colorScheme.primary
+        }
+
+    val spentText = AmountFormatter.formatAmountWithCurrency(spentAmount, currencyCode)
+    val budgetText = AmountFormatter.formatAmountWithCurrency(budgetAmount, currencyCode)
+    val a11yDesc = stringResource(R.string.a11y_trips_portfolio_active_budget, progressPercent, spentText, budgetText)
+
+    Column(
+        modifier =
+            modifier
+                .fillMaxWidth()
+                .semantics { contentDescription = a11yDesc },
+        verticalArrangement = Arrangement.spacedBy(DesignSystemSpacing.xs),
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(
+                text = stringResource(R.string.trips_portfolio_active_budget_title),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            Text(
+                text =
+                    stringResource(
+                        R.string.trips_portfolio_active_budget_progress,
+                        spentText,
+                        budgetText,
+                        progressPercent,
+                    ),
+                style = MaterialTheme.typography.bodySmall,
+                fontWeight = FontWeight.Medium,
+                color =
+                    if (progressFraction >=
+                        1.0f
+                    ) {
+                        MaterialTheme.colorScheme.error
+                    } else {
+                        MaterialTheme.colorScheme.onSurface
+                    },
+            )
+        }
+        LinearProgressIndicator(
+            progress = { progressFraction.coerceIn(0f, 1f) },
+            modifier =
+                Modifier
+                    .fillMaxWidth()
+                    .height(6.dp)
+                    .clip(RoundedCornerShape(3.dp)),
+            color = statusColor,
+            trackColor = MaterialTheme.colorScheme.surfaceVariant,
+        )
     }
 }

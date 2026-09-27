@@ -17,6 +17,7 @@ fun TripEntity.toBackupDto(): BackupTripDto =
         originalCategoryIconSnapshot = originalCategoryIconSnapshot,
         originalCategoryColorSnapshot = originalCategoryColorSnapshot,
         createdAt = createdAt,
+        budgetAmount = budgetAmount,
     )
 
 fun BackupTripDto.toEntity(): TripEntity =
@@ -33,4 +34,5 @@ fun BackupTripDto.toEntity(): TripEntity =
         originalCategoryIconSnapshot = originalCategoryIconSnapshot,
         originalCategoryColorSnapshot = originalCategoryColorSnapshot,
         createdAt = createdAt,
+        budgetAmount = budgetAmount,
     )

@@ -8,6 +8,7 @@ import dev.tuandoan.expensetracker.core.util.ErrorUtils
 import dev.tuandoan.expensetracker.core.util.UiText
 import dev.tuandoan.expensetracker.domain.model.ActiveTripHighlight
 import dev.tuandoan.expensetracker.domain.model.Trip
+import dev.tuandoan.expensetracker.domain.model.TripBudgetStatus
 import dev.tuandoan.expensetracker.domain.model.TripFilter
 import dev.tuandoan.expensetracker.domain.model.TripPortfolioSummary
 import dev.tuandoan.expensetracker.domain.repository.CurrencyPreferenceRepository
@@ -113,14 +114,24 @@ class TripsViewModel
                                 )
                             val currentDay =
                                 (nowEpochDay - activeTrip.startDateEpochDay + 1L).toInt().coerceIn(1, totalDays)
+                            val totalMinor = aggMap[activeTrip.id]?.totalMinor ?: 0L
                             val totalLabel = aggMap[activeTrip.id]?.totalLabel
+                            val budgetStatus = TripBudgetStatus.calculate(activeTrip, totalMinor, nowEpochDay)
+                            val dailyAllowanceLabel =
+                                budgetStatus?.dailyAllowance?.let { currencyFormatter.format(it, currencyCode) }
                             ActiveTripHighlight(
                                 trip = activeTrip,
                                 totalSpentLabel = totalLabel,
                                 totalDays = totalDays,
                                 currentDay = currentDay,
+                                dailyAllowanceLabel = dailyAllowanceLabel,
+                                budgetStatus = budgetStatus,
                             )
                         }
+
+                    val activeBudgets = sections.active.mapNotNull { it.budgetAmount }.filter { it > 0L }
+                    val activeTripsTotalBudget = if (activeBudgets.isNotEmpty()) activeBudgets.sum() else null
+                    val activeTripsTotalSpend = sections.active.sumOf { aggMap[it.id]?.totalMinor ?: 0L }
 
                     val portfolioSummary =
                         TripPortfolioSummary(
@@ -131,14 +142,16 @@ class TripsViewModel
                             pastTripsCount = sections.past.size,
                             totalTransactionsCount = totalTxCount,
                             activeTripHighlight = activeHighlight,
+                            activeTripsTotalBudget = activeTripsTotalBudget,
+                            activeTripsTotalSpend = activeTripsTotalSpend,
                         )
 
                     _uiState.update {
                         it.copy(
                             isLoading = false,
-                            active = sections.active.map { trip -> trip.toUi(aggMap) },
-                            upcoming = sections.upcoming.map { trip -> trip.toUi(aggMap) },
-                            past = sections.past.map { trip -> trip.toUi(aggMap) },
+                            active = sections.active.map { trip -> trip.toUi(aggMap, nowEpochDay, currencyCode) },
+                            upcoming = sections.upcoming.map { trip -> trip.toUi(aggMap, nowEpochDay, currencyCode) },
+                            past = sections.past.map { trip -> trip.toUi(aggMap, nowEpochDay, currencyCode) },
                             summary = portfolioSummary,
                         )
                     }
@@ -146,12 +159,20 @@ class TripsViewModel
             }
         }
 
-        private fun Trip.toUi(aggMap: Map<Long, TripAggregates>): TripCardUi {
+        private fun Trip.toUi(
+            aggMap: Map<Long, TripAggregates>,
+            nowEpochDay: Long,
+            currencyCode: String,
+        ): TripCardUi {
             val agg = aggMap[id]
+            val budgetStatus = TripBudgetStatus.calculate(this, agg?.totalMinor ?: 0L, nowEpochDay)
+            val budgetLabel = budgetStatus?.let { currencyFormatter.format(it.budgetAmount, currencyCode) }
             return TripCardUi(
                 trip = this,
                 totalLabel = agg?.totalLabel,
                 transactionCount = agg?.transactionCount ?: 0,
+                budgetStatus = budgetStatus,
+                budgetLabel = budgetLabel,
             )
         }
 
@@ -172,6 +193,8 @@ data class TripCardUi(
     val trip: Trip,
     val totalLabel: String?,
     val transactionCount: Int,
+    val budgetStatus: TripBudgetStatus? = null,
+    val budgetLabel: String? = null,
 )
 
 data class TripsUiState(
