@@ -23,6 +23,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberDateRangePickerState
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
@@ -35,7 +36,9 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.input.KeyboardType
 import dev.tuandoan.expensetracker.R
+import dev.tuandoan.expensetracker.core.formatter.CurrencyAmountVisualTransformation
 import dev.tuandoan.expensetracker.core.util.EpochDayConverters
+import dev.tuandoan.expensetracker.domain.model.SupportedCurrencies
 import dev.tuandoan.expensetracker.ui.component.CurrencyDropdown
 import dev.tuandoan.expensetracker.ui.theme.DesignSystemElevation
 import dev.tuandoan.expensetracker.ui.theme.DesignSystemSpacing
@@ -335,6 +338,67 @@ internal fun TripForeignCurrencySection(
         onChange = onRateChange,
         onImeDone = onImeDone,
     )
+}
+
+@Composable
+internal fun TripBudgetField(
+    value: String,
+    homeCurrencyCode: String,
+    foreignPreview: String?,
+    error: String?,
+    onChange: (String) -> Unit,
+    onImeNext: () -> Unit,
+) {
+    val currency = SupportedCurrencies.byCode(homeCurrencyCode) ?: SupportedCurrencies.default()
+    Column(verticalArrangement = Arrangement.spacedBy(DesignSystemSpacing.xs)) {
+        Text(
+            text = stringResource(R.string.create_edit_trip_label_budget),
+            style = MaterialTheme.typography.titleMedium,
+            color = MaterialTheme.colorScheme.onSurface,
+        )
+        OutlinedTextField(
+            value = value,
+            onValueChange = onChange,
+            placeholder = {
+                Text(stringResource(R.string.create_edit_trip_hint_budget, currency.code))
+            },
+            suffix = {
+                Text(
+                    currency.symbol,
+                    style = MaterialTheme.typography.titleMedium,
+                    color = MaterialTheme.colorScheme.primary,
+                )
+            },
+            visualTransformation =
+                remember(currency.code) {
+                    CurrencyAmountVisualTransformation(currency.code)
+                },
+            singleLine = true,
+            isError = error != null,
+            supportingText = {
+                when {
+                    error != null ->
+                        Text(
+                            text = error,
+                            color = MaterialTheme.colorScheme.error,
+                        )
+                    foreignPreview != null ->
+                        Text(
+                            text = stringResource(R.string.create_edit_trip_budget_foreign_preview, foreignPreview),
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            style = MaterialTheme.typography.bodySmall,
+                        )
+                }
+            },
+            keyboardOptions =
+                KeyboardOptions(
+                    keyboardType = KeyboardType.Number,
+                    imeAction = ImeAction.Next,
+                ),
+            keyboardActions = KeyboardActions(onNext = { onImeNext() }),
+            modifier = Modifier.fillMaxWidth(),
+        )
+    }
 }
 
 private val TRIP_DATE_FORMATTER: DateTimeFormatter =

@@ -5,6 +5,8 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dev.tuandoan.expensetracker.R
+import dev.tuandoan.expensetracker.core.currency.AmountCalculator
+import dev.tuandoan.expensetracker.core.formatter.AmountFormatter
 import dev.tuandoan.expensetracker.core.util.ErrorUtils
 import dev.tuandoan.expensetracker.core.util.UiText
 import dev.tuandoan.expensetracker.domain.analytics.Analytics
@@ -121,6 +123,11 @@ class CreateEditTripViewModel
             _uiState.update { it.copy(rateText = normalised) }
         }
 
+        fun onBudgetChange(value: String) {
+            val cleanInput = value.replace("[^0-9]".toRegex(), "")
+            _uiState.update { it.copy(budgetInput = cleanInput) }
+        }
+
         fun clearError() {
             _uiState.update { it.copy(errorMessage = null) }
         }
@@ -155,6 +162,7 @@ class CreateEditTripViewModel
                                 endDateEpochDay = end,
                                 foreignCurrencyCode = foreignCode,
                                 foreignToHomeRate = foreignRate,
+                                budgetAmount = state.budgetAmount,
                                 // Snapshot fields ALWAYS pass through unchanged — see KDoc.
                             ),
                         )
@@ -166,6 +174,7 @@ class CreateEditTripViewModel
                             endDateEpochDay = end,
                             foreignCurrencyCode = foreignCode,
                             foreignToHomeRate = foreignRate,
+                            budgetAmount = state.budgetAmount,
                         )
                         analytics.logEvent(
                             AnalyticsEvent.TripCreated(
@@ -228,6 +237,7 @@ class CreateEditTripViewModel
                             isForeignCurrency = trip.foreignCurrencyCode != null,
                             foreignCurrencyCode = trip.foreignCurrencyCode.orEmpty(),
                             rateText = trip.foreignToHomeRate?.toPlainString().orEmpty(),
+                            budgetInput = trip.budgetAmount?.toString().orEmpty(),
                             isConversionOrigin = trip.isConversionOrigin,
                             originalTrip = trip,
                         )
@@ -260,6 +270,7 @@ data class CreateEditTripUiState(
     val isForeignCurrency: Boolean = false,
     val foreignCurrencyCode: String = "",
     val rateText: String = "",
+    val budgetInput: String = "",
     val homeCurrencyCode: String = "VND",
     val isLoading: Boolean = true,
     val isSaving: Boolean = false,
@@ -280,6 +291,9 @@ data class CreateEditTripUiState(
      */
     val isFxCurrencyLocked: Boolean = false,
 ) {
+    val budgetAmount: Long?
+        get() = AmountFormatter.parseAmount(budgetInput)?.takeIf { it > 0L }
+
     val nameError: UiText?
         get() =
             when {
@@ -319,6 +333,37 @@ data class CreateEditTripUiState(
             }
         }
 
+    val budgetError: UiText?
+        get() {
+            if (budgetInput.isBlank()) return null
+            val parsed = AmountFormatter.parseAmount(budgetInput)
+            return when {
+                parsed == null || parsed <= 0L ->
+                    UiText.StringResource(R.string.error_trip_budget_invalid)
+                parsed > MAX_BUDGET_AMOUNT ->
+                    UiText.StringResource(R.string.error_trip_budget_too_large)
+                else -> null
+            }
+        }
+
+    val foreignBudgetEquivalent: String?
+        get() {
+            if (!isForeignCurrency || foreignCurrencyCode.isBlank()) return null
+            val rate = rateText.toDoubleOrNull() ?: return null
+            if (rate <= 0.0) return null
+            val budget = budgetAmount ?: return null
+            val homeDef = SupportedCurrencies.byCode(homeCurrencyCode) ?: return null
+            val foreignDef = SupportedCurrencies.byCode(foreignCurrencyCode) ?: return null
+            val foreignMinor =
+                AmountCalculator.toForeignMinor(
+                    homeMinor = budget,
+                    homeDigits = homeDef.minorUnitDigits,
+                    foreignDigits = foreignDef.minorUnitDigits,
+                    rate = rate,
+                )
+            return AmountFormatter.formatAmountWithCurrency(foreignMinor, foreignCurrencyCode)
+        }
+
     /** True when every required field is set and no validation errors are active. */
     val isValid: Boolean
         get() {
@@ -333,11 +378,12 @@ data class CreateEditTripUiState(
                         rateText.isNotBlank() &&
                         rateError == null
                 }
+            val budgetOk = budgetInput.isBlank() || budgetError == null
             // Edit mode requires the loaded trip — defends against the
             // half-broken state where loadExisting failed (errorMessage shown,
             // form still rendered) but originalTrip is null.
             val editModeOk = !isEditMode || originalTrip != null
-            return nameOk && datesOk && fxOk && editModeOk && !isSaving
+            return nameOk && datesOk && fxOk && budgetOk && editModeOk && !isSaving
         }
 
     val hasUnsavedChanges: Boolean
@@ -348,6 +394,7 @@ data class CreateEditTripUiState(
                     destination.trim().ifBlank { null } != o.destination ||
                     startEpochDay != o.startDateEpochDay ||
                     endEpochDay != o.endDateEpochDay ||
+                    budgetInput != (o.budgetAmount?.toString() ?: "") ||
                     isForeignCurrency != (o.foreignCurrencyCode != null) ||
                     (isForeignCurrency && foreignCurrencyCode != o.foreignCurrencyCode.orEmpty()) ||
                     (
@@ -357,7 +404,8 @@ data class CreateEditTripUiState(
             } else {
                 name.isNotBlank() ||
                     destination.isNotBlank() ||
-                    isForeignCurrency
+                    isForeignCurrency ||
+                    budgetInput.isNotBlank()
             }
         }
 
@@ -367,5 +415,7 @@ data class CreateEditTripUiState(
         // Bounds the rate to keep `amount × rate` well below Long.MAX_VALUE for
         // reasonable amounts (e.g. ¥1B × 1M still fits). Defensive only.
         const val MAX_RATE = 1_000_000.0
+
+        const val MAX_BUDGET_AMOUNT = 1_000_000_000_000L
     }
 }
