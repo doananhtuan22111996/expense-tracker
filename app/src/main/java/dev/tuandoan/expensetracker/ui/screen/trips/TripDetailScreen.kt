@@ -12,10 +12,12 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.material.icons.outlined.Warning
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -27,6 +29,7 @@ import androidx.compose.material3.FilterChip
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
@@ -44,6 +47,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
@@ -58,8 +62,10 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import dev.tuandoan.expensetracker.R
 import dev.tuandoan.expensetracker.core.formatter.AmountFormatter
 import dev.tuandoan.expensetracker.core.util.DateTimeUtil
+import dev.tuandoan.expensetracker.domain.model.BudgetStatusLevel
 import dev.tuandoan.expensetracker.domain.model.Transaction
 import dev.tuandoan.expensetracker.domain.model.Trip
+import dev.tuandoan.expensetracker.domain.model.TripBudgetStatus
 import dev.tuandoan.expensetracker.ui.component.DonutChart
 import dev.tuandoan.expensetracker.ui.component.SectionTitle
 import dev.tuandoan.expensetracker.ui.theme.DesignSystemElevation
@@ -168,6 +174,21 @@ fun TripDetailScreen(
                     dailyAvgLabel = uiState.dailyAvgLabel,
                     transactionCount = uiState.transactionCount,
                 )
+            }
+
+            // Trip budget progress card (v3.15.0)
+            if (uiState.budgetStatus != null) {
+                item {
+                    TripBudgetProgressCard(
+                        budgetStatus = uiState.budgetStatus!!,
+                        budgetLabel = uiState.budgetLabel.orEmpty(),
+                        totalLabel = uiState.totalLabel.orEmpty(),
+                        remainingLabel = uiState.budgetRemainingLabel.orEmpty(),
+                        dailyAllowanceLabel = uiState.dailyAllowanceLabel,
+                        tripStatus = uiState.tripStatus,
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                }
             }
 
             // Donut chart
@@ -677,6 +698,208 @@ private fun RevertTripDialog(
             }
         },
     )
+}
+
+@Composable
+internal fun TripBudgetProgressCard(
+    budgetStatus: TripBudgetStatus,
+    budgetLabel: String,
+    totalLabel: String,
+    remainingLabel: String,
+    dailyAllowanceLabel: String?,
+    tripStatus: TripStatus,
+    modifier: Modifier = Modifier,
+) {
+    val progressPercent = (budgetStatus.progressFraction * 100).toInt()
+    val a11yDescription =
+        stringResource(
+            R.string.a11y_trip_budget_progress,
+            progressPercent,
+            totalLabel,
+            budgetLabel,
+        )
+
+    val (statusLabel, statusColor, statusContainerColor) =
+        when (budgetStatus.status) {
+            BudgetStatusLevel.OVER_BUDGET ->
+                Triple(
+                    stringResource(R.string.trip_detail_budget_status_over),
+                    MaterialTheme.colorScheme.error,
+                    MaterialTheme.colorScheme.errorContainer,
+                )
+            BudgetStatusLevel.WARNING ->
+                Triple(
+                    stringResource(R.string.trip_detail_budget_status_warning),
+                    MaterialTheme.colorScheme.tertiary,
+                    MaterialTheme.colorScheme.tertiaryContainer,
+                )
+            BudgetStatusLevel.OK ->
+                Triple(
+                    stringResource(R.string.trip_detail_budget_status_ok),
+                    MaterialTheme.colorScheme.primary,
+                    MaterialTheme.colorScheme.primaryContainer,
+                )
+        }
+
+    Card(
+        modifier = modifier.semantics { contentDescription = a11yDescription },
+        elevation = CardDefaults.cardElevation(defaultElevation = DesignSystemElevation.low),
+        colors =
+            CardDefaults.cardColors(
+                containerColor = MaterialTheme.colorScheme.surface,
+            ),
+    ) {
+        Column(
+            modifier = Modifier.padding(DesignSystemSpacing.large),
+            verticalArrangement = Arrangement.spacedBy(DesignSystemSpacing.medium),
+        ) {
+            // Header: Title + Status Chip
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text(
+                    text = stringResource(R.string.trip_detail_budget_title),
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.SemiBold,
+                )
+                SuggestionChip(
+                    onClick = {},
+                    label = {
+                        Text(
+                            text = statusLabel,
+                            style = MaterialTheme.typography.labelSmall,
+                            fontWeight = FontWeight.Medium,
+                        )
+                    },
+                    colors =
+                        SuggestionChipDefaults.suggestionChipColors(
+                            containerColor = statusContainerColor,
+                            labelColor = statusColor,
+                        ),
+                    border = null,
+                )
+            }
+
+            // Progress bar
+            LinearProgressIndicator(
+                progress = { budgetStatus.progressFraction.coerceIn(0f, 1f) },
+                modifier =
+                    Modifier
+                        .fillMaxWidth()
+                        .height(8.dp)
+                        .clip(RoundedCornerShape(4.dp)),
+                color = statusColor,
+                trackColor = MaterialTheme.colorScheme.surfaceVariant,
+            )
+
+            // Numbers row: Spent · Budget · Remaining / Over
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text(
+                    text = stringResource(R.string.trip_detail_budget_label_spent, totalLabel),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                Text(
+                    text = stringResource(R.string.trip_detail_budget_label_budget, budgetLabel),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                Text(
+                    text =
+                        if (budgetStatus.status == BudgetStatusLevel.OVER_BUDGET) {
+                            stringResource(R.string.trip_detail_budget_over_budget_banner, remainingLabel)
+                        } else {
+                            stringResource(R.string.trip_detail_budget_label_remaining, remainingLabel)
+                        },
+                    style = MaterialTheme.typography.bodySmall,
+                    fontWeight = FontWeight.Medium,
+                    color =
+                        if (budgetStatus.status == BudgetStatusLevel.OVER_BUDGET) {
+                            MaterialTheme.colorScheme.error
+                        } else {
+                            MaterialTheme.colorScheme.onSurfaceVariant
+                        },
+                )
+            }
+
+            // Daily allowance section or Over-budget banner
+            if (budgetStatus.status == BudgetStatusLevel.OVER_BUDGET) {
+                Card(
+                    colors =
+                        CardDefaults.cardColors(
+                            containerColor = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.5f),
+                        ),
+                    modifier = Modifier.fillMaxWidth(),
+                ) {
+                    Row(
+                        modifier = Modifier.padding(DesignSystemSpacing.small),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(DesignSystemSpacing.small),
+                    ) {
+                        Icon(
+                            imageVector = Icons.Outlined.Warning,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.error,
+                        )
+                        Text(
+                            text = stringResource(R.string.trip_detail_budget_over_budget_banner, remainingLabel),
+                            style = MaterialTheme.typography.bodyMedium,
+                            fontWeight = FontWeight.Medium,
+                            color = MaterialTheme.colorScheme.onErrorContainer,
+                        )
+                    }
+                }
+            } else if (dailyAllowanceLabel != null) {
+                Card(
+                    colors =
+                        CardDefaults.cardColors(
+                            containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.4f),
+                        ),
+                    modifier = Modifier.fillMaxWidth(),
+                ) {
+                    Row(
+                        modifier = Modifier.padding(DesignSystemSpacing.small),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                    ) {
+                        Column {
+                            Text(
+                                text =
+                                    if (tripStatus == TripStatus.ACTIVE) {
+                                        stringResource(R.string.trip_detail_budget_daily_allowance, dailyAllowanceLabel)
+                                    } else {
+                                        stringResource(
+                                            R.string.trip_detail_budget_planned_allowance,
+                                            dailyAllowanceLabel,
+                                        )
+                                    },
+                                style = MaterialTheme.typography.titleSmall,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.onPrimaryContainer,
+                            )
+                            val days = budgetStatus.remainingDays ?: 0
+                            Text(
+                                text =
+                                    if (tripStatus == TripStatus.ACTIVE) {
+                                        stringResource(R.string.trip_detail_budget_days_remaining, days)
+                                    } else {
+                                        stringResource(R.string.trip_detail_budget_total_days, days)
+                                    },
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
+                    }
+                }
+            }
+        }
+    }
 }
 
 private val TRIP_DETAIL_DATE_FORMATTER: DateTimeFormatter =
