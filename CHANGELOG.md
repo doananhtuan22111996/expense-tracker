@@ -2,6 +2,16 @@
 
 ## [Unreleased]
 
+## [3.15.0] - 2026-09-27
+
+### Added
+- Trip Budget & Dynamic Daily Allowance Tracking (PRs #186, #187, #188, #189):
+  - **Schema & Migration (PR #186)**: Room Migration 8 -> 9 adding `budget_amount` column (`INTEGER NULL`) to `trips` table. Pure Kotlin domain model `TripBudgetStatus` calculating spent amount, remaining budget, dynamic daily allowance for active trips, and trip budget pacing (`UNDER_BUDGET`, `ON_TRACK`, `OVER_BUDGET`).
+  - **Budget Creation & Foreign Currency Estimation (PR #187)**: Added `TripBudgetField` to `CreateEditTripScreen` with currency visual transformation and dynamic foreign currency budget equivalent preview (`1 HOME = X FOREIGN`).
+  - **Trip Detail Budget Widget & Allowance Alert (PR #188)**: Added `TripBudgetProgressCard` to `TripDetailScreen` displaying budget progress bar, pacing status pills, over-budget warning banner, and daily spending allowance tile with animated color transitions.
+  - **Portfolio Budget Metrics & Backup Preservation (PR #189)**: Added `ActiveBudgetProgressSection` to `TripPortfolioSummaryCard` on the Trips main tab, `TripBudgetBadge` on `TripRow`, and integrated `budget_amount` into `BackupTripDto` and `BackupValidator` with full round-trip preservation and backward compatibility.
+- Release cut v3.15.0: Bumped `versionName = "3.15.0"` (versionCode `1778962594`) in `app/build.gradle.kts`. Added Fastlane Play Store release notes (`1778962594.txt`, `3150000.txt`).
+
 ## [3.14.0] - 2026-09-20
 
 ### Added

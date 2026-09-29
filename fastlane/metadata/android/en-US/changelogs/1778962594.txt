@@ -1,0 +1,6 @@
+What's new in v3.15:
+
+• Trip Budgeting — Set a total budget for your travels and track spending pacing in real-time.
+• Dynamic Daily Allowance — Live daily spend target that adjusts automatically based on remaining trip days and budget pacing.
+• Trip Budget Insights — Visual budget progress cards on Trip Details, over-budget alerts, and budget badges on your trips list.
+• FX Budget Preview — Live foreign currency budget estimate while setting up your trip.
