@@ -140,11 +140,16 @@ class BackupRepositoryImpl
                 val allTransactions = transactionDao.getAllOrdered()
                 val allCategories = categoryDao.getAll()
                 val categoryMap = allCategories.associate { it.id to it.name }
+                val allTrips = tripDao.getAllList()
+                val tripMap = allTrips.associate { it.id to it }
                 val transactionsWithCategory =
                     allTransactions.map { entity ->
+                        val trip = entity.tripId?.let { tripMap[it] }
                         TransactionWithCategory(
                             transaction = entity,
                             categoryName = categoryMap[entity.categoryId] ?: "Unknown",
+                            tripName = trip?.name,
+                            tripForeignCurrencyCode = trip?.foreignCurrencyCode,
                         )
                     }
                 val writer = csvExporter.export(transactionsWithCategory, outputStream)

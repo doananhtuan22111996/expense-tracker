@@ -800,8 +800,13 @@
     <string name="trip_detail_transactions_empty">No transactions yet</string>
     <string name="trip_gone_message">This trip no longer exists</string>
     <string name="trip_detail_edit">Edit trip</string>
+    <string name="trip_detail_export_csv">Export to CSV</string>
+    <string name="trip_detail_share_summary">Share summary</string>
     <string name="trip_detail_delete">Delete trip</string>
     <string name="trip_detail_revert">Revert to category</string>
+    <string name="trip_csv_exported_successfully">Trip exported to CSV successfully</string>
+    <string name="trip_csv_export_failed">Failed to export trip to CSV: %1$s</string>
+    <string name="trip_summary_copied">Trip summary copied to clipboard</string>
     <string name="trip_delete_dialog_title">Delete trip?</string>
     <string name="trip_delete_dialog_body">All transactions will be untagged from this trip. This cannot be undone.</string>
     <string name="trip_revert_dialog_title">Revert to category?</string>

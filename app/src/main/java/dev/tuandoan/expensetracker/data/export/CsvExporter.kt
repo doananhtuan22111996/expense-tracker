@@ -1,19 +1,27 @@
 package dev.tuandoan.expensetracker.data.export
 
+import dev.tuandoan.expensetracker.core.formatter.CurrencyFormatter
 import dev.tuandoan.expensetracker.data.database.entity.GoldHoldingEntity
 import dev.tuandoan.expensetracker.data.database.entity.GoldPriceEntity
 import dev.tuandoan.expensetracker.data.database.entity.TransactionEntity
+import dev.tuandoan.expensetracker.domain.model.CategoryTotal
 import dev.tuandoan.expensetracker.domain.model.SupportedCurrencies
+import dev.tuandoan.expensetracker.domain.model.Transaction
+import dev.tuandoan.expensetracker.domain.model.Trip
 import java.io.BufferedWriter
 import java.io.OutputStream
 import java.time.Instant
+import java.time.LocalDate
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
+import java.time.format.FormatStyle
 import javax.inject.Inject
 
 data class TransactionWithCategory(
     val transaction: TransactionEntity,
     val categoryName: String,
+    val tripName: String? = null,
+    val tripForeignCurrencyCode: String? = null,
 )
 
 class CsvExporter
@@ -31,7 +39,7 @@ class CsvExporter
             val writer = outputStream.bufferedWriter(Charsets.UTF_8)
             val dateFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd")
 
-            writer.write("Date,Type,Amount,Currency,Category,Note")
+            writer.write("Date,Type,Amount,Currency,Category,Note,Trip,Foreign Amount,Foreign Currency")
             writer.newLine()
 
             for (twc in transactions) {
@@ -45,12 +53,124 @@ class CsvExporter
                 val plainAmount = formatPlainAmount(t.amount, t.currencyCode)
                 val category = escapeCsvField(twc.categoryName)
                 val note = escapeCsvField(t.note ?: "")
+                val trip = twc.tripName?.let { escapeCsvField(it) } ?: ""
+                val foreignAmount =
+                    t.amountForeignMinor?.let {
+                        formatPlainAmount(it, twc.tripForeignCurrencyCode ?: t.currencyCode)
+                    } ?: ""
+                val foreignCurrency = if (t.amountForeignMinor != null) (twc.tripForeignCurrencyCode ?: "") else ""
 
-                writer.write("$date,$type,$plainAmount,${t.currencyCode},$category,$note")
+                writer.write(
+                    "$date,$type,$plainAmount,${t.currencyCode},$category,$note,$trip,$foreignAmount,$foreignCurrency",
+                )
                 writer.newLine()
             }
             writer.flush()
             return writer
+        }
+
+        fun exportTrip(
+            trip: Trip,
+            transactions: List<Transaction>,
+            outputStream: OutputStream,
+        ): BufferedWriter {
+            // UTF-8 BOM for Excel compatibility
+            outputStream.write(byteArrayOf(0xEF.toByte(), 0xBB.toByte(), 0xBF.toByte()))
+
+            val writer = outputStream.bufferedWriter(Charsets.UTF_8)
+            val dateFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd")
+
+            writer.write("Date,Category,Amount,Currency,Foreign Amount,Foreign Currency,FX Rate,Note")
+            writer.newLine()
+
+            val sortedTransactions = transactions.sortedBy { it.timestamp }
+            for (t in sortedTransactions) {
+                val date =
+                    Instant
+                        .ofEpochMilli(t.timestamp)
+                        .atZone(zoneId)
+                        .format(dateFormatter)
+                val category = escapeCsvField(t.category.name)
+                val plainAmount = formatPlainAmount(t.amount, t.currencyCode)
+                val foreignAmount =
+                    t.amountForeignMinor?.let {
+                        formatPlainAmount(it, trip.foreignCurrencyCode ?: t.currencyCode)
+                    } ?: ""
+                val foreignCurrency = if (t.amountForeignMinor != null) (trip.foreignCurrencyCode ?: "") else ""
+                val fxRate = if (t.amountForeignMinor != null) (trip.foreignToHomeRate?.toString() ?: "") else ""
+                val note = escapeCsvField(t.note ?: "")
+
+                writer.write(
+                    "$date,$category,$plainAmount,${t.currencyCode},$foreignAmount,$foreignCurrency,$fxRate,$note",
+                )
+                writer.newLine()
+            }
+            writer.flush()
+            return writer
+        }
+
+        fun formatTripSummaryText(
+            trip: Trip,
+            totalLabel: String?,
+            dailyAvgLabel: String?,
+            transactionCount: Int,
+            categoryTotals: List<CategoryTotal>,
+            currencyFormatter: CurrencyFormatter? = null,
+            currencyCode: String? = null,
+            dateFormatter: DateTimeFormatter = DateTimeFormatter.ofLocalizedDate(FormatStyle.MEDIUM),
+        ): String {
+            val startDateStr = LocalDate.ofEpochDay(trip.startDateEpochDay).format(dateFormatter)
+            val endDateStr = LocalDate.ofEpochDay(trip.endDateEpochDay).format(dateFormatter)
+            val sb = StringBuilder()
+            if (trip.destination.isNullOrBlank()) {
+                sb.appendLine("Trip: ${trip.name}")
+            } else {
+                sb.appendLine("Trip: ${trip.name} (${trip.destination})")
+            }
+            sb.appendLine("Dates: $startDateStr – $endDateStr")
+            sb.appendLine("Total Spent: ${totalLabel ?: "0"}")
+            if (dailyAvgLabel != null) {
+                sb.appendLine("Daily Average: $dailyAvgLabel")
+            }
+            sb.appendLine("Transactions: $transactionCount")
+
+            if (categoryTotals.isNotEmpty()) {
+                sb.appendLine()
+                sb.appendLine("Top Categories:")
+                val totalAmount = categoryTotals.sumOf { it.total }
+                categoryTotals.take(5).forEach { item ->
+                    val percentage =
+                        if (totalAmount > 0) {
+                            Math.round((item.total.toDouble() / totalAmount) * 100).toInt()
+                        } else {
+                            0
+                        }
+                    val formattedAmount =
+                        if (currencyFormatter != null && currencyCode != null) {
+                            currencyFormatter.format(item.total, currencyCode)
+                        } else {
+                            formatPlainAmount(item.total, SupportedCurrencies.default().code)
+                        }
+                    sb.appendLine("• ${item.category.name}: $formattedAmount ($percentage%)")
+                }
+                if (categoryTotals.size > 5) {
+                    val remainingSum = categoryTotals.drop(5).sumOf { it.total }
+                    val remainingPercentage =
+                        if (totalAmount > 0) {
+                            Math.round((remainingSum.toDouble() / totalAmount) * 100).toInt()
+                        } else {
+                            0
+                        }
+                    val formattedRemaining =
+                        if (currencyFormatter != null && currencyCode != null) {
+                            currencyFormatter.format(remainingSum, currencyCode)
+                        } else {
+                            formatPlainAmount(remainingSum, SupportedCurrencies.default().code)
+                        }
+                    sb.appendLine("• Other: $formattedRemaining ($remainingPercentage%)")
+                }
+            }
+            return sb.toString().trimEnd()
         }
 
         fun exportGoldHoldings(
