@@ -11,6 +11,7 @@ import dev.tuandoan.expensetracker.data.backup.BackupCrypto
 import dev.tuandoan.expensetracker.data.backup.BackupCryptoException
 import dev.tuandoan.expensetracker.data.preferences.AnalyticsPreferences
 import dev.tuandoan.expensetracker.data.preferences.BackupEncryptionPreferences
+import dev.tuandoan.expensetracker.data.preferences.SecurityPreferences
 import dev.tuandoan.expensetracker.data.preferences.ThemePreference
 import dev.tuandoan.expensetracker.data.preferences.ThemePreferencesRepository
 import dev.tuandoan.expensetracker.di.IoDispatcher
@@ -56,8 +57,9 @@ class SettingsViewModel
         private val analyticsPreferences: AnalyticsPreferences,
         private val budgetAlertPreferences: BudgetAlertPreferences,
         private val backupEncryptionPreferences: BackupEncryptionPreferences,
+        private val securityPreferences: SecurityPreferences,
         private val crashReporter: CrashReporter,
-        @IoDispatcher private val ioDispatcher: CoroutineDispatcher,
+        @param:IoDispatcher private val ioDispatcher: CoroutineDispatcher,
         pinnedCategoriesUseCase: PinnedCategoriesUseCase,
     ) : ViewModel() {
         private val _uiState = MutableStateFlow(SettingsUiState())
@@ -129,6 +131,39 @@ class SettingsViewModel
             pinnedCategoriesUseCase()
                 .map { slots -> slots.count { it is PinnedCategorySlot.Filled } }
                 .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000L), 0)
+
+        /** Whether biometric lock is enabled (v3.16.0, ADR-018). */
+        val biometricLockEnabled: StateFlow<Boolean> =
+            securityPreferences.isBiometricEnabled
+                .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000L), false)
+
+        /** Auto-lock duration threshold in milliseconds. */
+        val autoLockTimeoutMs: StateFlow<Long> =
+            securityPreferences.autoLockTimeoutMs
+                .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000L), SecurityPreferences.TIMEOUT_IMMEDIATELY)
+
+        /** Whether app preview is hidden in recents (FLAG_SECURE). */
+        val hideInRecentsEnabled: StateFlow<Boolean> =
+            securityPreferences.isHideInRecentsEnabled
+                .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000L), false)
+
+        fun setBiometricLockEnabled(enabled: Boolean) {
+            viewModelScope.launch {
+                securityPreferences.setBiometricEnabled(enabled)
+            }
+        }
+
+        fun setAutoLockTimeout(timeoutMs: Long) {
+            viewModelScope.launch {
+                securityPreferences.setAutoLockTimeoutMs(timeoutMs)
+            }
+        }
+
+        fun setHideInRecents(enabled: Boolean) {
+            viewModelScope.launch {
+                securityPreferences.setHideInRecentsEnabled(enabled)
+            }
+        }
 
         init {
             observeDefaultCurrency()

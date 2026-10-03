@@ -57,6 +57,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -69,6 +70,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
+import androidx.fragment.app.FragmentActivity
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
@@ -77,13 +79,19 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import dev.tuandoan.expensetracker.R
 import dev.tuandoan.expensetracker.core.util.AppInfo
 import dev.tuandoan.expensetracker.core.util.TapCounter
+import dev.tuandoan.expensetracker.data.preferences.SecurityPreferences
 import dev.tuandoan.expensetracker.data.preferences.ThemePreference
 import dev.tuandoan.expensetracker.domain.model.CurrencyDefinition
 import dev.tuandoan.expensetracker.domain.model.SupportedCurrencies
+import dev.tuandoan.expensetracker.domain.security.BiometricAuthHelper
+import dev.tuandoan.expensetracker.domain.security.BiometricAuthHelperImpl
+import dev.tuandoan.expensetracker.domain.security.BiometricAuthResult
+import dev.tuandoan.expensetracker.domain.security.BiometricStatus
 import dev.tuandoan.expensetracker.ui.component.PasswordDialog
 import dev.tuandoan.expensetracker.ui.component.SectionTitle
 import dev.tuandoan.expensetracker.ui.theme.DesignSystemElevation
 import dev.tuandoan.expensetracker.ui.theme.DesignSystemSpacing
+import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -98,6 +106,7 @@ fun SettingsScreen(
     onNavigateToWidgetCategories: () -> Unit = {},
     onNavigateToDebugPanel: () -> Unit = {},
     bottomContentPadding: Dp = 0.dp,
+    biometricAuthHelper: BiometricAuthHelper = remember { BiometricAuthHelperImpl() },
     viewModel: SettingsViewModel = hiltViewModel(),
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
@@ -108,12 +117,70 @@ fun SettingsScreen(
     val analyticsEventsConsent by viewModel.analyticsEventsConsent.collectAsStateWithLifecycle()
     val budgetAlertsEnabled by viewModel.budgetAlertsEnabled.collectAsStateWithLifecycle()
     val encryptBackupsEnabled by viewModel.encryptBackupsEnabled.collectAsStateWithLifecycle()
+    val biometricLockEnabled by viewModel.biometricLockEnabled.collectAsStateWithLifecycle()
+    val autoLockTimeoutMs by viewModel.autoLockTimeoutMs.collectAsStateWithLifecycle()
+    val hideInRecentsEnabled by viewModel.hideInRecentsEnabled.collectAsStateWithLifecycle()
     var showCurrencyDialog by remember { mutableStateOf(false) }
     var showFeedbackSheet by remember { mutableStateOf(false) }
     var showPermissionRationale by remember { mutableStateOf(false) }
     val context = LocalContext.current
     var hasNotificationPermission by remember { mutableStateOf(checkNotificationPermission(context)) }
     val snackbarHostState = remember { SnackbarHostState() }
+    val coroutineScope = rememberCoroutineScope()
+
+    val fragmentActivity =
+        remember(context) {
+            var ctx = context
+            while (ctx is ContextWrapper) {
+                if (ctx is FragmentActivity) break
+                ctx = ctx.baseContext
+            }
+            ctx as? FragmentActivity
+        }
+
+    val enableBiometricTitle = stringResource(R.string.security_enable_biometric_title)
+    val enableBiometricSubtitle = stringResource(R.string.security_enable_biometric_subtitle)
+    val disableBiometricTitle = stringResource(R.string.security_disable_biometric_title)
+    val disableBiometricSubtitle = stringResource(R.string.security_disable_biometric_subtitle)
+    val biometricNotAvailableMsg = stringResource(R.string.security_biometric_not_available)
+    val authFailedMsg = stringResource(R.string.security_auth_failed)
+
+    val onToggleBiometricLock: (Boolean) -> Unit = { targetEnabled ->
+        if (fragmentActivity == null) {
+            coroutineScope.launch {
+                snackbarHostState.showSnackbar(biometricNotAvailableMsg)
+            }
+        } else {
+            val status = biometricAuthHelper.canAuthenticate(fragmentActivity)
+            if (status != BiometricStatus.AVAILABLE) {
+                coroutineScope.launch {
+                    snackbarHostState.showSnackbar(biometricNotAvailableMsg)
+                }
+            } else {
+                val title = if (targetEnabled) enableBiometricTitle else disableBiometricTitle
+                val subtitle = if (targetEnabled) enableBiometricSubtitle else disableBiometricSubtitle
+                biometricAuthHelper.authenticate(
+                    activity = fragmentActivity,
+                    title = title,
+                    subtitle = subtitle,
+                ) { result ->
+                    when (result) {
+                        is BiometricAuthResult.Success -> {
+                            viewModel.setBiometricLockEnabled(targetEnabled)
+                        }
+                        is BiometricAuthResult.Failed -> {
+                            coroutineScope.launch {
+                                snackbarHostState.showSnackbar(authFailedMsg)
+                            }
+                        }
+                        is BiometricAuthResult.Error -> {
+                            // Canceled or prompt error: retain current toggle state
+                        }
+                    }
+                }
+            }
+        }
+    }
 
     // Re-check permission when returning from system settings.
     // If permission was revoked while alerts were enabled, disable them to stay in sync.
@@ -777,6 +844,125 @@ fun SettingsScreen(
                             bottom = DesignSystemSpacing.large,
                         ),
                 )
+            }
+
+            // Security Section (v3.16.0, ADR-018)
+            SettingsSection(title = stringResource(R.string.settings_security)) {
+                // App Lock Toggle
+                val appLockA11y = stringResource(R.string.settings_biometric_lock_title)
+                Row(
+                    modifier =
+                        Modifier
+                            .fillMaxWidth()
+                            .clickable { onToggleBiometricLock(!biometricLockEnabled) }
+                            .padding(DesignSystemSpacing.large)
+                            .semantics {
+                                contentDescription = appLockA11y
+                            },
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = stringResource(R.string.settings_biometric_lock_title),
+                            style = MaterialTheme.typography.bodyLarge,
+                            fontWeight = FontWeight.Medium,
+                            color = MaterialTheme.colorScheme.onSurface,
+                        )
+                        Text(
+                            text = stringResource(R.string.settings_biometric_lock_subtitle),
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.padding(top = DesignSystemSpacing.xs),
+                        )
+                    }
+                    Switch(
+                        checked = biometricLockEnabled,
+                        onCheckedChange = { onToggleBiometricLock(it) },
+                    )
+                }
+
+                if (biometricLockEnabled) {
+                    HorizontalDivider()
+
+                    // Auto-lock timeout picker
+                    Column(
+                        modifier =
+                            Modifier
+                                .fillMaxWidth()
+                                .padding(DesignSystemSpacing.large),
+                    ) {
+                        Text(
+                            text = stringResource(R.string.settings_auto_lock_title),
+                            style = MaterialTheme.typography.bodyLarge,
+                            fontWeight = FontWeight.Medium,
+                            color = MaterialTheme.colorScheme.onSurface,
+                            modifier = Modifier.padding(bottom = DesignSystemSpacing.small),
+                        )
+
+                        val timeoutOptions =
+                            listOf(
+                                SecurityPreferences.TIMEOUT_IMMEDIATELY to
+                                    stringResource(R.string.settings_auto_lock_immediately),
+                                SecurityPreferences.TIMEOUT_ONE_MINUTE to
+                                    stringResource(R.string.settings_auto_lock_1_minute),
+                                SecurityPreferences.TIMEOUT_FIVE_MINUTES to
+                                    stringResource(R.string.settings_auto_lock_5_minutes),
+                            )
+
+                        SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
+                            timeoutOptions.forEachIndexed { index, (timeout, label) ->
+                                SegmentedButton(
+                                    selected = autoLockTimeoutMs == timeout,
+                                    onClick = { viewModel.setAutoLockTimeout(timeout) },
+                                    shape =
+                                        SegmentedButtonDefaults.itemShape(
+                                            index = index,
+                                            count = timeoutOptions.size,
+                                        ),
+                                ) {
+                                    Text(text = label)
+                                }
+                            }
+                        }
+                    }
+
+                    HorizontalDivider()
+
+                    // Hide in App Switcher (FLAG_SECURE)
+                    val hideRecentsA11y = stringResource(R.string.settings_hide_recents_title)
+                    Row(
+                        modifier =
+                            Modifier
+                                .fillMaxWidth()
+                                .clickable { viewModel.setHideInRecents(!hideInRecentsEnabled) }
+                                .padding(DesignSystemSpacing.large)
+                                .semantics {
+                                    contentDescription = hideRecentsA11y
+                                },
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = stringResource(R.string.settings_hide_recents_title),
+                                style = MaterialTheme.typography.bodyLarge,
+                                fontWeight = FontWeight.Medium,
+                                color = MaterialTheme.colorScheme.onSurface,
+                            )
+                            Text(
+                                text = stringResource(R.string.settings_hide_recents_subtitle),
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.padding(top = DesignSystemSpacing.xs),
+                            )
+                        }
+                        Switch(
+                            checked = hideInRecentsEnabled,
+                            onCheckedChange = { viewModel.setHideInRecents(it) },
+                        )
+                    }
+                }
             }
 
             // Feedback Section

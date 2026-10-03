@@ -441,6 +441,28 @@
     <string name="settings_backup_warning_title">Don\'t forget this password</string>
     <string name="settings_backup_warning_message">Encrypted backups can only be restored with the exact password you set. If you forget it, there is no recovery — your data in that backup is gone forever. Only turn this on if you\'re comfortable keeping a password safe.</string>
     <string name="settings_backup_warning_confirm">I understand</string>
+
+    <!-- Security (v3.16.0) -->
+    <string name="settings_security">Security</string>
+    <string name="settings_biometric_lock_title">App Lock</string>
+    <string name="settings_biometric_lock_subtitle">Require biometric or device credential to open</string>
+    <string name="settings_auto_lock_title">Auto-lock</string>
+    <string name="settings_auto_lock_immediately">Immediately</string>
+    <string name="settings_auto_lock_1_minute">1 minute</string>
+    <string name="settings_auto_lock_5_minutes">5 minutes</string>
+    <string name="settings_hide_recents_title">Hide in App Switcher</string>
+    <string name="settings_hide_recents_subtitle">Block screenshots and previews in recent apps</string>
+    <string name="security_unlock_title">Unlock Expense Tracker</string>
+    <string name="security_unlock_subtitle">Authenticate to access your finances</string>
+    <string name="security_enable_biometric_title">Enable App Lock</string>
+    <string name="security_enable_biometric_subtitle">Confirm your biometric or device credential to turn on App Lock</string>
+    <string name="security_disable_biometric_title">Disable App Lock</string>
+    <string name="security_disable_biometric_subtitle">Confirm your biometric or device credential to turn off App Lock</string>
+    <string name="security_unlock_button">Unlock</string>
+    <string name="security_locked_description">Expense Tracker is locked</string>
+    <string name="security_biometric_not_available">Screen lock or biometric is not set up on this device. Please set up a screen lock in Android Settings.</string>
+    <string name="security_auth_failed">Authentication failed. Please try again.</string>
+
     <string name="settings_app_information">App Information</string>
     <string name="settings_version">Version</string>
     <string name="settings_contact_email">Contact Email</string>

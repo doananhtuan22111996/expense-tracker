@@ -11,6 +11,7 @@ import dev.tuandoan.expensetracker.data.preferences.BackupEncryptionPreferences
 import dev.tuandoan.expensetracker.data.preferences.FakeBudgetAlertPreferences
 import dev.tuandoan.expensetracker.data.preferences.FakeThemePreferencesRepository
 import dev.tuandoan.expensetracker.data.preferences.FakeWidgetCategoryPreferences
+import dev.tuandoan.expensetracker.data.preferences.SecurityPreferences
 import dev.tuandoan.expensetracker.data.preferences.ThemePreference
 import dev.tuandoan.expensetracker.domain.crash.NoOpCrashReporter
 import dev.tuandoan.expensetracker.domain.model.Category
@@ -24,6 +25,7 @@ import dev.tuandoan.expensetracker.domain.repository.RecurringTransactionReposit
 import dev.tuandoan.expensetracker.domain.widget.PinnedCategoriesUseCase
 import dev.tuandoan.expensetracker.testutil.FakeAnalyticsPreferences
 import dev.tuandoan.expensetracker.testutil.FakeCurrencyPreferenceRepository
+import dev.tuandoan.expensetracker.testutil.FakeSecurityPreferences
 import dev.tuandoan.expensetracker.testutil.MainDispatcherRule
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
@@ -55,6 +57,7 @@ class SettingsViewModelTest {
     private lateinit var fakeAnalyticsPrefs: FakeAnalyticsPreferences
     private lateinit var fakeBudgetAlertPrefs: FakeBudgetAlertPreferences
     private lateinit var fakeBackupEncryptionPrefs: FakeBackupEncryptionPreferences
+    private lateinit var fakeSecurityPrefs: FakeSecurityPreferences
     private lateinit var mockContentResolver: ContentResolver
     private lateinit var mockUri: Uri
 
@@ -67,6 +70,7 @@ class SettingsViewModelTest {
         fakeAnalyticsPrefs = FakeAnalyticsPreferences()
         fakeBudgetAlertPrefs = FakeBudgetAlertPreferences()
         fakeBackupEncryptionPrefs = FakeBackupEncryptionPreferences()
+        fakeSecurityPrefs = FakeSecurityPreferences()
         // Most tests don't care about the forgotten-password warning gate — they
         // toggle encryption on to exercise the downstream export flow. Pre-seed
         // "acknowledged" so setEncryptBackupsEnabled(true) persists immediately.
@@ -92,6 +96,7 @@ class SettingsViewModelTest {
             fakeAnalyticsPrefs,
             fakeBudgetAlertPrefs,
             fakeBackupEncryptionPrefs,
+            fakeSecurityPrefs,
             NoOpCrashReporter(),
             mainDispatcherRule.testDispatcher,
             PinnedCategoriesUseCase(widgetPrefs, emptyCategoryRepo),
@@ -1252,6 +1257,65 @@ class SettingsViewModelTest {
             advanceUntilIdle()
 
             assertEquals(false, viewModel.budgetAlertsEnabled.value)
+            collectJob.cancel()
+        }
+
+    // --- Security tests (v3.16.0, ADR-018) ---
+
+    @Test
+    fun biometricLockEnabled_reflectsPreference() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            val viewModel = createViewModel()
+            val collectJob =
+                backgroundScope.launch {
+                    viewModel.biometricLockEnabled.collect {}
+                }
+            advanceUntilIdle()
+
+            assertEquals(false, viewModel.biometricLockEnabled.value)
+
+            viewModel.setBiometricLockEnabled(true)
+            advanceUntilIdle()
+            assertEquals(true, viewModel.biometricLockEnabled.value)
+
+            collectJob.cancel()
+        }
+
+    @Test
+    fun autoLockTimeoutMs_reflectsPreference() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            val viewModel = createViewModel()
+            val collectJob =
+                backgroundScope.launch {
+                    viewModel.autoLockTimeoutMs.collect {}
+                }
+            advanceUntilIdle()
+
+            assertEquals(SecurityPreferences.TIMEOUT_IMMEDIATELY, viewModel.autoLockTimeoutMs.value)
+
+            viewModel.setAutoLockTimeout(SecurityPreferences.TIMEOUT_FIVE_MINUTES)
+            advanceUntilIdle()
+            assertEquals(SecurityPreferences.TIMEOUT_FIVE_MINUTES, viewModel.autoLockTimeoutMs.value)
+
+            collectJob.cancel()
+        }
+
+    @Test
+    fun hideInRecentsEnabled_reflectsPreference() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            val viewModel = createViewModel()
+            val collectJob =
+                backgroundScope.launch {
+                    viewModel.hideInRecentsEnabled.collect {}
+                }
+            advanceUntilIdle()
+
+            assertEquals(false, viewModel.hideInRecentsEnabled.value)
+
+            viewModel.setHideInRecents(true)
+            advanceUntilIdle()
+            assertEquals(true, viewModel.hideInRecentsEnabled.value)
+
             collectJob.cancel()
         }
 
