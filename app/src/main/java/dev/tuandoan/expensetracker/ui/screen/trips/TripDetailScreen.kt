@@ -97,7 +97,7 @@ fun TripDetailScreen(
     val tripGoneMessage = stringResource(R.string.trip_gone_message)
     val clipboardManager = LocalClipboardManager.current
     val coroutineScope = rememberCoroutineScope()
-    val defaultCsvFileName = "trip_${uiState.trip?.name?.replace(Regex("[^a-zA-Z0-9_-]"), "_") ?: "export"}.csv"
+    val defaultCsvFileName = "trip_${uiState.trip?.name?.replace(Regex("[^\\p{L}0-9_-]"), "_") ?: "export"}.csv"
     val csvLauncher =
         rememberLauncherForActivityResult(
             contract = ActivityResultContracts.CreateDocument("text/csv"),
