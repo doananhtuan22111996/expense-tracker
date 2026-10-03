@@ -17,6 +17,10 @@ class RecurrenceScheduler
     constructor(
         private val timeProvider: TimeProvider,
     ) {
+        companion object {
+            const val MAX_CATCHUP_CYCLES = 24
+        }
+
         fun calculateNextDue(
             frequency: RecurrenceFrequency,
             currentDueMillis: Long,
@@ -43,12 +47,17 @@ class RecurrenceScheduler
 
         /**
          * Materializes every due recurring item into a real transaction row and
-         * advances its `nextDueMillis`. Returns the [TransactionType] of each
-         * inserted transaction, in insertion order — callers (e.g. the repository
-         * impl) use this to emit one analytics `transaction_added` event per
-         * materialized transaction with `source = RECURRING` (T5.4). Orphaned
-         * items (categoryId == null) are skipped — their types do NOT appear in
-         * the returned list because no transaction is inserted.
+         * advances its `nextDueMillis`. If an item was missed across multiple cycles
+         * (e.g. app kept closed or device offline for several months), it catches up
+         * all missed occurrences up to `now`, capped at [MAX_CATCHUP_CYCLES] to prevent
+         * unbounded batch flooding.
+         *
+         * Returns the [TransactionType] of each inserted transaction, in insertion order —
+         * callers (e.g. the repository impl) use this to emit one analytics
+         * `transaction_added` event per materialized transaction with `source = RECURRING` (T5.4).
+         * Orphaned items (categoryId == null) are skipped — their types do NOT appear in
+         * the returned list because no transaction is inserted, but their `nextDueMillis`
+         * is still advanced to prevent infinite re-processing.
          */
         suspend fun processDueRecurring(
             recurringDao: RecurringTransactionDao,
@@ -64,25 +73,33 @@ class RecurrenceScheduler
             transactionRunner.runInTransaction {
                 for (item in dueItems) {
                     val frequency = RecurrenceFrequency.fromInt(item.frequency)
-                    // Only create transaction if category exists; skip orphaned items
                     val categoryId = item.categoryId
-                    if (categoryId != null) {
-                        transactionDao.insert(
-                            TransactionEntity(
-                                type = item.type,
-                                amount = item.amount,
-                                currencyCode = item.currencyCode,
-                                categoryId = categoryId,
-                                note = item.note,
-                                timestamp = item.nextDueMillis,
-                                createdAt = now,
-                                updatedAt = now,
-                            ),
-                        )
-                        insertedTypes.add(TransactionType.fromInt(item.type))
+                    var cyclesProcessed = 0
+                    var nextDue = item.nextDueMillis
+
+                    while (nextDue <= now && cyclesProcessed < MAX_CATCHUP_CYCLES) {
+                        // Only create transaction if category exists; skip orphaned items
+                        if (categoryId != null) {
+                            transactionDao.insert(
+                                TransactionEntity(
+                                    type = item.type,
+                                    amount = item.amount,
+                                    currencyCode = item.currencyCode,
+                                    categoryId = categoryId,
+                                    note = item.note,
+                                    timestamp = nextDue,
+                                    createdAt = now,
+                                    updatedAt = now,
+                                ),
+                            )
+                            insertedTypes.add(TransactionType.fromInt(item.type))
+                        }
+                        val advanced = calculateNextDue(frequency, nextDue, zoneId)
+                        if (advanced <= nextDue) break
+                        nextDue = advanced
+                        cyclesProcessed++
                     }
                     // Always advance next due date to prevent infinite re-processing
-                    val nextDue = calculateNextDue(frequency, item.nextDueMillis, zoneId)
                     recurringDao.updateNextDue(item.id, nextDue, now)
                 }
             }

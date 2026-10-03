@@ -345,6 +345,134 @@ class RecurrenceSchedulerTest {
             assertEquals(2, fakeRecurringDao.updatedNextDues.size)
         }
 
+    // -- Multi-Cycle Catchup Tests (ADR-019) --
+
+    @Test
+    fun processDueRecurring_multiCycleCatchup_missedThreeMonths_insertsThreeTransactions() =
+        runTest {
+            val jan15 = ZonedDateTime.of(2026, 1, 15, 10, 0, 0, 0, zoneId).toInstant().toEpochMilli()
+            val feb15 = ZonedDateTime.of(2026, 2, 15, 10, 0, 0, 0, zoneId).toInstant().toEpochMilli()
+            val mar15 = ZonedDateTime.of(2026, 3, 15, 10, 0, 0, 0, zoneId).toInstant().toEpochMilli()
+            val apr10 = ZonedDateTime.of(2026, 4, 10, 10, 0, 0, 0, zoneId).toInstant().toEpochMilli()
+            val apr15 = ZonedDateTime.of(2026, 4, 15, 10, 0, 0, 0, zoneId).toInstant().toEpochMilli()
+
+            fakeTimeProvider.setCurrentMillis(apr10) // App opened on April 10th
+
+            val fakeRecurringDao = FakeRecurringTransactionDao()
+            val fakeTransactionDao = FakeTransactionDao()
+            val fakeRunner = FakeTransactionRunner()
+
+            fakeRecurringDao.dueItems.add(
+                sampleDue(id = 1L, type = 0, due = jan15, categoryId = 10L),
+            )
+
+            val result =
+                scheduler.processDueRecurring(
+                    fakeRecurringDao,
+                    fakeTransactionDao,
+                    fakeRunner,
+                    zoneId,
+                )
+
+            // Should catch up Jan 15, Feb 15, and Mar 15 (Apr 15 is not due yet)
+            assertEquals(3, result.size)
+            assertEquals(listOf(TransactionType.EXPENSE, TransactionType.EXPENSE, TransactionType.EXPENSE), result)
+            assertEquals(3, fakeTransactionDao.inserted.size)
+            assertEquals(jan15, fakeTransactionDao.inserted[0].timestamp)
+            assertEquals(feb15, fakeTransactionDao.inserted[1].timestamp)
+            assertEquals(mar15, fakeTransactionDao.inserted[2].timestamp)
+
+            // Next due date advanced to April 15th
+            assertEquals(1, fakeRecurringDao.updatedNextDues.size)
+            assertEquals(1L, fakeRecurringDao.updatedNextDues[0].first)
+            assertEquals(apr15, fakeRecurringDao.updatedNextDues[0].second)
+            assertEquals(apr10, fakeRecurringDao.updatedNextDues[0].third)
+        }
+
+    @Test
+    fun processDueRecurring_multiCycleCatchup_capsAtMaxCatchupCycles() =
+        runTest {
+            val baseDue = ZonedDateTime.of(2026, 1, 1, 0, 0, 0, 0, zoneId).toInstant().toEpochMilli()
+            // 30 days later
+            val now = ZonedDateTime.of(2026, 1, 31, 0, 0, 0, 0, zoneId).toInstant().toEpochMilli()
+
+            fakeTimeProvider.setCurrentMillis(now)
+
+            val fakeRecurringDao = FakeRecurringTransactionDao()
+            val fakeTransactionDao = FakeTransactionDao()
+            val fakeRunner = FakeTransactionRunner()
+
+            val dailyItem =
+                RecurringTransactionEntity(
+                    id = 1L,
+                    type = 1,
+                    amount = 20_000L,
+                    currencyCode = "VND",
+                    categoryId = 2L,
+                    note = "Daily",
+                    frequency = RecurrenceFrequency.DAILY.toInt(),
+                    dayOfMonth = null,
+                    dayOfWeek = null,
+                    nextDueMillis = baseDue,
+                    isActive = true,
+                    createdAt = baseDue,
+                    updatedAt = baseDue,
+                )
+            fakeRecurringDao.dueItems.add(dailyItem)
+
+            val result =
+                scheduler.processDueRecurring(
+                    fakeRecurringDao,
+                    fakeTransactionDao,
+                    fakeRunner,
+                    zoneId,
+                )
+
+            // Capped at MAX_CATCHUP_CYCLES = 24
+            assertEquals(RecurrenceScheduler.MAX_CATCHUP_CYCLES, result.size)
+            assertEquals(RecurrenceScheduler.MAX_CATCHUP_CYCLES, fakeTransactionDao.inserted.size)
+
+            // Advanced by exactly 24 days
+            val expectedNextDue = ZonedDateTime.of(2026, 1, 25, 0, 0, 0, 0, zoneId).toInstant().toEpochMilli()
+            assertEquals(1, fakeRecurringDao.updatedNextDues.size)
+            assertEquals(expectedNextDue, fakeRecurringDao.updatedNextDues[0].second)
+        }
+
+    @Test
+    fun processDueRecurring_multiCycleCatchup_orphanedItem_advancesWithoutInserting() =
+        runTest {
+            val jan15 = ZonedDateTime.of(2026, 1, 15, 10, 0, 0, 0, zoneId).toInstant().toEpochMilli()
+            val apr10 = ZonedDateTime.of(2026, 4, 10, 10, 0, 0, 0, zoneId).toInstant().toEpochMilli()
+            val apr15 = ZonedDateTime.of(2026, 4, 15, 10, 0, 0, 0, zoneId).toInstant().toEpochMilli()
+
+            fakeTimeProvider.setCurrentMillis(apr10)
+
+            val fakeRecurringDao = FakeRecurringTransactionDao()
+            val fakeTransactionDao = FakeTransactionDao()
+            val fakeRunner = FakeTransactionRunner()
+
+            // Orphaned item (categoryId = null)
+            fakeRecurringDao.dueItems.add(
+                sampleDue(id = 99L, type = 0, due = jan15, categoryId = null),
+            )
+
+            val result =
+                scheduler.processDueRecurring(
+                    fakeRecurringDao,
+                    fakeTransactionDao,
+                    fakeRunner,
+                    zoneId,
+                )
+
+            // No transactions inserted, empty return list
+            assertEquals(0, result.size)
+            assertEquals(0, fakeTransactionDao.inserted.size)
+
+            // Still advances nextDue to April 15th
+            assertEquals(1, fakeRecurringDao.updatedNextDues.size)
+            assertEquals(apr15, fakeRecurringDao.updatedNextDues[0].second)
+        }
+
     private fun sampleDue(
         id: Long,
         type: Int,
