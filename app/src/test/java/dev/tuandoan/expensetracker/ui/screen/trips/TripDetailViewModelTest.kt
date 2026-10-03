@@ -1,8 +1,13 @@
 package dev.tuandoan.expensetracker.ui.screen.trips
 
+import android.content.ContentResolver
+import android.net.Uri
 import androidx.lifecycle.SavedStateHandle
+import dev.tuandoan.expensetracker.R
+import dev.tuandoan.expensetracker.core.util.UiText
 import dev.tuandoan.expensetracker.data.database.entity.DailyTotalRow
 import dev.tuandoan.expensetracker.data.database.entity.TripCategorySumRow
+import dev.tuandoan.expensetracker.data.export.CsvExporter
 import dev.tuandoan.expensetracker.domain.model.BudgetStatusLevel
 import dev.tuandoan.expensetracker.domain.model.Category
 import dev.tuandoan.expensetracker.domain.model.CategoryWithCount
@@ -15,6 +20,7 @@ import dev.tuandoan.expensetracker.domain.repository.CategoryRepository
 import dev.tuandoan.expensetracker.domain.repository.CurrencyPreferenceRepository
 import dev.tuandoan.expensetracker.domain.repository.TripRepository
 import dev.tuandoan.expensetracker.testutil.MainDispatcherRule
+import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -23,10 +29,14 @@ import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
+import org.mockito.Mockito
+import java.io.ByteArrayOutputStream
 import java.time.Clock
 import java.time.LocalDate
+import java.time.ZoneId
 import java.time.ZoneOffset
 
 @OptIn(ExperimentalCoroutinesApi::class)
@@ -36,6 +46,10 @@ class TripDetailViewModelTest {
 
     private val fixedDate = LocalDate.of(2026, 5, 19)
     private val clock = Clock.fixed(fixedDate.atStartOfDay().toInstant(ZoneOffset.UTC), ZoneOffset.UTC)
+    private val fixedZone = ZoneId.of("UTC")
+    private val csvExporter = CsvExporter(fixedZone)
+    private val mockContentResolver = Mockito.mock(ContentResolver::class.java)
+    private val mockUri = Mockito.mock(Uri::class.java)
 
     private val baseTrip =
         Trip(
@@ -65,6 +79,8 @@ class TripDetailViewModelTest {
     private fun newVm(
         trip: Trip,
         repo: FakeDetailTripRepository = FakeDetailTripRepository(trip),
+        contentResolver: ContentResolver = mockContentResolver,
+        ioDispatcher: CoroutineDispatcher = mainDispatcherRule.testDispatcher,
     ): TripDetailViewModel =
         TripDetailViewModel(
             savedStateHandle = SavedStateHandle(mapOf("tripId" to trip.id)),
@@ -72,6 +88,9 @@ class TripDetailViewModelTest {
             categoryRepository = FakeDetailCategoryRepository(),
             currencyPreferenceRepository = FakeDetailCurrencyRepository(),
             currencyFormatter = FakeDetailCurrencyFormatter(),
+            csvExporter = csvExporter,
+            contentResolver = contentResolver,
+            ioDispatcher = ioDispatcher,
             clock = clock,
         )
 
@@ -428,6 +447,78 @@ class TripDetailViewModelTest {
             assertEquals(0, status?.remainingDays)
             assertNull(status?.dailyAllowance)
             assertNull(vm.uiState.value.dailyAllowanceLabel)
+        }
+
+    @Test
+    fun exportTripCsv_successfulExport_updatesUserMessage() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            val outputStream = ByteArrayOutputStream()
+            Mockito
+                .`when`(mockContentResolver.openOutputStream(mockUri))
+                .thenReturn(outputStream)
+
+            val vm = newVm(baseTrip)
+            advanceUntilIdle()
+
+            vm.exportTripCsv(mockUri)
+            advanceUntilIdle()
+
+            val msg = vm.uiState.value.userMessage
+            assertNotNull(msg)
+            assertTrue(msg is UiText.StringResource)
+            assertEquals(R.string.trip_csv_exported_successfully, (msg as UiText.StringResource).resId)
+            assertTrue(outputStream.size() > 0)
+        }
+
+    @Test
+    fun exportTripCsv_openStreamFails_updatesErrorMessage() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            Mockito
+                .`when`(mockContentResolver.openOutputStream(mockUri))
+                .thenReturn(null)
+
+            val vm = newVm(baseTrip)
+            advanceUntilIdle()
+
+            vm.exportTripCsv(mockUri)
+            advanceUntilIdle()
+
+            val err = vm.uiState.value.errorMessage
+            assertNotNull(err)
+            assertTrue(err is UiText.StringResource)
+            assertEquals(R.string.trip_csv_export_failed, (err as UiText.StringResource).resId)
+        }
+
+    @Test
+    fun getShareableTripSummary_returnsFormattedSummary() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            val vm = newVm(baseTrip)
+            advanceUntilIdle()
+
+            val summary = vm.getShareableTripSummary()
+            assertNotNull(summary)
+            assertTrue(summary!!.contains("Trip: Tokyo (Japan)"))
+            assertTrue(summary.contains("Total Spent:"))
+            assertTrue(summary.contains("Transactions:"))
+        }
+
+    @Test
+    fun clearUserMessage_resetsUserMessageToNull() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            val outputStream = ByteArrayOutputStream()
+            Mockito
+                .`when`(mockContentResolver.openOutputStream(mockUri))
+                .thenReturn(outputStream)
+
+            val vm = newVm(baseTrip)
+            advanceUntilIdle()
+
+            vm.exportTripCsv(mockUri)
+            advanceUntilIdle()
+            assertNotNull(vm.uiState.value.userMessage)
+
+            vm.clearUserMessage()
+            assertNull(vm.uiState.value.userMessage)
         }
 }
 

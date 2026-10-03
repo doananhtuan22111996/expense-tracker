@@ -3,6 +3,11 @@ package dev.tuandoan.expensetracker.data.export
 import dev.tuandoan.expensetracker.data.database.entity.GoldHoldingEntity
 import dev.tuandoan.expensetracker.data.database.entity.GoldPriceEntity
 import dev.tuandoan.expensetracker.data.database.entity.TransactionEntity
+import dev.tuandoan.expensetracker.domain.model.Category
+import dev.tuandoan.expensetracker.domain.model.CategoryTotal
+import dev.tuandoan.expensetracker.domain.model.Transaction
+import dev.tuandoan.expensetracker.domain.model.TransactionType
+import dev.tuandoan.expensetracker.domain.model.Trip
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Before
@@ -10,6 +15,7 @@ import org.junit.Test
 import java.io.ByteArrayOutputStream
 import java.io.StringWriter
 import java.time.ZoneId
+import java.time.format.DateTimeFormatter
 
 class CsvExporterTest {
     private lateinit var exporter: CsvExporter
@@ -27,6 +33,7 @@ class CsvExporterTest {
         categoryId: Long = 1L,
         note: String? = "Lunch",
         timestamp: Long = 1700000000000L, // 2023-11-14 UTC
+        amountForeignMinor: Long? = null,
     ): TransactionEntity =
         TransactionEntity(
             id = 1L,
@@ -38,6 +45,7 @@ class CsvExporterTest {
             timestamp = timestamp,
             createdAt = timestamp,
             updatedAt = timestamp,
+            amountForeignMinor = amountForeignMinor,
         )
 
     private fun exportToString(transactions: List<TransactionWithCategory>): String {
@@ -60,7 +68,7 @@ class CsvExporterTest {
         assertTrue(lines.isNotEmpty())
         // Strip BOM if present at start
         val header = lines[0].removePrefix("\uFEFF")
-        assertEquals("Date,Type,Amount,Currency,Category,Note", header)
+        assertEquals("Date,Type,Amount,Currency,Category,Note,Trip,Foreign Amount,Foreign Currency", header)
     }
 
     @Test
@@ -88,7 +96,7 @@ class CsvExporterTest {
             )
         val result = exportToString(listOf(twc))
         val dataLine = result.lines().filter { it.isNotBlank() }[1]
-        assertTrue(dataLine.endsWith("\"Food, drinks\""))
+        assertTrue(dataLine.contains("\"Food, drinks\""))
     }
 
     @Test
@@ -100,7 +108,7 @@ class CsvExporterTest {
             )
         val result = exportToString(listOf(twc))
         val dataLine = result.lines().filter { it.isNotBlank() }[1]
-        assertTrue(dataLine.endsWith("\"He said \"\"hello\"\"\""))
+        assertTrue(dataLine.contains("\"He said \"\"hello\"\"\""))
     }
 
     @Test
@@ -173,7 +181,25 @@ class CsvExporterTest {
             )
         val result = exportToString(listOf(twc))
         val dataLine = result.lines().filter { it.isNotBlank() }[1]
-        assertTrue(dataLine.endsWith(",Food,"))
+        assertTrue(dataLine.contains(",Food,,,"))
+    }
+
+    @Test
+    fun export_withTripAndForeignAmount_producesCorrectFields() {
+        val twc =
+            TransactionWithCategory(
+                transaction =
+                    createTransaction(
+                        amount = 165000L,
+                        currencyCode = "VND",
+                    ).copy(amountForeignMinor = 1000L),
+                categoryName = "Food",
+                tripName = "Japan, 2026",
+                tripForeignCurrencyCode = "JPY",
+            )
+        val result = exportToString(listOf(twc))
+        val dataLine = result.lines().filter { it.isNotBlank() }[1]
+        assertTrue(dataLine.endsWith(",\"Japan, 2026\",1000,JPY"))
     }
 
     // --- Gold holding export tests ---
@@ -383,5 +409,272 @@ class CsvExporterTest {
         val result = exportToString(transactions)
         val lines = result.lines().filter { it.isNotBlank() }
         assertEquals(3, lines.size) // header + 2 data rows
+    }
+
+    @Test
+    fun exportIncludesTripColumnsWhenPresent() {
+        val twcWithForeign =
+            TransactionWithCategory(
+                transaction = createTransaction(amount = 50000L, amountForeignMinor = 300L),
+                categoryName = "Food",
+                tripName = "Tokyo 2024",
+                tripForeignCurrencyCode = "JPY",
+            )
+        val twcWithoutForeign =
+            TransactionWithCategory(
+                transaction = createTransaction(amount = 60000L, amountForeignMinor = null),
+                categoryName = "Transport",
+                tripName = "Tokyo 2024",
+                tripForeignCurrencyCode = "JPY",
+            )
+        val result = exportToString(listOf(twcWithForeign, twcWithoutForeign))
+        val lines = result.lines().filter { it.isNotBlank() }
+        assertTrue(lines[1].contains(",Tokyo 2024,300,JPY"))
+        assertTrue(lines[2].contains(",Tokyo 2024,,"))
+    }
+
+    @Test
+    fun exportTrip_producesCorrectHeaderAndBom() {
+        val trip =
+            Trip(
+                id = 1L,
+                name = "Tokyo 2024",
+                destination = "Japan",
+                startDateEpochDay = 19723L,
+                endDateEpochDay = 19730L,
+                foreignCurrencyCode = "JPY",
+                foreignToHomeRate = 160.0,
+                originalCategoryId = null,
+                originalCategoryNameSnapshot = null,
+                originalCategoryIconSnapshot = null,
+                originalCategoryColorSnapshot = null,
+                createdAt = 1700000000000L,
+            )
+        val out = ByteArrayOutputStream()
+        exporter.exportTrip(trip, emptyList(), out)
+        val bytes = out.toByteArray()
+        assertEquals(0xEF.toByte(), bytes[0])
+        assertEquals(0xBB.toByte(), bytes[1])
+        assertEquals(0xBF.toByte(), bytes[2])
+        val text = out.toString(Charsets.UTF_8.name())
+        val lines = text.lines().filter { it.isNotBlank() }
+        assertEquals(1, lines.size)
+        val header = lines[0].removePrefix("\uFEFF")
+        assertEquals("Date,Category,Amount,Currency,Foreign Amount,Foreign Currency,FX Rate,Note", header)
+    }
+
+    @Test
+    fun exportTrip_formatsRowsCorrectlyAndSortsChronologically() {
+        val trip =
+            Trip(
+                id = 1L,
+                name = "Europe 2024",
+                destination = "Paris",
+                startDateEpochDay = 19723L,
+                endDateEpochDay = 19730L,
+                foreignCurrencyCode = "EUR",
+                foreignToHomeRate = 27000.0,
+                originalCategoryId = null,
+                originalCategoryNameSnapshot = null,
+                originalCategoryIconSnapshot = null,
+                originalCategoryColorSnapshot = null,
+                createdAt = 1700000000000L,
+            )
+        val catFood = Category(id = 1, name = "Food & Dining", type = TransactionType.EXPENSE)
+        val catMuseum = Category(id = 2, name = "Museums, etc.", type = TransactionType.EXPENSE)
+
+        val t2 =
+            Transaction(
+                id = 2L,
+                type = TransactionType.EXPENSE,
+                amount = 2700000L,
+                currencyCode = "VND",
+                category = catMuseum,
+                note = "Louvre \"tickets\"",
+                timestamp = 1700000100000L,
+                createdAt = 1700000100000L,
+                updatedAt = 1700000100000L,
+                tripId = 1L,
+                amountForeignMinor = 10000L,
+            )
+        val t1 =
+            Transaction(
+                id = 1L,
+                type = TransactionType.EXPENSE,
+                amount = 540000L,
+                currencyCode = "VND",
+                category = catFood,
+                note = "Croissant",
+                timestamp = 1700000000000L,
+                createdAt = 1700000000000L,
+                updatedAt = 1700000000000L,
+                tripId = 1L,
+                amountForeignMinor = 2000L,
+            )
+
+        val out = ByteArrayOutputStream()
+        exporter.exportTrip(trip, listOf(t2, t1), out)
+        val lines = out.toString(Charsets.UTF_8.name()).lines().filter { it.isNotBlank() }
+        assertEquals(3, lines.size)
+        assertTrue(lines[1].contains("Croissant"))
+        assertTrue(lines[1].contains("Food & Dining,540000,VND,20.00,EUR,27000.0,Croissant"))
+        assertTrue(lines[2].contains("\"Museums, etc.\""))
+        assertTrue(lines[2].contains("\"Louvre \"\"tickets\"\"\""))
+        assertTrue(lines[2].contains("2700000,VND,100.00,EUR,27000.0"))
+    }
+
+    @Test
+    fun exportTrip_handlesNoForeignCurrency() {
+        val trip =
+            Trip(
+                id = 1L,
+                name = "Local Trip",
+                destination = null,
+                startDateEpochDay = 19723L,
+                endDateEpochDay = 19730L,
+                foreignCurrencyCode = null,
+                foreignToHomeRate = null,
+                originalCategoryId = null,
+                originalCategoryNameSnapshot = null,
+                originalCategoryIconSnapshot = null,
+                originalCategoryColorSnapshot = null,
+                createdAt = 1700000000000L,
+            )
+        val catFood = Category(id = 1, name = "Food", type = TransactionType.EXPENSE)
+        val t =
+            Transaction(
+                id = 1L,
+                type = TransactionType.EXPENSE,
+                amount = 100000L,
+                currencyCode = "VND",
+                category = catFood,
+                note = null,
+                timestamp = 1700000000000L,
+                createdAt = 1700000000000L,
+                updatedAt = 1700000000000L,
+                tripId = 1L,
+                amountForeignMinor = null,
+            )
+        val out = ByteArrayOutputStream()
+        exporter.exportTrip(trip, listOf(t), out)
+        val lines = out.toString(Charsets.UTF_8.name()).lines().filter { it.isNotBlank() }
+        assertEquals(2, lines.size)
+        assertEquals("2023-11-14,Food,100000,VND,,,,", lines[1])
+    }
+
+    @Test
+    fun formatTripSummaryText_formatsCompleteSummary() {
+        val trip =
+            Trip(
+                id = 1L,
+                name = "Japan Trip",
+                destination = "Tokyo",
+                startDateEpochDay = 19723L,
+                endDateEpochDay = 19727L,
+                foreignCurrencyCode = "JPY",
+                foreignToHomeRate = 160.0,
+                originalCategoryId = null,
+                originalCategoryNameSnapshot = null,
+                originalCategoryIconSnapshot = null,
+                originalCategoryColorSnapshot = null,
+                createdAt = 1700000000000L,
+            )
+        val cat1 = Category(id = 1, name = "Food", type = TransactionType.EXPENSE)
+        val cat2 = Category(id = 2, name = "Transport", type = TransactionType.EXPENSE)
+        val categoryTotals =
+            listOf(
+                CategoryTotal(category = cat1, total = 800000L),
+                CategoryTotal(category = cat2, total = 200000L),
+            )
+        val dateFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd")
+        val summary =
+            exporter.formatTripSummaryText(
+                trip = trip,
+                totalLabel = "1,000,000 ₫",
+                dailyAvgLabel = "200,000 ₫/day",
+                transactionCount = 10,
+                categoryTotals = categoryTotals,
+                dateFormatter = dateFormatter,
+            )
+        assertTrue(summary.contains("Trip: Japan Trip (Tokyo)"))
+        assertTrue(summary.contains("Dates: 2024-01-01 – 2024-01-05"))
+        assertTrue(summary.contains("Total Spent: 1,000,000 ₫"))
+        assertTrue(summary.contains("Daily Average: 200,000 ₫/day"))
+        assertTrue(summary.contains("Transactions: 10"))
+        assertTrue(summary.contains("Top Categories:"))
+        assertTrue(summary.contains("• Food: 800000 (80%)"))
+        assertTrue(summary.contains("• Transport: 200000 (20%)"))
+    }
+
+    @Test
+    fun formatTripSummaryText_handlesNoDestinationAndEmptyCategories() {
+        val trip =
+            Trip(
+                id = 1L,
+                name = "Staycation",
+                destination = null,
+                startDateEpochDay = 19723L,
+                endDateEpochDay = 19725L,
+                foreignCurrencyCode = null,
+                foreignToHomeRate = null,
+                originalCategoryId = null,
+                originalCategoryNameSnapshot = null,
+                originalCategoryIconSnapshot = null,
+                originalCategoryColorSnapshot = null,
+                createdAt = 1700000000000L,
+            )
+        val dateFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd")
+        val summary =
+            exporter.formatTripSummaryText(
+                trip = trip,
+                totalLabel = null,
+                dailyAvgLabel = null,
+                transactionCount = 0,
+                categoryTotals = emptyList(),
+                dateFormatter = dateFormatter,
+            )
+        assertTrue(summary.contains("Trip: Staycation"))
+        assertTrue(!summary.contains("("))
+        assertTrue(summary.contains("Total Spent: 0"))
+        assertTrue(!summary.contains("Daily Average:"))
+        assertTrue(summary.contains("Transactions: 0"))
+        assertTrue(!summary.contains("Top Categories:"))
+    }
+
+    @Test
+    fun formatTripSummaryText_handlesMoreThanFiveCategories() {
+        val trip =
+            Trip(
+                id = 1L,
+                name = "World Tour",
+                destination = "Global",
+                startDateEpochDay = 19723L,
+                endDateEpochDay = 19725L,
+                foreignCurrencyCode = null,
+                foreignToHomeRate = null,
+                originalCategoryId = null,
+                originalCategoryNameSnapshot = null,
+                originalCategoryIconSnapshot = null,
+                originalCategoryColorSnapshot = null,
+                createdAt = 1700000000000L,
+            )
+        val totals =
+            (1..7).map { i ->
+                CategoryTotal(
+                    category = Category(id = i.toLong(), name = "Cat$i", type = TransactionType.EXPENSE),
+                    total = 100000L,
+                )
+            }
+        val summary =
+            exporter.formatTripSummaryText(
+                trip = trip,
+                totalLabel = "700,000",
+                dailyAvgLabel = null,
+                transactionCount = 7,
+                categoryTotals = totals,
+                dateFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd"),
+            )
+        assertTrue(summary.contains("• Cat1: 100000 (14%)"))
+        assertTrue(summary.contains("• Other: 200000 (29%)"))
     }
 }

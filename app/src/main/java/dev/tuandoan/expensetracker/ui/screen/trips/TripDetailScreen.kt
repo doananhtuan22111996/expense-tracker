@@ -1,5 +1,8 @@
 package dev.tuandoan.expensetracker.ui.screen.trips
 
+import android.net.Uri
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -44,6 +47,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -51,10 +55,12 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -70,6 +76,7 @@ import dev.tuandoan.expensetracker.ui.component.DonutChart
 import dev.tuandoan.expensetracker.ui.component.SectionTitle
 import dev.tuandoan.expensetracker.ui.theme.DesignSystemElevation
 import dev.tuandoan.expensetracker.ui.theme.DesignSystemSpacing
+import kotlinx.coroutines.launch
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import java.time.format.FormatStyle
@@ -88,6 +95,17 @@ fun TripDetailScreen(
     val context = LocalContext.current
 
     val tripGoneMessage = stringResource(R.string.trip_gone_message)
+    val clipboardManager = LocalClipboardManager.current
+    val coroutineScope = rememberCoroutineScope()
+    val defaultCsvFileName = "trip_${uiState.trip?.name?.replace(Regex("[^a-zA-Z0-9_-]"), "_") ?: "export"}.csv"
+    val csvLauncher =
+        rememberLauncherForActivityResult(
+            contract = ActivityResultContracts.CreateDocument("text/csv"),
+        ) { uri: Uri? ->
+            if (uri != null) {
+                viewModel.exportTripCsv(uri)
+            }
+        }
 
     LaunchedEffect(uiState.tripGone) {
         if (uiState.tripGone) {
@@ -103,6 +121,13 @@ fun TripDetailScreen(
         }
     }
 
+    LaunchedEffect(uiState.userMessage) {
+        uiState.userMessage?.let { msg ->
+            snackbarHostState.showSnackbar(msg.asString(context))
+            viewModel.clearUserMessage()
+        }
+    }
+
     Scaffold(
         modifier = modifier,
         snackbarHost = { SnackbarHost(snackbarHostState) },
@@ -112,6 +137,16 @@ fun TripDetailScreen(
                 isConversionOrigin = uiState.trip?.isConversionOrigin ?: false,
                 onNavigateBack = onNavigateBack,
                 onEdit = { uiState.trip?.let { onNavigateToEdit(it.id) } },
+                onExportCsv = { csvLauncher.launch(defaultCsvFileName) },
+                onShareSummary = {
+                    val summary = viewModel.getShareableTripSummary()
+                    if (summary != null) {
+                        clipboardManager.setText(AnnotatedString(summary))
+                        coroutineScope.launch {
+                            snackbarHostState.showSnackbar(context.getString(R.string.trip_summary_copied))
+                        }
+                    }
+                },
                 onDelete = viewModel::requestDelete,
                 onRevert = viewModel::requestRevert,
             )
@@ -284,6 +319,8 @@ private fun TripDetailTopBar(
     isConversionOrigin: Boolean,
     onNavigateBack: () -> Unit,
     onEdit: () -> Unit,
+    onExportCsv: () -> Unit,
+    onShareSummary: () -> Unit,
     onDelete: () -> Unit,
     onRevert: () -> Unit,
 ) {
@@ -320,6 +357,21 @@ private fun TripDetailTopBar(
                 expanded = menuExpanded,
                 onDismissRequest = { menuExpanded = false },
             ) {
+                DropdownMenuItem(
+                    text = { Text(stringResource(R.string.trip_detail_export_csv)) },
+                    onClick = {
+                        menuExpanded = false
+                        onExportCsv()
+                    },
+                )
+                DropdownMenuItem(
+                    text = { Text(stringResource(R.string.trip_detail_share_summary)) },
+                    onClick = {
+                        menuExpanded = false
+                        onShareSummary()
+                    },
+                )
+                HorizontalDivider()
                 DropdownMenuItem(
                     text = { Text(stringResource(R.string.trip_detail_edit)) },
                     onClick = {

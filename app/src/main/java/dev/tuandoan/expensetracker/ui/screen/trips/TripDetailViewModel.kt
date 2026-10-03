@@ -1,14 +1,19 @@
 package dev.tuandoan.expensetracker.ui.screen.trips
 
+import android.content.ContentResolver
+import android.net.Uri
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
+import dev.tuandoan.expensetracker.R
 import dev.tuandoan.expensetracker.core.formatter.CurrencyFormatter
 import dev.tuandoan.expensetracker.core.util.ErrorUtils
 import dev.tuandoan.expensetracker.core.util.UiText
 import dev.tuandoan.expensetracker.data.database.entity.DailyTotalRow
 import dev.tuandoan.expensetracker.data.database.entity.TripCategorySumRow
+import dev.tuandoan.expensetracker.data.export.CsvExporter
+import dev.tuandoan.expensetracker.di.IoDispatcher
 import dev.tuandoan.expensetracker.domain.model.Category
 import dev.tuandoan.expensetracker.domain.model.CategoryTotal
 import dev.tuandoan.expensetracker.domain.model.DeleteTripBehavior
@@ -19,6 +24,8 @@ import dev.tuandoan.expensetracker.domain.model.TripBudgetStatus
 import dev.tuandoan.expensetracker.domain.repository.CategoryRepository
 import dev.tuandoan.expensetracker.domain.repository.CurrencyPreferenceRepository
 import dev.tuandoan.expensetracker.domain.repository.TripRepository
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -32,6 +39,7 @@ import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import java.time.Clock
 import java.time.LocalDate
 import javax.inject.Inject
@@ -55,6 +63,9 @@ class TripDetailViewModel
         private val categoryRepository: CategoryRepository,
         private val currencyPreferenceRepository: CurrencyPreferenceRepository,
         private val currencyFormatter: CurrencyFormatter,
+        private val csvExporter: CsvExporter,
+        private val contentResolver: ContentResolver,
+        @param:IoDispatcher private val ioDispatcher: CoroutineDispatcher,
         clock: Clock,
     ) : ViewModel() {
         private val tripId: Long = savedStateHandle["tripId"] ?: 0L
@@ -109,6 +120,53 @@ class TripDetailViewModel
 
         fun clearCategoryFilter() {
             _uiState.update { it.copy(selectedCategoryId = null) }
+        }
+
+        fun clearUserMessage() {
+            _uiState.update { it.copy(userMessage = null) }
+        }
+
+        fun exportTripCsv(uri: Uri) {
+            val trip = _uiState.value.trip ?: return
+            val transactions = _uiState.value.transactions
+            viewModelScope.launch {
+                try {
+                    withContext(ioDispatcher) {
+                        contentResolver.openOutputStream(uri)?.use { outputStream ->
+                            csvExporter.exportTrip(trip, transactions, outputStream)
+                        } ?: throw IllegalStateException("Cannot open output stream")
+                    }
+                    _uiState.update {
+                        it.copy(userMessage = UiText.StringResource(R.string.trip_csv_exported_successfully))
+                    }
+                } catch (e: CancellationException) {
+                    throw e
+                } catch (e: Exception) {
+                    _uiState.update {
+                        it.copy(
+                            errorMessage =
+                                UiText.StringResource(
+                                    R.string.trip_csv_export_failed,
+                                    listOf(e.message ?: ""),
+                                ),
+                        )
+                    }
+                }
+            }
+        }
+
+        fun getShareableTripSummary(): String? {
+            val state = _uiState.value
+            val trip = state.trip ?: return null
+            return csvExporter.formatTripSummaryText(
+                trip = trip,
+                totalLabel = state.totalLabel,
+                dailyAvgLabel = state.dailyAvgLabel,
+                transactionCount = state.transactionCount,
+                categoryTotals = state.categoryTotals,
+                currencyFormatter = currencyFormatter,
+                currencyCode = state.currencyCode,
+            )
         }
 
         private fun performDelete(behavior: DeleteTripBehavior) {
@@ -197,6 +255,7 @@ class TripDetailViewModel
                                     categoryTotals = buildCategoryTotals(agg.categoryBreakdown, agg.categoryMap),
                                     dailyPoints = buildDailyPoints(agg.dailyTotals, trip),
                                     transactions = agg.transactions,
+                                    currencyCode = agg.currencyCode,
                                     budgetStatus = budgetStatus,
                                     budgetLabel = budgetLabel,
                                     budgetRemainingLabel = budgetRemainingLabel,
@@ -331,7 +390,9 @@ data class TripDetailUiState(
     val categoryTotals: List<CategoryTotal> = emptyList(),
     val dailyPoints: List<DailyBarPoint> = emptyList(),
     val transactions: List<Transaction> = emptyList(),
+    val currencyCode: String = "",
     val errorMessage: UiText? = null,
+    val userMessage: UiText? = null,
     /** True when the trip was deleted while the screen was open → screen should pop. */
     val tripGone: Boolean = false,
     /** Non-null while a destructive-action confirmation dialog is shown. */
