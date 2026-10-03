@@ -2,7 +2,28 @@
 
 ## [Unreleased]
 
-## [3.15.0] - 2026-09-27
+## [3.16.0] - 2026-10-03
+
+### Added
+- **Trip CSV Export & Summary Clipboard Sharing (PR #191)**:
+  - Added dedicated `exportTrip(trip, transactions, outputStream)` in `CsvExporter.kt` with UTF-8 BOM encoding for seamless spreadsheet opening in Excel / Google Sheets.
+  - Export columns: `Date,Category,Amount,Currency,Foreign Amount,Foreign Currency,FX Rate,Note`.
+  - Enriched standard transaction CSV export with `Trip,Foreign Amount,Foreign Currency` while preserving leading columns for 100% backward compatibility.
+  - Added formatted clipboard summary generator (`formatTripSummaryText`) accessible via `TripDetailScreen` overflow menu (`⋮`) for quick expense splitting with travel companions.
+- **Hardware-Backed Biometric Security & App Lock (PR #192)**:
+  - Integrated `androidx.biometric:biometric-ktx` supporting fingerprint, face unlock, and device PIN/pattern fallback.
+  - Lifecycle-aware `AppLockGate` Compose overlay in `MainActivity` with background duration tracking via `ProcessLifecycleOwner` (unobtrusive to background WorkManager workers and Glance widgets).
+  - Configurable auto-lock timeout options (Immediately, 1 minute, 5 minutes) and Android Recent Apps switcher privacy shielding (`FLAG_SECURE`).
+  - Added Settings "Security" section with biometric confirmation before enabling.
+- **100% In-App Vietnamese Localization (PR #193)**:
+  - Complete native Vietnamese translations across all 734 XML string and plural resources in `res/values-vi/strings.xml`.
+  - Natural mobile banking and personal finance terminology (Thu nhập, Chi phí, Hạn mức chi tiêu, Tích lũy vàng, Chuyến đi, Khóa ứng dụng, etc.) with 100% format specifier parity and zero fallback leaks.
+- **Recurrence Multi-Cycle Catchup & Tech Debt Alignment (PR #194)**:
+  - Multi-cycle recurrence processing loop in `RecurrenceScheduler.kt` with a safety boundary of `MAX_CATCHUP_CYCLES = 24`, catching up all elapsed cycles with chronological timestamps when opening the app after days or months offline.
+  - Monotonicity checks and deleted-category orphan safety guards wrapped within single atomic database transactions.
+  - Synchronized `CLAUDE.md` (Room schema v9, SecurityModule, Trips nav) and `README.md` (modern features and complete v3.0.0–v3.15.0 version history).
+- Release cut v3.16.0: Bumped `versionName = "3.16.0"` (versionCode `1778972594`) in `app/build.gradle.kts`. Added Fastlane Play Store release notes (`1778972594.txt`, `3160000.txt`).
+
 
 ### Added
 - Trip Budget & Dynamic Daily Allowance Tracking (PRs #186, #187, #188, #189):

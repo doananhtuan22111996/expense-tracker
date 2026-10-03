@@ -1,0 +1,6 @@
+Có gì mới trong phiên bản v3.16:
+
+• Khóa ứng dụng sinh trắc học — Bảo mật thông tin tài chính bằng Vân tay, Khuôn mặt hoặc mã PIN.
+• Xuất CSV & Chia sẻ chuyến đi — Xuất dữ liệu chi tiêu chuyến đi hoặc sao chép báo cáo chia tiền tiện lợi.
+• Giao diện tiếng Việt 100% — Bản dịch hoàn chỉnh, tự nhiên trên toàn bộ màn hình và cài đặt.
+• Bù giao dịch định kỳ — Tự động ghi nhận đầy đủ các chu kỳ định kỳ sau thời gian dài không mở ứng dụng.

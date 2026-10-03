@@ -1,0 +1,6 @@
+What's new in v3.16:
+
+• Biometric App Lock — Secure your financial and gold data with Fingerprint, Face Unlock, or PIN.
+• Trip CSV & Sharing — Export dedicated trip CSVs or share a formatted spending summary with travel companions.
+• 100% Vietnamese Localization — Full native in-app Vietnamese translation for all screens and settings.
+• Multi-Cycle Catchup — Automatic background catchup for recurring transactions after days or months offline.
