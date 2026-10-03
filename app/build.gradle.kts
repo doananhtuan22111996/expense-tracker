@@ -201,6 +201,7 @@ dependencies {
     // ViewModel and Lifecycle
     implementation(libs.lifecycle.viewmodel.compose)
     implementation(libs.lifecycle.runtime.compose)
+    implementation(libs.lifecycle.process)
 
     // Coroutines
     implementation(libs.kotlinx.coroutines.core)
@@ -214,6 +215,9 @@ dependencies {
 
     // Play Review
     implementation(libs.play.review)
+
+    // Biometric Security (v3.16.0)
+    implementation(libs.androidx.biometric)
 
     // Glance (home screen widget)
     implementation(libs.androidx.glance.appwidget)

@@ -2,27 +2,34 @@ package dev.tuandoan.expensetracker
 
 import android.content.Intent
 import android.os.Bundle
-import androidx.activity.ComponentActivity
+import android.view.WindowManager
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import androidx.fragment.app.FragmentActivity
+import androidx.lifecycle.ProcessLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import dagger.hilt.android.AndroidEntryPoint
 import dev.tuandoan.expensetracker.data.preferences.OnboardingRepository
+import dev.tuandoan.expensetracker.data.preferences.SecurityPreferences
 import dev.tuandoan.expensetracker.data.preferences.ThemePreference
 import dev.tuandoan.expensetracker.data.preferences.ThemePreferencesRepository
 import dev.tuandoan.expensetracker.domain.analytics.Analytics
 import dev.tuandoan.expensetracker.domain.analytics.AnalyticsEvent
 import dev.tuandoan.expensetracker.domain.analytics.BuildType
+import dev.tuandoan.expensetracker.domain.security.AppLockManager
+import dev.tuandoan.expensetracker.domain.security.BiometricAuthHelper
 import dev.tuandoan.expensetracker.ui.ExpenseTrackerApp
+import dev.tuandoan.expensetracker.ui.screen.security.AppLockGate
 import dev.tuandoan.expensetracker.ui.theme.ExpenseTrackerTheme
 import javax.inject.Inject
 
 @AndroidEntryPoint
-class MainActivity : ComponentActivity() {
+class MainActivity : FragmentActivity() {
     @Inject
     lateinit var themePreferencesRepository: ThemePreferencesRepository
 
@@ -31,6 +38,15 @@ class MainActivity : ComponentActivity() {
 
     @Inject
     lateinit var analytics: Analytics
+
+    @Inject
+    lateinit var securityPreferences: SecurityPreferences
+
+    @Inject
+    lateinit var appLockManager: AppLockManager
+
+    @Inject
+    lateinit var biometricAuthHelper: BiometricAuthHelper
 
     // Widget-action signal. We use a simple monotonically-increasing token
     // so that the Compose layer can react to *repeated* taps (e.g. user taps
@@ -63,12 +79,24 @@ class MainActivity : ComponentActivity() {
         }
         enableEdgeToEdge()
         consumeWidgetExtras(intent)
+        appLockManager.startObserving(ProcessLifecycleOwner.get().lifecycle)
         setContent {
             val themePreference by themePreferencesRepository.themePreference
                 .collectAsStateWithLifecycle(initialValue = ThemePreference.SYSTEM)
 
             val isOnboardingComplete by onboardingRepository.isOnboardingComplete
                 .collectAsStateWithLifecycle(initialValue = true)
+
+            val isHideInRecents by securityPreferences.isHideInRecentsEnabled
+                .collectAsStateWithLifecycle(initialValue = false)
+
+            SideEffect {
+                if (isHideInRecents) {
+                    window.addFlags(WindowManager.LayoutParams.FLAG_SECURE)
+                } else {
+                    window.clearFlags(WindowManager.LayoutParams.FLAG_SECURE)
+                }
+            }
 
             val darkTheme =
                 when (themePreference) {
@@ -78,11 +106,17 @@ class MainActivity : ComponentActivity() {
                 }
 
             ExpenseTrackerTheme(darkTheme = darkTheme) {
-                ExpenseTrackerApp(
-                    isOnboardingComplete = isOnboardingComplete,
-                    pendingAddTransactionTick = pendingAddTransactionTick,
-                    pendingOpenSettingsTick = pendingOpenSettingsTick,
-                )
+                AppLockGate(
+                    activity = this@MainActivity,
+                    appLockManager = appLockManager,
+                    biometricAuthHelper = biometricAuthHelper,
+                ) {
+                    ExpenseTrackerApp(
+                        isOnboardingComplete = isOnboardingComplete,
+                        pendingAddTransactionTick = pendingAddTransactionTick,
+                        pendingOpenSettingsTick = pendingOpenSettingsTick,
+                    )
+                }
             }
         }
     }
