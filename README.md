@@ -6,12 +6,20 @@ A simple, offline-first personal expense tracker Android app for managing your i
 
 - **Offline-First**: All data is stored locally on your device
 - **No Account Required**: No login, registration, or cloud sync
-- **Privacy-Focused**: No data collection, analytics, or ads
-- **Simple & Clean**: Material 3 design with intuitive navigation
-- **Transaction Management**: Add, edit, delete income and expense transactions
-- **Category Organization**: Pre-defined categories for expenses and income
-- **Monthly & Yearly Summary**: View your financial overview with balance and top expense categories, toggle between month and year view
-- **Filter & Search**: Filter transactions by type (All, Expenses, Income) and search by note text
+- **Privacy-Focused**: Fully offline operation with optional, privacy-safe, anonymous crash reporting and analytics (strictly opt-in, zero PII)
+- **Simple & Clean**: Modern Material 3 design with Material You dynamic color theming (Light/Dark/System)
+- **Transaction Management**: Add, edit, delete income and expense transactions with quick amount input and auto-focus
+- **Multi-Currency Support**: Full formatting support for VND, USD, EUR, JPY, KRW, and SGD with customizable default currency
+- **Category Organization**: Pre-defined and custom categories with color palettes and icons
+- **Monthly Budgets & Alerts**: Set monthly spending limits per currency, visual progress tracking, and proactive threshold alerts (80% and 100%)
+- **Recurring Transactions**: Automated daily, weekly, monthly, and yearly recurring expenses and income with WorkManager
+- **Trips & Travel Money**: Track travel expenses with dedicated trips tab, dynamic daily spending allowances, multi-currency conversion preview, and category-to-trip conversion wizard
+- **Gold Portfolio**: Track physical gold assets, weight units (tael, chi, gram, oz), dealer buy-back vs market prices, real-time P&L, and CSV reporting
+- **Monthly & Yearly Summaries & Insights**: Donut charts, category breakdowns, day-of-month spending pace, and month-over-month category movers
+- **Advanced Filter & Search**: Collapsible search bar, date range picker, category filter bottom sheet, and cross-month search with persistent state
+- **Home Screen Widgets**: Android Glance home-screen widgets (2x1 and 4x2 responsive layouts) and 1-tap pinned category quick-add with 10-second undo
+- **Encrypted Backup & Restore**: Full JSON backup with AES-256-GCM encryption option, gzip compression, and CSV export for spreadsheets
+- **Biometric App Lock**: Secure app access via Fingerprint / Face Unlock / PIN with customizable auto-lock timeout and App Switcher privacy masking
 
 ## Architecture
 
@@ -1110,6 +1118,24 @@ For support or questions, please contact: support@expensetracker.com
 
 ## Version History
 
+- **v3.15.0** - Trip Budget & Dynamic Daily Allowance: Room v9 migration (`budget_amount`), daily spending allowance calculation, over-budget warnings, foreign currency budget conversion preview, and active trip budget progress on Trips tab
+- **v3.14.0** - Dedicated Trips Tab & Travel Portfolio Summary: First-class bottom navigation destination (`main/trips`), aggregate travel spend summary, active trip spotlight banner with day progress, and responsive insets
+- **v3.13.0** - Travel Money Tracking & Conversion Wizard: Full trip management (create/edit/detail), multi-step wizard to convert existing categories to trips with snapshot rollback, exclude trips from home/summary/budget alerts, and schema bump to v2
+- **v3.12.0** - Home Screen Quick-Add Tile Strip & Undo Flow: Pinned category tiles on medium widget, transparent quick-add bottom sheet, 10-second undo notification window, and settings category pin management
+- **v3.11.0** - Privacy-Safe Opt-In Analytics & Crash Reporting: Independent dual-consent toggles for Crashlytics and Firebase Analytics, type-safe enum parameter boundaries, zero PII collection, and debug Easter-egg panel
+- **v3.10.0** - Home Screen Glance Widgets & Spending Insights: Android 12+ Glance widgets (2x1 and 4x2 responsive layouts), month-over-month category movers, daily spending pace, and collapsible summary insights
+- **v3.9.0** - Encrypted Backups (.etbackup): AES-256-GCM encryption with PBKDF2 key derivation, password protection dialogs, and transparent auto-detection on import
+- **v3.8.0** - Material You Dynamic Color & Edge-to-Edge: Android 12+ dynamic color theming, unified LazyColumn scrolling, TopAppBar scroll tints, and privacy policy / terms of service links
+- **v3.6.0** - Gold Liquidation & Buy-Back Pricing: Room v7 migration for `buy_back_price_per_unit`, dual sell/buy-back price inputs, liquidation vs market P&L tracking, and CSV export updates
+- **v3.5.0** - Budget Alerts & Advanced Filter System: WorkManager budget threshold notifications (80% and 100%), cross-month search, category filter bottom sheet, custom date range filtering, and filter persistence via DataStore
+- **v3.4.0** - Recurring Transaction Editing & Form Polish: Edit mode and discard confirmation for recurring transactions, form field auto-focus, UiText error encapsulation, and strings.xml resource extraction
+- **v3.3.0** - Gold Portfolio Management: Track physical gold holdings, weight units, purchase prices, current market values, and portfolio P&L with CSV export and backup support
+- **v3.2.5** - Fastlane metadata, store listing copy (EN & VI), screenshot seed activity, and Phase 6 release notes
+- **v3.2.4** - In-App review prompt manager, feedback bottom sheet in Settings, and privacy-safe crash reporting abstraction
+- **v3.2.3** - Accessibility enhancements (WCAG AA): DonutChart semantics, MonthlyBarChart per-bar semantics, 48dp minimum touch targets, and focus order
+- **v3.2.1** - Dark mode and theme support (Light/Dark/System) with DataStore persistence
+- **v3.1.0** - Phase 5: Categories, Budgets, and Automated Recurring Transactions (Daily, Weekly, Monthly, Yearly) via WorkManager
+- **v3.0.0** - Material 3 Theming & UI Modernization: Complete Jetpack Compose M3 redesign with dynamic color support and light/dark themes
 - **v2.6.0** - Phase 4.6: Backup/Restore Hardening (stream-based export/import via encodeToStream/decodeFromStream, batch inserts of 500 rows, LinearProgressIndicator with percentage + cancel button, gzip auto-detection on import, compact JSON output, 10 new unit tests) + Phase 4.5: Safe Upgrade Guarantee (exportSchema=true, room-testing dependency, 12 instrumented migration tests covering v1→v2→v3 chain, dual-guard category seeding, no destructive migration policy, release safety checklist)
 - **v2.5.0** - Phase 4.4: Year View + Search (Month/Year toggle on Summary, year-range aggregation, search bar on Home with 300ms debounce + SQL LIKE, combined with type filter + month scope, 16 new unit tests)
 - **v2.4.0** - Phase 4.3: Shared Month/Year Navigation + Picker (SelectedMonthRepository singleton for synchronized Home + Summary month state, MonthYearPickerDialog with 4x3 month grid + year stepper, tap-on-label to pick, 43 unit tests including cross-VM consistency)

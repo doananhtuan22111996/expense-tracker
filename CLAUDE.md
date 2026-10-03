@@ -78,18 +78,19 @@ Single-module Android app: `app/`
 - `domain/repository/` — Repository interfaces (`TransactionRepository`, `CategoryRepository`, `BackupRepository`, `BudgetPreferences`, etc.)
 - `domain/review/` — In-app review manager interface + impl
 - `domain/crash/` — CrashReporter interface + NoOp impl
-- `data/database/` — Room database (`AppDatabase`), DAOs, entities, migrations. DB version 5, schemas exported to `app/schemas/`
-- `data/database/entity/` — Room entities (`TransactionEntity`, `CategoryEntity`, `RecurringTransactionEntity`) + query row types
-- `data/preferences/` — DataStore-backed preferences (theme, onboarding, currency, budget, analytics, review, selected month)
+- `domain/security/` — BiometricAuthHelper, AppLockManager
+- `data/database/` — Room database (`AppDatabase`), DAOs, entities, migrations. DB version 9, schemas exported to `app/schemas/`
+- `data/database/entity/` — Room entities (`TransactionEntity`, `CategoryEntity`, `RecurringTransactionEntity`, `GoldHoldingEntity`, `GoldPriceEntity`, `TripEntity`) + query row types
+- `data/preferences/` — DataStore-backed preferences (theme, onboarding, currency, budget, analytics, review, selected month, security)
 - `data/backup/` — Backup/restore logic with serialization, validation, and mappers
 - `data/export/` — CSV export
-- `data/worker/` — WorkManager workers (`RecurringTransactionWorker`)
+- `data/worker/` — WorkManager workers (`RecurringTransactionWorker`, `BudgetAlertWorker`, `QuickAddNotifierWorker`)
 - `data/seed/` — Demo data seeding
-- `repository/` — Repository implementations (`TransactionRepositoryImpl`, `CategoryRepositoryImpl`, `RecurringTransactionRepositoryImpl`)
+- `repository/` — Repository implementations (`TransactionRepositoryImpl`, `CategoryRepositoryImpl`, `RecurringTransactionRepositoryImpl`, `GoldRepositoryImpl`, `TripRepositoryImpl`)
 - `core/formatter/` — Currency formatting (`CurrencyFormatter` interface, `DefaultCurrencyFormatter`)
 - `core/util/` — Date/time utilities, recurrence scheduler, error utils
 - `di/` — Hilt modules (see below)
-- `ui/screen/` — Screen-level composables + ViewModels, organized by feature (`home/`, `settings/`, `addedit/`, `categories/`, `recurring/`, `summary/`, `onboarding/`)
+- `ui/screen/` — Screen-level composables + ViewModels, organized by feature (`home/`, `settings/`, `addedit/`, `categories/`, `recurring/`, `summary/`, `gold/`, `trips/`, `onboarding/`, `security/`)
 - `ui/component/` — Shared composables (`DonutChart`, `MonthlyBarChart`, `MonthSelector`, `BudgetProgressSection`, etc.)
 - `ui/navigation/` — `ExpenseTrackerDestination` (route definitions) + `ExpenseTrackerNavigation` (NavHost)
 - `ui/theme/` — Material 3 theme, colors, typography, `DesignSystem` tokens
@@ -104,12 +105,13 @@ Single-module Android app: `app/`
 | `ThemeModule` | `abstract class` / `@Binds` | ThemePreferencesRepository |
 | `OnboardingModule` | `abstract class` / `@Binds` | OnboardingRepository |
 | `ReviewModule` | `abstract class` / `@Binds` | ReviewPreferences, InAppReviewManager, AnalyticsPreferences |
+| `SecurityModule` | `module` / `@Binds` & `@Provides` | SecurityPreferences, BiometricAuthHelper, ElapsedRealtimeClock |
 
 ### Navigation
 
 Two route groups in `ExpenseTrackerDestination.kt`:
-- `BottomNavDestination` — Home, Summary, Settings (shown in bottom nav, route prefix `main/`)
-- `ModalDestination` — AddEditTransaction, Categories, Recurring, AddRecurring (full-screen, route prefix `modal/`)
+- `BottomNavDestination` — Home, Summary, Gold, Trips, Settings (shown in bottom nav, route prefix `main/`)
+- `ModalDestination` — AddEditTransaction, Categories, Recurring, AddRecurring, AddEditGoldHolding, EditGoldPrices, Trips, AddEditTrip, TripDetail, ConvertCategoryToTrip, WidgetCategories (full-screen, route prefix `modal/`)
 
 Onboarding route is a separate start destination guard in `ExpenseTrackerNavigation.kt`.
 
