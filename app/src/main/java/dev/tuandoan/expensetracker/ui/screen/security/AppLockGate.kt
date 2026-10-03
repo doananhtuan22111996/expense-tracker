@@ -1,5 +1,6 @@
 package dev.tuandoan.expensetracker.ui.screen.security
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -85,6 +86,10 @@ fun AppLockScreen(
     biometricAuthHelper: BiometricAuthHelper,
     modifier: Modifier = Modifier,
 ) {
+    BackHandler {
+        activity.finish()
+    }
+
     var errorMessage by remember { mutableStateOf<String?>(null) }
     val unlockTitle = stringResource(R.string.security_unlock_title)
     val unlockSubtitle = stringResource(R.string.security_unlock_subtitle)
