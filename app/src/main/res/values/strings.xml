@@ -281,6 +281,21 @@
     <string name="a11y_gold_dealer_buyback_price">Dealer buy-back price for %1$s per %2$s</string>
     <string name="a11y_gold_estimated_pnl">Estimated P&amp;L, buy-back price not set</string>
 
+    <!-- Gold Portfolio Overview Enhancements -->
+    <string name="gold_portfolio_allocation">Allocation</string>
+    <string name="gold_total_weight">Total Weight</string>
+    <string name="gold_total_weight_pill">%1$s %2$s (~%3$s %4$s)</string>
+    <string name="gold_filter_all">All</string>
+    <string name="gold_sort_label">Sort</string>
+    <string name="gold_sort_date_desc">Date: Newest</string>
+    <string name="gold_sort_date_asc">Date: Oldest</string>
+    <string name="gold_sort_value_desc">Value: High to Low</string>
+    <string name="gold_sort_pnl_desc">P&amp;L: High to Low</string>
+    <string name="gold_sort_weight_desc">Weight: High to Low</string>
+    <string name="gold_no_holdings_match_filter">No holdings match the selected filter</string>
+    <string name="a11y_gold_sort_menu">Sort gold holdings</string>
+    <string name="a11y_gold_filter_chip">Filter by %1$s</string>
+
     <!-- Gold Add/Edit -->
     <string name="gold_add_title">Add Gold Holding</string>
     <string name="gold_edit_title">Edit Gold Holding</string>

@@ -647,6 +647,259 @@ class GoldPortfolioViewModelTest {
             assertNotNull(viewModel.uiState.value.summary)
         }
 
+    // --- Allocations & Weight ---
+
+    @Test
+    fun init_computesTotalWeight_inGramsAndTaels() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            fakeGoldRepository.holdingsFlow.value =
+                listOf(
+                    testHolding(id = 1, type = GoldType.SJC, weightValue = 2.0, unit = GoldWeightUnit.TAEL),
+                    testHolding(id = 2, type = GoldType.GOLD_24K, weightValue = 37.5, unit = GoldWeightUnit.GRAM),
+                )
+            fakeGoldRepository.pricesFlow.value = listOf(testPrice())
+
+            val viewModel = createViewModel()
+            advanceUntilIdle()
+
+            val state = viewModel.uiState.value
+            // 2 taels (75g) + 37.5g (1 tael) = 112.5g = 3.0 taels
+            assertEquals(112.5, state.totalWeightGrams, 0.001)
+            assertEquals(3.0, state.totalWeightTaels, 0.001)
+            assertEquals(112.5, state.summary!!.totalWeightGrams, 0.001)
+            assertEquals(3.0, state.summary!!.totalWeightTaels, 0.001)
+        }
+
+    @Test
+    fun init_computesAllocations_byGoldType() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            fakeGoldRepository.holdingsFlow.value =
+                listOf(
+                    testHolding(id = 1, type = GoldType.SJC, weightValue = 1.0, unit = GoldWeightUnit.TAEL),
+                    testHolding(id = 2, type = GoldType.GOLD_24K, weightValue = 1.0, unit = GoldWeightUnit.TAEL),
+                )
+            fakeGoldRepository.pricesFlow.value =
+                listOf(
+                    testPrice(type = GoldType.SJC, unit = GoldWeightUnit.TAEL, sellPrice = 90_000_000L),
+                    testPrice(type = GoldType.GOLD_24K, unit = GoldWeightUnit.TAEL, sellPrice = 30_000_000L),
+                )
+
+            val viewModel = createViewModel()
+            advanceUntilIdle()
+
+            val state = viewModel.uiState.value
+            assertEquals(2, state.allocations.size)
+            // SJC value = 90M (75%), 24K value = 30M (25%)
+            val sjcAlloc = state.allocations.first { it.type == GoldType.SJC }
+            val gold24kAlloc = state.allocations.first { it.type == GoldType.GOLD_24K }
+            assertEquals(75.0, sjcAlloc.percentageOfPortfolio, 0.01)
+            assertEquals(25.0, gold24kAlloc.percentageOfPortfolio, 0.01)
+            // SJC should be first because it has higher percentage
+            assertEquals(GoldType.SJC, state.allocations[0].type)
+            assertEquals(GoldType.GOLD_24K, state.allocations[1].type)
+        }
+
+    @Test
+    fun init_allocationsWithoutPrices_usesCostBasis() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            fakeGoldRepository.holdingsFlow.value =
+                listOf(
+                    testHolding(id = 1, type = GoldType.SJC, weightValue = 1.0, buyPrice = 80_000_000L),
+                    testHolding(id = 2, type = GoldType.GOLD_24K, weightValue = 1.0, buyPrice = 20_000_000L),
+                )
+
+            val viewModel = createViewModel()
+            advanceUntilIdle()
+
+            val state = viewModel.uiState.value
+            assertEquals(2, state.allocations.size)
+            val sjcAlloc = state.allocations.first { it.type == GoldType.SJC }
+            val gold24kAlloc = state.allocations.first { it.type == GoldType.GOLD_24K }
+            assertEquals(80.0, sjcAlloc.percentageOfPortfolio, 0.01)
+            assertEquals(20.0, gold24kAlloc.percentageOfPortfolio, 0.01)
+        }
+
+    // --- Filter State ---
+
+    @Test
+    fun setTypeFilter_filtersHoldings() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            fakeGoldRepository.holdingsFlow.value =
+                listOf(
+                    testHolding(id = 1, type = GoldType.SJC),
+                    testHolding(id = 2, type = GoldType.GOLD_24K),
+                    testHolding(id = 3, type = GoldType.GOLD_18K),
+                )
+
+            val viewModel = createViewModel()
+            advanceUntilIdle()
+
+            assertEquals(3, viewModel.uiState.value.holdings.size)
+            assertEquals(3, viewModel.uiState.value.totalHoldingsCount)
+            assertFalse(viewModel.uiState.value.hasActiveFilter)
+
+            // Filter to SJC
+            viewModel.setTypeFilter(GoldType.SJC)
+            advanceUntilIdle()
+
+            val filteredState = viewModel.uiState.value
+            assertEquals(1, filteredState.holdings.size)
+            assertEquals(GoldType.SJC, filteredState.holdings[0].holding.type)
+            assertEquals(3, filteredState.totalHoldingsCount)
+            assertTrue(filteredState.hasActiveFilter)
+            assertEquals(GoldType.SJC, filteredState.selectedTypeFilter)
+
+            // Reset filter to All
+            viewModel.setTypeFilter(null)
+            advanceUntilIdle()
+
+            assertEquals(3, viewModel.uiState.value.holdings.size)
+            assertFalse(viewModel.uiState.value.hasActiveFilter)
+            assertNull(viewModel.uiState.value.selectedTypeFilter)
+        }
+
+    @Test
+    fun setTypeFilter_noMatchingHoldings_yieldsEmptyHoldingsList() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            fakeGoldRepository.holdingsFlow.value =
+                listOf(
+                    testHolding(id = 1, type = GoldType.SJC),
+                )
+
+            val viewModel = createViewModel()
+            advanceUntilIdle()
+
+            viewModel.setTypeFilter(GoldType.OTHER)
+            advanceUntilIdle()
+
+            val state = viewModel.uiState.value
+            assertTrue(state.holdings.isEmpty())
+            assertEquals(1, state.totalHoldingsCount)
+            assertTrue(state.hasActiveFilter)
+            assertEquals(GoldType.OTHER, state.selectedTypeFilter)
+        }
+
+    // --- Sort State ---
+
+    @Test
+    fun setSortOption_sortsByBuyDateAscAndDesc() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            fakeGoldRepository.holdingsFlow.value =
+                listOf(
+                    testHolding(id = 1, buyDateMillis = 1000L),
+                    testHolding(id = 2, buyDateMillis = 3000L),
+                    testHolding(id = 3, buyDateMillis = 2000L),
+                )
+
+            val viewModel = createViewModel()
+            advanceUntilIdle()
+
+            // Default: BUY_DATE_DESC
+            assertEquals(
+                listOf(2L, 3L, 1L),
+                viewModel.uiState.value.holdings
+                    .map { it.holding.id },
+            )
+
+            // Sort BUY_DATE_ASC
+            viewModel.setSortOption(GoldHoldingSortOption.BUY_DATE_ASC)
+            advanceUntilIdle()
+
+            assertEquals(
+                listOf(1L, 3L, 2L),
+                viewModel.uiState.value.holdings
+                    .map { it.holding.id },
+            )
+            assertEquals(GoldHoldingSortOption.BUY_DATE_ASC, viewModel.uiState.value.sortOption)
+        }
+
+    @Test
+    fun setSortOption_sortsByWeightDesc() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            fakeGoldRepository.holdingsFlow.value =
+                listOf(
+                    testHolding(id = 1, weightValue = 1.0, unit = GoldWeightUnit.TAEL), // 37.5g
+                    testHolding(id = 2, weightValue = 50.0, unit = GoldWeightUnit.GRAM), // 50.0g
+                    testHolding(id = 3, weightValue = 0.5, unit = GoldWeightUnit.TAEL), // 18.75g
+                )
+
+            val viewModel = createViewModel()
+            advanceUntilIdle()
+
+            viewModel.setSortOption(GoldHoldingSortOption.WEIGHT_DESC)
+            advanceUntilIdle()
+
+            // Heaviest first: id 2 (50g), id 1 (37.5g), id 3 (18.75g)
+            assertEquals(
+                listOf(2L, 1L, 3L),
+                viewModel.uiState.value.holdings
+                    .map { it.holding.id },
+            )
+        }
+
+    @Test
+    fun setSortOption_sortsByValueDesc() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            fakeGoldRepository.holdingsFlow.value =
+                listOf(
+                    testHolding(id = 1, type = GoldType.SJC, weightValue = 1.0),
+                    testHolding(id = 2, type = GoldType.GOLD_24K, weightValue = 1.0),
+                    testHolding(id = 3, type = GoldType.GOLD_18K, weightValue = 1.0),
+                )
+            fakeGoldRepository.pricesFlow.value =
+                listOf(
+                    testPrice(type = GoldType.SJC, sellPrice = 50_000_000L),
+                    testPrice(type = GoldType.GOLD_24K, sellPrice = 90_000_000L),
+                    testPrice(type = GoldType.GOLD_18K, sellPrice = 70_000_000L),
+                )
+
+            val viewModel = createViewModel()
+            advanceUntilIdle()
+
+            viewModel.setSortOption(GoldHoldingSortOption.VALUE_DESC)
+            advanceUntilIdle()
+
+            // Highest value first: id 2 (90M), id 3 (70M), id 1 (50M)
+            assertEquals(
+                listOf(2L, 3L, 1L),
+                viewModel.uiState.value.holdings
+                    .map { it.holding.id },
+            )
+        }
+
+    @Test
+    fun setSortOption_sortsByPnLDesc() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            fakeGoldRepository.holdingsFlow.value =
+                listOf(
+                    // buy 80M, sell 90M -> +12.5%
+                    testHolding(id = 1, type = GoldType.SJC, weightValue = 1.0, buyPrice = 80_000_000L),
+                    // buy 50M, sell 90M -> +80.0%
+                    testHolding(id = 2, type = GoldType.GOLD_24K, weightValue = 1.0, buyPrice = 50_000_000L),
+                    // buy 100M, sell 90M -> -10.0%
+                    testHolding(id = 3, type = GoldType.GOLD_18K, weightValue = 1.0, buyPrice = 100_000_000L),
+                )
+            fakeGoldRepository.pricesFlow.value =
+                listOf(
+                    testPrice(type = GoldType.SJC, sellPrice = 90_000_000L),
+                    testPrice(type = GoldType.GOLD_24K, sellPrice = 90_000_000L),
+                    testPrice(type = GoldType.GOLD_18K, sellPrice = 90_000_000L),
+                )
+
+            val viewModel = createViewModel()
+            advanceUntilIdle()
+
+            viewModel.setSortOption(GoldHoldingSortOption.PNL_DESC)
+            advanceUntilIdle()
+
+            // Highest P&L % first: id 2 (+80%), id 1 (+12.5%), id 3 (-10%)
+            assertEquals(
+                listOf(2L, 1L, 3L),
+                viewModel.uiState.value.holdings
+                    .map { it.holding.id },
+            )
+        }
+
     // --- Test Helpers ---
 
     private fun testHolding(
@@ -655,6 +908,7 @@ class GoldPortfolioViewModelTest {
         weightValue: Double = 2.0,
         unit: GoldWeightUnit = GoldWeightUnit.TAEL,
         buyPrice: Long = 87_000_000L,
+        buyDateMillis: Long = 1710000000000L,
     ) = GoldHolding(
         id = id,
         type = type,
@@ -662,7 +916,7 @@ class GoldPortfolioViewModelTest {
         weightUnit = unit,
         buyPricePerUnit = buyPrice,
         currencyCode = "VND",
-        buyDateMillis = 1710000000000L,
+        buyDateMillis = buyDateMillis,
     )
 
     private fun testPrice(

@@ -10,6 +10,7 @@ import dev.tuandoan.expensetracker.domain.model.GoldHoldingWithPnL
 import dev.tuandoan.expensetracker.domain.model.GoldPortfolioSummary
 import dev.tuandoan.expensetracker.domain.model.GoldPrice
 import dev.tuandoan.expensetracker.domain.model.GoldType
+import dev.tuandoan.expensetracker.domain.model.GoldTypeAllocation
 import dev.tuandoan.expensetracker.domain.model.GoldWeightUnit
 import dev.tuandoan.expensetracker.domain.repository.CurrencyPreferenceRepository
 import dev.tuandoan.expensetracker.domain.repository.GoldRepository
@@ -31,6 +32,9 @@ class GoldPortfolioViewModel
         private val _uiState = MutableStateFlow(GoldPortfolioUiState())
         val uiState: StateFlow<GoldPortfolioUiState> = _uiState.asStateFlow()
 
+        private val selectedTypeFilterFlow = MutableStateFlow<GoldType?>(null)
+        private val sortOptionFlow = MutableStateFlow(GoldHoldingSortOption.BUY_DATE_DESC)
+
         init {
             loadPortfolio()
         }
@@ -43,8 +47,10 @@ class GoldPortfolioViewModel
                     goldRepository.observeAllHoldings(),
                     goldRepository.observeAllPrices(),
                     currencyPreferenceRepository.observeDefaultCurrency(),
-                ) { holdings, prices, currencyCode ->
-                    buildPortfolioState(holdings, prices, currencyCode)
+                    selectedTypeFilterFlow,
+                    sortOptionFlow,
+                ) { holdings, prices, currencyCode, typeFilter, sortOption ->
+                    buildPortfolioState(holdings, prices, currencyCode, typeFilter, sortOption)
                 }.catch { e ->
                     _uiState.value =
                         _uiState.value.copy(
@@ -61,6 +67,14 @@ class GoldPortfolioViewModel
                         )
                 }
             }
+        }
+
+        fun setTypeFilter(type: GoldType?) {
+            selectedTypeFilterFlow.value = type
+        }
+
+        fun setSortOption(sortOption: GoldHoldingSortOption) {
+            sortOptionFlow.value = sortOption
         }
 
         fun deleteHolding(holding: GoldHolding) {
@@ -142,11 +156,13 @@ class GoldPortfolioViewModel
             holdings: List<GoldHolding>,
             prices: List<GoldPrice>,
             currencyCode: String,
+            typeFilter: GoldType?,
+            sortOption: GoldHoldingSortOption,
         ): GoldPortfolioUiState {
             val priceMap =
                 prices.associateBy { it.type to it.unit }
 
-            val holdingsWithPnL =
+            val allHoldingsWithPnL =
                 holdings.map { holding ->
                     val currentPrice = priceMap[holding.type to holding.weightUnit]
                     GoldHoldingWithPnL(
@@ -156,7 +172,8 @@ class GoldPortfolioViewModel
                     )
                 }
 
-            val holdingsWithPrice = holdingsWithPnL.filter { it.currentSellPricePerUnit != null }
+            val holdingsWithPrice = allHoldingsWithPnL.filter { it.currentSellPricePerUnit != null }
+            val totalWeightGrams = holdings.sumOf { it.weightInGrams() }
             val summary =
                 if (holdingsWithPrice.isNotEmpty()) {
                     val totalLiquidation =
@@ -169,11 +186,14 @@ class GoldPortfolioViewModel
                         totalCost = holdingsWithPrice.sumOf { it.totalCost },
                         totalMarketValue = holdingsWithPrice.sumOf { it.marketValue ?: 0L },
                         totalLiquidationValue = totalLiquidation,
+                        totalWeightGrams = totalWeightGrams,
                         currencyCode = currencyCode,
                     )
                 } else {
                     null
                 }
+
+            val allocations = computeAllocations(allHoldingsWithPnL)
 
             val distinctCombos =
                 holdings.map { it.type to it.weightUnit }.distinct()
@@ -187,16 +207,102 @@ class GoldPortfolioViewModel
                     )
                 }
 
+            val filteredHoldings =
+                if (typeFilter != null) {
+                    allHoldingsWithPnL.filter { it.holding.type == typeFilter }
+                } else {
+                    allHoldingsWithPnL
+                }
+
+            val sortedHoldings = sortHoldings(filteredHoldings, sortOption)
+
             return GoldPortfolioUiState(
-                holdings = holdingsWithPnL,
+                holdings = sortedHoldings,
+                allHoldings = allHoldingsWithPnL,
                 summary = summary,
+                allocations = allocations,
+                totalWeightGrams = totalWeightGrams,
                 currentPrices = currentPrices,
                 currencyCode = currencyCode,
+                selectedTypeFilter = typeFilter,
+                sortOption = sortOption,
                 isLoading = false,
                 isError = false,
             )
         }
+
+        private fun computeAllocations(holdings: List<GoldHoldingWithPnL>): List<GoldTypeAllocation> {
+            if (holdings.isEmpty()) return emptyList()
+
+            val byType = holdings.groupBy { it.holding.type }
+            val totalPortfolioValue =
+                holdings.sumOf { it.liquidationValue ?: it.marketValue ?: it.totalCost }
+            val totalPortfolioCost = holdings.sumOf { it.totalCost }
+
+            return byType
+                .map { (type, typeHoldings) ->
+                    val typeWeightGrams = typeHoldings.sumOf { it.holding.weightInGrams() }
+                    val typeCost = typeHoldings.sumOf { it.totalCost }
+                    val typeValue =
+                        typeHoldings.sumOf { it.liquidationValue ?: it.marketValue ?: it.totalCost }
+                    val percentage =
+                        when {
+                            totalPortfolioValue > 0 -> (typeValue.toDouble() / totalPortfolioValue) * 100.0
+                            totalPortfolioCost > 0 -> (typeCost.toDouble() / totalPortfolioCost) * 100.0
+                            else -> 0.0
+                        }
+                    GoldTypeAllocation(
+                        type = type,
+                        totalWeightGrams = typeWeightGrams,
+                        totalCost = typeCost,
+                        currentValue = typeValue,
+                        percentageOfPortfolio = percentage,
+                    )
+                }.sortedByDescending { it.percentageOfPortfolio }
+        }
+
+        private fun sortHoldings(
+            holdings: List<GoldHoldingWithPnL>,
+            sortOption: GoldHoldingSortOption,
+        ): List<GoldHoldingWithPnL> =
+            when (sortOption) {
+                GoldHoldingSortOption.BUY_DATE_DESC ->
+                    holdings.sortedWith(
+                        compareByDescending<GoldHoldingWithPnL> { it.holding.buyDateMillis }
+                            .thenByDescending { it.holding.id },
+                    )
+                GoldHoldingSortOption.BUY_DATE_ASC ->
+                    holdings.sortedWith(
+                        compareBy<GoldHoldingWithPnL> { it.holding.buyDateMillis }
+                            .thenBy { it.holding.id },
+                    )
+                GoldHoldingSortOption.VALUE_DESC ->
+                    holdings.sortedWith(
+                        compareByDescending<GoldHoldingWithPnL> {
+                            it.liquidationValue ?: it.marketValue ?: it.totalCost
+                        }.thenByDescending { it.holding.id },
+                    )
+                GoldHoldingSortOption.PNL_DESC ->
+                    holdings.sortedWith(
+                        compareByDescending<GoldHoldingWithPnL> {
+                            it.liquidationPnLPercent ?: it.marketPnLPercent ?: -Double.MAX_VALUE
+                        }.thenByDescending { it.holding.id },
+                    )
+                GoldHoldingSortOption.WEIGHT_DESC ->
+                    holdings.sortedWith(
+                        compareByDescending<GoldHoldingWithPnL> { it.holding.weightInGrams() }
+                            .thenByDescending { it.holding.id },
+                    )
+            }
     }
+
+enum class GoldHoldingSortOption {
+    BUY_DATE_DESC,
+    BUY_DATE_ASC,
+    VALUE_DESC,
+    PNL_DESC,
+    WEIGHT_DESC,
+}
 
 data class PriceInput(
     val sellPrice: Long,
@@ -205,12 +311,21 @@ data class PriceInput(
 
 data class GoldPortfolioUiState(
     val holdings: List<GoldHoldingWithPnL> = emptyList(),
+    val allHoldings: List<GoldHoldingWithPnL> = emptyList(),
     val summary: GoldPortfolioSummary? = null,
+    val allocations: List<GoldTypeAllocation> = emptyList(),
+    val totalWeightGrams: Double = 0.0,
     val currentPrices: List<GoldPrice> = emptyList(),
     val currencyCode: String = "VND",
+    val selectedTypeFilter: GoldType? = null,
+    val sortOption: GoldHoldingSortOption = GoldHoldingSortOption.BUY_DATE_DESC,
     val isLoading: Boolean = false,
     val isError: Boolean = false,
     val errorMessage: UiText? = null,
     val lastDeletedHolding: GoldHolding? = null,
     val showPricesUpdated: Boolean = false,
-)
+) {
+    val totalHoldingsCount: Int get() = allHoldings.size
+    val hasActiveFilter: Boolean get() = selectedTypeFilter != null
+    val totalWeightTaels: Double get() = totalWeightGrams / GoldWeightUnit.TAEL.gramsPerUnit
+}

@@ -281,6 +281,21 @@
     <string name="a11y_gold_dealer_buyback_price">Giá tiệm mua lại cho %1$s mỗi %2$s</string>
     <string name="a11y_gold_estimated_pnl">P&amp;L ước tính, chưa thiết lập giá mua lại</string>
 
+    <!-- Gold Portfolio Overview Enhancements -->
+    <string name="gold_portfolio_allocation">Phân bổ danh mục</string>
+    <string name="gold_total_weight">Tổng khối lượng</string>
+    <string name="gold_total_weight_pill">%1$s %2$s (~%3$s %4$s)</string>
+    <string name="gold_filter_all">Tất cả</string>
+    <string name="gold_sort_label">Sắp xếp</string>
+    <string name="gold_sort_date_desc">Ngày: Mới nhất</string>
+    <string name="gold_sort_date_asc">Ngày: Cũ nhất</string>
+    <string name="gold_sort_value_desc">Giá trị: Cao đến thấp</string>
+    <string name="gold_sort_pnl_desc">P&amp;L: Cao đến thấp</string>
+    <string name="gold_sort_weight_desc">Khối lượng: Cao đến thấp</string>
+    <string name="gold_no_holdings_match_filter">Không có mục nào khớp với bộ lọc đã chọn</string>
+    <string name="a11y_gold_sort_menu">Sắp xếp danh mục vàng</string>
+    <string name="a11y_gold_filter_chip">Lọc theo %1$s</string>
+
     <!-- Gold Add/Edit -->
     <string name="gold_add_title">Thêm khoản nắm giữ vàng</string>
     <string name="gold_edit_title">Chỉnh sửa khoản nắm giữ vàng</string>

@@ -5,6 +5,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -16,22 +17,28 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
+import androidx.compose.material.icons.automirrored.outlined.Sort
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.outlined.Paid
 import androidx.compose.material.icons.outlined.Warning
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ElevatedCard
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilledTonalButton
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -43,6 +50,7 @@ import androidx.compose.material3.SnackbarDuration
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.SnackbarResult
+import androidx.compose.material3.Surface
 import androidx.compose.material3.SwipeToDismissBox
 import androidx.compose.material3.SwipeToDismissBoxValue
 import androidx.compose.material3.Text
@@ -61,6 +69,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
@@ -78,6 +87,7 @@ import dev.tuandoan.expensetracker.domain.model.GoldHoldingWithPnL
 import dev.tuandoan.expensetracker.domain.model.GoldPortfolioSummary
 import dev.tuandoan.expensetracker.domain.model.GoldPrice
 import dev.tuandoan.expensetracker.domain.model.GoldType
+import dev.tuandoan.expensetracker.domain.model.GoldTypeAllocation
 import dev.tuandoan.expensetracker.domain.model.GoldWeightUnit
 import dev.tuandoan.expensetracker.ui.component.AmountText
 import dev.tuandoan.expensetracker.ui.component.ErrorStateMessage
@@ -86,6 +96,7 @@ import dev.tuandoan.expensetracker.ui.theme.FinancialColors
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
+import kotlin.math.roundToLong
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -158,7 +169,7 @@ fun GoldPortfolioScreen(
             )
         },
         floatingActionButton = {
-            if (uiState.holdings.isNotEmpty()) {
+            if (uiState.totalHoldingsCount > 0) {
                 val addHoldingDesc = stringResource(R.string.gold_add_holding)
                 FloatingActionButton(
                     onClick = onNavigateToAddHolding,
@@ -197,7 +208,7 @@ fun GoldPortfolioScreen(
                 }
             }
 
-            uiState.isError && uiState.holdings.isEmpty() -> {
+            uiState.isError && uiState.totalHoldingsCount == 0 -> {
                 ErrorStateMessage(
                     title = stringResource(R.string.error_load_portfolio),
                     message = uiState.errorMessage?.asString() ?: stringResource(R.string.error_unexpected),
@@ -206,7 +217,7 @@ fun GoldPortfolioScreen(
                 )
             }
 
-            uiState.holdings.isEmpty() -> {
+            uiState.totalHoldingsCount == 0 -> {
                 GoldEmptyState(
                     onAddHolding = onNavigateToAddHolding,
                     modifier = Modifier.fillMaxSize().padding(innerPadding),
@@ -219,6 +230,8 @@ fun GoldPortfolioScreen(
                     onUpdatePrices = { showPriceSheet = true },
                     onEditHolding = onNavigateToEditHolding,
                     onDeleteHolding = viewModel::deleteHolding,
+                    onTypeFilterChanged = viewModel::setTypeFilter,
+                    onSortOptionChanged = viewModel::setSortOption,
                     contentPadding = PaddingValues(bottom = bottomContentPadding + DesignSystemSpacing.fabClearance),
                     modifier =
                         Modifier
@@ -273,6 +286,8 @@ private fun GoldPortfolioContent(
     onUpdatePrices: () -> Unit,
     onEditHolding: (holdingId: Long) -> Unit,
     onDeleteHolding: (GoldHolding) -> Unit,
+    onTypeFilterChanged: (GoldType?) -> Unit,
+    onSortOptionChanged: (GoldHoldingSortOption) -> Unit,
     modifier: Modifier = Modifier,
     contentPadding: PaddingValues = PaddingValues(),
 ) {
@@ -291,7 +306,17 @@ private fun GoldPortfolioContent(
             }
         }
 
-        if (uiState.summary == null && uiState.holdings.isNotEmpty()) {
+        // Portfolio Allocation Card
+        if (uiState.allocations.isNotEmpty()) {
+            item(key = "allocations") {
+                PortfolioAllocationCard(
+                    allocations = uiState.allocations,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+            }
+        }
+
+        if (uiState.summary == null && uiState.totalHoldingsCount > 0) {
             item(key = "no_prices") {
                 Card(
                     onClick = onUpdatePrices,
@@ -301,26 +326,43 @@ private fun GoldPortfolioContent(
                             containerColor = MaterialTheme.colorScheme.surfaceVariant,
                         ),
                 ) {
-                    Row(
-                        modifier = Modifier.padding(DesignSystemSpacing.large),
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        Icon(
-                            Icons.Outlined.Warning,
-                            contentDescription = null,
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
-                        Spacer(Modifier.width(DesignSystemSpacing.small))
-                        Text(
-                            text = stringResource(R.string.gold_no_prices_set),
-                            style = MaterialTheme.typography.bodyMedium,
-                            modifier = Modifier.weight(1f),
-                        )
-                        Icon(
-                            Icons.AutoMirrored.Filled.KeyboardArrowRight,
-                            contentDescription = null,
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
+                    Column(modifier = Modifier.padding(DesignSystemSpacing.large)) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            Icon(
+                                Icons.Outlined.Warning,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                            Spacer(Modifier.width(DesignSystemSpacing.small))
+                            Text(
+                                text = stringResource(R.string.gold_no_prices_set),
+                                style = MaterialTheme.typography.bodyMedium,
+                                modifier = Modifier.weight(1f),
+                            )
+                            Icon(
+                                Icons.AutoMirrored.Filled.KeyboardArrowRight,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
+                        if (uiState.totalWeightGrams > 0.0) {
+                            Spacer(Modifier.height(DesignSystemSpacing.small))
+                            Text(
+                                text =
+                                    stringResource(
+                                        R.string.gold_total_weight_pill,
+                                        formatWeight(uiState.totalWeightTaels),
+                                        stringResource(R.string.gold_unit_tael),
+                                        formatWeight(uiState.totalWeightGrams),
+                                        stringResource(R.string.gold_unit_gram),
+                                    ),
+                                style = MaterialTheme.typography.labelMedium,
+                                color = MaterialTheme.colorScheme.primary,
+                                fontWeight = FontWeight.SemiBold,
+                            )
+                        }
                     }
                 }
             }
@@ -428,14 +470,132 @@ private fun GoldPortfolioContent(
             }
         }
 
-        // Holdings section
+        // Holdings section header & sorting
         item(key = "holdings_header") {
             Spacer(Modifier.height(DesignSystemSpacing.small))
-            Text(
-                text = stringResource(R.string.gold_holdings_count, uiState.holdings.size),
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.SemiBold,
-            )
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                val holdingsCountText =
+                    if (uiState.hasActiveFilter) {
+                        stringResource(R.string.gold_holdings_count, uiState.holdings.size) +
+                            " / ${uiState.totalHoldingsCount}"
+                    } else {
+                        stringResource(R.string.gold_holdings_count, uiState.holdings.size)
+                    }
+                Text(
+                    text = holdingsCountText,
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.SemiBold,
+                )
+
+                // Sort dropdown button
+                Box {
+                    var showSortMenu by remember { mutableStateOf(false) }
+                    val sortMenuDesc = stringResource(R.string.a11y_gold_sort_menu)
+                    TextButton(
+                        onClick = { showSortMenu = true },
+                        modifier = Modifier.semantics { contentDescription = sortMenuDesc },
+                    ) {
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Outlined.Sort,
+                            contentDescription = null,
+                            modifier = Modifier.size(18.dp),
+                        )
+                        Spacer(Modifier.width(DesignSystemSpacing.xs))
+                        Text(
+                            text = sortOptionLabel(uiState.sortOption),
+                            style = MaterialTheme.typography.bodySmall,
+                        )
+                    }
+
+                    DropdownMenu(
+                        expanded = showSortMenu,
+                        onDismissRequest = { showSortMenu = false },
+                    ) {
+                        GoldHoldingSortOption.entries.forEach { option ->
+                            DropdownMenuItem(
+                                text = {
+                                    Text(
+                                        text = sortOptionLabel(option),
+                                        fontWeight =
+                                            if (option == uiState.sortOption) {
+                                                FontWeight.Bold
+                                            } else {
+                                                FontWeight.Normal
+                                            },
+                                    )
+                                },
+                                trailingIcon = {
+                                    if (option == uiState.sortOption) {
+                                        Icon(
+                                            Icons.Default.Check,
+                                            contentDescription = null,
+                                            tint = MaterialTheme.colorScheme.primary,
+                                        )
+                                    }
+                                },
+                                onClick = {
+                                    onSortOptionChanged(option)
+                                    showSortMenu = false
+                                },
+                            )
+                        }
+                    }
+                }
+            }
+        }
+
+        // Filter chips row
+        item(key = "filter_chips") {
+            LazyRow(
+                horizontalArrangement = Arrangement.spacedBy(DesignSystemSpacing.small),
+                contentPadding = PaddingValues(vertical = DesignSystemSpacing.xs),
+            ) {
+                item {
+                    val allDesc =
+                        stringResource(
+                            R.string.a11y_gold_filter_chip,
+                            stringResource(R.string.gold_filter_all),
+                        )
+                    FilterChip(
+                        selected = uiState.selectedTypeFilter == null,
+                        onClick = { onTypeFilterChanged(null) },
+                        label = { Text(stringResource(R.string.gold_filter_all)) },
+                        modifier = Modifier.semantics { contentDescription = allDesc },
+                    )
+                }
+                items(GoldType.entries.toTypedArray()) { type ->
+                    val typeLabel = goldTypeLabel(type)
+                    val typeDesc = stringResource(R.string.a11y_gold_filter_chip, typeLabel)
+                    FilterChip(
+                        selected = uiState.selectedTypeFilter == type,
+                        onClick = {
+                            onTypeFilterChanged(if (uiState.selectedTypeFilter == type) null else type)
+                        },
+                        label = { Text(typeLabel) },
+                        modifier = Modifier.semantics { contentDescription = typeDesc },
+                    )
+                }
+            }
+        }
+
+        // Empty filter state
+        if (uiState.holdings.isEmpty() && uiState.hasActiveFilter) {
+            item(key = "empty_filtered") {
+                Box(
+                    modifier = Modifier.fillMaxWidth().padding(DesignSystemSpacing.xl),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Text(
+                        text = stringResource(R.string.gold_no_holdings_match_filter),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+            }
         }
 
         items(
@@ -466,11 +626,42 @@ private fun PortfolioSummaryCard(
 
     ElevatedCard(modifier = modifier) {
         Column(modifier = Modifier.padding(DesignSystemSpacing.large)) {
-            Text(
-                text = stringResource(R.string.gold_portfolio_summary),
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.SemiBold,
-            )
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text(
+                    text = stringResource(R.string.gold_portfolio_summary),
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.SemiBold,
+                )
+                if (summary.totalWeightGrams > 0.0) {
+                    Surface(
+                        shape = RoundedCornerShape(16.dp),
+                        color = MaterialTheme.colorScheme.primaryContainer,
+                    ) {
+                        Text(
+                            text =
+                                stringResource(
+                                    R.string.gold_total_weight_pill,
+                                    formatWeight(summary.totalWeightTaels),
+                                    stringResource(R.string.gold_unit_tael),
+                                    formatWeight(summary.totalWeightGrams),
+                                    stringResource(R.string.gold_unit_gram),
+                                ),
+                            style = MaterialTheme.typography.labelMedium,
+                            fontWeight = FontWeight.SemiBold,
+                            color = MaterialTheme.colorScheme.onPrimaryContainer,
+                            modifier =
+                                Modifier.padding(
+                                    horizontal = DesignSystemSpacing.small,
+                                    vertical = DesignSystemSpacing.xs,
+                                ),
+                        )
+                    }
+                }
+            }
             Spacer(Modifier.height(DesignSystemSpacing.medium))
 
             // Total Cost
@@ -508,7 +699,7 @@ private fun PortfolioSummaryCard(
             }
 
             // Liquidation Value (only when buy-back prices exist)
-            if (hasLiquidation) {
+            summary.totalLiquidationValue?.let { liquidationValue ->
                 Spacer(Modifier.height(DesignSystemSpacing.xs))
                 Row(
                     modifier = Modifier.fillMaxWidth(),
@@ -520,7 +711,7 @@ private fun PortfolioSummaryCard(
                         fontWeight = FontWeight.Medium,
                     )
                     AmountText(
-                        amount = summary.totalLiquidationValue!!,
+                        amount = liquidationValue,
                         currencyCode = summary.currencyCode,
                         textStyle = MaterialTheme.typography.bodyMedium,
                         fontWeight = FontWeight.Medium,
@@ -610,6 +801,113 @@ private fun PortfolioSummaryCard(
                 }
             }
         }
+    }
+}
+
+@Composable
+private fun PortfolioAllocationCard(
+    allocations: List<GoldTypeAllocation>,
+    modifier: Modifier = Modifier,
+) {
+    Card(
+        modifier = modifier,
+        colors =
+            CardDefaults.cardColors(
+                containerColor = MaterialTheme.colorScheme.surfaceVariant,
+            ),
+    ) {
+        Column(modifier = Modifier.padding(DesignSystemSpacing.large)) {
+            Text(
+                text = stringResource(R.string.gold_portfolio_allocation),
+                style = MaterialTheme.typography.titleSmall,
+                fontWeight = FontWeight.SemiBold,
+            )
+            Spacer(Modifier.height(DesignSystemSpacing.medium))
+
+            // Segmented progress bar
+            Row(
+                modifier =
+                    Modifier
+                        .fillMaxWidth()
+                        .height(10.dp)
+                        .clip(RoundedCornerShape(5.dp)),
+            ) {
+                allocations.forEachIndexed { index, alloc ->
+                    if (index > 0) {
+                        Spacer(Modifier.width(2.dp))
+                    }
+                    Box(
+                        modifier =
+                            Modifier
+                                .weight(alloc.percentageOfPortfolio.toFloat().coerceAtLeast(0.01f))
+                                .height(10.dp)
+                                .background(goldTypeColor(alloc.type)),
+                    )
+                }
+            }
+
+            Spacer(Modifier.height(DesignSystemSpacing.medium))
+
+            // Allocation legend breakdown
+            FlowRow(
+                horizontalArrangement = Arrangement.spacedBy(DesignSystemSpacing.medium),
+                verticalArrangement = Arrangement.spacedBy(DesignSystemSpacing.xs),
+            ) {
+                allocations.forEach { alloc ->
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(DesignSystemSpacing.xs),
+                    ) {
+                        Box(
+                            modifier =
+                                Modifier
+                                    .size(8.dp)
+                                    .clip(CircleShape)
+                                    .background(goldTypeColor(alloc.type)),
+                        )
+                        Text(
+                            text = "${goldTypeLabel(alloc.type)} %.1f%%".format(alloc.percentageOfPortfolio),
+                            style = MaterialTheme.typography.bodySmall,
+                            fontWeight = FontWeight.Medium,
+                        )
+                        Text(
+                            text =
+                                "(${formatWeight(alloc.totalWeightTaels)} ${stringResource(R.string.gold_unit_tael)})",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun sortOptionLabel(option: GoldHoldingSortOption): String =
+    when (option) {
+        GoldHoldingSortOption.BUY_DATE_DESC -> stringResource(R.string.gold_sort_date_desc)
+        GoldHoldingSortOption.BUY_DATE_ASC -> stringResource(R.string.gold_sort_date_asc)
+        GoldHoldingSortOption.VALUE_DESC -> stringResource(R.string.gold_sort_value_desc)
+        GoldHoldingSortOption.PNL_DESC -> stringResource(R.string.gold_sort_pnl_desc)
+        GoldHoldingSortOption.WEIGHT_DESC -> stringResource(R.string.gold_sort_weight_desc)
+    }
+
+@Composable
+internal fun goldTypeColor(type: GoldType): Color =
+    when (type) {
+        GoldType.SJC -> Color(0xFFD4A017)
+        GoldType.GOLD_24K -> Color(0xFFFFC107)
+        GoldType.GOLD_18K -> Color(0xFFFF9800)
+        GoldType.OTHER -> Color(0xFF78909C)
+    }
+
+internal fun formatWeight(weight: Double): String {
+    val roundedTo2Decimals = (weight * 100).roundToLong() / 100.0
+    return if (roundedTo2Decimals == roundedTo2Decimals.toLong().toDouble()) {
+        roundedTo2Decimals.toLong().toString()
+    } else {
+        String.format(Locale.getDefault(), "%.2f", roundedTo2Decimals).trimEnd('0').trimEnd('.', ',')
     }
 }
 
