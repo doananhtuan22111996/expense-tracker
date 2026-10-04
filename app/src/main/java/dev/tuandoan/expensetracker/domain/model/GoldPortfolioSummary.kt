@@ -28,7 +28,9 @@ data class GoldTypeAllocation(
     val totalCost: Long,
     val currentValue: Long,
     val percentageOfPortfolio: Double,
-)
+) {
+    val totalWeightTaels: Double get() = totalWeightGrams / GoldWeightUnit.TAEL.gramsPerUnit
+}
 
 data class GoldHoldingWithPnL(
     val holding: GoldHolding,
