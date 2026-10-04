@@ -21,6 +21,7 @@ private val ALL_MIGRATIONS =
         MIGRATION_6_7,
         MIGRATION_7_8,
         MIGRATION_8_9,
+        MIGRATION_9_10,
     )
 
 /**
@@ -741,6 +742,115 @@ class MigrationTest {
     }
 
     // ───────────────────────────────────────────────────────────
+    //  v9 → v10: creates gold_sales table + indices
+    // ───────────────────────────────────────────────────────────
+
+    @Test
+    fun migration9To10_createsGoldSalesTableAndIndices() {
+        createV9Database()
+
+        val db =
+            Room
+                .databaseBuilder(context, AppDatabase::class.java, testDbName)
+                .addMigrations(*ALL_MIGRATIONS)
+                .build()
+
+        val cursor = db.openHelper.readableDatabase.query("PRAGMA table_info(gold_sales)")
+        val columnNames = mutableListOf<String>()
+        while (cursor.moveToNext()) {
+            columnNames.add(cursor.getString(cursor.getColumnIndexOrThrow("name")))
+        }
+        cursor.close()
+
+        val expected =
+            listOf(
+                "id",
+                "holding_id",
+                "type",
+                "sold_weight",
+                "weight_unit",
+                "buy_price_per_unit",
+                "sell_price_per_unit",
+                "currency_code",
+                "sale_date_millis",
+                "note",
+                "created_at",
+            )
+        for (col in expected) {
+            assertTrue("Expected $col on gold_sales. Found: $columnNames", columnNames.contains(col))
+        }
+
+        val indexCursor = db.openHelper.readableDatabase.query("PRAGMA index_list(gold_sales)")
+        val indexNames = mutableListOf<String>()
+        while (indexCursor.moveToNext()) {
+            indexNames.add(indexCursor.getString(indexCursor.getColumnIndexOrThrow("name")))
+        }
+        indexCursor.close()
+
+        assertTrue(
+            "Expected index_gold_sales_sale_date_millis. Found: $indexNames",
+            indexNames.contains("index_gold_sales_sale_date_millis"),
+        )
+        assertTrue(
+            "Expected index_gold_sales_holding_id. Found: $indexNames",
+            indexNames.contains("index_gold_sales_holding_id"),
+        )
+
+        db.close()
+    }
+
+    @Test
+    fun migration9To10_preservesExistingData() {
+        createV9Database()
+
+        val db =
+            Room
+                .databaseBuilder(context, AppDatabase::class.java, testDbName)
+                .addMigrations(*ALL_MIGRATIONS)
+                .build()
+
+        // Verify existing gold holdings preserved
+        val holdingsCursor =
+            db.openHelper.readableDatabase.query(
+                "SELECT id, type, weight_value, buy_price_per_unit FROM gold_holdings WHERE id = 1",
+            )
+        assertTrue("Expected gold holding with id 1", holdingsCursor.moveToFirst())
+        assertEquals("SJC", holdingsCursor.getString(holdingsCursor.getColumnIndexOrThrow("type")))
+        assertEquals(2.0, holdingsCursor.getDouble(holdingsCursor.getColumnIndexOrThrow("weight_value")), 0.001)
+        assertEquals(87000000L, holdingsCursor.getLong(holdingsCursor.getColumnIndexOrThrow("buy_price_per_unit")))
+        holdingsCursor.close()
+
+        // Verify existing gold prices preserved
+        val pricesCursor =
+            db.openHelper.readableDatabase.query(
+                "SELECT price_per_unit FROM gold_prices WHERE type = 'SJC' AND unit = 'TAEL'",
+            )
+        assertTrue("Expected gold price for SJC TAEL", pricesCursor.moveToFirst())
+        assertEquals(92000000L, pricesCursor.getLong(0))
+        pricesCursor.close()
+
+        // Verify existing transactions preserved
+        val txCursor = db.openHelper.readableDatabase.query("SELECT count(*) FROM transactions")
+        assertTrue(txCursor.moveToFirst())
+        assertTrue("Expected transactions count > 0", txCursor.getInt(0) > 0)
+        txCursor.close()
+
+        // Verify we can insert into gold_sales
+        db.openHelper.writableDatabase.execSQL(
+            """
+            INSERT INTO gold_sales (holding_id, type, sold_weight, weight_unit, buy_price_per_unit, sell_price_per_unit, currency_code, sale_date_millis, note, created_at)
+            VALUES (1, 'SJC', 0.5, 'TAEL', 87000000, 92000000, 'VND', 1710000000000, 'Test Sale', 1710000000000)
+            """.trimIndent(),
+        )
+        val salesCursor = db.openHelper.readableDatabase.query("SELECT count(*) FROM gold_sales")
+        assertTrue(salesCursor.moveToFirst())
+        assertEquals(1, salesCursor.getInt(0))
+        salesCursor.close()
+
+        db.close()
+    }
+
+    // ───────────────────────────────────────────────────────────
     //  Helper: create databases at specific versions
     // ───────────────────────────────────────────────────────────
 
@@ -1179,6 +1289,17 @@ class MigrationTest {
         )
 
         db.version = 8
+        db.close()
+    }
+
+    /**
+     * Creates a raw SQLite database matching the v9 schema (trips table + budget_amount column).
+     */
+    private fun createV9Database() {
+        createV8Database()
+        val db = context.openOrCreateDatabase(testDbName, 0, null)
+        db.execSQL("ALTER TABLE trips ADD COLUMN budget_amount INTEGER DEFAULT NULL")
+        db.version = 9
         db.close()
     }
 }

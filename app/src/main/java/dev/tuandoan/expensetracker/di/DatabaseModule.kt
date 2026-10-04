@@ -12,6 +12,7 @@ import dev.tuandoan.expensetracker.data.database.AppDatabase
 import dev.tuandoan.expensetracker.data.database.dao.CategoryDao
 import dev.tuandoan.expensetracker.data.database.dao.GoldHoldingDao
 import dev.tuandoan.expensetracker.data.database.dao.GoldPriceDao
+import dev.tuandoan.expensetracker.data.database.dao.GoldSaleDao
 import dev.tuandoan.expensetracker.data.database.dao.RecurringTransactionDao
 import dev.tuandoan.expensetracker.data.database.dao.TransactionDao
 import dev.tuandoan.expensetracker.data.database.dao.TripDao
@@ -24,6 +25,7 @@ import dev.tuandoan.expensetracker.data.database.migration.MIGRATION_5_6
 import dev.tuandoan.expensetracker.data.database.migration.MIGRATION_6_7
 import dev.tuandoan.expensetracker.data.database.migration.MIGRATION_7_8
 import dev.tuandoan.expensetracker.data.database.migration.MIGRATION_8_9
+import dev.tuandoan.expensetracker.data.database.migration.MIGRATION_9_10
 import javax.inject.Singleton
 
 @Module
@@ -48,6 +50,7 @@ object DatabaseModule {
                 MIGRATION_6_7,
                 MIGRATION_7_8,
                 MIGRATION_8_9,
+                MIGRATION_9_10,
             ).build()
 
     @Provides
@@ -65,6 +68,9 @@ object DatabaseModule {
 
     @Provides
     fun provideGoldPriceDao(database: AppDatabase): GoldPriceDao = database.goldPriceDao()
+
+    @Provides
+    fun provideGoldSaleDao(database: AppDatabase): GoldSaleDao = database.goldSaleDao()
 
     @Provides
     fun provideTripDao(database: AppDatabase): TripDao = database.tripDao()

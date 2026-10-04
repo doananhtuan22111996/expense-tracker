@@ -3,6 +3,7 @@ package dev.tuandoan.expensetracker.ui.screen.gold
 import androidx.lifecycle.SavedStateHandle
 import dev.tuandoan.expensetracker.domain.model.GoldHolding
 import dev.tuandoan.expensetracker.domain.model.GoldPrice
+import dev.tuandoan.expensetracker.domain.model.GoldSale
 import dev.tuandoan.expensetracker.domain.model.GoldType
 import dev.tuandoan.expensetracker.domain.model.GoldWeightUnit
 import dev.tuandoan.expensetracker.domain.repository.GoldRepository
@@ -495,5 +496,23 @@ class AddEditGoldHoldingViewModelTest {
         override suspend fun upsertPrices(prices: List<GoldPrice>) {
             upsertedPrices.addAll(prices)
         }
+
+        val salesFlow = MutableStateFlow<List<GoldSale>>(emptyList())
+
+        override fun observeAllSales(): Flow<List<GoldSale>> = salesFlow
+
+        override suspend fun getAllSales(): List<GoldSale> = salesFlow.value
+
+        override suspend fun getSale(id: Long): GoldSale? = salesFlow.value.firstOrNull { it.id == id }
+
+        override suspend fun recordSale(
+            holdingId: Long,
+            soldWeight: Double,
+            sellPricePerUnit: Long,
+            saleDateMillis: Long,
+            note: String?,
+        ): Long = 1L
+
+        override suspend fun deleteSale(id: Long) {}
     }
 }
