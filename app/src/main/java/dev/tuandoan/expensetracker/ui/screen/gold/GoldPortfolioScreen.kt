@@ -77,10 +77,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
@@ -1117,7 +1115,7 @@ internal fun formatWeight(weight: Double): String {
 }
 
 private fun formatWeightQuick(weight: Double): String {
-    val rounded = (weight * 10000).toLong() / 10000.0
+    val rounded = (weight * 10000).roundToLong() / 10000.0
     return if (rounded == rounded.toLong().toDouble()) {
         rounded.toLong().toString()
     } else {
@@ -1556,7 +1554,7 @@ private fun SellGoldHoldingBottomSheet(
     var noteText by remember { mutableStateOf("") }
     var showDatePicker by remember { mutableStateOf(false) }
 
-    val parsedWeight = weightText.replace(',', '.').toDoubleOrNull()
+    val parsedWeight = weightText.toDoubleOrNull()
     val isWeightValid = parsedWeight != null && parsedWeight > 0.0 && parsedWeight <= holding.weightValue
     val isWeightError = weightText.isNotBlank() && !isWeightValid
 
@@ -1565,7 +1563,6 @@ private fun SellGoldHoldingBottomSheet(
     val isPriceError = sellPriceText.isNotBlank() && !isPriceValid
 
     val visualTransformation = remember(currencyCode) { CurrencyAmountVisualTransformation(currencyCode) }
-    val hapticFeedback = LocalHapticFeedback.current
 
     ModalBottomSheet(
         onDismissRequest = onDismiss,
@@ -1650,15 +1647,7 @@ private fun SellGoldHoldingBottomSheet(
                     )
                     FilterChip(
                         selected = false,
-                        onClick = {
-                            val w = holding.weightValue
-                            weightText =
-                                if (w == w.toLong().toDouble()) {
-                                    w.toLong().toString()
-                                } else {
-                                    w.toString().trimEnd('0').trimEnd('.')
-                                }
-                        },
+                        onClick = { weightText = formatWeightQuick(holding.weightValue) },
                         label = { Text(stringResource(R.string.gold_sell_quick_all)) },
                     )
                 }
@@ -1754,10 +1743,7 @@ private fun SellGoldHoldingBottomSheet(
 
             // Sale Date selector
             Card(
-                onClick = {
-                    hapticFeedback.performHapticFeedback(HapticFeedbackType.LongPress)
-                    showDatePicker = true
-                },
+                onClick = { showDatePicker = true },
                 modifier = Modifier.fillMaxWidth(),
                 elevation = CardDefaults.cardElevation(defaultElevation = DesignSystemElevation.low),
             ) {
