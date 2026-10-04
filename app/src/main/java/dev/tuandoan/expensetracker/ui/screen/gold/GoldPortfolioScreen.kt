@@ -26,13 +26,16 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.automirrored.outlined.Sort
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.CalendarToday
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.outlined.Paid
 import androidx.compose.material.icons.outlined.Warning
+import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.DatePickerDialog
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ElevatedCard
@@ -45,6 +48,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.PrimaryTabRow
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarDuration
 import androidx.compose.material3.SnackbarHost
@@ -53,15 +57,18 @@ import androidx.compose.material3.SnackbarResult
 import androidx.compose.material3.Surface
 import androidx.compose.material3.SwipeToDismissBox
 import androidx.compose.material3.SwipeToDismissBoxValue
+import androidx.compose.material3.Tab
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.material3.rememberDatePickerState
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.material3.rememberSwipeToDismissBoxState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -82,15 +89,18 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import dev.tuandoan.expensetracker.R
 import dev.tuandoan.expensetracker.core.formatter.CurrencyAmountVisualTransformation
+import dev.tuandoan.expensetracker.core.util.DateTimeUtil
 import dev.tuandoan.expensetracker.domain.model.GoldHolding
 import dev.tuandoan.expensetracker.domain.model.GoldHoldingWithPnL
 import dev.tuandoan.expensetracker.domain.model.GoldPortfolioSummary
 import dev.tuandoan.expensetracker.domain.model.GoldPrice
+import dev.tuandoan.expensetracker.domain.model.GoldSale
 import dev.tuandoan.expensetracker.domain.model.GoldType
 import dev.tuandoan.expensetracker.domain.model.GoldTypeAllocation
 import dev.tuandoan.expensetracker.domain.model.GoldWeightUnit
 import dev.tuandoan.expensetracker.ui.component.AmountText
 import dev.tuandoan.expensetracker.ui.component.ErrorStateMessage
+import dev.tuandoan.expensetracker.ui.theme.DesignSystemElevation
 import dev.tuandoan.expensetracker.ui.theme.DesignSystemSpacing
 import dev.tuandoan.expensetracker.ui.theme.FinancialColors
 import java.text.SimpleDateFormat
@@ -115,6 +125,8 @@ fun GoldPortfolioScreen(
     val holdingDeletedMsg = stringResource(R.string.gold_holding_deleted)
     val undoMsg = stringResource(R.string.undo)
     val pricesUpdatedMsg = stringResource(R.string.gold_prices_updated)
+    val saleSuccessMsg = stringResource(R.string.gold_sale_success)
+    val saleDeletedMsg = stringResource(R.string.gold_sale_deleted)
 
     LaunchedEffect(uiState.isError) {
         val message = uiState.errorMessage
@@ -147,6 +159,20 @@ fun GoldPortfolioScreen(
         }
     }
 
+    LaunchedEffect(uiState.showSaleSuccess) {
+        if (uiState.showSaleSuccess) {
+            snackbarHostState.showSnackbar(saleSuccessMsg)
+            viewModel.clearSaleSuccessFlag()
+        }
+    }
+
+    LaunchedEffect(uiState.lastDeletedSale) {
+        if (uiState.lastDeletedSale != null) {
+            snackbarHostState.showSnackbar(saleDeletedMsg)
+            viewModel.clearLastDeletedSale()
+        }
+    }
+
     if (showPriceSheet && uiState.currentPrices.isNotEmpty()) {
         UpdatePricesBottomSheet(
             currentPrices = uiState.currentPrices,
@@ -159,6 +185,24 @@ fun GoldPortfolioScreen(
         )
     }
 
+    uiState.holdingToSell?.let { holdingWithPnL ->
+        SellGoldHoldingBottomSheet(
+            holdingWithPnL = holdingWithPnL,
+            currencyCode = uiState.currencyCode,
+            onConfirmSale = { holdingId, soldWeight, sellPrice, dateMillis, note ->
+                viewModel.recordSale(
+                    holdingId = holdingId,
+                    soldWeight = soldWeight,
+                    sellPricePerUnit = sellPrice,
+                    saleDateMillis = dateMillis,
+                    note = note,
+                )
+            },
+            onDismiss = viewModel::cancelSell,
+        )
+    }
+
+    val totalItems = uiState.totalHoldingsCount + uiState.totalSalesCount
     val scrollBehavior = TopAppBarDefaults.pinnedScrollBehavior()
     Scaffold(
         modifier = modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
@@ -169,7 +213,7 @@ fun GoldPortfolioScreen(
             )
         },
         floatingActionButton = {
-            if (uiState.totalHoldingsCount > 0) {
+            if (totalItems > 0) {
                 val addHoldingDesc = stringResource(R.string.gold_add_holding)
                 FloatingActionButton(
                     onClick = onNavigateToAddHolding,
@@ -208,7 +252,7 @@ fun GoldPortfolioScreen(
                 }
             }
 
-            uiState.isError && uiState.totalHoldingsCount == 0 -> {
+            uiState.isError && totalItems == 0 -> {
                 ErrorStateMessage(
                     title = stringResource(R.string.error_load_portfolio),
                     message = uiState.errorMessage?.asString() ?: stringResource(R.string.error_unexpected),
@@ -217,7 +261,7 @@ fun GoldPortfolioScreen(
                 )
             }
 
-            uiState.totalHoldingsCount == 0 -> {
+            totalItems == 0 -> {
                 GoldEmptyState(
                     onAddHolding = onNavigateToAddHolding,
                     modifier = Modifier.fillMaxSize().padding(innerPadding),
@@ -230,8 +274,11 @@ fun GoldPortfolioScreen(
                     onUpdatePrices = { showPriceSheet = true },
                     onEditHolding = onNavigateToEditHolding,
                     onDeleteHolding = viewModel::deleteHolding,
+                    onStartSell = viewModel::startSell,
+                    onDeleteSale = viewModel::deleteSale,
                     onTypeFilterChanged = viewModel::setTypeFilter,
                     onSortOptionChanged = viewModel::setSortOption,
+                    onTabSelected = viewModel::selectTab,
                     contentPadding = PaddingValues(bottom = bottomContentPadding + DesignSystemSpacing.fabClearance),
                     modifier =
                         Modifier
@@ -286,8 +333,11 @@ private fun GoldPortfolioContent(
     onUpdatePrices: () -> Unit,
     onEditHolding: (holdingId: Long) -> Unit,
     onDeleteHolding: (GoldHolding) -> Unit,
+    onStartSell: (GoldHoldingWithPnL) -> Unit,
+    onDeleteSale: (GoldSale) -> Unit,
     onTypeFilterChanged: (GoldType?) -> Unit,
     onSortOptionChanged: (GoldHoldingSortOption) -> Unit,
+    onTabSelected: (GoldPortfolioTab) -> Unit,
     modifier: Modifier = Modifier,
     contentPadding: PaddingValues = PaddingValues(),
 ) {
@@ -470,144 +520,254 @@ private fun GoldPortfolioContent(
             }
         }
 
-        // Holdings section header & sorting
-        item(key = "holdings_header") {
+        // Segmented Tabs: Holdings vs Sales History
+        item(key = "portfolio_tabs") {
             Spacer(Modifier.height(DesignSystemSpacing.small))
-            Row(
+            val holdingsTabDesc = stringResource(R.string.a11y_gold_holdings_tab)
+            val salesTabDesc = stringResource(R.string.a11y_gold_sales_tab)
+            PrimaryTabRow(
+                selectedTabIndex = if (uiState.selectedTab == GoldPortfolioTab.HOLDINGS) 0 else 1,
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically,
             ) {
-                val holdingsCountText =
-                    if (uiState.hasActiveFilter) {
-                        stringResource(R.string.gold_holdings_count, uiState.holdings.size) +
-                            " / ${uiState.totalHoldingsCount}"
-                    } else {
-                        stringResource(R.string.gold_holdings_count, uiState.holdings.size)
-                    }
-                Text(
-                    text = holdingsCountText,
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.SemiBold,
-                )
-
-                // Sort dropdown button
-                Box {
-                    var showSortMenu by remember { mutableStateOf(false) }
-                    val sortMenuDesc = stringResource(R.string.a11y_gold_sort_menu)
-                    TextButton(
-                        onClick = { showSortMenu = true },
-                        modifier = Modifier.semantics { contentDescription = sortMenuDesc },
-                    ) {
-                        Icon(
-                            imageVector = Icons.AutoMirrored.Outlined.Sort,
-                            contentDescription = null,
-                            modifier = Modifier.size(18.dp),
-                        )
-                        Spacer(Modifier.width(DesignSystemSpacing.xs))
+                Tab(
+                    selected = uiState.selectedTab == GoldPortfolioTab.HOLDINGS,
+                    onClick = { onTabSelected(GoldPortfolioTab.HOLDINGS) },
+                    text = {
                         Text(
-                            text = sortOptionLabel(uiState.sortOption),
-                            style = MaterialTheme.typography.bodySmall,
+                            text = stringResource(R.string.gold_tab_holdings_count, uiState.totalHoldingsCount),
+                            fontWeight =
+                                if (uiState.selectedTab == GoldPortfolioTab.HOLDINGS) {
+                                    FontWeight.Bold
+                                } else {
+                                    FontWeight.Normal
+                                },
                         )
-                    }
+                    },
+                    modifier =
+                        Modifier.semantics {
+                            contentDescription = holdingsTabDesc
+                        },
+                )
+                Tab(
+                    selected = uiState.selectedTab == GoldPortfolioTab.SALES,
+                    onClick = { onTabSelected(GoldPortfolioTab.SALES) },
+                    text = {
+                        Text(
+                            text = stringResource(R.string.gold_tab_sales_count, uiState.totalSalesCount),
+                            fontWeight =
+                                if (uiState.selectedTab == GoldPortfolioTab.SALES) {
+                                    FontWeight.Bold
+                                } else {
+                                    FontWeight.Normal
+                                },
+                        )
+                    },
+                    modifier =
+                        Modifier.semantics {
+                            contentDescription = salesTabDesc
+                        },
+                )
+            }
+        }
 
-                    DropdownMenu(
-                        expanded = showSortMenu,
-                        onDismissRequest = { showSortMenu = false },
+        // Content based on selected tab
+        when (uiState.selectedTab) {
+            GoldPortfolioTab.HOLDINGS -> {
+                // Holdings header & sorting
+                item(key = "holdings_header") {
+                    Spacer(Modifier.height(DesignSystemSpacing.xs))
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically,
                     ) {
-                        GoldHoldingSortOption.entries.forEach { option ->
-                            DropdownMenuItem(
-                                text = {
-                                    Text(
-                                        text = sortOptionLabel(option),
-                                        fontWeight =
+                        val holdingsCountText =
+                            if (uiState.hasActiveFilter) {
+                                stringResource(R.string.gold_holdings_count, uiState.holdings.size) +
+                                    " / ${uiState.totalHoldingsCount}"
+                            } else {
+                                stringResource(R.string.gold_holdings_count, uiState.holdings.size)
+                            }
+                        Text(
+                            text = holdingsCountText,
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.SemiBold,
+                        )
+
+                        // Sort dropdown button
+                        Box {
+                            var showSortMenu by remember { mutableStateOf(false) }
+                            val sortMenuDesc = stringResource(R.string.a11y_gold_sort_menu)
+                            TextButton(
+                                onClick = { showSortMenu = true },
+                                modifier = Modifier.semantics { contentDescription = sortMenuDesc },
+                            ) {
+                                Icon(
+                                    imageVector = Icons.AutoMirrored.Outlined.Sort,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(18.dp),
+                                )
+                                Spacer(Modifier.width(DesignSystemSpacing.xs))
+                                Text(
+                                    text = sortOptionLabel(uiState.sortOption),
+                                    style = MaterialTheme.typography.bodySmall,
+                                )
+                            }
+
+                            DropdownMenu(
+                                expanded = showSortMenu,
+                                onDismissRequest = { showSortMenu = false },
+                            ) {
+                                GoldHoldingSortOption.entries.forEach { option ->
+                                    DropdownMenuItem(
+                                        text = {
+                                            Text(
+                                                text = sortOptionLabel(option),
+                                                fontWeight =
+                                                    if (option == uiState.sortOption) {
+                                                        FontWeight.Bold
+                                                    } else {
+                                                        FontWeight.Normal
+                                                    },
+                                            )
+                                        },
+                                        trailingIcon = {
                                             if (option == uiState.sortOption) {
-                                                FontWeight.Bold
-                                            } else {
-                                                FontWeight.Normal
-                                            },
+                                                Icon(
+                                                    Icons.Default.Check,
+                                                    contentDescription = null,
+                                                    tint = MaterialTheme.colorScheme.primary,
+                                                )
+                                            }
+                                        },
+                                        onClick = {
+                                            onSortOptionChanged(option)
+                                            showSortMenu = false
+                                        },
                                     )
-                                },
-                                trailingIcon = {
-                                    if (option == uiState.sortOption) {
-                                        Icon(
-                                            Icons.Default.Check,
-                                            contentDescription = null,
-                                            tint = MaterialTheme.colorScheme.primary,
-                                        )
-                                    }
-                                },
+                                }
+                            }
+                        }
+                    }
+                }
+
+                // Filter chips row
+                item(key = "filter_chips") {
+                    LazyRow(
+                        horizontalArrangement = Arrangement.spacedBy(DesignSystemSpacing.small),
+                        contentPadding = PaddingValues(vertical = DesignSystemSpacing.xs),
+                    ) {
+                        item {
+                            val allDesc =
+                                stringResource(
+                                    R.string.a11y_gold_filter_chip,
+                                    stringResource(R.string.gold_filter_all),
+                                )
+                            FilterChip(
+                                selected = uiState.selectedTypeFilter == null,
+                                onClick = { onTypeFilterChanged(null) },
+                                label = { Text(stringResource(R.string.gold_filter_all)) },
+                                modifier = Modifier.semantics { contentDescription = allDesc },
+                            )
+                        }
+                        items(GoldType.entries.toTypedArray()) { type ->
+                            val typeLabel = goldTypeLabel(type)
+                            val typeDesc = stringResource(R.string.a11y_gold_filter_chip, typeLabel)
+                            FilterChip(
+                                selected = uiState.selectedTypeFilter == type,
                                 onClick = {
-                                    onSortOptionChanged(option)
-                                    showSortMenu = false
+                                    onTypeFilterChanged(if (uiState.selectedTypeFilter == type) null else type)
                                 },
+                                label = { Text(typeLabel) },
+                                modifier = Modifier.semantics { contentDescription = typeDesc },
                             )
                         }
                     }
                 }
-            }
-        }
 
-        // Filter chips row
-        item(key = "filter_chips") {
-            LazyRow(
-                horizontalArrangement = Arrangement.spacedBy(DesignSystemSpacing.small),
-                contentPadding = PaddingValues(vertical = DesignSystemSpacing.xs),
-            ) {
-                item {
-                    val allDesc =
-                        stringResource(
-                            R.string.a11y_gold_filter_chip,
-                            stringResource(R.string.gold_filter_all),
+                if (uiState.totalHoldingsCount == 0) {
+                    item(key = "empty_holdings_tab") {
+                        Box(
+                            modifier = Modifier.fillMaxWidth().padding(DesignSystemSpacing.xl),
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            Text(
+                                text = stringResource(R.string.gold_no_active_holdings),
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
+                    }
+                } else if (uiState.holdings.isEmpty() && uiState.hasActiveFilter) {
+                    item(key = "empty_filtered") {
+                        Box(
+                            modifier = Modifier.fillMaxWidth().padding(DesignSystemSpacing.xl),
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            Text(
+                                text = stringResource(R.string.gold_no_holdings_match_filter),
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
+                    }
+                }
+
+                items(
+                    items = uiState.holdings,
+                    key = { it.holding.id },
+                ) { holdingWithPnL ->
+                    SwipeToDismissHoldingCard(
+                        holdingWithPnL = holdingWithPnL,
+                        onEdit = { onEditHolding(holdingWithPnL.holding.id) },
+                        onDelete = { onDeleteHolding(holdingWithPnL.holding) },
+                        onSell = { onStartSell(holdingWithPnL) },
+                        modifier = Modifier.fillMaxWidth().animateItem(),
+                    )
+                }
+            }
+
+            GoldPortfolioTab.SALES -> {
+                if (uiState.sales.isEmpty()) {
+                    item(key = "empty_sales") {
+                        Card(
+                            modifier = Modifier.fillMaxWidth(),
+                            colors =
+                                CardDefaults.cardColors(
+                                    containerColor = MaterialTheme.colorScheme.surfaceVariant,
+                                ),
+                        ) {
+                            Column(
+                                modifier = Modifier.fillMaxWidth().padding(DesignSystemSpacing.xl),
+                                horizontalAlignment = Alignment.CenterHorizontally,
+                            ) {
+                                Text(
+                                    text = stringResource(R.string.gold_sales_empty_title),
+                                    style = MaterialTheme.typography.titleMedium,
+                                    fontWeight = FontWeight.SemiBold,
+                                )
+                                Spacer(Modifier.height(DesignSystemSpacing.xs))
+                                Text(
+                                    text = stringResource(R.string.gold_sales_empty_subtitle),
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                )
+                            }
+                        }
+                    }
+                } else {
+                    items(
+                        items = uiState.sales,
+                        key = { it.id },
+                    ) { sale ->
+                        SwipeToDismissSaleCard(
+                            sale = sale,
+                            onDelete = { onDeleteSale(sale) },
+                            modifier = Modifier.fillMaxWidth().animateItem(),
                         )
-                    FilterChip(
-                        selected = uiState.selectedTypeFilter == null,
-                        onClick = { onTypeFilterChanged(null) },
-                        label = { Text(stringResource(R.string.gold_filter_all)) },
-                        modifier = Modifier.semantics { contentDescription = allDesc },
-                    )
-                }
-                items(GoldType.entries.toTypedArray()) { type ->
-                    val typeLabel = goldTypeLabel(type)
-                    val typeDesc = stringResource(R.string.a11y_gold_filter_chip, typeLabel)
-                    FilterChip(
-                        selected = uiState.selectedTypeFilter == type,
-                        onClick = {
-                            onTypeFilterChanged(if (uiState.selectedTypeFilter == type) null else type)
-                        },
-                        label = { Text(typeLabel) },
-                        modifier = Modifier.semantics { contentDescription = typeDesc },
-                    )
+                    }
                 }
             }
-        }
-
-        // Empty filter state
-        if (uiState.holdings.isEmpty() && uiState.hasActiveFilter) {
-            item(key = "empty_filtered") {
-                Box(
-                    modifier = Modifier.fillMaxWidth().padding(DesignSystemSpacing.xl),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    Text(
-                        text = stringResource(R.string.gold_no_holdings_match_filter),
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                }
-            }
-        }
-
-        items(
-            items = uiState.holdings,
-            key = { it.holding.id },
-        ) { holdingWithPnL ->
-            SwipeToDismissHoldingCard(
-                holdingWithPnL = holdingWithPnL,
-                onEdit = { onEditHolding(holdingWithPnL.holding.id) },
-                onDelete = { onDeleteHolding(holdingWithPnL.holding) },
-                modifier = Modifier.fillMaxWidth().animateItem(),
-            )
         }
     }
 }
@@ -800,6 +960,49 @@ private fun PortfolioSummaryCard(
                     }
                 }
             }
+
+            // Realized P&L (when sales exist)
+            if (summary.totalRealizedPnL != 0L || summary.totalRealizedProceeds > 0L) {
+                Spacer(Modifier.height(DesignSystemSpacing.xs))
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Text(
+                        stringResource(R.string.gold_realized_pnl),
+                        style = MaterialTheme.typography.bodyMedium,
+                    )
+                    AmountText(
+                        amount = summary.totalRealizedPnL,
+                        currencyCode = summary.currencyCode,
+                        showSign = true,
+                        textStyle = MaterialTheme.typography.bodyMedium,
+                        fontWeight = FontWeight.SemiBold,
+                    )
+                }
+
+                // All-time Net P&L (Unrealized + Realized)
+                Spacer(Modifier.height(DesignSystemSpacing.xs))
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Text(
+                        stringResource(R.string.gold_total_net_pnl),
+                        style = MaterialTheme.typography.titleSmall,
+                        fontWeight = FontWeight.SemiBold,
+                    )
+                    AmountText(
+                        amount = summary.totalNetPnL,
+                        currencyCode = summary.currencyCode,
+                        showSign = true,
+                        textStyle = MaterialTheme.typography.titleSmall,
+                        fontWeight = FontWeight.Bold,
+                    )
+                }
+            }
         }
     }
 }
@@ -911,12 +1114,22 @@ internal fun formatWeight(weight: Double): String {
     }
 }
 
+private fun formatWeightQuick(weight: Double): String {
+    val rounded = (weight * 10000).roundToLong() / 10000.0
+    return if (rounded == rounded.toLong().toDouble()) {
+        rounded.toLong().toString()
+    } else {
+        String.format(Locale.US, "%.4f", rounded).trimEnd('0').trimEnd('.')
+    }
+}
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun SwipeToDismissHoldingCard(
     holdingWithPnL: GoldHoldingWithPnL,
     onEdit: () -> Unit,
     onDelete: () -> Unit,
+    onSell: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val dismissState =
@@ -964,6 +1177,7 @@ private fun SwipeToDismissHoldingCard(
         HoldingCard(
             holdingWithPnL = holdingWithPnL,
             onClick = onEdit,
+            onSell = onSell,
             modifier = Modifier.fillMaxWidth(),
         )
     }
@@ -973,6 +1187,7 @@ private fun SwipeToDismissHoldingCard(
 private fun HoldingCard(
     holdingWithPnL: GoldHoldingWithPnL,
     onClick: () -> Unit = {},
+    onSell: () -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
     val holding = holdingWithPnL.holding
@@ -988,13 +1203,41 @@ private fun HoldingCard(
             ),
     ) {
         Column(modifier = Modifier.padding(DesignSystemSpacing.large)) {
-            // Row 1: Type + Weight
-            Text(
-                text =
-                    "${goldTypeLabel(holding.type)} · ${holding.weightValue} ${goldUnitLabel(holding.weightUnit)}",
-                style = MaterialTheme.typography.titleSmall,
-                fontWeight = FontWeight.SemiBold,
-            )
+            // Row 1: Type + Weight and Sell button
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text(
+                    text =
+                        "${goldTypeLabel(
+                            holding.type,
+                        )} · ${formatWeight(holding.weightValue)} ${goldUnitLabel(holding.weightUnit)}",
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.SemiBold,
+                )
+                val sellDesc = stringResource(R.string.a11y_gold_sell_holding, goldTypeLabel(holding.type))
+                FilledTonalButton(
+                    onClick = onSell,
+                    contentPadding = PaddingValues(horizontal = DesignSystemSpacing.medium, vertical = 0.dp),
+                    modifier =
+                        Modifier
+                            .height(32.dp)
+                            .semantics { contentDescription = sellDesc },
+                ) {
+                    Icon(
+                        imageVector = Icons.Outlined.Paid,
+                        contentDescription = null,
+                        modifier = Modifier.size(16.dp),
+                    )
+                    Spacer(Modifier.width(DesignSystemSpacing.xs))
+                    Text(
+                        text = stringResource(R.string.gold_sell_action),
+                        style = MaterialTheme.typography.labelMedium,
+                    )
+                }
+            }
 
             Spacer(Modifier.height(DesignSystemSpacing.xs))
 
@@ -1113,6 +1356,473 @@ private fun HoldingCard(
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 }
+            }
+        }
+    }
+}
+
+@Composable
+private fun SaleCard(
+    sale: GoldSale,
+    modifier: Modifier = Modifier,
+) {
+    Card(
+        modifier = modifier,
+        colors =
+            CardDefaults.cardColors(
+                containerColor = MaterialTheme.colorScheme.surface,
+            ),
+    ) {
+        Column(modifier = Modifier.padding(DesignSystemSpacing.large)) {
+            // Row 1: Type + Sold Weight and Date
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text(
+                    text =
+                        "${goldTypeLabel(
+                            sale.type,
+                        )} · ${formatWeight(sale.soldWeight)} ${goldUnitLabel(sale.weightUnit)}",
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.SemiBold,
+                )
+                Text(
+                    text = DateTimeUtil.formatTimestamp(sale.saleDateMillis),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+
+            Spacer(Modifier.height(DesignSystemSpacing.xs))
+
+            // Row 2: Bought price → Sold price
+            Text(
+                text =
+                    stringResource(
+                        R.string.gold_sale_price_spread,
+                        formatAmountShort(sale.buyPricePerUnit, sale.currencyCode),
+                        formatAmountShort(sale.sellPricePerUnit, sale.currencyCode),
+                    ) + " / ${goldUnitLabel(sale.weightUnit)}",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+
+            Spacer(Modifier.height(DesignSystemSpacing.small))
+
+            // Row 3: Cost → Proceeds
+            Text(
+                text =
+                    stringResource(
+                        R.string.gold_sale_cost_proceeds,
+                        formatAmountShort(sale.totalCost, sale.currencyCode),
+                        formatAmountShort(sale.totalProceeds, sale.currencyCode),
+                    ),
+                style = MaterialTheme.typography.bodyMedium,
+            )
+
+            Spacer(Modifier.height(DesignSystemSpacing.xs))
+
+            // Row 4: Realized P&L
+            val pnl = sale.realizedPnL
+            val pnlColor = FinancialColors.balanceColor(pnl >= 0)
+            val sign = if (pnl >= 0) "+" else ""
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    AmountText(
+                        amount = pnl,
+                        currencyCode = sale.currencyCode,
+                        showSign = true,
+                        textStyle = MaterialTheme.typography.bodyMedium,
+                        fontWeight = FontWeight.SemiBold,
+                    )
+                    Spacer(Modifier.width(DesignSystemSpacing.xs))
+                    Text(
+                        text = "($sign%.1f%%)".format(sale.realizedPnLPercent),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = pnlColor,
+                        fontWeight = FontWeight.Medium,
+                    )
+                }
+                Box(
+                    modifier =
+                        Modifier
+                            .size(8.dp)
+                            .clip(CircleShape)
+                            .background(pnlColor),
+                )
+            }
+
+            if (!sale.note.isNullOrBlank()) {
+                Spacer(Modifier.height(DesignSystemSpacing.xs))
+                Text(
+                    text = sale.note,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun SwipeToDismissSaleCard(
+    sale: GoldSale,
+    onDelete: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val dismissState =
+        rememberSwipeToDismissBoxState(
+            confirmValueChange = { value ->
+                if (value == SwipeToDismissBoxValue.EndToStart) {
+                    onDelete()
+                    true
+                } else {
+                    false
+                }
+            },
+        )
+
+    SwipeToDismissBox(
+        state = dismissState,
+        modifier = modifier,
+        enableDismissFromStartToEnd = false,
+        backgroundContent = {
+            val color by animateColorAsState(
+                targetValue =
+                    if (dismissState.targetValue == SwipeToDismissBoxValue.EndToStart) {
+                        MaterialTheme.colorScheme.errorContainer
+                    } else {
+                        MaterialTheme.colorScheme.surface
+                    },
+                label = "swipe_sale_bg",
+            )
+            Box(
+                modifier =
+                    Modifier
+                        .fillMaxSize()
+                        .background(color, RoundedCornerShape(12.dp))
+                        .padding(horizontal = DesignSystemSpacing.large),
+                contentAlignment = Alignment.CenterEnd,
+            ) {
+                Icon(
+                    Icons.Default.Delete,
+                    contentDescription = stringResource(R.string.delete),
+                    tint = MaterialTheme.colorScheme.onErrorContainer,
+                )
+            }
+        },
+    ) {
+        SaleCard(
+            sale = sale,
+            modifier = Modifier.fillMaxWidth(),
+        )
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun SellGoldHoldingBottomSheet(
+    holdingWithPnL: GoldHoldingWithPnL,
+    currencyCode: String,
+    onConfirmSale: (
+        holdingId: Long,
+        soldWeight: Double,
+        sellPricePerUnit: Long,
+        saleDateMillis: Long,
+        note: String?,
+    ) -> Unit,
+    onDismiss: () -> Unit,
+) {
+    val holding = holdingWithPnL.holding
+    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+
+    var weightText by remember { mutableStateOf("") }
+    val initialPrice =
+        holdingWithPnL.currentBuyBackPricePerUnit?.takeIf { it > 0 }
+            ?: holdingWithPnL.currentSellPricePerUnit?.takeIf { it > 0 } ?: 0L
+    var sellPriceText by remember {
+        mutableStateOf(if (initialPrice > 0) initialPrice.toString() else "")
+    }
+    var saleDateMillis by remember { mutableLongStateOf(System.currentTimeMillis()) }
+    var noteText by remember { mutableStateOf("") }
+    var showDatePicker by remember { mutableStateOf(false) }
+
+    val parsedWeight = weightText.toDoubleOrNull()
+    val isWeightValid = parsedWeight != null && parsedWeight > 0.0 && parsedWeight <= holding.weightValue
+    val isWeightError = weightText.isNotBlank() && !isWeightValid
+
+    val parsedSellPrice = sellPriceText.replace("[^0-9]".toRegex(), "").toLongOrNull()
+    val isPriceValid = parsedSellPrice != null && parsedSellPrice > 0L
+    val isPriceError = sellPriceText.isNotBlank() && !isPriceValid
+
+    val visualTransformation = remember(currencyCode) { CurrencyAmountVisualTransformation(currencyCode) }
+
+    ModalBottomSheet(
+        onDismissRequest = onDismiss,
+        sheetState = sheetState,
+    ) {
+        Column(
+            modifier =
+                Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = DesignSystemSpacing.screenPadding)
+                    .padding(bottom = DesignSystemSpacing.xxl),
+            verticalArrangement = Arrangement.spacedBy(DesignSystemSpacing.medium),
+        ) {
+            Text(
+                text = stringResource(R.string.gold_sell_holding_title),
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.Bold,
+            )
+
+            // Holding info banner
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
+            ) {
+                Column(modifier = Modifier.padding(DesignSystemSpacing.medium)) {
+                    Text(
+                        text = "${goldTypeLabel(
+                            holding.type,
+                        )} · ${formatWeight(holding.weightValue)} ${goldUnitLabel(holding.weightUnit)}",
+                        style = MaterialTheme.typography.titleSmall,
+                        fontWeight = FontWeight.SemiBold,
+                    )
+                    Spacer(Modifier.height(DesignSystemSpacing.xs))
+                    Text(
+                        text =
+                            stringResource(
+                                R.string.gold_buy_price_per_unit,
+                                formatAmountShort(holding.buyPricePerUnit, holding.currencyCode),
+                                goldUnitLabel(holding.weightUnit),
+                            ),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+            }
+
+            // Weight input
+            Column {
+                OutlinedTextField(
+                    value = weightText,
+                    onValueChange = { input -> weightText = input },
+                    label = { Text(stringResource(R.string.gold_sell_weight_label)) },
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                    singleLine = true,
+                    isError = isWeightError,
+                    supportingText = {
+                        Text(
+                            stringResource(
+                                R.string.gold_sell_weight_max,
+                                formatWeight(holding.weightValue),
+                                goldUnitLabel(holding.weightUnit),
+                            ),
+                        )
+                    },
+                    modifier = Modifier.fillMaxWidth(),
+                )
+
+                // Quick percentage chips
+                Row(
+                    modifier = Modifier.fillMaxWidth().padding(top = DesignSystemSpacing.xs),
+                    horizontalArrangement = Arrangement.spacedBy(DesignSystemSpacing.small),
+                ) {
+                    FilterChip(
+                        selected = false,
+                        onClick = { weightText = formatWeightQuick(holding.weightValue * 0.25) },
+                        label = { Text(stringResource(R.string.gold_sell_quick_25)) },
+                    )
+                    FilterChip(
+                        selected = false,
+                        onClick = { weightText = formatWeightQuick(holding.weightValue * 0.50) },
+                        label = { Text(stringResource(R.string.gold_sell_quick_50)) },
+                    )
+                    FilterChip(
+                        selected = false,
+                        onClick = { weightText = formatWeightQuick(holding.weightValue) },
+                        label = { Text(stringResource(R.string.gold_sell_quick_all)) },
+                    )
+                }
+            }
+
+            // Sell price input
+            OutlinedTextField(
+                value = sellPriceText,
+                onValueChange = { input -> sellPriceText = input.replace("[^0-9]".toRegex(), "") },
+                label = { Text(stringResource(R.string.gold_sell_price_label, goldUnitLabel(holding.weightUnit))) },
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                visualTransformation = visualTransformation,
+                singleLine = true,
+                isError = isPriceError,
+                modifier = Modifier.fillMaxWidth(),
+            )
+
+            // Live P&L Preview
+            val weight = parsedWeight
+            val sellPrice = parsedSellPrice
+            if (weight != null &&
+                sellPrice != null &&
+                weight > 0.0 &&
+                weight <= holding.weightValue &&
+                sellPrice > 0L
+            ) {
+                val cost = (holding.buyPricePerUnit * weight).toLong()
+                val proceeds = (sellPrice * weight).toLong()
+                val pnl = proceeds - cost
+                val pnlPercent = if (cost > 0) (pnl.toDouble() / cost) * 100.0 else 0.0
+                val pnlColor = FinancialColors.balanceColor(pnl >= 0)
+                val sign = if (pnl >= 0) "+" else ""
+
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
+                ) {
+                    Column(modifier = Modifier.padding(DesignSystemSpacing.medium)) {
+                        Text(
+                            text = stringResource(R.string.gold_sell_live_preview),
+                            style = MaterialTheme.typography.labelLarge,
+                            fontWeight = FontWeight.SemiBold,
+                        )
+                        Spacer(Modifier.height(DesignSystemSpacing.xs))
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                        ) {
+                            Text(
+                                text = stringResource(R.string.gold_sell_cost, formatAmountShort(cost, currencyCode)),
+                                style = MaterialTheme.typography.bodySmall,
+                            )
+                            Text(
+                                text =
+                                    stringResource(
+                                        R.string.gold_sell_proceeds,
+                                        formatAmountShort(proceeds, currencyCode),
+                                    ),
+                                style = MaterialTheme.typography.bodySmall,
+                            )
+                        }
+                        Spacer(Modifier.height(DesignSystemSpacing.xs))
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            Text(
+                                text = stringResource(R.string.gold_realized_pnl),
+                                style = MaterialTheme.typography.bodyMedium,
+                                fontWeight = FontWeight.Medium,
+                            )
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                AmountText(
+                                    amount = pnl,
+                                    currencyCode = currencyCode,
+                                    showSign = true,
+                                    textStyle = MaterialTheme.typography.bodyMedium,
+                                    fontWeight = FontWeight.Bold,
+                                )
+                                Spacer(Modifier.width(DesignSystemSpacing.xs))
+                                Text(
+                                    text = "($sign%.1f%%)".format(pnlPercent),
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = pnlColor,
+                                    fontWeight = FontWeight.Medium,
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+
+            // Sale Date selector
+            Card(
+                onClick = { showDatePicker = true },
+                modifier = Modifier.fillMaxWidth(),
+                elevation = CardDefaults.cardElevation(defaultElevation = DesignSystemElevation.low),
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth().padding(DesignSystemSpacing.large),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Column {
+                        Text(
+                            text = stringResource(R.string.gold_sell_date_label),
+                            style = MaterialTheme.typography.labelMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                        Text(
+                            text = DateTimeUtil.formatTimestamp(saleDateMillis),
+                            style = MaterialTheme.typography.bodyMedium,
+                            fontWeight = FontWeight.Medium,
+                        )
+                    }
+                    Icon(
+                        Icons.Default.CalendarToday,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.primary,
+                    )
+                }
+            }
+
+            if (showDatePicker) {
+                val datePickerState = rememberDatePickerState(initialSelectedDateMillis = saleDateMillis)
+                DatePickerDialog(
+                    onDismissRequest = { showDatePicker = false },
+                    confirmButton = {
+                        TextButton(
+                            onClick = {
+                                datePickerState.selectedDateMillis?.let { saleDateMillis = it }
+                                showDatePicker = false
+                            },
+                        ) {
+                            Text(stringResource(R.string.action_ok))
+                        }
+                    },
+                    dismissButton = {
+                        TextButton(onClick = { showDatePicker = false }) {
+                            Text(stringResource(R.string.cancel))
+                        }
+                    },
+                ) {
+                    androidx.compose.material3.DatePicker(state = datePickerState)
+                }
+            }
+
+            // Optional note input
+            OutlinedTextField(
+                value = noteText,
+                onValueChange = { noteText = it },
+                label = { Text(stringResource(R.string.gold_note_label)) },
+                placeholder = { Text(stringResource(R.string.gold_note_placeholder)) },
+                maxLines = 2,
+                modifier = Modifier.fillMaxWidth(),
+            )
+
+            // Confirm Sale button
+            Button(
+                onClick = {
+                    if (parsedWeight != null && parsedSellPrice != null) {
+                        onConfirmSale(
+                            holding.id,
+                            parsedWeight,
+                            parsedSellPrice,
+                            saleDateMillis,
+                            noteText.ifBlank { null },
+                        )
+                    }
+                },
+                enabled = isWeightValid && isPriceValid,
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                Text(stringResource(R.string.gold_sell_confirm))
             }
         }
     }

@@ -900,6 +900,185 @@ class GoldPortfolioViewModelTest {
             )
         }
 
+    // --- Sales Tracking & Tab Selection ---
+
+    @Test
+    fun init_loadsPortfolio_withSalesAndComputesRealizedPnL() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            fakeGoldRepository.holdingsFlow.value =
+                listOf(testHolding(id = 1, weightValue = 1.0, buyPrice = 85_000_000L))
+            fakeGoldRepository.pricesFlow.value = listOf(testPrice(sellPrice = 90_000_000L))
+            fakeGoldRepository.salesFlow.value =
+                listOf(
+                    testSale(
+                        id = 1,
+                        soldWeight = 1.0,
+                        buyPrice = 80_000_000L,
+                        sellPrice = 90_000_000L,
+                    ),
+                )
+
+            val viewModel = createViewModel()
+            advanceUntilIdle()
+
+            val state = viewModel.uiState.value
+            assertEquals(1, state.sales.size)
+            assertEquals(GoldPortfolioTab.HOLDINGS, state.selectedTab)
+            val summary = checkNotNull(state.summary)
+            // Unrealized: cost = 85M, market = 90M -> marketPnL = 5M
+            // Realized: cost = 80M, proceeds = 90M -> realizedPnL = 10M
+            assertEquals(10_000_000L, summary.totalRealizedPnL)
+            assertEquals(90_000_000L, summary.totalRealizedProceeds)
+            // totalNetPnL = 5M + 10M = 15M
+            assertEquals(15_000_000L, summary.totalNetPnL)
+        }
+
+    @Test
+    fun init_withSalesOnlyNoHoldings_showsSummaryAndSales() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            fakeGoldRepository.salesFlow.value =
+                listOf(
+                    testSale(
+                        id = 1,
+                        soldWeight = 1.0,
+                        buyPrice = 80_000_000L,
+                        sellPrice = 90_000_000L,
+                    ),
+                )
+
+            val viewModel = createViewModel()
+            advanceUntilIdle()
+
+            val state = viewModel.uiState.value
+            assertTrue(state.holdings.isEmpty())
+            assertEquals(0, state.totalHoldingsCount)
+            assertEquals(1, state.totalSalesCount)
+            val summary = checkNotNull(state.summary)
+            assertEquals(10_000_000L, summary.totalRealizedPnL)
+            assertEquals(90_000_000L, summary.totalRealizedProceeds)
+        }
+
+    @Test
+    fun selectTab_switchesTab() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            val viewModel = createViewModel()
+            advanceUntilIdle()
+
+            assertEquals(GoldPortfolioTab.HOLDINGS, viewModel.uiState.value.selectedTab)
+
+            viewModel.selectTab(GoldPortfolioTab.SALES)
+            advanceUntilIdle()
+
+            assertEquals(GoldPortfolioTab.SALES, viewModel.uiState.value.selectedTab)
+
+            viewModel.selectTab(GoldPortfolioTab.HOLDINGS)
+            advanceUntilIdle()
+
+            assertEquals(GoldPortfolioTab.HOLDINGS, viewModel.uiState.value.selectedTab)
+        }
+
+    @Test
+    fun startSell_and_cancelSell() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            fakeGoldRepository.holdingsFlow.value = listOf(testHolding())
+            val viewModel = createViewModel()
+            advanceUntilIdle()
+
+            val holdingWithPnL = viewModel.uiState.value.holdings[0]
+            viewModel.startSell(holdingWithPnL)
+
+            assertEquals(holdingWithPnL, viewModel.uiState.value.holdingToSell)
+
+            viewModel.cancelSell()
+            assertNull(viewModel.uiState.value.holdingToSell)
+        }
+
+    @Test
+    fun recordSale_success_callsRepositoryAndSetsFlag() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            fakeGoldRepository.holdingsFlow.value = listOf(testHolding(id = 5))
+            val viewModel = createViewModel()
+            advanceUntilIdle()
+
+            viewModel.startSell(viewModel.uiState.value.holdings[0])
+            viewModel.recordSale(
+                holdingId = 5L,
+                soldWeight = 1.5,
+                sellPricePerUnit = 92_000_000L,
+                saleDateMillis = 1711000000000L,
+                note = "Test partial sell",
+            )
+            advanceUntilIdle()
+
+            assertNull(viewModel.uiState.value.holdingToSell)
+            assertTrue(viewModel.uiState.value.showSaleSuccess)
+            assertEquals(1, fakeGoldRepository.recordedSales.size)
+            val recorded = fakeGoldRepository.recordedSales[0]
+            assertEquals(5L, recorded.holdingId)
+            assertEquals(1.5, recorded.soldWeight, 0.001)
+            assertEquals(92_000_000L, recorded.sellPricePerUnit)
+            assertEquals(1711000000000L, recorded.saleDateMillis)
+            assertEquals("Test partial sell", recorded.note)
+
+            viewModel.clearSaleSuccessFlag()
+            assertFalse(viewModel.uiState.value.showSaleSuccess)
+        }
+
+    @Test
+    fun recordSale_error_setsErrorState() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            fakeGoldRepository.holdingsFlow.value = listOf(testHolding(id = 5))
+            fakeGoldRepository.shouldThrowOnMutation = true
+            val viewModel = createViewModel()
+            advanceUntilIdle()
+
+            viewModel.recordSale(
+                holdingId = 5L,
+                soldWeight = 1.5,
+                sellPricePerUnit = 92_000_000L,
+                saleDateMillis = 1711000000000L,
+                note = null,
+            )
+            advanceUntilIdle()
+
+            assertTrue(viewModel.uiState.value.isError)
+            assertFalse(viewModel.uiState.value.showSaleSuccess)
+        }
+
+    @Test
+    fun deleteSale_callsRepositoryAndSetsLastDeleted() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            val sale = testSale(id = 10L)
+            fakeGoldRepository.salesFlow.value = listOf(sale)
+            val viewModel = createViewModel()
+            advanceUntilIdle()
+
+            viewModel.deleteSale(sale)
+            advanceUntilIdle()
+
+            assertTrue(fakeGoldRepository.deletedSaleIds.contains(10L))
+            assertEquals(sale, viewModel.uiState.value.lastDeletedSale)
+
+            viewModel.clearLastDeletedSale()
+            assertNull(viewModel.uiState.value.lastDeletedSale)
+        }
+
+    @Test
+    fun deleteSale_error_setsErrorState() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            val sale = testSale(id = 10L)
+            fakeGoldRepository.salesFlow.value = listOf(sale)
+            fakeGoldRepository.shouldThrowOnMutation = true
+            val viewModel = createViewModel()
+            advanceUntilIdle()
+
+            viewModel.deleteSale(sale)
+            advanceUntilIdle()
+
+            assertTrue(viewModel.uiState.value.isError)
+            assertNull(viewModel.uiState.value.lastDeletedSale)
+        }
+
     // --- Test Helpers ---
 
     private fun testHolding(
@@ -932,15 +1111,49 @@ class GoldPortfolioViewModelTest {
         currencyCode = "VND",
     )
 
+    private fun testSale(
+        id: Long = 1,
+        holdingId: Long? = 1,
+        type: GoldType = GoldType.SJC,
+        soldWeight: Double = 1.0,
+        unit: GoldWeightUnit = GoldWeightUnit.TAEL,
+        buyPrice: Long = 85_000_000L,
+        sellPrice: Long = 90_000_000L,
+        saleDateMillis: Long = 1711000000000L,
+        note: String? = null,
+    ) = GoldSale(
+        id = id,
+        holdingId = holdingId,
+        type = type,
+        soldWeight = soldWeight,
+        weightUnit = unit,
+        buyPricePerUnit = buyPrice,
+        sellPricePerUnit = sellPrice,
+        currencyCode = "VND",
+        saleDateMillis = saleDateMillis,
+        note = note,
+    )
+
     private class FakeGoldRepository : GoldRepository {
         val holdingsFlow = MutableStateFlow<List<GoldHolding>>(emptyList())
         val pricesFlow = MutableStateFlow<List<GoldPrice>>(emptyList())
+        val salesFlow = MutableStateFlow<List<GoldSale>>(emptyList())
         var shouldThrow = false
         var shouldThrowOnMutation = false
 
         val deletedIds = mutableListOf<Long>()
         val addedHoldings = mutableListOf<GoldHolding>()
         val upsertedPrices = mutableListOf<GoldPrice>()
+        val recordedSales = mutableListOf<RecordedSaleParams>()
+        val deletedSaleIds = mutableListOf<Long>()
+
+        data class RecordedSaleParams(
+            val holdingId: Long,
+            val soldWeight: Double,
+            val sellPricePerUnit: Long,
+            val saleDateMillis: Long,
+            val note: String?,
+        )
 
         override fun observeAllHoldings(): Flow<List<GoldHolding>> =
             if (shouldThrow) flow { throw RuntimeException("Test error") } else holdingsFlow
@@ -980,8 +1193,6 @@ class GoldPortfolioViewModelTest {
             upsertedPrices.addAll(prices)
         }
 
-        val salesFlow = MutableStateFlow<List<GoldSale>>(emptyList())
-
         override fun observeAllSales(): Flow<List<GoldSale>> =
             if (shouldThrow) flow { throw RuntimeException("Test error") } else salesFlow
 
@@ -995,8 +1206,15 @@ class GoldPortfolioViewModelTest {
             sellPricePerUnit: Long,
             saleDateMillis: Long,
             note: String?,
-        ): Long = 1L
+        ): Long {
+            if (shouldThrowOnMutation) throw RuntimeException("Mutation error")
+            recordedSales.add(RecordedSaleParams(holdingId, soldWeight, sellPricePerUnit, saleDateMillis, note))
+            return 1L
+        }
 
-        override suspend fun deleteSale(id: Long) {}
+        override suspend fun deleteSale(id: Long) {
+            if (shouldThrowOnMutation) throw RuntimeException("Mutation error")
+            deletedSaleIds.add(id)
+        }
     }
 }
