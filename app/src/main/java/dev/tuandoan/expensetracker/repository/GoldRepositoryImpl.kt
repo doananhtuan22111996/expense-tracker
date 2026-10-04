@@ -93,16 +93,22 @@ class GoldRepositoryImpl
                     holdingDao.getById(holdingId)
                         ?: throw IllegalArgumentException("Holding not found with id $holdingId")
                 require(soldWeight > 0.0) { "Sold weight must be positive" }
-                require(soldWeight <= holding.weightValue) { "Sold weight cannot exceed holding weight" }
+                val isFullSale =
+                    soldWeight >= holding.weightValue ||
+                        kotlin.math.abs(soldWeight - holding.weightValue) < WEIGHT_EPSILON
+                require(
+                    soldWeight <= holding.weightValue + WEIGHT_EPSILON,
+                ) { "Sold weight cannot exceed holding weight" }
                 require(sellPricePerUnit > 0L) { "Sell price per unit must be positive" }
 
                 val now = timeProvider.currentTimeMillis()
+                val actualSoldWeight = if (isFullSale) holding.weightValue else soldWeight
                 val saleId =
                     saleDao.insert(
                         GoldSaleEntity(
                             holdingId = holding.id,
                             type = holding.type,
-                            soldWeight = soldWeight,
+                            soldWeight = actualSoldWeight,
                             weightUnit = holding.weightUnit,
                             buyPricePerUnit = holding.buyPricePerUnit,
                             sellPricePerUnit = sellPricePerUnit,
@@ -113,12 +119,12 @@ class GoldRepositoryImpl
                         ),
                     )
 
-                if (soldWeight == holding.weightValue) {
+                if (isFullSale) {
                     holdingDao.deleteById(holding.id)
                 } else {
                     holdingDao.update(
                         holding.copy(
-                            weightValue = holding.weightValue - soldWeight,
+                            weightValue = holding.weightValue - actualSoldWeight,
                             updatedAt = now,
                         ),
                     )
@@ -242,4 +248,8 @@ class GoldRepositoryImpl
                 note = note,
                 createdAt = createdAt,
             )
+
+        companion object {
+            private const val WEIGHT_EPSILON = 1e-6
+        }
     }

@@ -355,6 +355,33 @@ class GoldRepositoryImplTest {
         }
 
     @Test
+    fun recordSale_fullSale_withFloatingPointEpsilon_deletesHoldingAndSetsExactWeight() =
+        runTest {
+            fakeTimeProvider.setCurrentMillis(5000L)
+            val holding = testHoldingEntity().copy(id = 1L, weightValue = 1.15)
+            fakeHoldingDao.holdingsById[1L] = holding
+
+            // Weight differs by less than WEIGHT_EPSILON (1e-6)
+            val saleId =
+                repository.recordSale(
+                    holdingId = 1L,
+                    soldWeight = 1.15 - 1e-7,
+                    sellPricePerUnit = 92_000_000L,
+                    saleDateMillis = 4000L,
+                    note = null,
+                )
+
+            // Holding deleted
+            assertNull(fakeHoldingDao.holdingsById[1L])
+            assertEquals(1L, fakeHoldingDao.lastDeletedId)
+
+            // Sale recorded with exact holding weight
+            val recordedSale = fakeSaleDao.salesById[saleId]
+            assertNotNull(recordedSale)
+            assertEquals(1.15, recordedSale!!.soldWeight, 0.0000001)
+        }
+
+    @Test
     fun recordSale_holdingNotFound_throwsException() =
         runTest {
             try {
