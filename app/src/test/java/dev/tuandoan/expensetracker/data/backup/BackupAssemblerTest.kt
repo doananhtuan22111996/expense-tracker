@@ -162,4 +162,24 @@ class BackupAssemblerTest {
 
         assertEquals(listOf(1L, 2L), document.categories.map { it.id })
     }
+
+    @Test
+    fun assemble_sortsGoldSalesById() {
+        val sale3 = TestData.sampleBackupGoldSaleDto.copy(id = 3L)
+        val sale1 = TestData.sampleBackupGoldSaleDto.copy(id = 1L)
+        val sale2 = TestData.sampleBackupGoldSaleDto.copy(id = 2L)
+
+        val document =
+            assembler.assemble(
+                categories = emptyList(),
+                transactions = emptyList(),
+                goldSales = listOf(sale3, sale1, sale2),
+                defaultCurrencyCode = "VND",
+                appVersionName = "1.5.0",
+                createdAtEpochMs = TestData.FIXED_TIME,
+                deviceLocale = "en-US",
+            )
+
+        assertEquals(listOf(1L, 2L, 3L), document.goldSales.map { it.id })
+    }
 }

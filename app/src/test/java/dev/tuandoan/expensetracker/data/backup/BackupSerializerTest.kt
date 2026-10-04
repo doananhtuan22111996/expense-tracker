@@ -439,4 +439,53 @@ class BackupSerializerTest {
         val result = serializer.decode(json)
         assertNull(result)
     }
+
+    @Test
+    fun roundTrip_preservesGoldSales() {
+        val document =
+            TestData.sampleBackupDocument.copy(
+                goldSales = listOf(TestData.sampleBackupGoldSaleDto),
+            )
+
+        val json = serializer.encode(document)
+        val decoded = serializer.decode(json)
+
+        assertNotNull(decoded)
+        assertEquals(1, decoded!!.goldSales.size)
+        val sale = decoded.goldSales[0]
+        assertEquals(1L, sale.id)
+        assertEquals(1L, sale.holdingId)
+        assertEquals("SJC", sale.type)
+        assertEquals(0.5, sale.soldWeight, 0.001)
+        assertEquals("TAEL", sale.weightUnit)
+        assertEquals(87_000_000L, sale.buyPricePerUnit)
+        assertEquals(92_000_000L, sale.sellPricePerUnit)
+        assertEquals("VND", sale.currencyCode)
+        assertEquals("Sold half tael", sale.note)
+    }
+
+    @Test
+    fun decode_withoutGoldSales_defaultsToEmptyList() {
+        val json =
+            """
+            {
+                "schema_version": 2,
+                "app_version_name": "1.5.0",
+                "created_at_epoch_ms": 1700000000000,
+                "default_currency_code": "VND",
+                "device_locale": "en-US",
+                "categories": [],
+                "transactions": [],
+                "recurring_transactions": [],
+                "gold_holdings": [],
+                "gold_prices": [],
+                "trips": []
+            }
+            """.trimIndent()
+
+        val decoded = serializer.decode(json)
+
+        assertNotNull(decoded)
+        assertTrue(decoded!!.goldSales.isEmpty())
+    }
 }

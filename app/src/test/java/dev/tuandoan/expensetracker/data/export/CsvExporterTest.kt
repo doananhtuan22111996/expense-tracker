@@ -2,6 +2,7 @@ package dev.tuandoan.expensetracker.data.export
 
 import dev.tuandoan.expensetracker.data.database.entity.GoldHoldingEntity
 import dev.tuandoan.expensetracker.data.database.entity.GoldPriceEntity
+import dev.tuandoan.expensetracker.data.database.entity.GoldSaleEntity
 import dev.tuandoan.expensetracker.data.database.entity.TransactionEntity
 import dev.tuandoan.expensetracker.domain.model.Category
 import dev.tuandoan.expensetracker.domain.model.CategoryTotal
@@ -258,6 +259,76 @@ class CsvExporterTest {
         exporter.exportGoldHoldings(listOf(createGoldHolding(note = "bought, sold")), writer.buffered())
         val lines = writer.toString().lines().filter { it.isNotBlank() }
         assertTrue(lines[1].endsWith("\"bought, sold\""))
+    }
+
+    // --- Gold sales tests ---
+
+    private fun createGoldSale(
+        id: Long = 1L,
+        holdingId: Long? = 1L,
+        type: String = "SJC",
+        soldWeight: Double = 0.5,
+        weightUnit: String = "TAEL",
+        buyPricePerUnit: Long = 87_000_000L,
+        sellPricePerUnit: Long = 92_000_000L,
+        currencyCode: String = "VND",
+        saleDateMillis: Long = 1700000000000L, // 2023-11-14 UTC
+        note: String? = "sold half tael",
+        createdAt: Long = 1700000000000L,
+    ): GoldSaleEntity =
+        GoldSaleEntity(
+            id = id,
+            holdingId = holdingId,
+            type = type,
+            soldWeight = soldWeight,
+            weightUnit = weightUnit,
+            buyPricePerUnit = buyPricePerUnit,
+            sellPricePerUnit = sellPricePerUnit,
+            currencyCode = currencyCode,
+            saleDateMillis = saleDateMillis,
+            note = note,
+            createdAt = createdAt,
+        )
+
+    @Test
+    fun exportGoldSales_producesCorrectHeader() {
+        val writer = StringWriter()
+        exporter.exportGoldSales(listOf(createGoldSale()), writer.buffered())
+        val lines = writer.toString().lines().filter { it.isNotBlank() }
+        assertEquals(
+            "Date,Type,Weight,Unit,Buy Price,Sell Price,Currency,Cost,Proceeds,Realized P&L,Note",
+            lines[0],
+        )
+    }
+
+    @Test
+    fun exportGoldSales_producesCorrectDataRow() {
+        val writer = StringWriter()
+        exporter.exportGoldSales(listOf(createGoldSale()), writer.buffered())
+        val lines = writer.toString().lines().filter { it.isNotBlank() }
+        // 87M * 0.5 = 43,500,000 cost
+        // 92M * 0.5 = 46,000,000 proceeds
+        // P&L = 2,500,000
+        assertEquals(
+            "2023-11-14,SJC,0.5,TAEL,87000000,92000000,VND,43500000,46000000,2500000,sold half tael",
+            lines[1],
+        )
+    }
+
+    @Test
+    fun exportGoldSales_nullNoteProducesEmptyField() {
+        val writer = StringWriter()
+        exporter.exportGoldSales(listOf(createGoldSale(note = null)), writer.buffered())
+        val lines = writer.toString().lines().filter { it.isNotBlank() }
+        assertTrue(lines[1].endsWith(",2500000,"))
+    }
+
+    @Test
+    fun exportGoldSales_noteWithCommaIsEscaped() {
+        val writer = StringWriter()
+        exporter.exportGoldSales(listOf(createGoldSale(note = "sold, profit")), writer.buffered())
+        val lines = writer.toString().lines().filter { it.isNotBlank() }
+        assertTrue(lines[1].endsWith("\"sold, profit\""))
     }
 
     // --- Gold P&L summary tests ---

@@ -5,6 +5,7 @@ import dev.tuandoan.expensetracker.data.database.TransactionRunner
 import dev.tuandoan.expensetracker.data.database.dao.CategoryDao
 import dev.tuandoan.expensetracker.data.database.dao.GoldHoldingDao
 import dev.tuandoan.expensetracker.data.database.dao.GoldPriceDao
+import dev.tuandoan.expensetracker.data.database.dao.GoldSaleDao
 import dev.tuandoan.expensetracker.data.database.dao.RecurringTransactionDao
 import dev.tuandoan.expensetracker.data.database.dao.TransactionDao
 import dev.tuandoan.expensetracker.data.database.dao.TripDao
@@ -14,6 +15,7 @@ import dev.tuandoan.expensetracker.data.database.entity.CurrencyCategorySumRow
 import dev.tuandoan.expensetracker.data.database.entity.CurrencySumRow
 import dev.tuandoan.expensetracker.data.database.entity.GoldHoldingEntity
 import dev.tuandoan.expensetracker.data.database.entity.GoldPriceEntity
+import dev.tuandoan.expensetracker.data.database.entity.GoldSaleEntity
 import dev.tuandoan.expensetracker.data.database.entity.RecurringTransactionEntity
 import dev.tuandoan.expensetracker.data.database.entity.TransactionEntity
 import dev.tuandoan.expensetracker.data.database.entity.TripEntity
@@ -44,6 +46,7 @@ class BackupRepositoryImplTest {
     private lateinit var fakeRecurringDao: FakeRecurringTransactionDao
     private lateinit var fakeGoldHoldingDao: FakeGoldHoldingDao
     private lateinit var fakeGoldPriceDao: FakeGoldPriceDao
+    private lateinit var fakeGoldSaleDao: FakeGoldSaleDao
     private lateinit var fakeTripDao: FakeTripDao
     private lateinit var fakeTimeProvider: FakeTimeProvider
     private lateinit var fakeCurrencyPreferenceRepo: FakeCurrencyPreferenceRepository
@@ -60,6 +63,7 @@ class BackupRepositoryImplTest {
         fakeRecurringDao = FakeRecurringTransactionDao()
         fakeGoldHoldingDao = FakeGoldHoldingDao()
         fakeGoldPriceDao = FakeGoldPriceDao()
+        fakeGoldSaleDao = FakeGoldSaleDao()
         fakeTripDao = FakeTripDao()
         fakeTimeProvider = FakeTimeProvider()
         fakeCurrencyPreferenceRepo = FakeCurrencyPreferenceRepository()
@@ -74,6 +78,7 @@ class BackupRepositoryImplTest {
                 recurringTransactionDao = fakeRecurringDao,
                 goldHoldingDao = fakeGoldHoldingDao,
                 goldPriceDao = fakeGoldPriceDao,
+                goldSaleDao = fakeGoldSaleDao,
                 tripDao = fakeTripDao,
                 backupValidator = validator,
                 backupSerializer = serializer,
@@ -1328,4 +1333,122 @@ class BackupRepositoryImplTest {
             trips.clear()
         }
     }
+
+    private inner class FakeGoldSaleDao : GoldSaleDao {
+        val allSales = mutableListOf<GoldSaleEntity>()
+
+        override fun observeAll(): Flow<List<GoldSaleEntity>> = MutableStateFlow(allSales.toList())
+
+        override suspend fun getAll(): List<GoldSaleEntity> = allSales.toList()
+
+        override suspend fun getById(id: Long): GoldSaleEntity? = allSales.find { it.id == id }
+
+        override suspend fun getByHoldingId(holdingId: Long): List<GoldSaleEntity> =
+            allSales.filter { it.holdingId == holdingId }
+
+        override suspend fun insert(entity: GoldSaleEntity): Long {
+            allSales.add(entity)
+            return entity.id
+        }
+
+        override suspend fun deleteById(id: Long) {
+            allSales.removeAll { it.id == id }
+        }
+
+        override suspend fun insertAll(list: List<GoldSaleEntity>) {
+            allSales.addAll(list)
+        }
+
+        override suspend fun deleteAll() {
+            allSales.clear()
+        }
+    }
+
+    @Test
+    fun exportBackupJson_withGoldSales_includesSalesInDocument() =
+        runTest {
+            fakeGoldSaleDao.allSales.add(
+                GoldSaleEntity(
+                    id = 1L,
+                    holdingId = 10L,
+                    type = "SJC",
+                    soldWeight = 0.5,
+                    weightUnit = "TAEL",
+                    buyPricePerUnit = 87_000_000L,
+                    sellPricePerUnit = 92_000_000L,
+                    currencyCode = "VND",
+                    saleDateMillis = 1000L,
+                    note = "partial sell",
+                    createdAt = 1000L,
+                ),
+            )
+
+            val json = repository.exportBackupJson()
+            val document = serializer.decode(json)!!
+
+            assertEquals(1, document.goldSales.size)
+            assertEquals("SJC", document.goldSales[0].type)
+            assertEquals(0.5, document.goldSales[0].soldWeight, 0.001)
+        }
+
+    @Test
+    fun performImport_withGoldSales_restoresSales() =
+        runTest {
+            val saleDto =
+                dev.tuandoan.expensetracker.data.backup.model.BackupGoldSaleDto(
+                    id = 1L,
+                    holdingId = null,
+                    type = "GOLD_24K",
+                    soldWeight = 1.0,
+                    weightUnit = "TAEL",
+                    buyPricePerUnit = 85_000_000L,
+                    sellPricePerUnit = 90_000_000L,
+                    currencyCode = "VND",
+                    saleDateMillis = 2000L,
+                    note = null,
+                    createdAt = 2000L,
+                )
+            val document =
+                TestData.sampleBackupDocument.copy(
+                    goldSales = listOf(saleDto),
+                )
+
+            val json = serializer.encode(document)
+            repository.importBackupJson(json)
+
+            assertEquals(1, fakeGoldSaleDao.allSales.size)
+            assertEquals("GOLD_24K", fakeGoldSaleDao.allSales[0].type)
+            assertEquals(1.0, fakeGoldSaleDao.allSales[0].soldWeight, 0.001)
+        }
+
+    @Test
+    fun exportCsv_withGoldSales_includesSalesSection() =
+        runTest {
+            fakeGoldSaleDao.allSales.add(
+                GoldSaleEntity(
+                    id = 1L,
+                    holdingId = 1L,
+                    type = "SJC",
+                    soldWeight = 0.5,
+                    weightUnit = "TAEL",
+                    buyPricePerUnit = 87_000_000L,
+                    sellPricePerUnit = 92_000_000L,
+                    currencyCode = "VND",
+                    saleDateMillis = 1700000000000L,
+                    note = "sold half tael",
+                    createdAt = 1700000000000L,
+                ),
+            )
+
+            val outputStream = ByteArrayOutputStream()
+            repository.exportCsv(outputStream)
+
+            val csv = outputStream.toString(Charsets.UTF_8.name())
+            assertTrue(
+                csv.contains("Date,Type,Weight,Unit,Buy Price,Sell Price,Currency,Cost,Proceeds,Realized P&L,Note"),
+            )
+            assertTrue(
+                csv.contains("2023-11-14,SJC,0.5,TAEL,87000000,92000000,VND,43500000,46000000,2500000,sold half tael"),
+            )
+        }
 }
