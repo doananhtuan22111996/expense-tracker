@@ -296,6 +296,39 @@
     <string name="a11y_gold_sort_menu">Sắp xếp danh mục vàng</string>
     <string name="a11y_gold_filter_chip">Lọc theo %1$s</string>
 
+    <!-- Gold Sales Tracking -->
+    <string name="gold_tab_holdings">Nắm giữ</string>
+    <string name="gold_tab_sales">Lịch sử bán</string>
+    <string name="gold_tab_holdings_count">Nắm giữ (%1$d)</string>
+    <string name="gold_tab_sales_count">Đã bán (%1$d)</string>
+    <string name="gold_sell_action">Bán</string>
+    <string name="gold_sell_holding_title">Bán khoản nắm giữ</string>
+    <string name="gold_sell_weight_label">Khối lượng bán</string>
+    <string name="gold_sell_weight_max">Tối đa: %1$s %2$s</string>
+    <string name="gold_sell_price_label">Giá bán mỗi %1$s</string>
+    <string name="gold_sell_date_label">Ngày bán</string>
+    <string name="gold_sell_confirm">Xác nhận bán</string>
+    <string name="gold_sell_quick_25">25%</string>
+    <string name="gold_sell_quick_50">50%</string>
+    <string name="gold_sell_quick_all">Tất cả (100%)</string>
+    <string name="gold_sell_live_preview">Xem trước Lãi/Lỗ</string>
+    <string name="gold_sell_proceeds">Thu về: %1$s</string>
+    <string name="gold_sell_cost">Giá vốn: %1$s</string>
+    <string name="gold_sell_pnl">Lãi đã chốt: %1$s</string>
+    <string name="gold_sale_success">Đã ghi nhận giao dịch bán thành công</string>
+    <string name="gold_sale_deleted">Đã xóa giao dịch bán và khôi phục khoản nắm giữ</string>
+    <string name="gold_sales_empty_title">Chưa có giao dịch bán nào</string>
+    <string name="gold_sales_empty_subtitle">Khi bạn bán các khoản nắm giữ, lịch sử bán và lợi nhuận đã chốt sẽ hiển thị tại đây</string>
+    <string name="gold_realized_pnl">Lãi đã chốt</string>
+    <string name="gold_total_net_pnl">Tổng lãi ròng</string>
+    <string name="gold_sale_details">%1$s · %2$s %3$s</string>
+    <string name="gold_sale_price_spread">Mua: %1$s → Bán: %2$s</string>
+    <string name="gold_sale_cost_proceeds">Vốn: %1$s → Thu về: %2$s</string>
+    <string name="gold_no_active_holdings">Không có khoản nắm giữ nào</string>
+    <string name="a11y_gold_sell_holding">Bán khoản nắm giữ %1$s</string>
+    <string name="a11y_gold_sales_tab">Chuyển sang lịch sử bán</string>
+    <string name="a11y_gold_holdings_tab">Chuyển sang danh sách nắm giữ</string>
+
     <!-- Gold Add/Edit -->
     <string name="gold_add_title">Thêm khoản nắm giữ vàng</string>
     <string name="gold_edit_title">Chỉnh sửa khoản nắm giữ vàng</string>

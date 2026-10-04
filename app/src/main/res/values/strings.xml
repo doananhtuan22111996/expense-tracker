@@ -296,6 +296,39 @@
     <string name="a11y_gold_sort_menu">Sort gold holdings</string>
     <string name="a11y_gold_filter_chip">Filter by %1$s</string>
 
+    <!-- Gold Sales Tracking -->
+    <string name="gold_tab_holdings">Holdings</string>
+    <string name="gold_tab_sales">Sales History</string>
+    <string name="gold_tab_holdings_count">Holdings (%1$d)</string>
+    <string name="gold_tab_sales_count">Sales (%1$d)</string>
+    <string name="gold_sell_action">Sell</string>
+    <string name="gold_sell_holding_title">Sell Gold Holding</string>
+    <string name="gold_sell_weight_label">Weight to Sell</string>
+    <string name="gold_sell_weight_max">Max: %1$s %2$s</string>
+    <string name="gold_sell_price_label">Sell Price per %1$s</string>
+    <string name="gold_sell_date_label">Sale Date</string>
+    <string name="gold_sell_confirm">Confirm Sale</string>
+    <string name="gold_sell_quick_25">25%</string>
+    <string name="gold_sell_quick_50">50%</string>
+    <string name="gold_sell_quick_all">All (100%)</string>
+    <string name="gold_sell_live_preview">Live P&amp;L Preview</string>
+    <string name="gold_sell_proceeds">Proceeds: %1$s</string>
+    <string name="gold_sell_cost">Cost: %1$s</string>
+    <string name="gold_sell_pnl">Realized P&amp;L: %1$s</string>
+    <string name="gold_sale_success">Sale recorded successfully</string>
+    <string name="gold_sale_deleted">Sale deleted and holding restored</string>
+    <string name="gold_sales_empty_title">No sales recorded yet</string>
+    <string name="gold_sales_empty_subtitle">When you sell gold holdings, your sales history and realized profit will appear here</string>
+    <string name="gold_realized_pnl">Realized P&amp;L</string>
+    <string name="gold_total_net_pnl">All-time Net P&amp;L</string>
+    <string name="gold_sale_details">%1$s · %2$s %3$s</string>
+    <string name="gold_sale_price_spread">Bought: %1$s → Sold: %2$s</string>
+    <string name="gold_sale_cost_proceeds">Cost: %1$s → Proceeds: %2$s</string>
+    <string name="gold_no_active_holdings">No active holdings</string>
+    <string name="a11y_gold_sell_holding">Sell %1$s holding</string>
+    <string name="a11y_gold_sales_tab">Switch to sales history</string>
+    <string name="a11y_gold_holdings_tab">Switch to holdings</string>
+
     <!-- Gold Add/Edit -->
     <string name="gold_add_title">Add Gold Holding</string>
     <string name="gold_edit_title">Edit Gold Holding</string>

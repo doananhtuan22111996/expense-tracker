@@ -9,6 +9,7 @@ import dev.tuandoan.expensetracker.domain.model.GoldHolding
 import dev.tuandoan.expensetracker.domain.model.GoldHoldingWithPnL
 import dev.tuandoan.expensetracker.domain.model.GoldPortfolioSummary
 import dev.tuandoan.expensetracker.domain.model.GoldPrice
+import dev.tuandoan.expensetracker.domain.model.GoldSale
 import dev.tuandoan.expensetracker.domain.model.GoldType
 import dev.tuandoan.expensetracker.domain.model.GoldTypeAllocation
 import dev.tuandoan.expensetracker.domain.model.GoldWeightUnit
@@ -34,6 +35,7 @@ class GoldPortfolioViewModel
 
         private val selectedTypeFilterFlow = MutableStateFlow<GoldType?>(null)
         private val sortOptionFlow = MutableStateFlow(GoldHoldingSortOption.BUY_DATE_DESC)
+        private val selectedTabFlow = MutableStateFlow(GoldPortfolioTab.HOLDINGS)
 
         init {
             loadPortfolio()
@@ -44,13 +46,25 @@ class GoldPortfolioViewModel
                 _uiState.value = _uiState.value.copy(isLoading = true)
 
                 combine(
-                    goldRepository.observeAllHoldings(),
-                    goldRepository.observeAllPrices(),
+                    combine(
+                        goldRepository.observeAllHoldings(),
+                        goldRepository.observeAllPrices(),
+                        goldRepository.observeAllSales(),
+                    ) { holdings, prices, sales -> Triple(holdings, prices, sales) },
                     currencyPreferenceRepository.observeDefaultCurrency(),
                     selectedTypeFilterFlow,
                     sortOptionFlow,
-                ) { holdings, prices, currencyCode, typeFilter, sortOption ->
-                    buildPortfolioState(holdings, prices, currencyCode, typeFilter, sortOption)
+                    selectedTabFlow,
+                ) { (holdings, prices, sales), currencyCode, typeFilter, sortOption, selectedTab ->
+                    buildPortfolioState(
+                        holdings = holdings,
+                        prices = prices,
+                        sales = sales,
+                        currencyCode = currencyCode,
+                        typeFilter = typeFilter,
+                        sortOption = sortOption,
+                        selectedTab = selectedTab,
+                    )
                 }.catch { e ->
                     _uiState.value =
                         _uiState.value.copy(
@@ -63,10 +77,17 @@ class GoldPortfolioViewModel
                     _uiState.value =
                         state.copy(
                             lastDeletedHolding = current.lastDeletedHolding,
+                            lastDeletedSale = current.lastDeletedSale,
                             showPricesUpdated = current.showPricesUpdated,
+                            showSaleSuccess = current.showSaleSuccess,
+                            holdingToSell = current.holdingToSell,
                         )
                 }
             }
+        }
+
+        fun selectTab(tab: GoldPortfolioTab) {
+            selectedTabFlow.value = tab
         }
 
         fun setTypeFilter(type: GoldType?) {
@@ -75,6 +96,69 @@ class GoldPortfolioViewModel
 
         fun setSortOption(sortOption: GoldHoldingSortOption) {
             sortOptionFlow.value = sortOption
+        }
+
+        fun startSell(holdingWithPnL: GoldHoldingWithPnL) {
+            _uiState.value = _uiState.value.copy(holdingToSell = holdingWithPnL)
+        }
+
+        fun cancelSell() {
+            _uiState.value = _uiState.value.copy(holdingToSell = null)
+        }
+
+        fun recordSale(
+            holdingId: Long,
+            soldWeight: Double,
+            sellPricePerUnit: Long,
+            saleDateMillis: Long,
+            note: String?,
+        ) {
+            viewModelScope.launch {
+                try {
+                    goldRepository.recordSale(
+                        holdingId = holdingId,
+                        soldWeight = soldWeight,
+                        sellPricePerUnit = sellPricePerUnit,
+                        saleDateMillis = saleDateMillis,
+                        note = note,
+                    )
+                    _uiState.value =
+                        _uiState.value.copy(
+                            holdingToSell = null,
+                            showSaleSuccess = true,
+                        )
+                } catch (e: Exception) {
+                    _uiState.value =
+                        _uiState.value.copy(
+                            isError = true,
+                            errorMessage = ErrorUtils.getErrorMessage(e),
+                        )
+                }
+            }
+        }
+
+        fun clearSaleSuccessFlag() {
+            _uiState.value = _uiState.value.copy(showSaleSuccess = false)
+        }
+
+        fun deleteSale(sale: GoldSale) {
+            viewModelScope.launch {
+                try {
+                    _uiState.value = _uiState.value.copy(lastDeletedSale = sale)
+                    goldRepository.deleteSale(sale.id)
+                } catch (e: Exception) {
+                    _uiState.value =
+                        _uiState.value.copy(
+                            lastDeletedSale = null,
+                            isError = true,
+                            errorMessage = ErrorUtils.getErrorMessage(e),
+                        )
+                }
+            }
+        }
+
+        fun clearLastDeletedSale() {
+            _uiState.value = _uiState.value.copy(lastDeletedSale = null)
         }
 
         fun deleteHolding(holding: GoldHolding) {
@@ -155,9 +239,11 @@ class GoldPortfolioViewModel
         private fun buildPortfolioState(
             holdings: List<GoldHolding>,
             prices: List<GoldPrice>,
+            sales: List<GoldSale>,
             currencyCode: String,
             typeFilter: GoldType?,
             sortOption: GoldHoldingSortOption,
+            selectedTab: GoldPortfolioTab,
         ): GoldPortfolioUiState {
             val priceMap =
                 prices.associateBy { it.type to it.unit }
@@ -174,8 +260,11 @@ class GoldPortfolioViewModel
 
             val holdingsWithPrice = allHoldingsWithPnL.filter { it.currentSellPricePerUnit != null }
             val totalWeightGrams = holdings.sumOf { it.weightInGrams() }
+            val totalRealizedPnL = sales.sumOf { it.realizedPnL }
+            val totalRealizedProceeds = sales.sumOf { it.totalProceeds }
+
             val summary =
-                if (holdingsWithPrice.isNotEmpty()) {
+                if (holdingsWithPrice.isNotEmpty() || sales.isNotEmpty()) {
                     val totalLiquidation =
                         if (holdingsWithPrice.any { it.currentBuyBackPricePerUnit != null }) {
                             holdingsWithPrice.sumOf { it.liquidationValue ?: it.marketValue ?: 0L }
@@ -186,6 +275,8 @@ class GoldPortfolioViewModel
                         totalCost = holdingsWithPrice.sumOf { it.totalCost },
                         totalMarketValue = holdingsWithPrice.sumOf { it.marketValue ?: 0L },
                         totalLiquidationValue = totalLiquidation,
+                        totalRealizedPnL = totalRealizedPnL,
+                        totalRealizedProceeds = totalRealizedProceeds,
                         totalWeightGrams = totalWeightGrams,
                         currencyCode = currencyCode,
                     )
@@ -219,6 +310,8 @@ class GoldPortfolioViewModel
             return GoldPortfolioUiState(
                 holdings = sortedHoldings,
                 allHoldings = allHoldingsWithPnL,
+                sales = sales,
+                selectedTab = selectedTab,
                 summary = summary,
                 allocations = allocations,
                 totalWeightGrams = totalWeightGrams,
@@ -296,6 +389,11 @@ class GoldPortfolioViewModel
             }
     }
 
+enum class GoldPortfolioTab {
+    HOLDINGS,
+    SALES,
+}
+
 enum class GoldHoldingSortOption {
     BUY_DATE_DESC,
     BUY_DATE_ASC,
@@ -312,6 +410,8 @@ data class PriceInput(
 data class GoldPortfolioUiState(
     val holdings: List<GoldHoldingWithPnL> = emptyList(),
     val allHoldings: List<GoldHoldingWithPnL> = emptyList(),
+    val sales: List<GoldSale> = emptyList(),
+    val selectedTab: GoldPortfolioTab = GoldPortfolioTab.HOLDINGS,
     val summary: GoldPortfolioSummary? = null,
     val allocations: List<GoldTypeAllocation> = emptyList(),
     val totalWeightGrams: Double = 0.0,
@@ -319,13 +419,17 @@ data class GoldPortfolioUiState(
     val currencyCode: String = "VND",
     val selectedTypeFilter: GoldType? = null,
     val sortOption: GoldHoldingSortOption = GoldHoldingSortOption.BUY_DATE_DESC,
+    val holdingToSell: GoldHoldingWithPnL? = null,
+    val lastDeletedSale: GoldSale? = null,
     val isLoading: Boolean = false,
     val isError: Boolean = false,
     val errorMessage: UiText? = null,
     val lastDeletedHolding: GoldHolding? = null,
     val showPricesUpdated: Boolean = false,
+    val showSaleSuccess: Boolean = false,
 ) {
     val totalHoldingsCount: Int get() = allHoldings.size
+    val totalSalesCount: Int get() = sales.size
     val hasActiveFilter: Boolean get() = selectedTypeFilter != null
     val totalWeightTaels: Double get() = totalWeightGrams / GoldWeightUnit.TAEL.gramsPerUnit
 }
