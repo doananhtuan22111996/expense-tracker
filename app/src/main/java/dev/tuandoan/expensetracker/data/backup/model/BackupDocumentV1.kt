@@ -76,6 +76,7 @@ data class BackupDocumentV1(
     @SerialName("gold_holdings") val goldHoldings: List<BackupGoldHoldingDto> = emptyList(),
     @SerialName("gold_prices") val goldPrices: List<BackupGoldPriceDto> = emptyList(),
     @SerialName("trips") val trips: List<BackupTripDto> = emptyList(),
+    @SerialName("gold_sales") val goldSales: List<BackupGoldSaleDto> = emptyList(),
 ) {
     companion object {
         const val CURRENT_SCHEMA_VERSION = 2

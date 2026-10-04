@@ -3,6 +3,7 @@ package dev.tuandoan.expensetracker.data.export
 import dev.tuandoan.expensetracker.core.formatter.CurrencyFormatter
 import dev.tuandoan.expensetracker.data.database.entity.GoldHoldingEntity
 import dev.tuandoan.expensetracker.data.database.entity.GoldPriceEntity
+import dev.tuandoan.expensetracker.data.database.entity.GoldSaleEntity
 import dev.tuandoan.expensetracker.data.database.entity.TransactionEntity
 import dev.tuandoan.expensetracker.domain.model.CategoryTotal
 import dev.tuandoan.expensetracker.domain.model.SupportedCurrencies
@@ -240,6 +241,41 @@ class CsvExporter
                 val pnl = formatPlainAmount((r.liquidationValue ?: r.marketValue) - r.cost, r.currencyCode)
                 writer.write(
                     "${r.type},${r.unit},${r.weight},$buyPrice,$currentPrice,$buyBackPrice,${r.currencyCode},$cost,$marketValue,$liquidationValue,$pnl",
+                )
+                writer.newLine()
+            }
+            writer.flush()
+        }
+
+        fun exportGoldSales(
+            sales: List<GoldSaleEntity>,
+            writer: BufferedWriter,
+        ) {
+            val dateFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd")
+
+            writer.newLine()
+            writer.write("Date,Type,Weight,Unit,Buy Price,Sell Price,Currency,Cost,Proceeds,Realized P&L,Note")
+            writer.newLine()
+
+            for (s in sales) {
+                val date =
+                    Instant
+                        .ofEpochMilli(s.saleDateMillis)
+                        .atZone(zoneId)
+                        .format(dateFormatter)
+                val buyPrice = formatPlainAmount(s.buyPricePerUnit, s.currencyCode)
+                val sellPrice = formatPlainAmount(s.sellPricePerUnit, s.currencyCode)
+                val cost = formatPlainAmount((s.buyPricePerUnit * s.soldWeight).toLong(), s.currencyCode)
+                val proceeds = formatPlainAmount((s.sellPricePerUnit * s.soldWeight).toLong(), s.currencyCode)
+                val pnl =
+                    formatPlainAmount(
+                        ((s.sellPricePerUnit - s.buyPricePerUnit) * s.soldWeight).toLong(),
+                        s.currencyCode,
+                    )
+                val note = escapeCsvField(s.note ?: "")
+
+                writer.write(
+                    "$date,${s.type},${s.soldWeight},${s.weightUnit},$buyPrice,$sellPrice,${s.currencyCode},$cost,$proceeds,$pnl,$note",
                 )
                 writer.newLine()
             }

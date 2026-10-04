@@ -4,6 +4,7 @@ import dev.tuandoan.expensetracker.data.database.TransactionRunner
 import dev.tuandoan.expensetracker.data.database.dao.CategoryDao
 import dev.tuandoan.expensetracker.data.database.dao.GoldHoldingDao
 import dev.tuandoan.expensetracker.data.database.dao.GoldPriceDao
+import dev.tuandoan.expensetracker.data.database.dao.GoldSaleDao
 import dev.tuandoan.expensetracker.data.database.dao.RecurringTransactionDao
 import dev.tuandoan.expensetracker.data.database.dao.TransactionDao
 import dev.tuandoan.expensetracker.data.database.dao.TripDao
@@ -15,6 +16,7 @@ import dev.tuandoan.expensetracker.data.database.entity.CurrencySumRow
 import dev.tuandoan.expensetracker.data.database.entity.DailyTotalRow
 import dev.tuandoan.expensetracker.data.database.entity.GoldHoldingEntity
 import dev.tuandoan.expensetracker.data.database.entity.GoldPriceEntity
+import dev.tuandoan.expensetracker.data.database.entity.GoldSaleEntity
 import dev.tuandoan.expensetracker.data.database.entity.MonthlyTotalRow
 import dev.tuandoan.expensetracker.data.database.entity.RecurringTransactionEntity
 import dev.tuandoan.expensetracker.data.database.entity.TransactionEntity
@@ -51,6 +53,7 @@ class BackupRoundTripIntegrationTest {
     private lateinit var recurringDao: FakeRecurringDao
     private lateinit var goldHoldingDao: FakeGoldHoldingDao
     private lateinit var goldPriceDao: FakeGoldPriceDao
+    private lateinit var goldSaleDao: FakeGoldSaleDao
     private lateinit var tripQueriesDao: FakeTripQueriesDao
     private lateinit var timeProvider: FakeTimeProvider
     private lateinit var tripRepository: TripRepositoryImpl
@@ -66,6 +69,7 @@ class BackupRoundTripIntegrationTest {
         recurringDao = FakeRecurringDao()
         goldHoldingDao = FakeGoldHoldingDao()
         goldPriceDao = FakeGoldPriceDao()
+        goldSaleDao = FakeGoldSaleDao()
         tripQueriesDao = FakeTripQueriesDao()
         timeProvider = FakeTimeProvider(currentMillis = fixedTime)
 
@@ -91,6 +95,7 @@ class BackupRoundTripIntegrationTest {
                 recurringTransactionDao = recurringDao,
                 goldHoldingDao = goldHoldingDao,
                 goldPriceDao = goldPriceDao,
+                goldSaleDao = goldSaleDao,
                 tripDao = tripDao,
                 backupValidator = BackupValidator(),
                 backupSerializer = BackupSerializer(),
@@ -700,5 +705,23 @@ class BackupRoundTripIntegrationTest {
         ): GoldPriceEntity? = null
 
         override suspend fun upsert(entity: GoldPriceEntity) {}
+    }
+
+    private class FakeGoldSaleDao : GoldSaleDao {
+        override suspend fun getAll(): List<GoldSaleEntity> = emptyList()
+
+        override suspend fun insertAll(list: List<GoldSaleEntity>) {}
+
+        override suspend fun deleteAll() {}
+
+        override fun observeAll(): Flow<List<GoldSaleEntity>> = MutableStateFlow(emptyList())
+
+        override suspend fun getById(id: Long): GoldSaleEntity? = null
+
+        override suspend fun getByHoldingId(holdingId: Long): List<GoldSaleEntity> = emptyList()
+
+        override suspend fun insert(entity: GoldSaleEntity): Long = 0L
+
+        override suspend fun deleteById(id: Long) {}
     }
 }

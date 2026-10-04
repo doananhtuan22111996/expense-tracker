@@ -176,6 +176,21 @@ object TestData {
             updatedAt = FIXED_TIME,
         )
 
+    val sampleBackupGoldSaleDto =
+        dev.tuandoan.expensetracker.data.backup.model.BackupGoldSaleDto(
+            id = 1L,
+            holdingId = 1L,
+            type = "SJC",
+            soldWeight = 0.5,
+            weightUnit = "TAEL",
+            buyPricePerUnit = 87_000_000L,
+            sellPricePerUnit = 92_000_000L,
+            currencyCode = "VND",
+            saleDateMillis = FIXED_TIME,
+            note = "Sold half tael",
+            createdAt = FIXED_TIME,
+        )
+
     val sampleBackupDocument =
         BackupDocumentV1(
             schemaVersion = BackupDocumentV1.CURRENT_SCHEMA_VERSION,
