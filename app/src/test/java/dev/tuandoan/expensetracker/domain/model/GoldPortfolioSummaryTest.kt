@@ -209,6 +209,42 @@ class GoldPortfolioSummaryTest {
         assertEquals(0.0, withPnL.liquidationPnLPercent!!, 0.001)
     }
 
+    // --- Realized & Net P&L ---
+
+    @Test
+    fun `portfolio summary calculates totalNetPnL with realized gains and liquidation`() {
+        val summary =
+            GoldPortfolioSummary(
+                totalCost = 100_000_000L,
+                totalMarketValue = 110_000_000L,
+                totalLiquidationValue = 108_000_000L,
+                totalRealizedPnL = 5_000_000L,
+                totalRealizedProceeds = 45_000_000L,
+                totalWeightGrams = 75.0,
+                currencyCode = "VND",
+            )
+        assertEquals(10_000_000L, summary.marketPnL)
+        assertEquals(8_000_000L, summary.liquidationPnL)
+        // liquidationPnL (8M) + totalRealizedPnL (5M) = 13M
+        assertEquals(13_000_000L, summary.totalNetPnL)
+        assertEquals(45_000_000L, summary.totalRealizedProceeds)
+        assertEquals(2.0, summary.totalWeightTaels, 0.001)
+    }
+
+    @Test
+    fun `portfolio summary calculates totalNetPnL without liquidation`() {
+        val summary =
+            GoldPortfolioSummary(
+                totalCost = 100_000_000L,
+                totalMarketValue = 110_000_000L,
+                totalRealizedPnL = -3_000_000L,
+                currencyCode = "VND",
+            )
+        assertEquals(10_000_000L, summary.marketPnL)
+        // marketPnL (10M) + totalRealizedPnL (-3M) = 7M
+        assertEquals(7_000_000L, summary.totalNetPnL)
+    }
+
     // --- Helpers ---
 
     private fun testHolding(

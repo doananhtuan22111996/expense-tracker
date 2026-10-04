@@ -5,6 +5,7 @@ import androidx.room.RoomDatabase
 import dev.tuandoan.expensetracker.data.database.dao.CategoryDao
 import dev.tuandoan.expensetracker.data.database.dao.GoldHoldingDao
 import dev.tuandoan.expensetracker.data.database.dao.GoldPriceDao
+import dev.tuandoan.expensetracker.data.database.dao.GoldSaleDao
 import dev.tuandoan.expensetracker.data.database.dao.RecurringTransactionDao
 import dev.tuandoan.expensetracker.data.database.dao.TransactionDao
 import dev.tuandoan.expensetracker.data.database.dao.TripDao
@@ -12,6 +13,7 @@ import dev.tuandoan.expensetracker.data.database.dao.TripQueriesDao
 import dev.tuandoan.expensetracker.data.database.entity.CategoryEntity
 import dev.tuandoan.expensetracker.data.database.entity.GoldHoldingEntity
 import dev.tuandoan.expensetracker.data.database.entity.GoldPriceEntity
+import dev.tuandoan.expensetracker.data.database.entity.GoldSaleEntity
 import dev.tuandoan.expensetracker.data.database.entity.RecurringTransactionEntity
 import dev.tuandoan.expensetracker.data.database.entity.TransactionEntity
 import dev.tuandoan.expensetracker.data.database.entity.TripEntity
@@ -24,8 +26,9 @@ import dev.tuandoan.expensetracker.data.database.entity.TripEntity
         GoldHoldingEntity::class,
         GoldPriceEntity::class,
         TripEntity::class,
+        GoldSaleEntity::class,
     ],
-    version = 9,
+    version = 10,
     exportSchema = true,
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -38,6 +41,8 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun goldHoldingDao(): GoldHoldingDao
 
     abstract fun goldPriceDao(): GoldPriceDao
+
+    abstract fun goldSaleDao(): GoldSaleDao
 
     abstract fun tripDao(): TripDao
 

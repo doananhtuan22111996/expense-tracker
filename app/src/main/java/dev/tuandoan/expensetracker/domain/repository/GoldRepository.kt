@@ -2,6 +2,7 @@ package dev.tuandoan.expensetracker.domain.repository
 
 import dev.tuandoan.expensetracker.domain.model.GoldHolding
 import dev.tuandoan.expensetracker.domain.model.GoldPrice
+import dev.tuandoan.expensetracker.domain.model.GoldSale
 import dev.tuandoan.expensetracker.domain.model.GoldType
 import dev.tuandoan.expensetracker.domain.model.GoldWeightUnit
 import kotlinx.coroutines.flow.Flow
@@ -27,4 +28,20 @@ interface GoldRepository {
     suspend fun upsertPrice(price: GoldPrice)
 
     suspend fun upsertPrices(prices: List<GoldPrice>)
+
+    fun observeAllSales(): Flow<List<GoldSale>>
+
+    suspend fun getAllSales(): List<GoldSale>
+
+    suspend fun getSale(id: Long): GoldSale?
+
+    suspend fun recordSale(
+        holdingId: Long,
+        soldWeight: Double,
+        sellPricePerUnit: Long,
+        saleDateMillis: Long,
+        note: String? = null,
+    ): Long
+
+    suspend fun deleteSale(id: Long)
 }

@@ -13,6 +13,10 @@ data class GoldHolding(
     val updatedAt: Long = 0,
 ) {
     val totalCost: Long get() = (buyPricePerUnit * weightValue).toLong()
+
+    fun weightInGrams(): Double = weightValue * weightUnit.gramsPerUnit
+
+    fun weightInTaels(): Double = weightInGrams() / GoldWeightUnit.TAEL.gramsPerUnit
 }
 
 enum class GoldType {

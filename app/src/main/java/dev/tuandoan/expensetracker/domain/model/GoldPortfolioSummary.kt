@@ -4,6 +4,9 @@ data class GoldPortfolioSummary(
     val totalCost: Long,
     val totalMarketValue: Long,
     val totalLiquidationValue: Long? = null,
+    val totalRealizedPnL: Long = 0L,
+    val totalRealizedProceeds: Long = 0L,
+    val totalWeightGrams: Double = 0.0,
     val currencyCode: String,
 ) {
     val marketPnL: Long get() = totalMarketValue - totalCost
@@ -13,7 +16,19 @@ data class GoldPortfolioSummary(
     val liquidationPnL: Long? get() = totalLiquidationValue?.let { it - totalCost }
     val liquidationPnLPercent: Double?
         get() = liquidationPnL?.let { if (totalCost > 0) (it.toDouble() / totalCost) * 100 else 0.0 }
+
+    val totalNetPnL: Long get() = (liquidationPnL ?: marketPnL) + totalRealizedPnL
+
+    val totalWeightTaels: Double get() = totalWeightGrams / GoldWeightUnit.TAEL.gramsPerUnit
 }
+
+data class GoldTypeAllocation(
+    val type: GoldType,
+    val totalWeightGrams: Double,
+    val totalCost: Long,
+    val currentValue: Long,
+    val percentageOfPortfolio: Double,
+)
 
 data class GoldHoldingWithPnL(
     val holding: GoldHolding,

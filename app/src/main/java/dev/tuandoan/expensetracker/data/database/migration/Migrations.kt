@@ -254,3 +254,38 @@ val MIGRATION_8_9 =
             db.execSQL("ALTER TABLE `trips` ADD COLUMN `budget_amount` INTEGER DEFAULT NULL")
         }
     }
+
+/**
+ * Migration from version 9 to version 10.
+ *
+ * Adds gold_sales table for recording completed/partial gold liquidations and realized P&L (v3.17.0).
+ * Purely additive: gold_holdings and gold_prices tables remain completely untouched.
+ */
+val MIGRATION_9_10 =
+    object : Migration(9, 10) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            db.execSQL(
+                """
+                CREATE TABLE IF NOT EXISTS `gold_sales` (
+                    `id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                    `holding_id` INTEGER,
+                    `type` TEXT NOT NULL,
+                    `sold_weight` REAL NOT NULL,
+                    `weight_unit` TEXT NOT NULL,
+                    `buy_price_per_unit` INTEGER NOT NULL,
+                    `sell_price_per_unit` INTEGER NOT NULL,
+                    `currency_code` TEXT NOT NULL DEFAULT 'VND',
+                    `sale_date_millis` INTEGER NOT NULL,
+                    `note` TEXT,
+                    `created_at` INTEGER NOT NULL
+                )
+                """.trimIndent(),
+            )
+            db.execSQL(
+                "CREATE INDEX IF NOT EXISTS `index_gold_sales_sale_date_millis` ON `gold_sales` (`sale_date_millis`)",
+            )
+            db.execSQL(
+                "CREATE INDEX IF NOT EXISTS `index_gold_sales_holding_id` ON `gold_sales` (`holding_id`)",
+            )
+        }
+    }
