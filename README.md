@@ -14,7 +14,7 @@ A simple, offline-first personal expense tracker Android app for managing your i
 - **Monthly Budgets & Alerts**: Set monthly spending limits per currency, visual progress tracking, and proactive threshold alerts (80% and 100%)
 - **Recurring Transactions**: Automated daily, weekly, monthly, and yearly recurring expenses and income with WorkManager
 - **Trips & Travel Money**: Track travel expenses with dedicated trips tab, dynamic daily spending allowances, multi-currency conversion preview, and category-to-trip conversion wizard
-- **Gold Portfolio**: Track physical gold assets, weight units (tael, chi, gram, oz), dealer buy-back vs market prices, real-time P&L, and CSV reporting
+- **Gold Portfolio & Sales Tracking**: Track physical gold assets (tael, chi, gram, oz), dealer buy-back vs market prices, partial/full sales liquidation, realized P&L, sales history, portfolio allocation breakdown, and CSV reporting
 - **Monthly & Yearly Summaries & Insights**: Donut charts, category breakdowns, day-of-month spending pace, and month-over-month category movers
 - **Advanced Filter & Search**: Collapsible search bar, date range picker, category filter bottom sheet, and cross-month search with persistent state
 - **Home Screen Widgets**: Android Glance home-screen widgets (2x1 and 4x2 responsive layouts) and 1-tap pinned category quick-add with 10-second undo
@@ -1118,6 +1118,8 @@ For support or questions, please contact: support@expensetracker.com
 
 ## Version History
 
+- **v3.17.0** - Gold Sales Tracking & Realized P&L: Room v10 migration (`gold_sales` table), partial and full gold holding sales, realized profit/loss and holding duration calculation, sales history tab, portfolio allocation breakdown, and sales CSV/backup support
+- **v3.16.0** - Hardware-Backed Biometric Security & 100% Vietnamese Localization: Biometric app lock (fingerprint, face unlock, PIN), trip CSV export and clipboard summary sharing, 100% native Vietnamese translation across all 734 string resources, and recurrence multi-cycle catchup loop
 - **v3.15.0** - Trip Budget & Dynamic Daily Allowance: Room v9 migration (`budget_amount`), daily spending allowance calculation, over-budget warnings, foreign currency budget conversion preview, and active trip budget progress on Trips tab
 - **v3.14.0** - Dedicated Trips Tab & Travel Portfolio Summary: First-class bottom navigation destination (`main/trips`), aggregate travel spend summary, active trip spotlight banner with day progress, and responsive insets
 - **v3.13.0** - Travel Money Tracking & Conversion Wizard: Full trip management (create/edit/detail), multi-step wizard to convert existing categories to trips with snapshot rollback, exclude trips from home/summary/budget alerts, and schema bump to v2

@@ -1,0 +1,7 @@
+Có gì mới trong phiên bản v3.17:
+
+• Bán vàng & Lãi/lỗ thực tế — Ghi nhận bán một phần hoặc toàn bộ, theo dõi lợi nhuận đã chốt.
+• Lịch sử bán vàng — Xem lại các lần bán kèm giá bán, thời gian nắm giữ và tỷ suất sinh lời.
+• Phân bổ danh mục — Biểu đồ phân bổ tỷ trọng theo loại vàng trực quan.
+• Lọc & Sắp xếp — Tìm kiếm, lọc theo loại vàng và sắp xếp theo giá trị hoặc khối lượng.
+• Sao lưu & Xuất CSV — Hỗ trợ đầy đủ sao lưu/khôi phục và xuất file CSV lịch sử bán.

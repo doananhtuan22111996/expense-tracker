@@ -1,0 +1,7 @@
+What's new in v3.17:
+
+• Gold Sales & Realized P&L — Record partial or full sales and track realized profit & loss.
+• Sales History Tab — View past sales with sell price, holding duration, and return badges.
+• Portfolio Allocation — Visual allocation breakdown by gold type with weight and value.
+• Holdings Filtering & Sorting — Quickly sort and filter active gold holdings.
+• Backup & CSV Export — Full backup/restore support and CSV export for gold sales.

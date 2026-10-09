@@ -2,6 +2,31 @@
 
 ## [Unreleased]
 
+## [3.17.0] - 2026-10-09
+
+### Added
+- **Gold Sales Tracking & Realized P&L (PRs #197, #200, #201)**:
+  - Partial & full gold holding liquidation: record sales with customized sell price, sale date, and optional note.
+  - Automatic calculation of realized profit/loss (`(sellPrice - buyPrice) * soldWeight`), return percentage, and holding duration.
+  - Room migration 9 to 10 adding `gold_sales` table with foreign key to holdings and date/holding indices.
+  - Epsilon defense (`WEIGHT_EPSILON = 1e-6`) to prevent microscopic IEEE 754 precision dust on full liquidation.
+  - Interactive sell bottom sheet with Vietnamese decimal comma normalization (`1,5`), quick percentage chips (25%, 50%, 75%, 100%), and tactile haptic feedback.
+- **Sales History Tab & Realized Metrics (PR #200)**:
+  - Added "Holdings" vs "Sales History" tab navigation on Gold Portfolio screen.
+  - Dedicated Realized P&L summary card displaying total realized gain/loss and total sales proceeds.
+  - Chronological sales history list displaying gold type, sold weight, unit sell price, profit/loss badge, and holding duration.
+- **Portfolio Allocation Card & Weight Pill (PR #199)**:
+  - Added total gold weight metric pill directly in the Gold Portfolio summary card.
+  - Portfolio Allocation card with visual distribution bars and percentage breakdown by gold type.
+  - Gold holding sorting (by date, weight, or value) and filtering by gold type.
+- **Backup, Restore & CSV Export for Gold Sales (PR #198)**:
+  - Extended `BackupDocumentV1` schema with `gold_sales` DTOs, maintaining full backward compatibility with schema versions 1 and 2.
+  - Dedicated Gold Sales CSV export and updated Gold Holdings CSV export with UTF-8 BOM encoding.
+- **Security & Trips Hotfixes (PR #196)**:
+  - AppLockScreen back press handling to move the app task to background safely.
+  - Unicode-safe sanitized filenames for Trip CSV exports.
+- Release cut v3.17.0: Bumped `versionName = "3.17.0"` (versionCode `1778982594`) in `app/build.gradle.kts`. Added Fastlane Play Store release notes (`1778982594.txt`, `3170000.txt`).
+
 ## [3.16.0] - 2026-10-03
 
 ### Added
