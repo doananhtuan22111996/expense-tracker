@@ -12,7 +12,7 @@ plugins {
     alias(libs.plugins.firebase.crashlytics)
 }
 
-val currentVersionName = "3.16.0"
+val currentVersionName = "3.17.0"
 
 /**
  * Baseline versionCode from Google Play Console production release (v3.12.0).
@@ -35,6 +35,7 @@ val googlePlayMaxVersionCode = 2_100_000_000
  *   "3.14.0" -> 1_778_952_594 (+10,000 delta for next minor)
  *   "3.15.0" -> 1_778_962_594 (+10,000 delta for next minor)
  *   "3.16.0" -> 1_778_972_594 (+10,000 delta for next minor)
+ *   "3.17.0" -> 1_778_982_594 (+10,000 delta for next minor)
  *
  * Supported overrides:
  *   - -PversionCode=<int> or env VERSION_CODE: explicit override (> PRODUCTION_BASE_VERSION_CODE)

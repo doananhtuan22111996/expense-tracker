@@ -79,8 +79,8 @@ Single-module Android app: `app/`
 - `domain/review/` — In-app review manager interface + impl
 - `domain/crash/` — CrashReporter interface + NoOp impl
 - `domain/security/` — BiometricAuthHelper, AppLockManager
-- `data/database/` — Room database (`AppDatabase`), DAOs, entities, migrations. DB version 9, schemas exported to `app/schemas/`
-- `data/database/entity/` — Room entities (`TransactionEntity`, `CategoryEntity`, `RecurringTransactionEntity`, `GoldHoldingEntity`, `GoldPriceEntity`, `TripEntity`) + query row types
+- `data/database/` — Room database (`AppDatabase`), DAOs, entities, migrations. DB version 10, schemas exported to `app/schemas/`
+- `data/database/entity/` — Room entities (`TransactionEntity`, `CategoryEntity`, `RecurringTransactionEntity`, `GoldHoldingEntity`, `GoldPriceEntity`, `TripEntity`, `GoldSaleEntity`) + query row types
 - `data/preferences/` — DataStore-backed preferences (theme, onboarding, currency, budget, analytics, review, selected month, security)
 - `data/backup/` — Backup/restore logic with serialization, validation, and mappers
 - `data/export/` — CSV export
