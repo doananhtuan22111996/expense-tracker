@@ -44,6 +44,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import dev.tuandoan.expensetracker.R
 import dev.tuandoan.expensetracker.core.formatter.AmountFormatter
@@ -284,6 +285,8 @@ private fun RecurringTransactionRow(
                     style = MaterialTheme.typography.bodyLarge,
                     fontWeight = FontWeight.Medium,
                     color = MaterialTheme.colorScheme.onSurface,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
                 )
                 Text(
                     text = formattedAmount,
@@ -298,9 +301,15 @@ private fun RecurringTransactionRow(
                 )
                 Row(
                     horizontalArrangement = Arrangement.spacedBy(DesignSystemSpacing.small),
+                    verticalAlignment = Alignment.CenterVertically,
                 ) {
                     Text(
                         text = frequencyLabel,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    Text(
+                        text = "•",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
@@ -316,6 +325,7 @@ private fun RecurringTransactionRow(
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
                         modifier = Modifier.padding(top = DesignSystemSpacing.xs),
                     )
                 }

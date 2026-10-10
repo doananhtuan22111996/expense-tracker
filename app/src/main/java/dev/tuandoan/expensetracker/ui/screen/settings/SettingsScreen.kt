@@ -67,6 +67,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
@@ -325,7 +326,12 @@ fun SettingsScreen(
                                         count = themeOptions.size,
                                     ),
                             ) {
-                                Text(text = label)
+                                Text(
+                                    text = label,
+                                    maxLines = 1,
+                                    softWrap = false,
+                                    overflow = TextOverflow.Ellipsis,
+                                )
                             }
                         }
                     }
@@ -921,7 +927,12 @@ fun SettingsScreen(
                                             count = timeoutOptions.size,
                                         ),
                                 ) {
-                                    Text(text = label)
+                                    Text(
+                                        text = label,
+                                        maxLines = 1,
+                                        softWrap = false,
+                                        overflow = TextOverflow.Ellipsis,
+                                    )
                                 }
                             }
                         }
