@@ -48,6 +48,32 @@ object DateTimeUtil {
     }
 
     /**
+     * Formats a next-due timestamp as a human-readable relative label using Android string resources.
+     *
+     * @param nextDueMillis the next-due epoch milliseconds
+     * @param nowMillis the current epoch milliseconds
+     * @param context the Android context to resolve localized strings and plurals
+     * @return a localized label such as "Due today", "Due tomorrow", "Overdue by 3 days", etc.
+     */
+    fun formatNextDueLabel(
+        nextDueMillis: Long,
+        nowMillis: Long,
+        context: android.content.Context,
+    ): String {
+        val daysDiff = TimeUnit.MILLISECONDS.toDays(nextDueMillis - nowMillis).toInt()
+        return when {
+            daysDiff < 0 -> {
+                val absDays = -daysDiff
+                context.getString(dev.tuandoan.expensetracker.R.string.overdue_by_days, absDays)
+            }
+            daysDiff == 0 -> context.getString(dev.tuandoan.expensetracker.R.string.due_today)
+            daysDiff == 1 -> context.getString(dev.tuandoan.expensetracker.R.string.due_tomorrow)
+            daysDiff <= 7 -> context.getString(dev.tuandoan.expensetracker.R.string.due_in_days, daysDiff)
+            else -> formatShortDate(nextDueMillis)
+        }
+    }
+
+    /**
      * Formats a next-due timestamp as a human-readable relative label.
      *
      * @param nextDueMillis the next-due epoch milliseconds

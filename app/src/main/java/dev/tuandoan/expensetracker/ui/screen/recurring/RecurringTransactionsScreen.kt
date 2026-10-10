@@ -238,8 +238,9 @@ private fun RecurringTransactionRow(
     val formattedAmount =
         AmountFormatter.formatAmountWithCurrency(item.amount, item.currencyCode)
 
+    val context = LocalContext.current
     val nowMillis = System.currentTimeMillis()
-    val nextDueLabel = DateTimeUtil.formatNextDueLabel(item.nextDueMillis, nowMillis)
+    val nextDueLabel = DateTimeUtil.formatNextDueLabel(item.nextDueMillis, nowMillis, context)
     val daysDiff =
         java.util.concurrent.TimeUnit.MILLISECONDS
             .toDays(item.nextDueMillis - nowMillis)

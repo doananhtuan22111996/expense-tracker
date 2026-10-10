@@ -10,6 +10,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavDestination.Companion.hierarchy
 import androidx.navigation.NavGraph.Companion.findStartDestination
@@ -444,14 +445,15 @@ private fun BottomNavigationBar(
 ) {
     NavigationBar {
         BottomNavDestination.allDestinations.forEach { destination ->
+            val title = stringResource(destination.titleRes)
             NavigationBarItem(
                 icon = {
                     Icon(
                         imageVector = destination.icon,
-                        contentDescription = destination.title,
+                        contentDescription = title,
                     )
                 },
-                label = { Text(destination.title) },
+                label = { Text(title) },
                 selected = currentDestination?.hierarchy?.any { it.route == destination.route } == true,
                 onClick = { onNavigateToDestination(destination) },
             )

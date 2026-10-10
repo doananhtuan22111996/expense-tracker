@@ -1,5 +1,6 @@
 package dev.tuandoan.expensetracker.ui.navigation
 
+import androidx.annotation.StringRes
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Paid
@@ -8,6 +9,7 @@ import androidx.compose.material.icons.outlined.BarChart
 import androidx.compose.material.icons.outlined.Luggage
 import androidx.compose.material.icons.outlined.Paid
 import androidx.compose.ui.graphics.vector.ImageVector
+import dev.tuandoan.expensetracker.R
 
 /**
  * Bottom Navigation Destinations - Main app flow with persistent bottom navigation
@@ -15,35 +17,41 @@ import androidx.compose.ui.graphics.vector.ImageVector
 sealed class BottomNavDestination(
     val route: String,
     val title: String,
+    @StringRes val titleRes: Int,
     val icon: ImageVector,
 ) {
     data object Home : BottomNavDestination(
         route = "main/home",
         title = "Home",
+        titleRes = R.string.nav_home,
         icon = Icons.Default.Home,
     )
 
     data object Summary : BottomNavDestination(
         route = "main/summary",
         title = "Summary",
+        titleRes = R.string.nav_summary,
         icon = Icons.Outlined.BarChart,
     )
 
     data object Trips : BottomNavDestination(
         route = "main/trips",
         title = "Trips",
+        titleRes = R.string.nav_trips,
         icon = Icons.Outlined.Luggage,
     )
 
     data object Gold : BottomNavDestination(
         route = "main/gold",
         title = "Gold",
+        titleRes = R.string.nav_gold,
         icon = Icons.Outlined.Paid,
     )
 
     data object Settings : BottomNavDestination(
         route = "main/settings",
         title = "Settings",
+        titleRes = R.string.nav_settings,
         icon = Icons.Default.Settings,
     )
 
