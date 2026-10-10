@@ -95,6 +95,7 @@ fun TripDetailScreen(
     val context = LocalContext.current
 
     val tripGoneMessage = stringResource(R.string.trip_gone_message)
+    val tripSummaryCopiedMessage = stringResource(R.string.trip_summary_copied)
     val clipboardManager = LocalClipboardManager.current
     val coroutineScope = rememberCoroutineScope()
     val defaultCsvFileName = "trip_${uiState.trip?.name?.replace(Regex("[^\\p{L}0-9_-]"), "_") ?: "export"}.csv"
@@ -143,7 +144,7 @@ fun TripDetailScreen(
                     if (summary != null) {
                         clipboardManager.setText(AnnotatedString(summary))
                         coroutineScope.launch {
-                            snackbarHostState.showSnackbar(context.getString(R.string.trip_summary_copied))
+                            snackbarHostState.showSnackbar(tripSummaryCopiedMessage)
                         }
                     }
                 },
