@@ -835,6 +835,24 @@ internal fun TripBudgetProgressCard(
                 )
             }
 
+            // Row 1: Spent · Budget
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text(
+                    text = stringResource(R.string.trip_detail_budget_label_spent, totalLabel),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                Text(
+                    text = stringResource(R.string.trip_detail_budget_label_budget, budgetLabel),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+
             // Progress bar
             LinearProgressIndicator(
                 progress = { budgetStatus.progressFraction.coerceIn(0f, 1f) },
@@ -847,21 +865,17 @@ internal fun TripBudgetProgressCard(
                 trackColor = MaterialTheme.colorScheme.surfaceVariant,
             )
 
-            // Numbers row: Spent · Budget · Remaining / Over
+            // Row 2: Percentage · Remaining / Over
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Text(
-                    text = stringResource(R.string.trip_detail_budget_label_spent, totalLabel),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-                Text(
-                    text = stringResource(R.string.trip_detail_budget_label_budget, budgetLabel),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    text = "$progressPercent%",
+                    style = MaterialTheme.typography.labelMedium,
+                    fontWeight = FontWeight.SemiBold,
+                    color = statusColor,
                 )
                 Text(
                     text =
