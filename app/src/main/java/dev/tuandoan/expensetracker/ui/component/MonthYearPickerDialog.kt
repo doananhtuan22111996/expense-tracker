@@ -2,6 +2,7 @@ package dev.tuandoan.expensetracker.ui.component
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.lazy.grid.GridCells
@@ -29,6 +30,7 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.dp
 import dev.tuandoan.expensetracker.R
 import dev.tuandoan.expensetracker.ui.theme.DesignSystemSpacing
 import java.time.Month
@@ -144,6 +146,7 @@ fun MonthYearPickerDialog(
                                     onMonthSelected(ym)
                                     onDismiss()
                                 },
+                                contentPadding = PaddingValues(horizontal = 4.dp, vertical = 6.dp),
                                 modifier =
                                     Modifier.semantics {
                                         contentDescription = selectedDesc
@@ -151,8 +154,10 @@ fun MonthYearPickerDialog(
                             ) {
                                 Text(
                                     text = label,
-                                    style = MaterialTheme.typography.bodySmall,
+                                    style = MaterialTheme.typography.labelMedium,
                                     maxLines = 1,
+                                    softWrap = false,
+                                    textAlign = TextAlign.Center,
                                 )
                             }
                         } else {
@@ -163,6 +168,7 @@ fun MonthYearPickerDialog(
                                     onMonthSelected(ym)
                                     onDismiss()
                                 },
+                                contentPadding = PaddingValues(horizontal = 4.dp, vertical = 6.dp),
                                 modifier =
                                     Modifier.semantics {
                                         contentDescription = unselectedDesc
@@ -170,8 +176,10 @@ fun MonthYearPickerDialog(
                             ) {
                                 Text(
                                     text = label,
-                                    style = MaterialTheme.typography.bodySmall,
+                                    style = MaterialTheme.typography.labelMedium,
                                     maxLines = 1,
+                                    softWrap = false,
+                                    textAlign = TextAlign.Center,
                                 )
                             }
                         }

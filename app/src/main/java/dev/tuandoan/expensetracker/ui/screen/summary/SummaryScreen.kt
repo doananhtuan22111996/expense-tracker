@@ -41,6 +41,7 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -625,12 +626,18 @@ private fun CategoryTotalItem(
                 text = categoryTotal.category.name,
                 style = MaterialTheme.typography.bodyLarge,
                 fontWeight = FontWeight.Medium,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
                 color =
                     if (isOtherCategory) {
                         MaterialTheme.colorScheme.onSurfaceVariant
                     } else {
                         MaterialTheme.colorScheme.onSurface
                     },
+                modifier =
+                    Modifier
+                        .weight(1f)
+                        .padding(end = DesignSystemSpacing.medium),
             )
             AmountText(
                 amount = categoryTotal.total,

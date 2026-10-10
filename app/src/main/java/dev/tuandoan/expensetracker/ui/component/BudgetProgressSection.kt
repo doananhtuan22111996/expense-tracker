@@ -175,7 +175,10 @@ fun SetBudgetDialog(
             }
         },
         dismissButton = {
-            Row {
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(DesignSystemSpacing.xs),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
                 if (currentBudget != null) {
                     TextButton(
                         onClick = {
@@ -183,7 +186,10 @@ fun SetBudgetDialog(
                             onDismiss()
                         },
                     ) {
-                        Text(stringResource(R.string.remove_budget))
+                        Text(
+                            text = stringResource(R.string.remove_budget),
+                            color = MaterialTheme.colorScheme.error,
+                        )
                     }
                 }
                 TextButton(onClick = onDismiss) {
