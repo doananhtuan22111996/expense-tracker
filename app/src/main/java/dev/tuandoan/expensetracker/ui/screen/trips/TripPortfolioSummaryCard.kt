@@ -125,6 +125,8 @@ fun TripPortfolioSummaryCard(
                         ),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
                 )
             }
 
@@ -297,6 +299,12 @@ private fun ActiveBudgetProgressSection(
                 text = stringResource(R.string.trips_portfolio_active_budget_title),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                modifier =
+                    Modifier
+                        .weight(1f)
+                        .padding(end = DesignSystemSpacing.small),
             )
             Text(
                 text =
