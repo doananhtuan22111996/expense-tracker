@@ -1,5 +1,12 @@
 <resources>
     <string name="app_name">Expense Tracker</string>
+
+    <!-- Navigation Destinations -->
+    <string name="nav_home">Trang chủ</string>
+    <string name="nav_summary">Tổng quan</string>
+    <string name="nav_trips">Chuyến đi</string>
+    <string name="nav_gold">Vàng</string>
+    <string name="nav_settings">Cài đặt</string>
     <!-- Trips (v3.13.0) -->
     <string name="trips">Chuyến đi</string>
     <string name="trips_section_active">Đang diễn ra</string>
@@ -35,7 +42,7 @@
     <string name="export_csv_subtitle">Lưu tất cả giao dịch dưới dạng tệp CSV</string>
     <string name="csv_exported_successfully">Đã xuất tệp CSV thành công</string>
     <string name="csv_export_failed">Xuất tệp CSV thất bại: %1$s</string>
-    <string name="no_expenses_this_period">Không có chi tiêu nào trong khoảng thời gian này</string>
+    <string name="no_expenses_this_period">Không có chi tiêu trong kỳ này</string>
     <string name="categories">Danh mục</string>
     <string name="manage_categories">Quản lý danh mục</string>
     <string name="manage_categories_subtitle">Tạo, chỉnh sửa hoặc xóa danh mục</string>
@@ -103,7 +110,7 @@
     <string name="settings_theme_title">Giao diện</string>
     <string name="settings_theme_light">Sáng</string>
     <string name="settings_theme_dark">Tối</string>
-    <string name="settings_theme_system">Theo hệ thống</string>
+    <string name="settings_theme_system">Hệ thống</string>
     <string name="onboarding_title_welcome">Chào mừng đến với Expense Tracker</string>
     <string name="onboarding_subtitle_welcome">Chủ động tài chính cá nhân với ứng dụng theo dõi chi tiêu đơn giản, riêng tư ngay trên thiết bị của bạn.</string>
     <string name="onboarding_title_transactions">Theo dõi mọi giao dịch</string>
@@ -495,7 +502,7 @@
     <string name="settings_biometric_lock_title">Khóa ứng dụng</string>
     <string name="settings_biometric_lock_subtitle">Yêu cầu sinh trắc học hoặc mật mã thiết bị khi mở ứng dụng</string>
     <string name="settings_auto_lock_title">Tự động khóa</string>
-    <string name="settings_auto_lock_immediately">Ngay lập tức</string>
+    <string name="settings_auto_lock_immediately">Tức thì</string>
     <string name="settings_auto_lock_1_minute">1 phút</string>
     <string name="settings_auto_lock_5_minutes">5 phút</string>
     <string name="settings_hide_recents_title">Ẩn trong trình chuyển đổi ứng dụng</string>
@@ -750,7 +757,7 @@
 
     <!-- Summary tab — Insights section (PRD v3.10.0 FR-01 through FR-21). Display-only
          copy; percentages and amounts arrive pre-formatted from the InsightsEngine. -->
-    <string name="insights_section_title">Thông tin chi tiết</string>
+    <string name="insights_section_title">Thông tin chi tiêu</string>
     <string name="insights_collapse_expand">Mở rộng thông tin</string>
     <string name="insights_collapse_collapse">Thu gọn thông tin</string>
 
@@ -760,8 +767,8 @@
 
     <!-- Daily pace row. ON_PACE takes %1$s = projected; OVER/UNDER take %1$s = difference, %2$s = budget. -->
     <string name="insights_daily_pace_on_pace_format">Tốc độ chi tiêu dự kiến %1$s — đúng kế hoạch hạn mức</string>
-    <string name="insights_daily_pace_over_format">Dự kiến sẽ vượt hạn mức %2$s một khoản %1$s</string>
-    <string name="insights_daily_pace_under_format">Dự kiến chi tiêu ít hơn hạn mức %2$s một khoản %1$s</string>
+    <string name="insights_daily_pace_over_format">Vượt hạn mức %1$s (kỳ: %2$s)</string>
+    <string name="insights_daily_pace_under_format">Dưới hạn mức %1$s (kỳ: %2$s)</string>
 
     <!-- No-budget fallback. %1$s = month spend, %2$s = daily average. -->
     <string name="insights_no_budget_fallback_format">Đã chi %1$s trong tháng này, khoảng %2$s/ngày</string>
@@ -902,9 +909,9 @@
     <string name="a11y_trip_budget_progress">Hạn mức chuyến đi: đã chi %1$d%%, %2$s trên %3$s</string>
 
     <!-- Trip portfolio and row budget metrics (T1.5) -->
-    <string name="trips_portfolio_active_budget_title">Hạn mức chuyến đi đang diễn ra</string>
+    <string name="trips_portfolio_active_budget_title">Hạn mức chuyến đi</string>
     <string name="trips_portfolio_active_budget_progress">%1$s trên %2$s (%3$d%%)</string>
-    <string name="a11y_trips_portfolio_active_budget">Hạn mức chuyến đi đang diễn ra: đã chi %1$d%%, %2$s trên %3$s</string>
+    <string name="a11y_trips_portfolio_active_budget">Hạn mức chuyến đi: đã chi %1$d%%, %2$s trên %3$s</string>
     <string name="trip_row_budget_chip">Hạn mức: %1$s • %2$d%%</string>
     <string name="trip_row_budget_chip_over">Vượt hạn mức • %1$s</string>
     <string name="a11y_trip_row_budget">Hạn mức: %1$s, đã chi %2$d%%</string>

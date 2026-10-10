@@ -1,5 +1,12 @@
 <resources>
     <string name="app_name">Expense Tracker</string>
+
+    <!-- Navigation Destinations -->
+    <string name="nav_home">Home</string>
+    <string name="nav_summary">Summary</string>
+    <string name="nav_trips">Trips</string>
+    <string name="nav_gold">Gold</string>
+    <string name="nav_settings">Settings</string>
     <!-- Trips (v3.13.0) -->
     <string name="trips">Trips</string>
     <string name="trips_section_active">Active</string>
