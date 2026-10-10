@@ -12,7 +12,7 @@ plugins {
     alias(libs.plugins.firebase.crashlytics)
 }
 
-val currentVersionName = "3.17.0"
+val currentVersionName = "3.17.1"
 
 /**
  * Baseline versionCode from Google Play Console production release (v3.12.0).
