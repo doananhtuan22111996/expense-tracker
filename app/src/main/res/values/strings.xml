@@ -518,6 +518,17 @@
     <string name="security_biometric_not_available">Screen lock or biometric is not set up on this device. Please set up a screen lock in Android Settings.</string>
     <string name="security_auth_failed">Authentication failed. Please try again.</string>
 
+    <!-- App Protection / Google Play Integrity (v3.19.0) -->
+    <string name="settings_app_protection_title">App Protection</string>
+    <string name="settings_app_protection_verified">Protected with Google Play</string>
+    <string name="settings_app_protection_unverified">Unverified installation</string>
+    <string name="settings_app_protection_offline">Offline (verification deferred)</string>
+    <string name="settings_app_protection_checking">Checking app integrity…</string>
+    <string name="settings_app_protection_verify_action">Verify on Google Play</string>
+    <string name="settings_app_protection_dialog_title">App Protection Notice</string>
+    <string name="settings_app_protection_dialog_message">This installation could not be verified by Google Play. For maximum security, genuine features, and official updates, please verify or install the app directly from the Google Play Store.</string>
+    <string name="a11y_app_protection">App Protection: %1$s</string>
+
     <string name="settings_app_information">App Information</string>
     <string name="settings_version">Version</string>
     <string name="settings_contact_email">Contact Email</string>
