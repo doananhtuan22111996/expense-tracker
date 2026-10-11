@@ -169,6 +169,10 @@ android {
     ksp {
         arg("room.schemaLocation", "$projectDir/schemas")
     }
+
+    testOptions {
+        unitTests.isReturnDefaultValues = true
+    }
 }
 
 dependencies {
@@ -215,8 +219,9 @@ dependencies {
     // Serialization
     implementation(libs.kotlinx.serialization.json)
 
-    // Play Review
+    // Play Review & Integrity (v3.19.0)
     implementation(libs.play.review)
+    implementation(libs.play.integrity)
 
     // Biometric Security (v3.16.0)
     implementation(libs.androidx.biometric)
