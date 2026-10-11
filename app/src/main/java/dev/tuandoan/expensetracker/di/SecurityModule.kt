@@ -7,7 +7,7 @@ import dagger.hilt.InstallIn
 import dagger.hilt.components.SingletonComponent
 import dev.tuandoan.expensetracker.data.preferences.SecurityPreferences
 import dev.tuandoan.expensetracker.data.preferences.SecurityPreferencesImpl
-import dev.tuandoan.expensetracker.data.security.NoOpIntegrityManager
+import dev.tuandoan.expensetracker.data.security.PlayIntegrityManagerImpl
 import dev.tuandoan.expensetracker.domain.security.AppIntegrityManager
 import dev.tuandoan.expensetracker.domain.security.BiometricAuthHelper
 import dev.tuandoan.expensetracker.domain.security.BiometricAuthHelperImpl
@@ -25,7 +25,7 @@ abstract class SecurityModule {
 
     @Binds
     @Singleton
-    abstract fun bindAppIntegrityManager(impl: NoOpIntegrityManager): AppIntegrityManager
+    abstract fun bindAppIntegrityManager(impl: PlayIntegrityManagerImpl): AppIntegrityManager
 
     companion object {
         @Provides
