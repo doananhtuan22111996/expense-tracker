@@ -17,6 +17,7 @@ import dev.tuandoan.expensetracker.data.worker.RecurringTransactionWorker
 import dev.tuandoan.expensetracker.data.worker.WidgetRefreshWorker
 import dev.tuandoan.expensetracker.domain.analytics.Analytics
 import dev.tuandoan.expensetracker.domain.crash.CrashReporter
+import dev.tuandoan.expensetracker.domain.security.AppIntegrityManager
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
@@ -45,6 +46,9 @@ class ExpenseTrackerApplication :
     @Inject
     lateinit var notificationHelper: NotificationHelper
 
+    @Inject
+    lateinit var appIntegrityManager: AppIntegrityManager
+
     private val applicationScope = CoroutineScope(SupervisorJob())
 
     override val workManagerConfiguration: Configuration by lazy {
@@ -66,6 +70,11 @@ class ExpenseTrackerApplication :
             scheduleRecurringWork()
             scheduleBudgetAlertWork()
             scheduleWidgetRefreshWork()
+        }
+
+        // Asynchronously warm up Play Integrity provider at app launch (v3.19.0)
+        applicationScope.launch {
+            appIntegrityManager.warmUp()
         }
 
         // Observe Crashlytics consent and enable/disable crash reporting

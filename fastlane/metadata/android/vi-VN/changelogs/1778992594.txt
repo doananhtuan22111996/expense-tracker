@@ -1,0 +1,6 @@
+Điểm mới trong v3.19:
+
+• Bảo vệ với Google Play — Tích hợp Google Play Integrity API giúp bảo vệ tính toàn vẹn và chống giả mạo ứng dụng.
+• Trạng thái bảo vệ ứng dụng — Xem trạng thái xác thực bảo vệ ứng dụng tại Cài đặt > Bảo mật.
+• Khắc phục sự cố Google Play — Xác thực và cấp phép bản quyền chính hãng trực tiếp qua Google Play.
+• Hoạt động ngoại tuyến an toàn — Cơ chế bảo vệ thân thiện ngoại tuyến đảm bảo dữ liệu tài chính cá nhân của bạn không bao giờ bị khóa khi mất mạng.

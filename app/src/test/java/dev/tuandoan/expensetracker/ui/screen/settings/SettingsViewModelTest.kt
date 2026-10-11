@@ -1,5 +1,6 @@
 package dev.tuandoan.expensetracker.ui.screen.settings
 
+import android.app.Activity
 import android.content.ContentResolver
 import android.net.Uri
 import dev.tuandoan.expensetracker.R
@@ -22,8 +23,12 @@ import dev.tuandoan.expensetracker.domain.repository.BackupRepository
 import dev.tuandoan.expensetracker.domain.repository.BackupRestoreResult
 import dev.tuandoan.expensetracker.domain.repository.CategoryRepository
 import dev.tuandoan.expensetracker.domain.repository.RecurringTransactionRepository
+import dev.tuandoan.expensetracker.domain.security.IntegrityResult
+import dev.tuandoan.expensetracker.domain.security.IntegrityState
+import dev.tuandoan.expensetracker.domain.security.RemediationType
 import dev.tuandoan.expensetracker.domain.widget.PinnedCategoriesUseCase
 import dev.tuandoan.expensetracker.testutil.FakeAnalyticsPreferences
+import dev.tuandoan.expensetracker.testutil.FakeAppIntegrityManager
 import dev.tuandoan.expensetracker.testutil.FakeCurrencyPreferenceRepository
 import dev.tuandoan.expensetracker.testutil.FakeSecurityPreferences
 import dev.tuandoan.expensetracker.testutil.MainDispatcherRule
@@ -58,6 +63,7 @@ class SettingsViewModelTest {
     private lateinit var fakeBudgetAlertPrefs: FakeBudgetAlertPreferences
     private lateinit var fakeBackupEncryptionPrefs: FakeBackupEncryptionPreferences
     private lateinit var fakeSecurityPrefs: FakeSecurityPreferences
+    private lateinit var fakeAppIntegrityManager: FakeAppIntegrityManager
     private lateinit var mockContentResolver: ContentResolver
     private lateinit var mockUri: Uri
 
@@ -71,6 +77,7 @@ class SettingsViewModelTest {
         fakeBudgetAlertPrefs = FakeBudgetAlertPreferences()
         fakeBackupEncryptionPrefs = FakeBackupEncryptionPreferences()
         fakeSecurityPrefs = FakeSecurityPreferences()
+        fakeAppIntegrityManager = FakeAppIntegrityManager()
         // Most tests don't care about the forgotten-password warning gate — they
         // toggle encryption on to exercise the downstream export flow. Pre-seed
         // "acknowledged" so setEncryptBackupsEnabled(true) persists immediately.
@@ -80,7 +87,9 @@ class SettingsViewModelTest {
         mockUri = Mockito.mock(Uri::class.java)
     }
 
-    private fun createViewModel(): SettingsViewModel {
+    private fun createViewModel(
+        appIntegrityManager: FakeAppIntegrityManager = fakeAppIntegrityManager,
+    ): SettingsViewModel {
         // T6.4: SettingsViewModel now exposes pinnedCategoryNames via a
         // PinnedCategoriesUseCase. Construct a real use case over empty
         // prefs + empty EXPENSE categories — the existing tests don't
@@ -100,6 +109,7 @@ class SettingsViewModelTest {
             NoOpCrashReporter(),
             mainDispatcherRule.testDispatcher,
             PinnedCategoriesUseCase(widgetPrefs, emptyCategoryRepo),
+            appIntegrityManager,
         )
     }
 
@@ -1317,6 +1327,78 @@ class SettingsViewModelTest {
             assertEquals(true, viewModel.hideInRecentsEnabled.value)
 
             collectJob.cancel()
+        }
+
+    // --- App Protection / Play Integrity tests (v3.19.0) ---
+
+    @Test
+    fun integrityState_exposesCurrentState() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            val evaluatedResult = IntegrityResult(isGenuine = true)
+            fakeAppIntegrityManager.integrityStateFlow.value = IntegrityState.Evaluated(evaluatedResult)
+            val viewModel = createViewModel()
+
+            val collectJob =
+                backgroundScope.launch {
+                    viewModel.integrityState.collect {}
+                }
+            advanceUntilIdle()
+
+            val state = viewModel.integrityState.value
+            assertTrue(state is IntegrityState.Evaluated)
+            assertEquals(true, (state as IntegrityState.Evaluated).result.isGenuine)
+
+            collectJob.cancel()
+        }
+
+    @Test
+    fun init_whenIntegrityUnchecked_triggersEvaluateIntegrity() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            fakeAppIntegrityManager.integrityStateFlow.value = IntegrityState.Unchecked
+            val viewModel = createViewModel()
+
+            advanceUntilIdle()
+
+            assertEquals(1, fakeAppIntegrityManager.evaluateIntegrityCallCount)
+        }
+
+    @Test
+    fun init_whenIntegrityAlreadyEvaluated_doesNotTriggerEvaluateIntegrity() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            val evaluatedResult = IntegrityResult(isGenuine = true)
+            fakeAppIntegrityManager.integrityStateFlow.value = IntegrityState.Evaluated(evaluatedResult)
+            val viewModel = createViewModel()
+
+            advanceUntilIdle()
+
+            assertEquals(0, fakeAppIntegrityManager.evaluateIntegrityCallCount)
+        }
+
+    @Test
+    fun checkIntegrity_triggersEvaluation() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            val viewModel = createViewModel()
+            advanceUntilIdle()
+            // Reset counter from init
+            fakeAppIntegrityManager.evaluateIntegrityCallCount = 0
+
+            viewModel.checkIntegrity()
+            advanceUntilIdle()
+
+            assertEquals(1, fakeAppIntegrityManager.evaluateIntegrityCallCount)
+        }
+
+    @Test
+    fun resolveIntegrityRemediation_callsRequestRemediationWithGetLicensed() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            val viewModel = createViewModel()
+            val mockActivity = Mockito.mock(Activity::class.java)
+
+            viewModel.resolveIntegrityRemediation(mockActivity)
+            advanceUntilIdle()
+
+            assertEquals(1, fakeAppIntegrityManager.requestedRemediationTypes.size)
+            assertEquals(RemediationType.GET_LICENSED, fakeAppIntegrityManager.requestedRemediationTypes.first())
         }
 
     private class FakeBackupEncryptionPreferences : BackupEncryptionPreferences {

@@ -12,7 +12,7 @@ plugins {
     alias(libs.plugins.firebase.crashlytics)
 }
 
-val currentVersionName = "3.17.1"
+val currentVersionName = "3.19.0"
 
 /**
  * Baseline versionCode from Google Play Console production release (v3.12.0).
@@ -36,6 +36,7 @@ val googlePlayMaxVersionCode = 2_100_000_000
  *   "3.15.0" -> 1_778_962_594 (+10,000 delta for next minor)
  *   "3.16.0" -> 1_778_972_594 (+10,000 delta for next minor)
  *   "3.17.0" -> 1_778_982_594 (+10,000 delta for next minor)
+ *   "3.19.0" -> 1_778_992_594 (+10,000 delta for next minor)
  *
  * Supported overrides:
  *   - -PversionCode=<int> or env VERSION_CODE: explicit override (> PRODUCTION_BASE_VERSION_CODE)
@@ -169,6 +170,10 @@ android {
     ksp {
         arg("room.schemaLocation", "$projectDir/schemas")
     }
+
+    testOptions {
+        unitTests.isReturnDefaultValues = true
+    }
 }
 
 dependencies {
@@ -215,8 +220,9 @@ dependencies {
     // Serialization
     implementation(libs.kotlinx.serialization.json)
 
-    // Play Review
+    // Play Review & Integrity (v3.19.0)
     implementation(libs.play.review)
+    implementation(libs.play.integrity)
 
     // Biometric Security (v3.16.0)
     implementation(libs.androidx.biometric)
