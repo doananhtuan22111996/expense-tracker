@@ -1,0 +1,6 @@
+What's new in v3.19:
+
+• Protected with Play — Integrated Google Play Integrity API for enhanced app authenticity and tamper protection.
+• App Protection Status — View your app protection verification status under Settings > Security.
+• Google Play Remediation — Direct verification and licensing resolution through Google Play.
+• Offline Tolerance — 100% offline-safe protection ensuring your private financial data is never blocked without an internet connection.

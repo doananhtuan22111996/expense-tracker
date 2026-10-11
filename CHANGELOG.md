@@ -2,6 +2,30 @@
 
 ## [Unreleased]
 
+## [3.19.0] - 2026-10-11
+
+### Added
+- **Protected with Play & Google Play Integrity API Integration (PRs #210, #211, #212)**:
+  - **Core Architecture & Domain Modeling (PR #210)**:
+    - Added Google Play Integrity API SDK (`com.google.android.play:integrity:1.6.0`).
+    - Domain models `IntegrityResult`, `IntegrityState`, `RemediationType`, and `RemediationResult`.
+    - Interface `AppIntegrityManager` with reactive `integrityState` StateFlow, asynchronous warm-up, integrity evaluation, and Play Store remediation.
+    - Test double `NoOpIntegrityManager` for frictionless JVM and emulator test execution.
+  - **Standard Integrity Engine & Client Defense-in-Depth (PR #211)**:
+    - `PlayIntegrityManagerImpl` using Google Play's `StandardIntegrityManager` with Google Cloud Project linking (`423754710458L`).
+    - Non-blocking app startup warm-up in `ExpenseTrackerApplication.onCreate()` to minimize subsequent token fetch latency.
+    - Instantaneous listener execution via `Runnable::run` to prevent thread stalls and deadlocks across test and production environments.
+    - Client-side defense-in-depth: installer package check (`com.android.vending`, `com.google.android.feedback`) and release signing certificate SHA-256 verification.
+    - Seamless offline tolerance via `ConnectivityManager` network capability checks, ensuring offline users are never locked out of their private financial data.
+  - **App Protection Settings UI & Remediation Flow (PR #212)**:
+    - Dedicated "App Protection" row under Settings > Security displaying dynamic shield status badges (Protected with Google Play, Unverified installation, Offline deferred).
+    - Informational alert dialog explaining unverified installation risks with one-click Google Play licensing verification (`GET_LICENSED` remediation flow).
+    - 100% localized string resources in English and Vietnamese.
+    - Added `FakeAppIntegrityManager` and comprehensive unit test coverage in `SettingsViewModelTest`.
+  - **Documentation & Release Cut**:
+    - Detailed Play Console and Google Cloud configuration guide in `docs/play-integrity-setup.md`.
+    - Version bumped to `3.19.0` (versionCode `1778992594`) with localized Fastlane store release notes.
+
 ## [3.17.0] - 2026-10-09
 
 ### Added
