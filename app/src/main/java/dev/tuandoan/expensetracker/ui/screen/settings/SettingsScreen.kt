@@ -20,6 +20,7 @@ import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
@@ -30,10 +31,14 @@ import androidx.compose.material.icons.automirrored.filled.OpenInNew
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.FileDownload
 import androidx.compose.material.icons.filled.FileUpload
+import androidx.compose.material.icons.filled.GppMaybe
+import androidx.compose.material.icons.filled.Security
 import androidx.compose.material.icons.filled.Share
+import androidx.compose.material.icons.filled.VerifiedUser
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -88,6 +93,7 @@ import dev.tuandoan.expensetracker.domain.security.BiometricAuthHelper
 import dev.tuandoan.expensetracker.domain.security.BiometricAuthHelperImpl
 import dev.tuandoan.expensetracker.domain.security.BiometricAuthResult
 import dev.tuandoan.expensetracker.domain.security.BiometricStatus
+import dev.tuandoan.expensetracker.domain.security.IntegrityState
 import dev.tuandoan.expensetracker.ui.component.PasswordDialog
 import dev.tuandoan.expensetracker.ui.component.SectionTitle
 import dev.tuandoan.expensetracker.ui.theme.DesignSystemElevation
@@ -121,9 +127,11 @@ fun SettingsScreen(
     val biometricLockEnabled by viewModel.biometricLockEnabled.collectAsStateWithLifecycle()
     val autoLockTimeoutMs by viewModel.autoLockTimeoutMs.collectAsStateWithLifecycle()
     val hideInRecentsEnabled by viewModel.hideInRecentsEnabled.collectAsStateWithLifecycle()
+    val integrityState by viewModel.integrityState.collectAsStateWithLifecycle()
     var showCurrencyDialog by remember { mutableStateOf(false) }
     var showFeedbackSheet by remember { mutableStateOf(false) }
     var showPermissionRationale by remember { mutableStateOf(false) }
+    var showIntegrityNoticeDialog by remember { mutableStateOf(false) }
     val context = LocalContext.current
     var hasNotificationPermission by remember { mutableStateOf(checkNotificationPermission(context)) }
     val snackbarHostState = remember { SnackbarHostState() }
@@ -974,6 +982,22 @@ fun SettingsScreen(
                         )
                     }
                 }
+
+                HorizontalDivider()
+
+                // Google Play App Protection (v3.19.0)
+                AppProtectionRow(
+                    integrityState = integrityState,
+                    onVerifyClick = {
+                        fragmentActivity?.let { viewModel.resolveIntegrityRemediation(it) }
+                    },
+                    onRefreshClick = {
+                        viewModel.checkIntegrity()
+                    },
+                    onShowNotice = {
+                        showIntegrityNoticeDialog = true
+                    },
+                )
             }
 
             // Feedback Section
@@ -1316,6 +1340,156 @@ fun SettingsScreen(
                 // In-app review would be triggered here when Play Review is available
             },
         )
+    }
+
+    // App Protection Notice Dialog (v3.19.0)
+    if (showIntegrityNoticeDialog) {
+        AlertDialog(
+            onDismissRequest = { showIntegrityNoticeDialog = false },
+            title = { Text(stringResource(R.string.settings_app_protection_dialog_title)) },
+            text = { Text(stringResource(R.string.settings_app_protection_dialog_message)) },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        showIntegrityNoticeDialog = false
+                        fragmentActivity?.let { viewModel.resolveIntegrityRemediation(it) }
+                    },
+                ) {
+                    Text(stringResource(R.string.settings_app_protection_verify_action))
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showIntegrityNoticeDialog = false }) {
+                    Text(stringResource(R.string.cancel))
+                }
+            },
+        )
+    }
+}
+
+@Composable
+private fun AppProtectionRow(
+    integrityState: IntegrityState,
+    onVerifyClick: () -> Unit,
+    onRefreshClick: () -> Unit,
+    onShowNotice: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val title = stringResource(R.string.settings_app_protection_title)
+    val subtitle =
+        when (integrityState) {
+            is IntegrityState.Checking, is IntegrityState.Unchecked ->
+                stringResource(R.string.settings_app_protection_checking)
+            is IntegrityState.Evaluated -> {
+                if (integrityState.result.isOfflineMode) {
+                    stringResource(R.string.settings_app_protection_offline)
+                } else if (integrityState.result.isGenuine) {
+                    stringResource(R.string.settings_app_protection_verified)
+                } else {
+                    stringResource(R.string.settings_app_protection_unverified)
+                }
+            }
+        }
+    val a11yDesc = stringResource(R.string.a11y_app_protection, subtitle)
+
+    Row(
+        modifier =
+            modifier
+                .fillMaxWidth()
+                .clickable {
+                    when (integrityState) {
+                        is IntegrityState.Evaluated -> {
+                            if (!integrityState.result.isGenuine && !integrityState.result.isOfflineMode) {
+                                onShowNotice()
+                            } else {
+                                onRefreshClick()
+                            }
+                        }
+                        is IntegrityState.Checking -> { /* no-op while checking */ }
+                        is IntegrityState.Unchecked -> onRefreshClick()
+                    }
+                }.padding(DesignSystemSpacing.large)
+                .semantics {
+                    contentDescription = a11yDesc
+                },
+        horizontalArrangement = Arrangement.spacedBy(DesignSystemSpacing.medium),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        when (integrityState) {
+            is IntegrityState.Checking, is IntegrityState.Unchecked -> {
+                CircularProgressIndicator(
+                    modifier = Modifier.size(24.dp),
+                    strokeWidth = 2.dp,
+                    color = MaterialTheme.colorScheme.primary,
+                )
+            }
+            is IntegrityState.Evaluated -> {
+                if (integrityState.result.isOfflineMode) {
+                    Icon(
+                        Icons.Default.Security,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                } else if (integrityState.result.isGenuine) {
+                    Icon(
+                        Icons.Default.VerifiedUser,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.primary,
+                    )
+                } else {
+                    Icon(
+                        Icons.Default.GppMaybe,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.error,
+                    )
+                }
+            }
+        }
+
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = title,
+                style = MaterialTheme.typography.bodyLarge,
+                fontWeight = FontWeight.Medium,
+                color = MaterialTheme.colorScheme.onSurface,
+            )
+            Text(
+                text = subtitle,
+                style = MaterialTheme.typography.bodyMedium,
+                color =
+                    if (integrityState is IntegrityState.Evaluated &&
+                        !integrityState.result.isGenuine &&
+                        !integrityState.result.isOfflineMode
+                    ) {
+                        MaterialTheme.colorScheme.error
+                    } else {
+                        MaterialTheme.colorScheme.onSurfaceVariant
+                    },
+                modifier = Modifier.padding(top = DesignSystemSpacing.xs),
+            )
+        }
+
+        when (integrityState) {
+            is IntegrityState.Evaluated -> {
+                if (!integrityState.result.isGenuine && !integrityState.result.isOfflineMode) {
+                    TextButton(onClick = onVerifyClick) {
+                        Text(
+                            text = stringResource(R.string.settings_app_protection_verify_action),
+                            color = MaterialTheme.colorScheme.error,
+                        )
+                    }
+                } else if (integrityState.result.isGenuine) {
+                    Icon(
+                        Icons.Default.Check,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.primary,
+                    )
+                }
+            }
+            else -> {
+                // In progress or unchecked
+            }
+        }
     }
 }
 

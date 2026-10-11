@@ -518,6 +518,17 @@
     <string name="security_biometric_not_available">Khóa màn hình hoặc sinh trắc học chưa được thiết lập trên thiết bị này. Vui lòng cài đặt khóa màn hình trong Cài đặt của Android.</string>
     <string name="security_auth_failed">Xác thực thất bại. Vui lòng thử lại.</string>
 
+    <!-- App Protection / Google Play Integrity (v3.19.0) -->
+    <string name="settings_app_protection_title">Bảo vệ ứng dụng</string>
+    <string name="settings_app_protection_verified">Được bảo vệ bởi Google Play</string>
+    <string name="settings_app_protection_unverified">Bản cài đặt chưa được xác thực</string>
+    <string name="settings_app_protection_offline">Ngoại tuyến (hoãn kiểm tra)</string>
+    <string name="settings_app_protection_checking">Đang kiểm tra tính toàn vẹn…</string>
+    <string name="settings_app_protection_verify_action">Xác thực trên Google Play</string>
+    <string name="settings_app_protection_dialog_title">Thông báo bảo vệ ứng dụng</string>
+    <string name="settings_app_protection_dialog_message">Bản cài đặt này chưa được xác thực bởi Google Play. Để đảm bảo an toàn tối đa, tính năng chính hãng và cập nhật chính thức, vui lòng xác thực hoặc tải ứng dụng trực tiếp từ Google Play Store.</string>
+    <string name="a11y_app_protection">Bảo vệ ứng dụng: %1$s</string>
+
     <string name="settings_app_information">Thông tin ứng dụng</string>
     <string name="settings_version">Phiên bản</string>
     <string name="settings_contact_email">Email liên hệ</string>

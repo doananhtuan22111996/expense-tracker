@@ -1,5 +1,6 @@
 package dev.tuandoan.expensetracker.ui.screen.settings
 
+import android.app.Activity
 import android.content.ContentResolver
 import android.net.Uri
 import androidx.lifecycle.ViewModel
@@ -24,6 +25,9 @@ import dev.tuandoan.expensetracker.domain.repository.BudgetAlertPreferences
 import dev.tuandoan.expensetracker.domain.repository.CurrencyPreferenceRepository
 import dev.tuandoan.expensetracker.domain.repository.EncryptOptions
 import dev.tuandoan.expensetracker.domain.repository.RecurringTransactionRepository
+import dev.tuandoan.expensetracker.domain.security.AppIntegrityManager
+import dev.tuandoan.expensetracker.domain.security.IntegrityState
+import dev.tuandoan.expensetracker.domain.security.RemediationType
 import dev.tuandoan.expensetracker.domain.widget.PinnedCategoriesUseCase
 import dev.tuandoan.expensetracker.domain.widget.PinnedCategorySlot
 import kotlinx.coroutines.CancellationException
@@ -61,6 +65,7 @@ class SettingsViewModel
         private val crashReporter: CrashReporter,
         @param:IoDispatcher private val ioDispatcher: CoroutineDispatcher,
         pinnedCategoriesUseCase: PinnedCategoriesUseCase,
+        private val appIntegrityManager: AppIntegrityManager,
     ) : ViewModel() {
         private val _uiState = MutableStateFlow(SettingsUiState())
         val uiState: StateFlow<SettingsUiState> = _uiState.asStateFlow()
@@ -165,8 +170,26 @@ class SettingsViewModel
             }
         }
 
+        /** Observable state of app and device integrity verification (v3.19.0). */
+        val integrityState: StateFlow<IntegrityState> = appIntegrityManager.integrityState
+
+        fun checkIntegrity() {
+            viewModelScope.launch {
+                appIntegrityManager.evaluateIntegrity()
+            }
+        }
+
+        fun resolveIntegrityRemediation(activity: Activity) {
+            viewModelScope.launch {
+                appIntegrityManager.requestRemediation(activity, RemediationType.GET_LICENSED)
+            }
+        }
+
         init {
             observeDefaultCurrency()
+            if (appIntegrityManager.integrityState.value is IntegrityState.Unchecked) {
+                checkIntegrity()
+            }
         }
 
         fun onCurrencySelected(code: String) {
